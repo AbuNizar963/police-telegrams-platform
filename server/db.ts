@@ -70,7 +70,7 @@ export async function allocateSerialNumber() {
   return serial;
 }
 
-export async function listTelegrams(search?: string, classification?: "urgent" | "secret" | "normal") {
+export async function listTelegrams(userId: number, canViewAll: boolean, search?: string, classification?: "urgent" | "secret" | "normal", category?: "criminal" | "administrative" | "traffic" | "security" | "tactical", status?: "pending" | "in_progress" | "resolved" | "archived") {
   const db = await getDb();
   if (!db) return [];
   const filters = [];
@@ -79,6 +79,9 @@ export async function listTelegrams(search?: string, classification?: "urgent" |
     filters.push(or(like(telegrams.subject, term), like(telegrams.recipient, term), like(telegrams.body, term), like(telegrams.creatorName, term), like(sql`CAST(${telegrams.serialNumber} AS CHAR)`, term)));
   }
   if (classification) filters.push(eq(telegrams.classification, classification));
+  if (category) filters.push(eq(telegrams.category, category));
+  if (status) filters.push(eq(telegrams.status, status));
+  if (!canViewAll) filters.push(eq(telegrams.createdByUserId, userId));
   return db.select().from(telegrams).where(filters.length ? and(...filters) : undefined).orderBy(desc(telegrams.createdAt)).limit(200);
 }
 
@@ -102,11 +105,13 @@ export async function writeAuditLog(input: typeof auditLogs.$inferInsert) {
   await db.insert(auditLogs).values(input);
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(userId: number, canViewAll: boolean) {
   const db = await getDb();
   if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, today: 0 };
-  const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).groupBy(telegrams.classification);
-  const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(sql`DATE(${telegrams.createdAt}) = CURDATE()`);
+  const visibility = canViewAll ? undefined : eq(telegrams.createdByUserId, userId);
+  const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.classification);
+  const todayFilter = sql`DATE(${telegrams.createdAt}) = CURDATE()`;
+  const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(visibility ? and(visibility, todayFilter) : todayFilter);
   const counts = { urgent: 0, secret: 0, normal: 0 };
   for (const row of rows) counts[row.classification] = Number(row.count);
   return { ...counts, total: counts.urgent + counts.secret + counts.normal, today: Number(todayRows[0]?.count ?? 0) };

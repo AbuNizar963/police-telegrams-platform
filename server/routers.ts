@@ -20,7 +20,7 @@ export const appRouter = router({
   }),
 
   dashboard: router({
-    stats: protectedProcedure.query(() => getDashboardStats()),
+    stats: protectedProcedure.query(({ ctx }) => getDashboardStats(ctx.user.id, ctx.user.role === "admin")),
   }),
 
   settings: router({
@@ -47,11 +47,12 @@ export const appRouter = router({
 
   telegrams: router({
     list: protectedProcedure
-      .input(z.object({ search: z.string().max(120).optional(), classification: classificationSchema.optional() }).optional())
-      .query(({ input }) => listTelegrams(input?.search, input?.classification)),
-    get: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ input }) => {
+      .input(z.object({ search: z.string().max(120).optional(), classification: classificationSchema.optional(), category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]).optional(), status: z.enum(["pending", "in_progress", "resolved", "archived"]).optional() }).optional())
+      .query(({ ctx, input }) => listTelegrams(ctx.user.id, ctx.user.role === "admin", input?.search, input?.classification, input?.category, input?.status)),
+    get: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const telegram = await getTelegramById(input.id);
       if (!telegram) throw new TRPCError({ code: "NOT_FOUND", message: "البرقية غير موجودة" });
+      if (ctx.user.role !== "admin" && telegram.createdByUserId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية عرض هذه البرقية" });
       return telegram;
     }),
     create: protectedProcedure
@@ -60,12 +61,17 @@ export const appRouter = router({
         recipient: z.string().trim().min(2).max(255),
         body: z.string().trim().min(3).max(20000),
         classification: classificationSchema,
+        category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]),
         attachmentManifest: z.string().max(10000).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const serialNumber = await allocateSerialNumber();
+        const dateCode = new Date().toISOString().slice(0, 10);
+        const serialCode = `POL-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
-        const telegram = await createTelegram({ ...input, serialNumber, createdByUserId: ctx.user.id, creatorName, creatorEmail: ctx.user.email ?? null });
+        const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
+        const creatorIp = typeof creatorIpHeader === "string" ? creatorIpHeader.split(",")[0].trim() : null;
+        const telegram = await createTelegram({ ...input, serialNumber, serialCode, createdByUserId: ctx.user.id, creatorName, creatorEmail: ctx.user.email ?? null, creatorBadgeId: ctx.user.badgeNumber ?? null, creatorIp, creatorFingerprint: ctx.user.openId });
         await writeAuditLog({ actorUserId: ctx.user.id, actorName: creatorName, action: "telegram.create", entityType: "telegram", entityId: String(telegram?.id ?? serialNumber), metadata: JSON.stringify({ serialNumber, classification: input.classification }) });
         return telegram;
       }),

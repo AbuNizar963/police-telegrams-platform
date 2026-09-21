@@ -47,6 +47,7 @@ describe("telegrams.create", () => {
       recipient: "غرفة العمليات",
       body: "محتوى البرقية للاختبار",
       classification: "urgent",
+      category: "security",
     });
 
     expect(result?.serialNumber).toBe(1001);
@@ -55,6 +56,7 @@ describe("telegrams.create", () => {
       creatorName: "النقيب أحمد",
       creatorEmail: "ahmad@example.com",
       serialNumber: 1001,
+      serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
     }));
     expect(mocked.createTelegram.mock.calls[0]?.[0]).not.toHaveProperty("creatorName", "مستخدم آخر");
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({

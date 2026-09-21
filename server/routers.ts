@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { allocateSerialNumber, createTelegram, getDashboardStats, getOrCreateSettings, getTelegramById, listTelegrams, writeAuditLog } from "./db";
+import { storagePut } from "./storage";
 
 const classificationSchema = z.enum(["urgent", "secret", "normal"]);
 
@@ -46,6 +47,15 @@ export const appRouter = router({
   }),
 
   telegrams: router({
+    uploadAttachment: protectedProcedure
+      .input(z.object({ fileName: z.string().trim().min(1).max(180), contentType: z.enum(["image/jpeg", "image/png", "application/pdf", "audio/mpeg", "audio/wav"]), base64: z.string().min(1).max(14_000_000) }))
+      .mutation(async ({ ctx, input }) => {
+        const bytes = Buffer.from(input.base64, "base64");
+        if (bytes.byteLength > 10 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "حجم المرفق يتجاوز 10 ميغابايت" });
+        const uploaded = await storagePut(`telegrams/${ctx.user.id}/${input.fileName}`, bytes, input.contentType);
+        await writeAuditLog({ actorUserId: ctx.user.id, actorName: ctx.user.name ?? ctx.user.email ?? "Officer", action: "attachment.upload", entityType: "telegram_attachment", entityId: uploaded.key, metadata: JSON.stringify({ fileName: input.fileName, contentType: input.contentType, size: bytes.byteLength }) });
+        return { ...uploaded, fileName: input.fileName, contentType: input.contentType, size: bytes.byteLength };
+      }),
     list: protectedProcedure
       .input(z.object({ search: z.string().max(120).optional(), classification: classificationSchema.optional(), category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]).optional(), status: z.enum(["pending", "in_progress", "resolved", "archived"]).optional() }).optional())
       .query(({ ctx, input }) => listTelegrams(ctx.user.id, ctx.user.role === "admin", input?.search, input?.classification, input?.category, input?.status)),
@@ -63,6 +73,8 @@ export const appRouter = router({
         classification: classificationSchema,
         category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]),
         attachmentManifest: z.string().max(10000).optional(),
+        gpsLatitude: z.string().max(40).optional(),
+        gpsLongitude: z.string().max(40).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const serialNumber = await allocateSerialNumber();

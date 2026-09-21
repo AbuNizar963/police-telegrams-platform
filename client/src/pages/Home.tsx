@@ -12,6 +12,7 @@ const dateFormatter = new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium", ti
 const classificationLabels = { urgent: "عاجل جداً", secret: "سري للغاية", normal: "عادي" } as const;
 const categoryLabels = { criminal: "جنائي", administrative: "إداري", traffic: "مروري", security: "بلاغ أمني", tactical: "عملياتي" } as const;
 const statusLabels = { pending: "قيد الانتظار", in_progress: "تحت الإجراء", resolved: "مكتملة", archived: "مؤرشفة" } as const;
+const statusStyles = { pending: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300", in_progress: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300", resolved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300", archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" } as const;
 const classificationStyles = {
   urgent: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
   secret: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300",
@@ -42,10 +43,12 @@ function ClassificationBadge({ value }: { value: "urgent" | "secret" | "normal" 
 export default function Home() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "urgent" | "secret" | "normal">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | keyof typeof statusLabels>("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | keyof typeof categoryLabels>("all");
   const [isComposerOpen, setComposerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const listInput = useMemo(() => ({ search: search.trim() || undefined, classification: filter === "all" ? undefined : filter }), [search, filter]);
+  const listInput = useMemo(() => ({ search: search.trim() || undefined, classification: filter === "all" ? undefined : filter, status: statusFilter === "all" ? undefined : statusFilter, category: categoryFilter === "all" ? undefined : categoryFilter }), [search, filter, statusFilter, categoryFilter]);
   const settingsQuery = trpc.settings.get.useQuery();
   const statsQuery = trpc.dashboard.stats.useQuery();
   const telegramsQuery = trpc.telegrams.list.useQuery(listInput);
@@ -62,7 +65,7 @@ export default function Home() {
   });
 
   const settings = settingsQuery.data;
-  const stats = statsQuery.data ?? { total: 0, today: 0, urgent: 0, secret: 0, normal: 0 };
+  const stats = statsQuery.data ?? { total: 0, today: 0, urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0 };
   const telegrams = telegramsQuery.data ?? [];
 
   return (
@@ -84,11 +87,13 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <StatCard label="إجمالي البرقيات" value={stats.total} icon={FileText} tone="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" />
         <StatCard label="برقيات اليوم" value={stats.today} icon={ArrowLeft} tone="bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" />
         <StatCard label="عاجل جداً" value={stats.urgent} icon={Siren} tone="bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300" />
         <StatCard label="سري للغاية" value={stats.secret} icon={LockKeyhole} tone="bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" />
+        <StatCard label="تحت الإجراء" value={stats.inProgress} icon={ArrowLeft} tone="bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300" />
+        <StatCard label="مكتملة" value={stats.resolved} icon={Shield} tone="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" />
       </section>
 
       <section className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-sm sm:p-6">
@@ -102,10 +107,19 @@ export default function Home() {
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث بالرقم أو الموضوع أو الاسم" className="h-10 rounded-xl bg-background pr-10" />
             </div>
-            <div className="flex rounded-xl border bg-background p-1">
+            <div className="flex flex-wrap rounded-xl border bg-background p-1">
               {(["all", "urgent", "secret", "normal"] as const).map(item => <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs transition-colors ${filter === item ? "bg-[#10233f] text-white" : "text-muted-foreground hover:bg-muted"}`}>{item === "all" ? "الكل" : classificationLabels[item]}</button>)}
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
+          <span className="text-xs font-medium text-muted-foreground">تصفية تشغيلية:</span>
+          {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map(item => <button key={item} onClick={() => setStatusFilter(statusFilter === item ? "all" : item)} className={`rounded-full px-3 py-1.5 text-xs ${statusFilter === item ? "bg-[#10233f] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{statusLabels[item]}</button>)}
+          <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value as "all" | keyof typeof categoryLabels)} className="mr-auto rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">كل التصنيفات</option>
+            {(Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}
+          </select>
         </div>
 
         <div className="mt-6 space-y-3">
@@ -115,7 +129,7 @@ export default function Home() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#10233f] text-sm font-semibold text-[#d8c38e]">{String(telegram.serialNumber).padStart(4, "0")}</div>
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold">{telegram.subject}</h3><ClassificationBadge value={telegram.classification} /><span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{categoryLabels[telegram.category]}</span></div><p className="mt-1 truncate text-sm text-muted-foreground">إلى: {telegram.recipient} · {statusLabels[telegram.status]}</p></div>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold">{telegram.subject}</h3><ClassificationBadge value={telegram.classification} /><span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{categoryLabels[telegram.category]}</span><span className={`rounded-full px-2.5 py-1 text-[11px] ${statusStyles[telegram.status]}`}>{statusLabels[telegram.status]}</span></div><p className="mt-1 truncate text-sm text-muted-foreground">إلى: {telegram.recipient}</p></div>
               </div>
               <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5" />{telegram.creatorName}</span><span>{dateFormatter.format(new Date(telegram.createdAt))}</span></div>
             </div>

@@ -107,12 +107,18 @@ export async function writeAuditLog(input: typeof auditLogs.$inferInsert) {
 
 export async function getDashboardStats(userId: number, canViewAll: boolean) {
   const db = await getDb();
-  if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, today: 0 };
+  if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0, today: 0 };
   const visibility = canViewAll ? undefined : eq(telegrams.createdByUserId, userId);
   const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.classification);
+  const statusRows = await db.select({ status: telegrams.status, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.status);
   const todayFilter = sql`DATE(${telegrams.createdAt}) = CURDATE()`;
   const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(visibility ? and(visibility, todayFilter) : todayFilter);
-  const counts = { urgent: 0, secret: 0, normal: 0 };
+  const counts = { urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0 };
   for (const row of rows) counts[row.classification] = Number(row.count);
+  for (const row of statusRows) {
+    if (row.status === "pending") counts.pending = Number(row.count);
+    if (row.status === "in_progress") counts.inProgress = Number(row.count);
+    if (row.status === "resolved") counts.resolved = Number(row.count);
+  }
   return { ...counts, total: counts.urgent + counts.secret + counts.normal, today: Number(todayRows[0]?.count ?? 0) };
 }

@@ -1,161 +1,94 @@
 import { trpc } from "@/lib/trpc";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, FileText, LockKeyhole, Plus, Search, Shield, Siren, UserRound, X } from "lucide-react";
+import { Activity, AlertTriangle, Archive, ArrowUpLeft, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileText, Filter, LocateFixed, LockKeyhole, MapPinned, Menu, Plus, Printer, Radio, Search, Settings2, Shield, Siren, SlidersHorizontal, UserRound, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const dateFormatter = new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium", timeStyle: "short" });
+const numberFormatter = new Intl.NumberFormat("en-US");
 const classificationLabels = { urgent: "عاجل جداً", secret: "سري للغاية", normal: "عادي" } as const;
-const categoryLabels = { criminal: "جنائي", administrative: "إداري", traffic: "مروري", security: "بلاغ أمني", tactical: "عملياتي" } as const;
+const categoryLabels = { criminal: "جنائي", administrative: "إداري", traffic: "مروري", security: "أمني", tactical: "تكتيكي" } as const;
 const statusLabels = { pending: "قيد الانتظار", in_progress: "تحت الإجراء", resolved: "مكتملة", archived: "مؤرشفة" } as const;
-const statusStyles = { pending: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300", in_progress: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300", resolved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300", archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" } as const;
-const classificationStyles = {
-  urgent: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
-  secret: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300",
-  normal: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
-} as const;
+const statusStyles = { pending: "bg-amber-500/10 text-amber-700 dark:text-amber-300", in_progress: "bg-blue-500/10 text-blue-700 dark:text-blue-300", resolved: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", archived: "bg-slate-500/10 text-slate-600 dark:text-slate-300" } as const;
+const classificationStyles = { urgent: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300", secret: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300", normal: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300" } as const;
 
-function StatCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof FileText; tone: string }) {
-  return (
-    <Card className="border-0 shadow-sm bg-card/90">
-      <CardContent className="flex items-center justify-between p-5">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">{value.toLocaleString("ar-SA")}</p>
-        </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${tone}`}><Icon className="h-5 w-5" /></div>
-      </CardContent>
-    </Card>
-  );
+type Classification = keyof typeof classificationLabels;
+type Category = keyof typeof categoryLabels;
+type Status = keyof typeof statusLabels;
+
+function SeverityBadge({ value }: { value: Classification }) {
+  const Icon = value === "urgent" ? Siren : value === "secret" ? LockKeyhole : Shield;
+  return <Badge variant="outline" className={`gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ${classificationStyles[value]}`}><Icon className="h-3.5 w-3.5" />{classificationLabels[value]}</Badge>;
 }
 
-function ClassificationBadge({ value }: { value: "urgent" | "secret" | "normal" }) {
-  return <Badge variant="outline" className={`gap-1.5 rounded-full px-3 py-1 font-medium ${classificationStyles[value]}`}>
-    {value === "urgent" ? <Siren className="h-3.5 w-3.5" /> : value === "secret" ? <LockKeyhole className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
-    {classificationLabels[value]}
-  </Badge>;
+function StatusBadge({ value }: { value: Status }) {
+  return <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusStyles[value]}`}><span className={`h-1.5 w-1.5 rounded-full ${value === "in_progress" ? "animate-pulse bg-blue-500" : value === "resolved" ? "bg-emerald-500" : value === "pending" ? "bg-amber-500" : "bg-slate-400"}`} />{statusLabels[value]}</span>;
+}
+
+function Kpi({ label, value, detail, icon: Icon, tone }: { label: string; value: number; detail: string; icon: typeof FileText; tone: string }) {
+  return <Card className="border-border/60 bg-card shadow-sm"><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{numberFormatter.format(value)}</p><p className="mt-1 text-[11px] text-muted-foreground">{detail}</p></div><div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone}`}><Icon className="h-4 w-4" /></div></div></CardContent></Card>;
 }
 
 export default function Home() {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "urgent" | "secret" | "normal">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | keyof typeof statusLabels>("all");
-  const [categoryFilter, setCategoryFilter] = useState<"all" | keyof typeof categoryLabels>("all");
-  const [isComposerOpen, setComposerOpen] = useState(false);
+  const [severity, setSeverity] = useState<"all" | Classification>("all");
+  const [status, setStatus] = useState<"all" | Status>("all");
+  const [category, setCategory] = useState<"all" | Category>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const listInput = useMemo(() => ({ search: search.trim() || undefined, classification: filter === "all" ? undefined : filter, status: statusFilter === "all" ? undefined : statusFilter, category: categoryFilter === "all" ? undefined : categoryFilter }), [search, filter, statusFilter, categoryFilter]);
-  const settingsQuery = trpc.settings.get.useQuery();
-  const statsQuery = trpc.dashboard.stats.useQuery();
-  const telegramsQuery = trpc.telegrams.list.useQuery(listInput);
-  const telegramQuery = trpc.telegrams.get.useQuery({ id: selectedId ?? 0 }, { enabled: selectedId !== null });
+  const input = useMemo(() => ({ search: search.trim() || undefined, classification: severity === "all" ? undefined : severity, status: status === "all" ? undefined : status, category: category === "all" ? undefined : category }), [search, severity, status, category]);
+  const settings = trpc.settings.get.useQuery();
+  const stats = trpc.dashboard.stats.useQuery();
+  const list = trpc.telegrams.list.useQuery(input);
+  const detail = trpc.telegrams.get.useQuery({ id: selectedId ?? 0 }, { enabled: selectedId !== null });
   const utils = trpc.useUtils();
-  const createTelegram = trpc.telegrams.create.useMutation({
-    onSuccess: () => {
-      toast.success("تم حفظ البرقية وتوثيق منشئها بنجاح");
-      setComposerOpen(false);
-      utils.telegrams.list.invalidate();
-      utils.dashboard.stats.invalidate();
-    },
-    onError: error => toast.error(error.message || "تعذر حفظ البرقية"),
-  });
+  const create = trpc.telegrams.create.useMutation({ onSuccess: () => { toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية"); setComposerOpen(false); utils.telegrams.list.invalidate(); utils.dashboard.stats.invalidate(); }, onError: error => toast.error(error.message || "تعذر إنشاء البرقية") });
+  const data = stats.data ?? { total: 0, today: 0, urgent: 0, secret: 0, pending: 0, inProgress: 0, resolved: 0 };
+  const rows = list.data ?? [];
 
-  const settings = settingsQuery.data;
-  const stats = statsQuery.data ?? { total: 0, today: 0, urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0 };
-  const telegrams = telegramsQuery.data ?? [];
-
-  return (
-    <div dir="rtl" className="min-h-[calc(100vh-2rem)] space-y-6 pb-12">
-      <header className="relative overflow-hidden rounded-[2rem] bg-[#10233f] px-6 py-7 text-white shadow-xl shadow-slate-900/10 sm:px-8">
-        <div className="absolute -left-12 -top-20 h-64 w-64 rounded-full bg-[#b4945a]/20 blur-3xl" />
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-4 flex items-center gap-3 text-[#d8c38e]">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8c38e]/30 bg-white/5"><Shield className="h-6 w-6" /></div>
-              <span className="text-sm font-medium tracking-[0.16em]">نظام المراسلات الأمنية</span>
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{settings?.departmentName ?? "إدارة الشرطة"}</h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300">منصة مركزية موحّدة لإنشاء البرقيات الرسمية، حفظها، والرجوع إليها مع توثيق كامل لهوية منشئ كل برقية.</p>
-          </div>
-          <Button onClick={() => setComposerOpen(true)} className="h-12 rounded-xl bg-[#c6a86b] px-5 text-[#10233f] shadow-lg shadow-black/10 hover:bg-[#d8c38e]">
-            <Plus className="ml-2 h-5 w-5" /> إنشاء برقية جديدة
-          </Button>
-        </div>
-      </header>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <StatCard label="إجمالي البرقيات" value={stats.total} icon={FileText} tone="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-        <StatCard label="برقيات اليوم" value={stats.today} icon={ArrowLeft} tone="bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" />
-        <StatCard label="عاجل جداً" value={stats.urgent} icon={Siren} tone="bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300" />
-        <StatCard label="سري للغاية" value={stats.secret} icon={LockKeyhole} tone="bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" />
-        <StatCard label="تحت الإجراء" value={stats.inProgress} icon={ArrowLeft} tone="bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300" />
-        <StatCard label="مكتملة" value={stats.resolved} icon={Shield} tone="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" />
-      </section>
-
-      <section className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">سجل البرقيات</h2>
-            <p className="mt-1 text-sm text-muted-foreground">كل سجل يعرض الشرطي الذي أنشأ البرقية وتاريخ إنشائها بشكل ثابت.</p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative min-w-0 sm:w-72">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث بالرقم أو الموضوع أو الاسم" className="h-10 rounded-xl bg-background pr-10" />
-            </div>
-            <div className="flex flex-wrap rounded-xl border bg-background p-1">
-              {(["all", "urgent", "secret", "normal"] as const).map(item => <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs transition-colors ${filter === item ? "bg-[#10233f] text-white" : "text-muted-foreground hover:bg-muted"}`}>{item === "all" ? "الكل" : classificationLabels[item]}</button>)}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
-          <span className="text-xs font-medium text-muted-foreground">تصفية تشغيلية:</span>
-          {(Object.keys(statusLabels) as Array<keyof typeof statusLabels>).map(item => <button key={item} onClick={() => setStatusFilter(statusFilter === item ? "all" : item)} className={`rounded-full px-3 py-1.5 text-xs ${statusFilter === item ? "bg-[#10233f] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{statusLabels[item]}</button>)}
-          <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value as "all" | keyof typeof categoryLabels)} className="mr-auto rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground outline-none focus:ring-2 focus:ring-ring">
-            <option value="all">كل التصنيفات</option>
-            {(Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}
-          </select>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {telegramsQuery.isLoading && <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">جارٍ تحميل السجل...</div>}
-          {!telegramsQuery.isLoading && telegrams.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center"><FileText className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 font-medium">لا توجد برقيات مطابقة</p><p className="mt-1 text-sm text-muted-foreground">ابدأ بإنشاء أول برقية موثقة في النظام.</p></div>}
-          {telegrams.map(telegram => <button key={telegram.id} onClick={() => setSelectedId(telegram.id)} className="group w-full rounded-2xl border bg-background p-4 text-right transition-all hover:-translate-y-0.5 hover:border-[#b4945a] hover:shadow-md sm:p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#10233f] text-sm font-semibold text-[#d8c38e]">{String(telegram.serialNumber).padStart(4, "0")}</div>
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold">{telegram.subject}</h3><ClassificationBadge value={telegram.classification} /><span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{categoryLabels[telegram.category]}</span><span className={`rounded-full px-2.5 py-1 text-[11px] ${statusStyles[telegram.status]}`}>{statusLabels[telegram.status]}</span></div><p className="mt-1 truncate text-sm text-muted-foreground">إلى: {telegram.recipient}</p></div>
-              </div>
-              <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5" />{telegram.creatorName}</span><span>{dateFormatter.format(new Date(telegram.createdAt))}</span></div>
-            </div>
-          </button>)}
-        </div>
-      </section>
-
-      {isComposerOpen && <TelegramComposer isPending={createTelegram.isPending} onClose={() => setComposerOpen(false)} onSubmit={values => createTelegram.mutate(values)} />}
-      {selectedId !== null && telegramQuery.data && <TelegramDetail telegram={telegramQuery.data} onClose={() => setSelectedId(null)} />}
+  return <div dir="rtl" className="min-h-[calc(100vh-3rem)] space-y-4 pb-10">
+    <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm"><Radio className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">SECURE OPERATIONS</span><span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />النظام متصل</span></div><h1 className="mt-1 text-2xl font-bold tracking-tight">مركز القيادة والسيطرة</h1></div></div>
+      <div className="flex flex-wrap items-center gap-2"><div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex"><Clock3 className="h-3.5 w-3.5" />{new Intl.DateTimeFormat("ar-SA", { dateStyle: "full" }).format(new Date())}</div><Button variant="outline" className="h-10 rounded-lg" onClick={() => setFiltersOpen(value => !value)}><SlidersHorizontal className="ml-2 h-4 w-4" />تخصيص العرض</Button><Button onClick={() => setComposerOpen(true)} className="h-10 rounded-lg bg-[#10233f] px-4 text-white hover:bg-[#18375f]"><Plus className="ml-2 h-4 w-4" />برقية جديدة</Button></div>
     </div>
-  );
+
+    {data.urgent > 0 && <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"><div className="flex items-center gap-3"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500 text-white"><Siren className="h-4 w-4" /></div><div><p className="text-sm font-bold">تنبيه أمني يحتاج إلى متابعة</p><p className="text-xs opacity-80">يوجد {numberFormatter.format(data.urgent)} برقية مصنفة عاجل جداً ضمن نطاق صلاحيتك.</p></div></div><button onClick={() => setSeverity("urgent")} className="rounded-lg border border-current/20 px-3 py-1.5 text-xs font-semibold hover:bg-red-500/10">عرض البلاغات <ArrowUpLeft className="mr-1 inline h-3 w-3" /></button></div>}
+
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"><Kpi label="إجمالي البرقيات" value={data.total} detail="الرصيد التشغيلي" icon={FileText} tone="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" /><Kpi label="الواردة اليوم" value={data.today} detail="آخر 24 ساعة" icon={Activity} tone="bg-blue-500/10 text-blue-600" /><Kpi label="عاجل جداً" value={data.urgent} detail="تحتاج انتباهاً" icon={Siren} tone="bg-red-500/10 text-red-600" /><Kpi label="سري للغاية" value={data.secret} detail="مقيدة الصلاحية" icon={LockKeyhole} tone="bg-violet-500/10 text-violet-600" /><Kpi label="تحت الإجراء" value={data.inProgress} detail="قيد المعالجة" icon={Radio} tone="bg-cyan-500/10 text-cyan-600" /><Kpi label="مكتملة" value={data.resolved} detail="تم إغلاقها" icon={CheckCircle2} tone="bg-emerald-500/10 text-emerald-600" /></section>
+
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <section className="min-w-0 rounded-2xl border border-border/70 bg-card shadow-sm">
+        <div className="flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-2"><h2 className="text-lg font-bold">سجل البرقيات والبلاغات</h2><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">{numberFormatter.format(rows.length)} نتيجة</span></div><p className="mt-1 text-xs text-muted-foreground">مرجع موحّد للبرقيات مع ختم الهوية الرقمية وسجل زمني كامل.</p></div><div className="relative w-full lg:w-72"><Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={event => setSearch(event.target.value)} placeholder="بحث بالرقم، الموضوع، الاسم..." className="h-10 rounded-lg bg-background pr-10" /></div></div>
+        {(filtersOpen || severity !== "all" || status !== "all" || category !== "all") && <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3"><Filter className="h-3.5 w-3.5 text-muted-foreground" /><select value={severity} onChange={event => setSeverity(event.target.value as "all" | Classification)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الأولويات</option>{(Object.keys(classificationLabels) as Classification[]).map(item => <option key={item} value={item}>{classificationLabels[item]}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as "all" | Status)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الحالات</option>{(Object.keys(statusLabels) as Status[]).map(item => <option key={item} value={item}>{statusLabels[item]}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value as "all" | Category)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل التصنيفات</option>{(Object.keys(categoryLabels) as Category[]).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}</select><button onClick={() => { setSeverity("all"); setStatus("all"); setCategory("all"); }} className="mr-auto text-xs text-muted-foreground hover:text-foreground">مسح الفلاتر</button></div>}
+        <div className="hidden grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px] gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid"><span>الرقم</span><span>موضوع البلاغ</span><span>التصنيف</span><span>الأولوية</span><span>المنشئ / الوقت</span><span /></div>
+        <div className="divide-y">{list.isLoading && <div className="p-12 text-center text-sm text-muted-foreground">جارٍ مزامنة سجل العمليات...</div>}{!list.isLoading && rows.length === 0 && <div className="p-14 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground/30" /><p className="mt-3 font-semibold">لا توجد نتائج</p><p className="mt-1 text-xs text-muted-foreground">غيّر الفلاتر أو أنشئ برقية جديدة.</p></div>}{rows.map(row => <button key={row.id} onClick={() => setSelectedId(row.id)} className="group grid w-full gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px] md:items-center md:px-5"><div className="flex items-center gap-2"><span className="font-mono text-xs font-bold text-[#9b7c3d]">{row.serialCode}</span><span className="md:hidden"><StatusBadge value={row.status} /></span></div><div className="min-w-0"><p className="truncate text-sm font-bold">{row.subject}</p><p className="mt-1 truncate text-xs text-muted-foreground">إلى: {row.recipient}</p></div><span className="text-xs text-muted-foreground">{categoryLabels[row.category]}</span><SeverityBadge value={row.classification} /><div className="flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-3.5 w-3.5" /><span className="truncate">{row.creatorName}</span><span className="hidden lg:inline">{dateFormatter.format(new Date(row.createdAt))}</span></div><ChevronLeft className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-1 md:block" /></button>)}</div>
+      </section>
+
+      <aside className="space-y-4"><Card className="border-border/70 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Command className="h-4 w-4 text-[#9b7c3d]" /><h3 className="font-bold">مركز الإجراءات</h3></div><Settings2 className="h-4 w-4 text-muted-foreground" /></div><div className="mt-4 space-y-2"><QuickAction icon={Plus} label="إنشاء برقية" detail="فتح نموذج موثق" onClick={() => setComposerOpen(true)} /><QuickAction icon={MapPinned} label="خريطة البلاغات" detail="المواقع المسجلة" onClick={() => toast.info("سيتم تفعيل خريطة العمليات في المرحلة القادمة") } /><QuickAction icon={Users} label="الوحدات الميدانية" detail="إدارة الموارد" onClick={() => toast.info("وحدة الموارد الميدانية قيد الإعداد") } /><QuickAction icon={Archive} label="الأرشيف" detail="السجلات المغلقة" onClick={() => setStatus("archived")} /></div></CardContent></Card><Card className="border-border/70 bg-[#10233f] text-white shadow-sm"><CardContent className="p-5"><div className="flex items-center gap-2 text-[#d8c38e]"><Shield className="h-4 w-4" /><span className="text-xs font-semibold tracking-wide">سلامة السجل</span></div><p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p><p className="mt-2 text-xs leading-6 text-slate-300">كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الحذف النهائي غير متاح.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />حماية تشغيلية نشطة</div></CardContent></Card></aside>
+    </div>
+
+    {composerOpen && <TelegramComposer pending={create.isPending} close={() => setComposerOpen(false)} submit={values => create.mutate(values)} />}
+    {selectedId !== null && detail.data && <TelegramDetail telegram={detail.data} close={() => setSelectedId(null)} />}
+  </div>;
 }
 
-function TelegramComposer({ isPending, onClose, onSubmit }: { isPending: boolean; onClose: () => void; onSubmit: (values: { subject: string; recipient: string; body: string; classification: "urgent" | "secret" | "normal"; category: keyof typeof categoryLabels }) => void }) {
-  const [subject, setSubject] = useState("");
-  const [recipient, setRecipient] = useState("");
-  const [body, setBody] = useState("");
-  const [classification, setClassification] = useState<"urgent" | "secret" | "normal">("normal");
-  const [category, setCategory] = useState<keyof typeof categoryLabels>("administrative");
-  const submit = () => {
-    if (subject.trim().length < 2 || recipient.trim().length < 2 || body.trim().length < 3) { toast.error("أكمل الموضوع والجهة ونص البرقية قبل الحفظ"); return; }
-    onSubmit({ subject: subject.trim(), recipient: recipient.trim(), body: body.trim(), classification, category });
-  };
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div dir="rtl" className="max-h-[92vh] w-full overflow-y-auto rounded-t-[2rem] bg-background p-6 shadow-2xl sm:max-w-2xl sm:rounded-[2rem] sm:p-8"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-[#9b7c3d]">وثيقة جديدة</p><h2 className="mt-1 text-2xl font-semibold">إنشاء برقية رسمية</h2><p className="mt-2 text-sm text-muted-foreground">سيُثبّت النظام حسابك الحالي تلقائياً كمنشئ للبرقية.</p></div><button onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button></div><div className="mt-7 grid gap-5"><label className="grid gap-2 text-sm font-medium">الموضوع<Input value={subject} onChange={event => setSubject(event.target.value)} placeholder="موضوع البرقية" className="h-12 rounded-xl" /></label><label className="grid gap-2 text-sm font-medium">الموجّه إليه<Input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="الجهة أو المسؤول المعني" className="h-12 rounded-xl" /></label><div className="grid gap-2 text-sm font-medium"><span>درجة السرية والأولوية</span><div className="grid grid-cols-3 gap-2">{(["urgent", "secret", "normal"] as const).map(item => <button type="button" key={item} onClick={() => setClassification(item)} className={`rounded-xl border p-3 text-sm transition-colors ${classification === item ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]" : "hover:bg-muted"}`}>{classificationLabels[item]}</button>)}</div></div><div className="grid gap-2 text-sm font-medium"><span>تصنيف الحادثة</span><div className="flex flex-wrap gap-2">{(Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>).map(item => <button type="button" key={item} onClick={() => setCategory(item)} className={`rounded-xl border px-3 py-2 text-xs transition-colors ${category === item ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]" : "hover:bg-muted"}`}>{categoryLabels[item]}</button>)}</div></div><label className="grid gap-2 text-sm font-medium">نص البرقية<Textarea value={body} onChange={event => setBody(event.target.value)} placeholder="اكتب نص البرقية بالتفصيل..." className="min-h-44 resize-y rounded-xl leading-7" /></label></div><div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-start"><Button variant="outline" onClick={onClose} className="h-11 rounded-xl">إلغاء</Button><Button onClick={submit} disabled={isPending} className="h-11 rounded-xl bg-[#10233f] text-white hover:bg-[#18375f]">{isPending ? "جارٍ الحفظ..." : "حفظ البرقية وتوثيقها"}</Button></div></div></div>;
+function QuickAction({ icon: Icon, label, detail, onClick }: { icon: typeof Plus; label: string; detail: string; onClick: () => void }) { return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-right transition-colors hover:border-[#b4945a] hover:bg-[#fffaf0] dark:hover:bg-[#2d281b]"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10233f] text-[#d8c38e]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-xs font-bold">{label}</span><span className="mt-0.5 block text-[10px] text-muted-foreground">{detail}</span></span><ChevronLeft className="mr-auto h-3.5 w-3.5 text-muted-foreground" /></button>; }
+
+function TelegramComposer({ pending, close, submit }: { pending: boolean; close: () => void; submit: (values: { subject: string; recipient: string; body: string; classification: Classification; category: Category }) => void }) {
+  const [subject, setSubject] = useState(""); const [recipient, setRecipient] = useState(""); const [body, setBody] = useState(""); const [classification, setClassification] = useState<Classification>("normal"); const [category, setCategory] = useState<Category>("administrative");
+  const save = () => { if (subject.trim().length < 2 || recipient.trim().length < 2 || body.trim().length < 3) return toast.error("أكمل الموضوع والجهة ونص البرقية"); submit({ subject: subject.trim(), recipient: recipient.trim(), body: body.trim(), classification, category }); };
+  return <Modal title="إنشاء برقية تشغيلية" subtitle="سيتم تثبيت هويتك الرقمية تلقائياً من الحساب الموثق." close={close}><div className="grid gap-4"><label className="grid gap-1.5 text-xs font-bold">الموضوع<Input value={subject} onChange={event => setSubject(event.target.value)} placeholder="عنوان مختصر ودقيق للبلاغ" className="h-11 rounded-lg" /></label><label className="grid gap-1.5 text-xs font-bold">الجهة الموجهة إليها<Input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="القطاع أو المسؤول المعني" className="h-11 rounded-lg" /></label><div className="grid gap-1.5 text-xs font-bold"><span>الأولوية والسرية</span><div className="grid grid-cols-3 gap-2">{(Object.keys(classificationLabels) as Classification[]).map(item => <button type="button" key={item} onClick={() => setClassification(item)} className={`rounded-lg border p-2.5 text-xs ${classification === item ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]" : "hover:bg-muted"}`}>{classificationLabels[item]}</button>)}</div></div><div className="grid gap-1.5 text-xs font-bold"><span>تصنيف البلاغ</span><select value={category} onChange={event => setCategory(event.target.value as Category)} className="h-11 rounded-lg border bg-background px-3 text-sm font-normal">{(Object.keys(categoryLabels) as Category[]).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}</select></div><label className="grid gap-1.5 text-xs font-bold">نص البرقية<Textarea value={body} onChange={event => setBody(event.target.value)} placeholder="اكتب تفاصيل البلاغ والإجراء المطلوب..." className="min-h-36 rounded-lg leading-7" /></label></div><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row"><Button variant="outline" onClick={close} className="h-11 rounded-lg">إلغاء</Button><Button onClick={save} disabled={pending} className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]">{pending ? "جارٍ التسجيل..." : "تسجيل البرقية"}</Button></div></Modal>;
 }
 
-function TelegramDetail({ telegram, onClose }: { telegram: { serialNumber: number; serialCode: string; subject: string; recipient: string; body: string; creatorName: string; creatorEmail: string | null; classification: "urgent" | "secret" | "normal"; category: keyof typeof categoryLabels; status: keyof typeof statusLabels; createdAt: Date }; onClose: () => void }) {
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div dir="rtl" className="max-h-[92vh] w-full overflow-y-auto rounded-t-[2rem] bg-background p-6 shadow-2xl sm:max-w-2xl sm:rounded-[2rem] sm:p-8"><div className="flex items-start justify-between"><div><div className="flex flex-wrap items-center gap-3"><span className="rounded-lg bg-[#10233f] px-3 py-1.5 text-sm font-semibold text-[#d8c38e]">{telegram.serialCode}</span><ClassificationBadge value={telegram.classification} /><span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{categoryLabels[telegram.category]}</span></div><h2 className="mt-4 text-2xl font-semibold">{telegram.subject}</h2></div><button onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button></div><div className="mt-7 grid gap-4 rounded-2xl border bg-muted/30 p-4 text-sm"><div className="flex justify-between gap-4"><span className="text-muted-foreground">الموجّه إليه</span><span className="font-medium">{telegram.recipient}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">حالة البرقية</span><span className="font-medium">{statusLabels[telegram.status]}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">منشئ البرقية</span><span className="font-medium">{telegram.creatorName}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">وقت الإنشاء</span><span className="font-medium">{dateFormatter.format(new Date(telegram.createdAt))}</span></div></div><div className="mt-6 whitespace-pre-wrap rounded-2xl border p-5 text-[15px] leading-8">{telegram.body}</div><div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-4 w-4" /> هذه البرقية مرتبطة بحساب المنشئ في سجل التدقيق ولا يمكن تغيير اسم المنشئ من الواجهة.</div></div></div>;
+function TelegramDetail({ telegram, close }: { telegram: { serialCode: string; subject: string; recipient: string; body: string; creatorName: string; classification: Classification; category: Category; status: Status; createdAt: Date; gpsLatitude?: string | null; gpsLongitude?: string | null }; close: () => void }) {
+  return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div className="flex flex-wrap items-center gap-2"><SeverityBadge value={telegram.classification} /><StatusBadge value={telegram.status} /><span className="rounded-md bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{categoryLabels[telegram.category]}</span></div><div className="mt-5 grid gap-3 rounded-xl border bg-muted/20 p-4 text-xs sm:grid-cols-2"><Info label="الجهة الموجهة" value={telegram.recipient} /><Info label="منشئ البرقية" value={telegram.creatorName} /><Info label="التاريخ والوقت" value={dateFormatter.format(new Date(telegram.createdAt))} /><Info label="الموقع" value={telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"} /></div><div className="mt-4 whitespace-pre-wrap rounded-xl border p-4 text-sm leading-8">{telegram.body}</div><div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => window.print()} className="h-10 rounded-lg bg-[#10233f] text-white"><Printer className="ml-2 h-4 w-4" />طباعة / حفظ PDF</Button><Button variant="outline" onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} className="h-10 rounded-lg"><LocateFixed className="ml-2 h-4 w-4" />عرض الموقع</Button></div><p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground"><Shield className="h-3.5 w-3.5" />هذه الوثيقة مرتبطة بهوية المنشئ ولا يمكن تعديلها من شاشة العرض.</p></Modal>;
 }
+
+function Info({ label, value }: { label: string; value: string }) { return <div><span className="block text-muted-foreground">{label}</span><span className="mt-1 block font-semibold">{value}</span></div>; }
+function Modal({ title, subtitle, close, children }: { title: string; subtitle: string; close: () => void; children: React.ReactNode }) { return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div dir="rtl" className="max-h-[94vh] w-full overflow-y-auto rounded-t-[1.5rem] bg-background p-5 shadow-2xl sm:max-w-2xl sm:rounded-2xl sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-xs font-bold text-[#9b7c3d]">{subtitle}</p><h2 className="mt-1 text-xl font-bold">{title}</h2></div><button onClick={close} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button></div><div className="mt-6">{children}</div></div></div>; }

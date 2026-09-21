@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { auditLogs, departmentSettings, InsertTelegram, telegrams, InsertUser, users } from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -19,74 +18,96 @@ export async function getDb() {
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+  if (!db) return;
+
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+  for (const field of ["name", "email", "loginMethod"] as const) {
+    if (user[field] !== undefined) {
+      values[field] = user[field] ?? null;
+      updateSet[field] = user[field] ?? null;
+    }
   }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
+  values.lastSignedIn = user.lastSignedIn ?? new Date();
+  updateSet.lastSignedIn = values.lastSignedIn;
+  if (user.role !== undefined) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
   }
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  if (!db) return undefined;
+  const rows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return rows[0];
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getOrCreateSettings(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const existing = await db.select().from(departmentSettings).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(departmentSettings).values({ configKey: "primary", updatedByUserId: userId });
+  const created = await db.select().from(departmentSettings).limit(1);
+  return created[0];
+}
+
+export async function allocateSerialNumber() {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(departmentSettings).values({ configKey: "primary", serialStart: 1, nextSerial: 1 }).onDuplicateKeyUpdate({ set: { configKey: "primary" } });
+  await db.execute(sql`UPDATE department_settings SET nextSerial = LAST_INSERT_ID(nextSerial) + 1 WHERE configKey = 'primary'`);
+  const [rows] = await db.execute(sql`SELECT LAST_INSERT_ID() AS serial`);
+  const serial = Number((rows as unknown as Array<{ serial: number }>)[0]?.serial);
+  if (!Number.isInteger(serial)) throw new Error("Serial allocation failed");
+  return serial;
+}
+
+export async function listTelegrams(search?: string, classification?: "urgent" | "secret" | "normal") {
+  const db = await getDb();
+  if (!db) return [];
+  const filters = [];
+  if (search?.trim()) {
+    const term = `%${search.trim()}%`;
+    filters.push(or(like(telegrams.subject, term), like(telegrams.recipient, term), like(telegrams.body, term), like(telegrams.creatorName, term), like(sql`CAST(${telegrams.serialNumber} AS CHAR)`, term)));
+  }
+  if (classification) filters.push(eq(telegrams.classification, classification));
+  return db.select().from(telegrams).where(filters.length ? and(...filters) : undefined).orderBy(desc(telegrams.createdAt)).limit(200);
+}
+
+export async function getTelegramById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(telegrams).where(eq(telegrams.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function createTelegram(input: InsertTelegram) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.insert(telegrams).values(input);
+  return getTelegramById(Number(result[0].insertId));
+}
+
+export async function writeAuditLog(input: typeof auditLogs.$inferInsert) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(auditLogs).values(input);
+}
+
+export async function getDashboardStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, today: 0 };
+  const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).groupBy(telegrams.classification);
+  const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(sql`DATE(${telegrams.createdAt}) = CURDATE()`);
+  const counts = { urgent: 0, secret: 0, normal: 0 };
+  for (const row of rows) counts[row.classification] = Number(row.count);
+  return { ...counts, total: counts.urgent + counts.secret + counts.normal, today: Number(todayRows[0]?.count ?? 0) };
+}

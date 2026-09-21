@@ -1,0 +1,12 @@
+{
+  "name": "نظام برقيات الشرطة",
+  "short_name": "برقيات الشرطة",
+  "description": "نظام مركزي آمن لإدارة برقيات الشرطة وتوثيق منشئها",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f7f2",
+  "theme_color": "#10233f",
+  "icons": []
+}

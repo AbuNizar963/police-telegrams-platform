@@ -25,6 +25,9 @@ describe("department branding permissions", () => {
     const caller = appRouter.createCaller(contextFor("user"));
     await expect(caller.settings.update({
       departmentName: "قسم الاختبار",
+      unitName: "وحدة الدوريات",
+      unitChiefRank: "العقيد",
+      unitChiefName: "محمد أحمد",
       serialPrefix: "TEST",
       serialStart: 1,
       timezone: "Asia/Riyadh",

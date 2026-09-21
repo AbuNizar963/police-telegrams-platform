@@ -85,13 +85,13 @@
   --radius-md: calc(var(--radius) - 0.2rem);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.35rem);
-  --font-sans: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  --font-sans: 'Cairo', 'IBM Plex Sans Arabic', sans-serif;
 }
 
 @layer base {
   * { @apply border-border; }
   html { direction: rtl; }
-  body { @apply bg-background text-foreground antialiased; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+  body { @apply bg-background text-foreground antialiased; font-family: 'Cairo', 'IBM Plex Sans Arabic', sans-serif; }
   button, input, textarea { font: inherit; }
   button { cursor: pointer; }
   ::selection { background: #d8c38e; color: #10233f; }
@@ -100,4 +100,13 @@
 @media (prefers-reduced-motion: no-preference) {
   button, a, input, textarea { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
   button:active { transform: scale(0.98); }
+}
+
+@media print {
+  body { background: #fff !important; font-family: 'Cairo', 'IBM Plex Sans Arabic', sans-serif; }
+  body * { visibility: hidden; }
+  .fixed.inset-0, .fixed.inset-0 * { visibility: visible; }
+  .fixed.inset-0 { position: static; inset: auto; display: block; padding: 0; background: #fff; }
+  .fixed.inset-0 > div { max-height: none; max-width: none; overflow: visible; border-radius: 0; padding: 0; box-shadow: none; }
+  .fixed.inset-0 button { display: none !important; }
 }

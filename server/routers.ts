@@ -33,6 +33,9 @@ export const appRouter = router({
     update: adminProcedure
       .input(z.object({
         departmentName: z.string().trim().min(2).max(255),
+        unitName: z.string().trim().min(2).max(255).optional().default("وحدة العمليات"),
+        unitChiefRank: z.string().trim().min(2).max(120).optional().default("العقيد"),
+        unitChiefName: z.string().trim().min(2).max(255).optional().default("رئيس الوحدة"),
         serialPrefix: z.string().trim().min(1).max(24).regex(/^[A-Z0-9-]+$/),
         serialStart: z.number().int().min(1).max(999999999),
         timezone: z.string().trim().min(3).max(64).optional().default("Asia/Riyadh"),
@@ -51,7 +54,7 @@ export const appRouter = router({
         const { telegrams } = await import("../drizzle/schema");
         const maxRows = await db.select({ maxSerial: sql<number>`COALESCE(MAX(${telegrams.serialNumber}), 0)` }).from(telegrams);
         const safeNextSerial = Math.max(input.serialStart, Number(maxRows[0]?.maxSerial ?? 0) + 1);
-        await db.update(departmentSettings).set({ departmentName: input.departmentName, serialPrefix: input.serialPrefix, serialStart: input.serialStart, nextSerial: safeNextSerial, timezone: input.timezone, dateFormat: input.dateFormat, numberSystem: input.numberSystem, logoUrl: input.logoUrl ?? null, updatedByUserId: ctx.user.id }).where(eq(departmentSettings.id, dbSettings.id));
+        await db.update(departmentSettings).set({ departmentName: input.departmentName, unitName: input.unitName, unitChiefRank: input.unitChiefRank, unitChiefName: input.unitChiefName, serialPrefix: input.serialPrefix, serialStart: input.serialStart, nextSerial: safeNextSerial, timezone: input.timezone, dateFormat: input.dateFormat, numberSystem: input.numberSystem, logoUrl: input.logoUrl ?? null, updatedByUserId: ctx.user.id }).where(eq(departmentSettings.id, dbSettings.id));
         await writeAuditLog({ actorUserId: ctx.user.id, actorName: ctx.user.name ?? ctx.user.email ?? "Administrator", action: "settings.update", entityType: "department_settings", entityId: String(dbSettings.id), metadata: JSON.stringify(input) });
         return getOrCreateSettings(ctx.user.id);
       }),

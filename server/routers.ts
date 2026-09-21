@@ -7,7 +7,8 @@ import { z } from "zod";
 import { allocateSerialNumber, createTelegram, getDashboardStats, getOrCreateSettings, getTelegramById, listTelegrams, writeAuditLog } from "./db";
 import { storagePut } from "./storage";
 
-const classificationSchema = z.enum(["urgent", "secret", "normal"]);
+const classificationSchema = z.enum(["secret", "normal"]);
+const prioritySchema = z.enum(["slow", "normal", "urgent"]);
 
 export const appRouter = router({
   system: systemRouter,
@@ -29,6 +30,7 @@ export const appRouter = router({
     update: adminProcedure
       .input(z.object({
         departmentName: z.string().trim().min(2).max(255),
+        serialPrefix: z.string().trim().min(1).max(24).regex(/^[A-Z0-9-]+$/),
         serialStart: z.number().int().min(1).max(999999999),
         logoUrl: z.string().url().max(2000).nullable().optional(),
       }))
@@ -37,10 +39,13 @@ export const appRouter = router({
         if (!dbSettings) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "قاعدة البيانات غير متاحة" });
         const { getDb } = await import("./db");
         const { departmentSettings } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
+        const { eq, sql } = await import("drizzle-orm");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "قاعدة البيانات غير متاحة" });
-        await db.update(departmentSettings).set({ departmentName: input.departmentName, serialStart: input.serialStart, nextSerial: input.serialStart, logoUrl: input.logoUrl ?? null, updatedByUserId: ctx.user.id }).where(eq(departmentSettings.id, dbSettings.id));
+        const { telegrams } = await import("../drizzle/schema");
+        const maxRows = await db.select({ maxSerial: sql<number>`COALESCE(MAX(${telegrams.serialNumber}), 0)` }).from(telegrams);
+        const safeNextSerial = Math.max(input.serialStart, Number(maxRows[0]?.maxSerial ?? 0) + 1);
+        await db.update(departmentSettings).set({ departmentName: input.departmentName, serialPrefix: input.serialPrefix, serialStart: input.serialStart, nextSerial: safeNextSerial, logoUrl: input.logoUrl ?? null, updatedByUserId: ctx.user.id }).where(eq(departmentSettings.id, dbSettings.id));
         await writeAuditLog({ actorUserId: ctx.user.id, actorName: ctx.user.name ?? ctx.user.email ?? "Administrator", action: "settings.update", entityType: "department_settings", entityId: String(dbSettings.id), metadata: JSON.stringify(input) });
         return getOrCreateSettings(ctx.user.id);
       }),
@@ -57,8 +62,8 @@ export const appRouter = router({
         return { ...uploaded, fileName: input.fileName, contentType: input.contentType, size: bytes.byteLength };
       }),
     list: protectedProcedure
-      .input(z.object({ search: z.string().max(120).optional(), classification: classificationSchema.optional(), category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]).optional(), status: z.enum(["pending", "in_progress", "resolved", "archived"]).optional() }).optional())
-      .query(({ ctx, input }) => listTelegrams(ctx.user.id, ctx.user.role === "admin", input?.search, input?.classification, input?.category, input?.status)),
+      .input(z.object({ search: z.string().max(120).optional(), classification: classificationSchema.optional(), priority: prioritySchema.optional(), category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]).optional(), status: z.enum(["pending", "in_progress", "resolved", "archived"]).optional() }).optional())
+      .query(({ ctx, input }) => listTelegrams(ctx.user.id, ctx.user.role === "admin", input?.search, input?.classification, input?.priority, input?.category, input?.status)),
     get: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const telegram = await getTelegramById(input.id);
       if (!telegram) throw new TRPCError({ code: "NOT_FOUND", message: "البرقية غير موجودة" });
@@ -71,6 +76,7 @@ export const appRouter = router({
         recipient: z.string().trim().min(2).max(255),
         body: z.string().trim().min(3).max(20000),
         classification: classificationSchema,
+        priority: prioritySchema,
         category: z.enum(["criminal", "administrative", "traffic", "security", "tactical"]),
         attachmentManifest: z.string().max(10000).optional(),
         gpsLatitude: z.string().max(40).optional(),
@@ -79,7 +85,8 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const serialNumber = await allocateSerialNumber();
         const dateCode = new Date().toISOString().slice(0, 10);
-        const serialCode = `POL-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
+        const numbering = await getOrCreateSettings(ctx.user.id);
+        const serialCode = `${numbering?.serialPrefix ?? "POL"}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp = typeof creatorIpHeader === "string" ? creatorIpHeader.split(",")[0].trim() : null;

@@ -46,7 +46,8 @@ describe("telegrams.create", () => {
       subject: "تنبيه أمني",
       recipient: "غرفة العمليات",
       body: "محتوى البرقية للاختبار",
-      classification: "urgent",
+      classification: "normal",
+      priority: "urgent",
       category: "security",
     });
 

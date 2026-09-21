@@ -70,7 +70,7 @@ export async function allocateSerialNumber() {
   return serial;
 }
 
-export async function listTelegrams(userId: number, canViewAll: boolean, search?: string, classification?: "urgent" | "secret" | "normal", category?: "criminal" | "administrative" | "traffic" | "security" | "tactical", status?: "pending" | "in_progress" | "resolved" | "archived") {
+export async function listTelegrams(userId: number, canViewAll: boolean, search?: string, classification?: "secret" | "normal", priority?: "slow" | "normal" | "urgent", category?: "criminal" | "administrative" | "traffic" | "security" | "tactical", status?: "pending" | "in_progress" | "resolved" | "archived") {
   const db = await getDb();
   if (!db) return [];
   const filters = [];
@@ -79,6 +79,7 @@ export async function listTelegrams(userId: number, canViewAll: boolean, search?
     filters.push(or(like(telegrams.subject, term), like(telegrams.recipient, term), like(telegrams.body, term), like(telegrams.creatorName, term), like(sql`CAST(${telegrams.serialNumber} AS CHAR)`, term)));
   }
   if (classification) filters.push(eq(telegrams.classification, classification));
+  if (priority) filters.push(eq(telegrams.priority, priority));
   if (category) filters.push(eq(telegrams.category, category));
   if (status) filters.push(eq(telegrams.status, status));
   if (!canViewAll) filters.push(eq(telegrams.createdByUserId, userId));
@@ -110,15 +111,21 @@ export async function getDashboardStats(userId: number, canViewAll: boolean) {
   if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0, today: 0 };
   const visibility = canViewAll ? undefined : eq(telegrams.createdByUserId, userId);
   const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.classification);
+  const priorityRows = await db.select({ priority: telegrams.priority, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.priority);
   const statusRows = await db.select({ status: telegrams.status, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.status);
   const todayFilter = sql`DATE(${telegrams.createdAt}) = CURDATE()`;
   const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(visibility ? and(visibility, todayFilter) : todayFilter);
-  const counts = { urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0 };
+  const counts = { urgent: 0, secret: 0, normal: 0, slow: 0, pending: 0, inProgress: 0, resolved: 0 };
+  const totalBySecrecy = rows.reduce((total, row) => total + Number(row.count), 0);
   for (const row of rows) counts[row.classification] = Number(row.count);
+  for (const row of priorityRows) {
+    if (row.priority === "urgent") counts.urgent = Number(row.count);
+    if (row.priority === "slow") counts.slow = Number(row.count);
+  }
   for (const row of statusRows) {
     if (row.status === "pending") counts.pending = Number(row.count);
     if (row.status === "in_progress") counts.inProgress = Number(row.count);
     if (row.status === "resolved") counts.resolved = Number(row.count);
   }
-  return { ...counts, total: counts.urgent + counts.secret + counts.normal, today: Number(todayRows[0]?.count ?? 0) };
+  return { ...counts, total: totalBySecrecy, today: Number(todayRows[0]?.count ?? 0) };
 }

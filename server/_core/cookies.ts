@@ -23,7 +23,7 @@ function isSecureRequest(req: Request) {
 
 export function getSessionCookieOptions(
   req: Request
-): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
+): Pick<CookieOptions, "domain" | "httpOnly" | "maxAge" | "path" | "sameSite" | "secure"> {
   // const hostname = req.hostname;
   // const shouldSetDomain =
   //   hostname &&
@@ -41,6 +41,7 @@ export function getSessionCookieOptions(
 
   return {
     httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 30,
     path: "/",
     sameSite: "none",
     secure: isSecureRequest(req),

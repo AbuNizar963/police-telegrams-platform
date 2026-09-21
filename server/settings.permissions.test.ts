@@ -25,7 +25,11 @@ describe("department branding permissions", () => {
     const caller = appRouter.createCaller(contextFor("user"));
     await expect(caller.settings.update({
       departmentName: "قسم الاختبار",
+      serialPrefix: "TEST",
       serialStart: 1,
+      timezone: "Asia/Riyadh",
+      dateFormat: "dd/MM/yyyy HH:mm:ss",
+      numberSystem: "arabic",
       logoUrl: null,
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });

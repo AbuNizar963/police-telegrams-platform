@@ -4,9 +4,15 @@
   "description": "نظام مركزي آمن لإدارة برقيات الشرطة وتوثيق منشئها",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
   "background_color": "#f8f7f2",
   "theme_color": "#10233f",
-  "icons": []
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
 }

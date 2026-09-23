@@ -1,0 +1,24 @@
+project_id = "police-telegrams-platform"
+
+[db]
+major_version = 15
+
+[auth]
+enable_signup = false
+enable_email_signup = true
+enable_email_autoconfirm = false
+
+[storage]
+enabled = true
+
+[storage.file_size_limit]
+value = "25MiB"
+
+[api]
+enabled = true
+
+[analytics]
+enabled = false
+
+# Keep local development credentials in the Supabase CLI environment only.
+# Never commit production keys or tokens to this repository.

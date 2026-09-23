@@ -45,7 +45,7 @@ export function canAccessStorageKey(
   const segments = key.split("/");
 
   if (
-    segments.length < 3 ||
+    segments.length !== 3 ||
     segments[0] !== "telegrams" ||
     segments.some(segment => segment === "." || segment === "..")
   ) {
@@ -100,6 +100,32 @@ export async function storagePut(
   return { key, url: stableStorageUrl(key) };
 }
 
+export async function storageCreateSignedUrl(
+  relKey: string,
+  expiresInSeconds = 60 * 60,
+): Promise<string> {
+  const key = normalizeKey(relKey);
+
+  if (
+    !key ||
+    key.split("/").some(segment => segment === "." || segment === "..")
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(ENV.supabaseStorageBucket)
+    .createSignedUrl(key, expiresInSeconds);
+
+  if (error || !data?.signedUrl) {
+    throw new Error(
+      `Storage signed URL failed: ${error?.message ?? "empty URL"}`,
+    );
+  }
+
+  return data.signedUrl;
+}
+
 export async function storageGetSignedUrl(
   relKey: string,
   user: Pick<User, "id" | "role">,
@@ -110,15 +136,34 @@ export async function storageGetSignedUrl(
     throw new StorageAccessDeniedError();
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .createSignedUrl(key, 10 * 60);
+  return storageCreateSignedUrl(key, 10 * 60);
 
-  if (error || !data?.signedUrl) {
-    throw new Error(
-      `Storage signed URL failed: ${error?.message ?? "empty URL"}`,
-    );
+export async function storagePutDepartmentLogo(
+  fileName: string,
+  data: Buffer | Uint8Array | string,
+  contentType: "image/png" | "image/jpeg",
+): Promise<{ key: string; url: string }> {
+  const safeFileName = sanitizeFileName(fileName);
+  const extension = contentType === "image/jpeg" ? ".jpg" : ".png";
+  const baseName = safeFileName.replace(/.[^.]*$/, "");
+  const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
+  const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
+
+  const { error } = await getSupabaseAdmin()
+    .storage.from(ENV.supabaseStorageBucket)
+    .upload(key, body, {
+      contentType,
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Department logo upload failed: ${error.message}`);
   }
 
-  return data.signedUrl;
+  return {
+    key,
+    url: await storageCreateSignedUrl(key),
+  };
 }
+

@@ -7,6 +7,7 @@ import type {
   User,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { storageCreateSignedUrl } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
 
 const asDate = (value: unknown): Date =>
@@ -26,6 +27,38 @@ function mapSettings(row: Record<string, unknown>): DepartmentSettings {
     ...(row as unknown as DepartmentSettings),
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
+  };
+}
+
+export type DepartmentSettingsView = DepartmentSettings & {
+  logoKey: string | null;
+};
+
+async function mapSettingsView(
+  row: Record<string, unknown>,
+): Promise<DepartmentSettingsView> {
+  const settings = mapSettings(row);
+  const logoKey =
+    typeof settings.logoUrl === "string" && settings.logoUrl.trim()
+      ? settings.logoUrl.trim()
+      : null;
+
+  if (!logoKey) {
+    return {
+      ...settings,
+      logoUrl: null,
+      logoKey: null,
+    };
+  }
+
+  const logoUrl = /^https?:\/\//i.test(logoKey)
+    ? logoKey
+    : await storageCreateSignedUrl(logoKey, 60 * 60);
+
+  return {
+    ...settings,
+    logoUrl,
+    logoKey,
   };
 }
 
@@ -79,7 +112,9 @@ export async function getUserByAuthUserId(authUserId: string): Promise<User | un
   return data ? mapUser(data as Record<string, unknown>) : undefined;
 }
 
-export async function getOrCreateSettings(userId: number): Promise<DepartmentSettings> {
+export async function getOrCreateSettings(
+  userId: number,
+): Promise<DepartmentSettingsView> {
   const client = getSupabaseAdmin();
   const existing = await client
     .from("department_settings")
@@ -87,7 +122,10 @@ export async function getOrCreateSettings(userId: number): Promise<DepartmentSet
     .eq("configKey", "primary")
     .maybeSingle();
   throwIfError(existing.error, "Failed to load department settings");
-  if (existing.data) return mapSettings(existing.data as Record<string, unknown>);
+
+  if (existing.data) {
+    return mapSettingsView(existing.data as Record<string, unknown>);
+  }
 
   const created = await client
     .from("department_settings")
@@ -95,7 +133,7 @@ export async function getOrCreateSettings(userId: number): Promise<DepartmentSet
     .select("*")
     .single();
   throwIfError(created.error, "Failed to create department settings");
-  return mapSettings(created.data as Record<string, unknown>);
+  return mapSettingsView(created.data as Record<string, unknown>);
 }
 
 export async function getMaxSerialNumber(): Promise<number> {

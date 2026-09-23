@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "framework": "express",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" }
+  ]
+}

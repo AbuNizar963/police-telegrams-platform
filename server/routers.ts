@@ -1,10 +1,8 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { allocateSerialNumber, createTelegram, getDashboardStats, getOrCreateSettings, getTelegramById, listTelegrams, writeAuditLog } from "./db";
+import { allocateSerialNumber, createTelegram, getDashboardStats, getMaxSerialNumber, getOrCreateSettings, getTelegramById, listTelegrams, updateDepartmentSettings, writeAuditLog } from "./db";
 import { storagePut } from "./storage";
 import { storageGetSignedUrl } from "./storage";
 import { invokeLLM } from "./_core/llm";
@@ -17,9 +15,8 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    logout: publicProcedure.mutation(() => {
+      // Supabase owns the browser session. The client calls supabase.auth.signOut().
       return { success: true } as const;
     }),
   }),
@@ -46,15 +43,22 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
         if (!dbSettings) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "قاعدة البيانات غير متاحة" });
-        const { getDb } = await import("./db");
-        const { departmentSettings } = await import("../drizzle/schema");
-        const { eq, sql } = await import("drizzle-orm");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "قاعدة البيانات غير متاحة" });
-        const { telegrams } = await import("../drizzle/schema");
-        const maxRows = await db.select({ maxSerial: sql<number>`COALESCE(MAX(${telegrams.serialNumber}), 0)` }).from(telegrams);
-        const safeNextSerial = Math.max(input.serialStart, Number(maxRows[0]?.maxSerial ?? 0) + 1);
-        await db.update(departmentSettings).set({ departmentName: input.departmentName, unitName: input.unitName, unitChiefRank: input.unitChiefRank, unitChiefName: input.unitChiefName, serialPrefix: input.serialPrefix, serialStart: input.serialStart, nextSerial: safeNextSerial, timezone: input.timezone, dateFormat: input.dateFormat, numberSystem: input.numberSystem, logoUrl: input.logoUrl ?? null, updatedByUserId: ctx.user.id }).where(eq(departmentSettings.id, dbSettings.id));
+        const maxSerial = await getMaxSerialNumber();
+        const safeNextSerial = Math.max(input.serialStart, maxSerial + 1);
+        await updateDepartmentSettings(dbSettings.id, {
+          departmentName: input.departmentName,
+          unitName: input.unitName,
+          unitChiefRank: input.unitChiefRank,
+          unitChiefName: input.unitChiefName,
+          serialPrefix: input.serialPrefix,
+          serialStart: input.serialStart,
+          nextSerial: safeNextSerial,
+          timezone: input.timezone,
+          dateFormat: input.dateFormat,
+          numberSystem: input.numberSystem,
+          logoUrl: input.logoUrl ?? null,
+          updatedByUserId: ctx.user.id,
+        });
         await writeAuditLog({ actorUserId: ctx.user.id, actorName: ctx.user.name ?? ctx.user.email ?? "Administrator", action: "settings.update", entityType: "department_settings", entityId: String(dbSettings.id), metadata: JSON.stringify(input) });
         return getOrCreateSettings(ctx.user.id);
       }),
@@ -119,7 +123,7 @@ export const appRouter = router({
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp = typeof creatorIpHeader === "string" ? creatorIpHeader.split(",")[0].trim() : null;
-        const telegram = await createTelegram({ ...input, serialNumber, serialCode, createdByUserId: ctx.user.id, creatorName, creatorEmail: ctx.user.email ?? null, creatorBadgeId: ctx.user.badgeNumber ?? null, creatorIp, creatorFingerprint: ctx.user.openId });
+        const telegram = await createTelegram({ ...input, serialNumber, serialCode, createdByUserId: ctx.user.id, creatorName, creatorEmail: ctx.user.email ?? null, creatorBadgeId: ctx.user.badgeNumber ?? null, creatorIp, creatorFingerprint: ctx.user.authUserId });
         await writeAuditLog({ actorUserId: ctx.user.id, actorName: creatorName, action: "telegram.create", entityType: "telegram", entityId: String(telegram?.id ?? serialNumber), metadata: JSON.stringify({ serialNumber, classification: input.classification }) });
         return telegram;
       }),

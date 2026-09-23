@@ -1,22 +1,10 @@
-# Supabase integration
+# Supabase deployment
 
-This directory contains the first PostgreSQL migration, RLS policies, private Storage bucket rules, and local seed data for the police telegram platform.
+Supabase is the independent authentication, PostgreSQL, and private file-storage backend for this project.
 
-## Important status
+## 1. Create the project
 
-The application still uses the current Manus authentication and MySQL-compatible database adapter until a Supabase project is created and its credentials are configured. This migration is intentionally prepared first so the switch can be tested without interrupting the running application.
-
-## Local workflow
-
-```bash
-supabase start
-supabase db reset
-supabase test db
-```
-
-## Production workflow
-
-After creating a Supabase project under the owner's account:
+Create a Supabase project, then apply the committed migration:
 
 ```bash
 supabase login
@@ -24,8 +12,24 @@ supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 ```
 
-Do not change the production schema directly from the Dashboard after migrations are adopted. Add a new migration file, test it locally, commit it, and then push it.
+The migration creates the application tables, atomic serial-number allocator, restricted database permissions, and the private `telegram-files` Storage bucket.
 
-## Secrets
+## 2. Configure authentication
 
-Never commit `SUPABASE_SECRET_KEY`, database passwords, access tokens, or real officer data. Use the hosting provider's secret manager for server-only values. The publishable key is safe to expose only when all exposed tables and Storage objects have correct RLS policies.
+In Supabase Authentication, enable the OAuth provider you want to use (Google by default). Add your Vercel production URL and preview URLs to the allowed redirect URLs.
+
+The browser only receives the publishable/anon key. The service-role key is server-only and must be stored in Vercel Environment Variables.
+
+## 3. Configure Vercel
+
+Copy the variables from `.env.example` into Vercel. Required for the core application:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_EMAILS`
+
+OCR and voice transcription additionally require `OPENAI_API_KEY`. Maps require `VITE_GOOGLE_MAPS_API_KEY`.
+
+Never commit service-role keys, OAuth client secrets, database passwords, officer data, or OpenAI API keys.

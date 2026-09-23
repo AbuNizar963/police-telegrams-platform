@@ -1,131 +1,244 @@
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { auditLogs, departmentSettings, InsertTelegram, telegrams, InsertUser, users } from "../drizzle/schema";
+import type {
+  AuditLog,
+  DepartmentSettings,
+  InsertTelegram,
+  InsertUser,
+  Telegram,
+  User,
+} from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { getSupabaseAdmin } from "./_core/supabase";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+const asDate = (value: unknown): Date =>
+  value instanceof Date ? value : new Date(String(value));
 
-export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
+function mapUser(row: Record<string, unknown>): User {
+  return {
+    ...(row as unknown as User),
+    createdAt: asDate(row.createdAt),
+    updatedAt: asDate(row.updatedAt),
+    lastSignedIn: asDate(row.lastSignedIn),
+  };
+}
+
+function mapSettings(row: Record<string, unknown>): DepartmentSettings {
+  return {
+    ...(row as unknown as DepartmentSettings),
+    createdAt: asDate(row.createdAt),
+    updatedAt: asDate(row.updatedAt),
+  };
+}
+
+function mapTelegram(row: Record<string, unknown>): Telegram {
+  return {
+    ...(row as unknown as Telegram),
+    createdAt: asDate(row.createdAt),
+    updatedAt: asDate(row.updatedAt),
+    archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
+  };
+}
+
+function throwIfError(error: { message: string } | null, context: string): void {
+  if (error) throw new Error(`${context}: ${error.message}`);
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) throw new Error("User openId is required for upsert");
-  const db = await getDb();
-  if (!db) return;
+  if (!user.authUserId) throw new Error("Supabase auth user id is required");
 
-  const values: InsertUser = { openId: user.openId };
-  const updateSet: Record<string, unknown> = {};
-  for (const field of ["name", "email", "loginMethod"] as const) {
-    if (user[field] !== undefined) {
-      values[field] = user[field] ?? null;
-      updateSet[field] = user[field] ?? null;
-    }
+  const values: Record<string, unknown> = {
+    authUserId: user.authUserId,
+    lastSignedIn: (user.lastSignedIn ?? new Date()).toISOString(),
+  };
+
+  for (const field of ["name", "email", "loginMethod", "badgeNumber"] as const) {
+    if (user[field] !== undefined) values[field] = user[field] ?? null;
   }
-  values.lastSignedIn = user.lastSignedIn ?? new Date();
-  updateSet.lastSignedIn = values.lastSignedIn;
+
   if (user.role !== undefined) {
     values.role = user.role;
-    updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
+  } else if (
+    typeof user.email === "string" &&
+    ENV.adminEmails.includes(user.email.toLowerCase())
+  ) {
     values.role = "admin";
-    updateSet.role = "admin";
   }
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .upsert(values, { onConflict: "authUserId" });
+  throwIfError(error, "Failed to upsert user");
 }
 
-export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-  return rows[0];
+export async function getUserByAuthUserId(authUserId: string): Promise<User | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .select("*")
+    .eq("authUserId", authUserId)
+    .maybeSingle();
+  throwIfError(error, "Failed to load user");
+  return data ? mapUser(data as Record<string, unknown>) : undefined;
 }
 
-export async function getOrCreateSettings(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const existing = await db.select().from(departmentSettings).limit(1);
-  if (existing[0]) return existing[0];
-  await db.insert(departmentSettings).values({ configKey: "primary", updatedByUserId: userId });
-  const created = await db.select().from(departmentSettings).limit(1);
-  return created[0];
+export async function getOrCreateSettings(userId: number): Promise<DepartmentSettings> {
+  const client = getSupabaseAdmin();
+  const existing = await client
+    .from("department_settings")
+    .select("*")
+    .eq("configKey", "primary")
+    .maybeSingle();
+  throwIfError(existing.error, "Failed to load department settings");
+  if (existing.data) return mapSettings(existing.data as Record<string, unknown>);
+
+  const created = await client
+    .from("department_settings")
+    .insert({ configKey: "primary", updatedByUserId: userId })
+    .select("*")
+    .single();
+  throwIfError(created.error, "Failed to create department settings");
+  return mapSettings(created.data as Record<string, unknown>);
 }
 
-export async function allocateSerialNumber() {
-  const db = await getDb();
-  if (!db) throw new Error("Database is not available");
-  await db.insert(departmentSettings).values({ configKey: "primary", serialStart: 1, nextSerial: 1 }).onDuplicateKeyUpdate({ set: { configKey: "primary" } });
-  await db.execute(sql`UPDATE department_settings SET nextSerial = LAST_INSERT_ID(nextSerial) + 1 WHERE configKey = 'primary'`);
-  const [rows] = await db.execute(sql`SELECT LAST_INSERT_ID() AS serial`);
-  const serial = Number((rows as unknown as Array<{ serial: number }>)[0]?.serial);
-  if (!Number.isInteger(serial)) throw new Error("Serial allocation failed");
+export async function getMaxSerialNumber(): Promise<number> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .select("serialNumber")
+    .order("serialNumber", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  throwIfError(error, "Failed to load maximum serial");
+  return Number(data?.serialNumber ?? 0);
+}
+
+export async function updateDepartmentSettings(
+  id: number,
+  values: Record<string, unknown>,
+): Promise<DepartmentSettings> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("department_settings")
+    .update({ ...values, updatedAt: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to update department settings");
+  return mapSettings(data as Record<string, unknown>);
+}
+
+export async function allocateSerialNumber(): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().rpc("allocate_serial_number");
+  throwIfError(error, "Serial allocation failed");
+  const serial = Number(data);
+  if (!Number.isInteger(serial) || serial < 1) {
+    throw new Error("Serial allocation returned an invalid value");
+  }
   return serial;
 }
 
-export async function listTelegrams(userId: number, canViewAll: boolean, search?: string, classification?: "secret" | "normal", priority?: "slow" | "normal" | "urgent", category?: "criminal" | "administrative" | "traffic" | "security" | "tactical", status?: "pending" | "in_progress" | "resolved" | "archived") {
-  const db = await getDb();
-  if (!db) return [];
-  const filters = [];
+export async function listTelegrams(
+  userId: number,
+  canViewAll: boolean,
+  search?: string,
+  classification?: "secret" | "normal",
+  priority?: "slow" | "normal" | "urgent",
+  category?: "criminal" | "administrative" | "traffic" | "security" | "tactical",
+  status?: "pending" | "in_progress" | "resolved" | "archived",
+): Promise<Telegram[]> {
+  let query = getSupabaseAdmin()
+    .from("telegrams")
+    .select("*")
+    .order("createdAt", { ascending: false })
+    .limit(200);
+
+  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  if (classification) query = query.eq("classification", classification);
+  if (priority) query = query.eq("priority", priority);
+  if (category) query = query.eq("category", category);
+  if (status) query = query.eq("status", status);
+
   if (search?.trim()) {
-    const term = `%${search.trim()}%`;
-    filters.push(or(like(telegrams.subject, term), like(telegrams.recipient, term), like(telegrams.body, term), like(telegrams.creatorName, term), like(sql`CAST(${telegrams.serialNumber} AS CHAR)`, term)));
+    const safe = search.trim().replace(/[,%()]/g, " ").slice(0, 120);
+    const filters = [
+      `subject.ilike.%${safe}%`,
+      `recipient.ilike.%${safe}%`,
+      `body.ilike.%${safe}%`,
+      `creatorName.ilike.%${safe}%`,
+    ];
+    if (/^\d+$/.test(safe)) filters.push(`serialNumber.eq.${Number(safe)}`);
+    query = query.or(filters.join(","));
   }
-  if (classification) filters.push(eq(telegrams.classification, classification));
-  if (priority) filters.push(eq(telegrams.priority, priority));
-  if (category) filters.push(eq(telegrams.category, category));
-  if (status) filters.push(eq(telegrams.status, status));
-  if (!canViewAll) filters.push(eq(telegrams.createdByUserId, userId));
-  return db.select().from(telegrams).where(filters.length ? and(...filters) : undefined).orderBy(desc(telegrams.createdAt)).limit(200);
+
+  const { data, error } = await query;
+  throwIfError(error, "Failed to list telegrams");
+  return (data ?? []).map(row => mapTelegram(row as Record<string, unknown>));
 }
 
-export async function getTelegramById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db.select().from(telegrams).where(eq(telegrams.id, id)).limit(1);
-  return rows[0];
+export async function getTelegramById(id: number): Promise<Telegram | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  throwIfError(error, "Failed to load telegram");
+  return data ? mapTelegram(data as Record<string, unknown>) : undefined;
 }
 
-export async function createTelegram(input: InsertTelegram) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is not available");
-  const result = await db.insert(telegrams).values(input);
-  return getTelegramById(Number(result[0].insertId));
+export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
+  const values = {
+    ...input,
+    createdAt: input.createdAt?.toISOString(),
+    updatedAt: input.updatedAt?.toISOString(),
+    archivedAt: input.archivedAt?.toISOString() ?? null,
+  };
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .insert(values)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to create telegram");
+  return mapTelegram(data as Record<string, unknown>);
 }
 
-export async function writeAuditLog(input: typeof auditLogs.$inferInsert) {
-  const db = await getDb();
-  if (!db) return;
-  await db.insert(auditLogs).values(input);
+export async function writeAuditLog(
+  input: Omit<AuditLog, "id" | "createdAt">,
+): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("audit_logs").insert(input);
+  throwIfError(error, "Failed to write audit log");
+}
+
+async function countTelegrams(
+  userId: number,
+  canViewAll: boolean,
+  apply: (query: any) => any = query => query,
+): Promise<number> {
+  let query = getSupabaseAdmin()
+    .from("telegrams")
+    .select("id", { count: "exact", head: true });
+  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  query = apply(query);
+  const { count, error } = await query;
+  throwIfError(error, "Failed to count telegrams");
+  return count ?? 0;
 }
 
 export async function getDashboardStats(userId: number, canViewAll: boolean) {
-  const db = await getDb();
-  if (!db) return { total: 0, urgent: 0, secret: 0, normal: 0, pending: 0, inProgress: 0, resolved: 0, today: 0 };
-  const visibility = canViewAll ? undefined : eq(telegrams.createdByUserId, userId);
-  const rows = await db.select({ classification: telegrams.classification, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.classification);
-  const priorityRows = await db.select({ priority: telegrams.priority, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.priority);
-  const statusRows = await db.select({ status: telegrams.status, count: sql<number>`count(*)` }).from(telegrams).where(visibility).groupBy(telegrams.status);
-  const todayFilter = sql`DATE(${telegrams.createdAt}) = CURDATE()`;
-  const todayRows = await db.select({ count: sql<number>`count(*)` }).from(telegrams).where(visibility ? and(visibility, todayFilter) : todayFilter);
-  const counts = { urgent: 0, secret: 0, normal: 0, slow: 0, pending: 0, inProgress: 0, resolved: 0 };
-  const totalBySecrecy = rows.reduce((total, row) => total + Number(row.count), 0);
-  for (const row of rows) counts[row.classification] = Number(row.count);
-  for (const row of priorityRows) {
-    if (row.priority === "urgent") counts.urgent = Number(row.count);
-    if (row.priority === "slow") counts.slow = Number(row.count);
-  }
-  for (const row of statusRows) {
-    if (row.status === "pending") counts.pending = Number(row.count);
-    if (row.status === "in_progress") counts.inProgress = Number(row.count);
-    if (row.status === "resolved") counts.resolved = Number(row.count);
-  }
-  return { ...counts, total: totalBySecrecy, today: Number(todayRows[0]?.count ?? 0) };
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  const [total, urgent, secret, normal, pending, inProgress, resolved, today] =
+    await Promise.all([
+      countTelegrams(userId, canViewAll),
+      countTelegrams(userId, canViewAll, q => q.eq("priority", "urgent")),
+      countTelegrams(userId, canViewAll, q => q.eq("classification", "secret")),
+      countTelegrams(userId, canViewAll, q => q.eq("classification", "normal")),
+      countTelegrams(userId, canViewAll, q => q.eq("status", "pending")),
+      countTelegrams(userId, canViewAll, q => q.eq("status", "in_progress")),
+      countTelegrams(userId, canViewAll, q => q.eq("status", "resolved")),
+      countTelegrams(userId, canViewAll, q =>
+        q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString()),
+      ),
+    ]);
+
+  return { total, urgent, secret, normal, pending, inProgress, resolved, today };
 }

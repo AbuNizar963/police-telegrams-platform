@@ -7,9 +7,11 @@ const mocked = vi.hoisted(() => ({
   createTelegram: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
+  getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
+  updateDepartmentSettings: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -18,10 +20,11 @@ function createContext(): TrpcContext {
   return {
     user: {
       id: 42,
-      openId: "officer-42",
+      authUserId: "00000000-0000-4000-8000-000000000042",
       name: "النقيب أحمد",
+      badgeNumber: null,
       email: "ahmad@example.com",
-      loginMethod: "manus",
+      loginMethod: "google",
       role: "user",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -36,7 +39,15 @@ describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
-    mocked.createTelegram.mockImplementation(async input => ({ id: 7, createdAt: new Date(), ...input }));
+    mocked.getOrCreateSettings.mockResolvedValue({
+      serialPrefix: "POL",
+      timezone: "Asia/Riyadh",
+    });
+    mocked.createTelegram.mockImplementation(async input => ({
+      id: 7,
+      createdAt: new Date(),
+      ...input,
+    }));
     mocked.writeAuditLog.mockResolvedValue(undefined);
   });
 
@@ -56,10 +67,10 @@ describe("telegrams.create", () => {
       createdByUserId: 42,
       creatorName: "النقيب أحمد",
       creatorEmail: "ahmad@example.com",
+      creatorFingerprint: "00000000-0000-4000-8000-000000000042",
       serialNumber: 1001,
       serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
     }));
-    expect(mocked.createTelegram.mock.calls[0]?.[0]).not.toHaveProperty("creatorName", "مستخدم آخر");
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       actorUserId: 42,
       actorName: "النقيب أحمد",

@@ -31,6 +31,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Reject legacy platform dependencies
+        run: |
+          if grep -RniE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID' client server shared package.json vite.config.ts; then
+            echo "Legacy platform dependency detected"
+            exit 1
+          fi
+
       - name: Type check
         run: pnpm check
 

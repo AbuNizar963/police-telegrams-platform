@@ -6,10 +6,11 @@ function contextFor(role: "admin" | "user"): TrpcContext {
   return {
     user: {
       id: 9,
-      openId: "branding-test-user",
+      authUserId: "00000000-0000-4000-8000-000000000009",
       name: "Test Officer",
+      badgeNumber: null,
       email: "officer@example.com",
-      loginMethod: "manus",
+      loginMethod: "google",
       role,
       createdAt: new Date(),
       updatedAt: new Date(),

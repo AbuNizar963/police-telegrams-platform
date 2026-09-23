@@ -3,8 +3,19 @@ create extension if not exists pgcrypto;
 create type public.user_role as enum ('user', 'admin');
 create type public.telegram_classification as enum ('secret', 'normal');
 create type public.telegram_priority as enum ('slow', 'normal', 'urgent');
-create type public.telegram_category as enum ('criminal', 'administrative', 'traffic', 'security', 'tactical');
-create type public.telegram_status as enum ('pending', 'in_progress', 'resolved', 'archived');
+create type public.telegram_category as enum (
+  'criminal',
+  'administrative',
+  'traffic',
+  'security',
+  'tactical'
+);
+create type public.telegram_status as enum (
+  'pending',
+  'in_progress',
+  'resolved',
+  'archived'
+);
 create type public.number_system as enum ('latin', 'arabic', 'hindi');
 
 create table public.users (
@@ -130,9 +141,6 @@ begin
 end;
 $$;
 
-revoke all on function public.allocate_serial_number() from public, anon, authenticated;
-grant execute on function public.allocate_serial_number() to service_role;
-
 alter table public.users enable row level security;
 alter table public.department_settings enable row level security;
 alter table public.telegrams enable row level security;
@@ -142,6 +150,15 @@ revoke all on public.users from anon, authenticated;
 revoke all on public.department_settings from anon, authenticated;
 revoke all on public.telegrams from anon, authenticated;
 revoke all on public.audit_logs from anon, authenticated;
+
+grant select, insert, update, delete on public.users to service_role;
+grant select, insert, update, delete on public.department_settings to service_role;
+grant select, insert, update, delete on public.telegrams to service_role;
+grant select, insert, update, delete on public.audit_logs to service_role;
+
+grant usage, select on all sequences in schema public to service_role;
+revoke all on function public.allocate_serial_number() from public, anon, authenticated;
+grant execute on function public.allocate_serial_number() to service_role;
 
 insert into storage.buckets (
   id,

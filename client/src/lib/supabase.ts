@@ -6,15 +6,15 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   if (client) return client;
 
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-  if (!url || !anonKey) {
+  if (!url || !publishableKey) {
     throw new Error(
-      "Supabase client configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+      "Supabase client configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
     );
   }
 
-  client = createClient(url, anonKey, {
+  client = createClient(url, publishableKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,

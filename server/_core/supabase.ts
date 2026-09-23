@@ -6,13 +6,13 @@ let client: SupabaseClient | null = null;
 export function getSupabaseAdmin(): SupabaseClient {
   if (client) return client;
 
-  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
+  if (!ENV.supabaseUrl || !ENV.supabaseSecretKey) {
     throw new Error(
-      "Supabase server configuration is missing. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+      "Supabase server configuration is missing. Set SUPABASE_URL and SUPABASE_SECRET_KEY.",
     );
   }
 
-  client = createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
+  client = createClient(ENV.supabaseUrl, ENV.supabaseSecretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

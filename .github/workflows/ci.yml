@@ -33,7 +33,7 @@ jobs:
 
       - name: Reject legacy platform dependencies
         run: |
-          if grep -RniE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID' client server shared package.json vite.config.ts; then
+          if git grep -niE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID|MANUS_|__MANUS__|manus' -- ':!pnpm-lock.yaml'; then
             echo "Legacy platform dependency detected"
             exit 1
           fi

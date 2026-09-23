@@ -13,6 +13,15 @@ export async function createApp(options: { productionStatic?: boolean; viteServe
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      service: "police-telegrams-platform",
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

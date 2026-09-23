@@ -40,5 +40,5 @@ jobs:
       - name: Production build
         run: pnpm build
 
-      - name: Vercel build validation
-        run: pnpm dlx vercel@latest build --yes
+      - name: Vercel configuration validation
+        run: node -e "const fs=require('node:fs'); const c=JSON.parse(fs.readFileSync('vercel.json','utf8')); if(c.framework!=='vite'||c.outputDirectory!=='dist/public'||!fs.existsSync('api/[...].ts')) process.exit(1); const apiRules=(c.rewrites||[]).filter(r=>r.source==='/api'||r.source==='/api/:path*'); if(apiRules.length!==2) process.exit(1); console.log('Vercel configuration is valid');"

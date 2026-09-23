@@ -97,9 +97,14 @@ export type InvokeResult = {
 
 const normalizeMessage = (message: Message) => {
   if (typeof message.content === "string") return message;
+
+  const parts = Array.isArray(message.content)
+    ? message.content
+    : [message.content];
+
   return {
     ...message,
-    content: message.content.map(part =>
+    content: parts.map((part: MessageContent) =>
       typeof part === "string" ? { type: "text", text: part } : part,
     ),
   };

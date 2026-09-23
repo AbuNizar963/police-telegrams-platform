@@ -18,7 +18,11 @@ import {
   updateDepartmentSettings,
   writeAuditLog,
 } from "./db";
-import { storageGetSignedUrl, storagePut } from "./storage";
+import {
+  StorageAccessDeniedError,
+  storageGetSignedUrl,
+  storagePut,
+} from "./storage";
 import { invokeLLM } from "./_core/llm";
 import { transcribeAudio } from "./_core/voiceTranscription";
 
@@ -164,7 +168,18 @@ export const appRouter = router({
     extractTextFromImage: protectedProcedure
       .input(z.object({ fileKey: z.string().min(1).max(500) }))
       .mutation(async ({ ctx, input }) => {
-        const imageUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
+        let imageUrl: string;
+        try {
+          imageUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
+        } catch (error) {
+          if (error instanceof StorageAccessDeniedError) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية الوصول إلى هذا المرفق",
+            });
+          }
+          throw error;
+        }
         const response = await invokeLLM({
           messages: [
             {
@@ -215,7 +230,18 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const audioUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
+        let audioUrl: string;
+        try {
+          audioUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
+        } catch (error) {
+          if (error instanceof StorageAccessDeniedError) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية الوصول إلى هذا المرفق",
+            });
+          }
+          throw error;
+        }
         const result = await transcribeAudio({
           audioUrl,
           language: input.language,

@@ -6,6 +6,19 @@ function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
+function sanitizeFileName(fileName: string): string {
+  const sanitized = fileName
+    .trim()
+    .replace(/[\\/]+/g, "_")
+    .replace(/\.\.+/g, "_");
+
+  if (!sanitized || sanitized === "." || sanitized === "..") {
+    throw new Error("Invalid storage file name");
+  }
+
+  return sanitized.slice(0, 180);
+}
+
 function appendHashSuffix(relKey: string): string {
   const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
   const lastDot = relKey.lastIndexOf(".");
@@ -45,12 +58,33 @@ export function canAccessStorageKey(
   return Number.isInteger(ownerId) && ownerId === user.id;
 }
 
+export class StorageAccessDeniedError extends Error {
+  constructor() {
+    super("Storage access denied");
+    this.name = "StorageAccessDeniedError";
+  }
+}
+
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const key = appendHashSuffix(normalizeKey(relKey));
+  const normalizedKey = normalizeKey(relKey);
+  const segments = normalizedKey.split("/");
+
+  if (
+    segments.length !== 3 ||
+    segments[0] !== "telegrams" ||
+    !/^\\d+$/.test(segments[1])
+  ) {
+    throw new Error("Invalid storage key");
+  }
+
+  const safeFileName = sanitizeFileName(segments[2]);
+  const key = appendHashSuffix(
+    `telegrams/${segments[1]}/${safeFileName}`,
+  );
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
   const { error } = await getSupabaseAdmin()
@@ -66,13 +100,6 @@ export async function storagePut(
   return { key, url: stableStorageUrl(key) };
 }
 
-export async function storageGet(
-  relKey: string,
-): Promise<{ key: string; url: string }> {
-  const key = normalizeKey(relKey);
-  return { key, url: stableStorageUrl(key) };
-}
-
 export async function storageGetSignedUrl(
   relKey: string,
   user: Pick<User, "id" | "role">,
@@ -80,7 +107,7 @@ export async function storageGetSignedUrl(
   const key = normalizeKey(relKey);
 
   if (!canAccessStorageKey(key, user)) {
-    throw new Error("Storage access denied");
+    throw new StorageAccessDeniedError();
   }
 
   const { data, error } = await getSupabaseAdmin()

@@ -76,7 +76,7 @@ export async function storagePut(
   if (
     segments.length !== 3 ||
     segments[0] !== "telegrams" ||
-    !/^\\d+$/.test(segments[1])
+    !/^\d+$/.test(segments[1])
   ) {
     throw new Error("Invalid storage key");
   }

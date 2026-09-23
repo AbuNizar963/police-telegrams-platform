@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { getAuthenticatedUserFromRequest } from "./auth";
-import { storageGetSignedUrl } from "../storage";
+import { StorageAccessDeniedError, storageGetSignedUrl } from "../storage";
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*", async (req, res) => {
@@ -22,7 +22,7 @@ export function registerStorageRoutes(app: Express): void {
       res.set("Cache-Control", "private, max-age=300");
       res.redirect(307, url);
     } catch (error) {
-      if (error instanceof Error && error.message === "Storage access denied") {
+      if (error instanceof StorageAccessDeniedError) {
         res.status(403).send("Storage access denied");
         return;
       }

@@ -137,6 +137,7 @@ export async function storageGetSignedUrl(
   }
 
   return storageCreateSignedUrl(key, 10 * 60);
+}
 
 export async function storagePutDepartmentLogo(
   fileName: string,
@@ -145,7 +146,7 @@ export async function storagePutDepartmentLogo(
 ): Promise<{ key: string; url: string }> {
   const safeFileName = sanitizeFileName(fileName);
   const extension = contentType === "image/jpeg" ? ".jpg" : ".png";
-  const baseName = safeFileName.replace(/.[^.]*$/, "");
+  const baseName = safeFileName.replace(/\.[^.]*$/, "");
   const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
@@ -166,4 +167,3 @@ export async function storagePutDepartmentLogo(
     url: await storageCreateSignedUrl(key),
   };
 }
-

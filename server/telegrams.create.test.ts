@@ -12,7 +12,7 @@ const mocked = vi.hoisted(() => ({
   listTelegrams: vi.fn(),
 }));
 
-vi.mock("./db", () => mocked);
+vi.mock("./data/database", () => mocked);
 
 function createContext(): TrpcContext {
   return {

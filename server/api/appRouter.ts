@@ -43,10 +43,41 @@ function sanitizeAttachmentFileName(fileName: string) {
   return sanitized;
 }
 
+function hasBytesAt(bytes: Buffer, offset: number, signature: number[]) {
+  return signature.every((byte, index) => bytes[offset + index] === byte);
+}
+
+function validateAttachmentBytes(bytes: Buffer, contentType: string) {
+  const signatures: Record<string, (value: Buffer) => boolean> = {
+    "image/jpeg": value => hasBytesAt(value, 0, [0xff, 0xd8, 0xff]),
+    "image/png": value =>
+      hasBytesAt(value, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    "image/webp": value =>
+      value.toString("ascii", 0, 4) === "RIFF" &&
+      value.toString("ascii", 8, 12) === "WEBP",
+    "application/pdf": value => value.toString("ascii", 0, 5) === "%PDF-",
+    "audio/mpeg": value =>
+      value.toString("ascii", 0, 3) === "ID3" ||
+      (value[0] === 0xff && ((value[1] ?? 0) & 0xe0) === 0xe0),
+    "audio/wav": value =>
+      value.toString("ascii", 0, 4) === "RIFF" &&
+      value.toString("ascii", 8, 12) === "WAVE",
+    "audio/webm": value => hasBytesAt(value, 0, [0x1a, 0x45, 0xdf, 0xa3]),
+  };
+  const matches = signatures[contentType]?.(bytes) ?? false;
+  if (!matches) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "محتوى المرفق لا يطابق نوع الملف المعلن",
+    });
+  }
+}
+
 function assertTelegramStorageKey(
   fileKey: string,
   userId: number,
-  role: string
+  role: string,
+  actorName: string
 ) {
   const normalizedKey = fileKey.replace(/^\/+/, "");
   const isTelegramKey = normalizedKey.startsWith("telegrams/");
@@ -58,6 +89,14 @@ function assertTelegramStorageKey(
     !isTelegramKey ||
     (role !== "admin" && !isOwnerKey)
   ) {
+    void writeAuditLog({
+      actorUserId: userId,
+      actorName,
+      action: "attachment.access_denied",
+      entityType: "telegram_attachment",
+      entityId: fileKey.slice(0, 80),
+      metadata: JSON.stringify({ role, reason: "ownership_or_path_check" }),
+    });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "لا تملك صلاحية الوصول إلى هذا المرفق",
@@ -213,12 +252,26 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const bytes = Buffer.from(input.base64, "base64");
-        if (bytes.byteLength > 10 * 1024 * 1024)
+        if (
+          !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+            input.base64
+          )
+        ) {
           throw new TRPCError({
-            code: "PAYLOAD_TOO_LARGE",
-            message: "حجم المرفق يتجاوز 10 ميغابايت",
+            code: "BAD_REQUEST",
+            message: "بيانات المرفق المشفرة غير صالحة",
           });
+        }
+        const bytes = Buffer.from(input.base64, "base64");
+        if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024)
+          throw new TRPCError({
+            code: bytes.byteLength === 0 ? "BAD_REQUEST" : "PAYLOAD_TOO_LARGE",
+            message:
+              bytes.byteLength === 0
+                ? "المرفق فارغ"
+                : "حجم المرفق يتجاوز 10 ميغابايت",
+          });
+        validateAttachmentBytes(bytes, input.contentType);
         const fileName = sanitizeAttachmentFileName(input.fileName);
         const uploaded = await storagePut(
           `telegrams/${ctx.user.id}/${fileName}`,
@@ -250,7 +303,8 @@ export const appRouter = router({
         const fileKey = assertTelegramStorageKey(
           input.fileKey,
           ctx.user.id,
-          ctx.user.role
+          ctx.user.role,
+          ctx.user.name ?? ctx.user.email ?? "Officer"
         );
         const imageUrl = await storageGetSignedUrl(fileKey);
         const response = await invokeLLM({
@@ -297,7 +351,8 @@ export const appRouter = router({
         const fileKey = assertTelegramStorageKey(
           input.fileKey,
           ctx.user.id,
-          ctx.user.role
+          ctx.user.role,
+          ctx.user.name ?? ctx.user.email ?? "Officer"
         );
         const audioUrl = await storageGetSignedUrl(fileKey);
         const result = await transcribeAudio({

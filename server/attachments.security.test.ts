@@ -53,6 +53,8 @@ function createContext(role: "user" | "admin" = "user"): TrpcContext {
 }
 
 describe("telegram attachment security", () => {
+  const validPng = Buffer.from("89504e470d0a1a0a", "hex").toString("base64");
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.storagePut.mockResolvedValue({
@@ -68,7 +70,7 @@ describe("telegram attachment security", () => {
     const result = await caller.telegrams.uploadAttachment({
       fileName: "../بلاغ\\صورة.png",
       contentType: "image/png",
-      base64: Buffer.from("image-bytes").toString("base64"),
+      base64: validPng,
     });
 
     expect(mocked.storagePut).toHaveBeenCalledWith(
@@ -94,6 +96,22 @@ describe("telegram attachment security", () => {
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocked.storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "attachment.access_denied" })
+    );
+  });
+
+  it("rejects content that does not match its declared MIME type", async () => {
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.uploadAttachment({
+        fileName: "report.png",
+        contentType: "image/png",
+        base64: Buffer.from("not-a-png").toString("base64"),
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocked.storagePut).not.toHaveBeenCalled();
   });
 
   it("allows an admin to inspect a telegram attachment key", async () => {

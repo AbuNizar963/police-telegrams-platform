@@ -26,6 +26,46 @@ import { transcribeAudio } from "../_core/voiceTranscription";
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
 
+function sanitizeAttachmentFileName(fileName: string) {
+  const sanitized = fileName
+    .normalize("NFKC")
+    .replace(/[\\/\u0000-\u001f\u007f]/g, "_")
+    .replace(/\.\.+/g, "_")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+  if (!sanitized || sanitized === "." || sanitized === "..") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "اسم المرفق غير صالح",
+    });
+  }
+  return sanitized;
+}
+
+function assertTelegramStorageKey(
+  fileKey: string,
+  userId: number,
+  role: string
+) {
+  const normalizedKey = fileKey.replace(/^\/+/, "");
+  const isTelegramKey = normalizedKey.startsWith("telegrams/");
+  const isOwnerKey = normalizedKey.startsWith(`telegrams/${userId}/`);
+  if (
+    normalizedKey !== fileKey ||
+    normalizedKey.includes("..") ||
+    normalizedKey.includes("\\") ||
+    !isTelegramKey ||
+    (role !== "admin" && !isOwnerKey)
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "لا تملك صلاحية الوصول إلى هذا المرفق",
+    });
+  }
+  return normalizedKey;
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -179,8 +219,9 @@ export const appRouter = router({
             code: "PAYLOAD_TOO_LARGE",
             message: "حجم المرفق يتجاوز 10 ميغابايت",
           });
+        const fileName = sanitizeAttachmentFileName(input.fileName);
         const uploaded = await storagePut(
-          `telegrams/${ctx.user.id}/${input.fileName}`,
+          `telegrams/${ctx.user.id}/${fileName}`,
           bytes,
           input.contentType
         );
@@ -191,14 +232,14 @@ export const appRouter = router({
           entityType: "telegram_attachment",
           entityId: uploaded.key,
           metadata: JSON.stringify({
-            fileName: input.fileName,
+            fileName,
             contentType: input.contentType,
             size: bytes.byteLength,
           }),
         });
         return {
           ...uploaded,
-          fileName: input.fileName,
+          fileName,
           contentType: input.contentType,
           size: bytes.byteLength,
         };
@@ -206,7 +247,12 @@ export const appRouter = router({
     extractTextFromImage: protectedProcedure
       .input(z.object({ fileKey: z.string().min(1).max(500) }))
       .mutation(async ({ ctx, input }) => {
-        const imageUrl = await storageGetSignedUrl(input.fileKey);
+        const fileKey = assertTelegramStorageKey(
+          input.fileKey,
+          ctx.user.id,
+          ctx.user.role
+        );
+        const imageUrl = await storageGetSignedUrl(fileKey);
         const response = await invokeLLM({
           messages: [
             {
@@ -235,7 +281,7 @@ export const appRouter = router({
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "ocr.extract",
           entityType: "telegram_attachment",
-          entityId: input.fileKey,
+          entityId: fileKey,
           metadata: JSON.stringify({ provider: "vision" }),
         });
         return { text: typeof content === "string" ? content.trim() : "" };
@@ -248,7 +294,12 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const audioUrl = await storageGetSignedUrl(input.fileKey);
+        const fileKey = assertTelegramStorageKey(
+          input.fileKey,
+          ctx.user.id,
+          ctx.user.role
+        );
+        const audioUrl = await storageGetSignedUrl(fileKey);
         const result = await transcribeAudio({
           audioUrl,
           language: input.language,
@@ -261,7 +312,7 @@ export const appRouter = router({
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "voice.transcribe",
           entityType: "telegram_attachment",
-          entityId: input.fileKey,
+          entityId: fileKey,
           metadata: JSON.stringify({ language: result.language }),
         });
         return { text: result.text, language: result.language };

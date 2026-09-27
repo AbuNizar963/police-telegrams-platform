@@ -114,6 +114,22 @@ describe("telegram attachment security", () => {
     expect(mocked.storagePut).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed telegram storage paths before signing", async () => {
+    const caller = appRouter.createCaller(createContext("admin"));
+
+    await expect(
+      caller.telegrams.extractTextFromImage({
+        fileKey: "telegrams/not-a-user/secret.png",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.telegrams.extractTextFromImage({
+        fileKey: "telegrams/42/",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocked.storageGetSignedUrl).not.toHaveBeenCalled();
+  });
+
   it("allows an admin to inspect a telegram attachment key", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     mocked.invokeLLM.mockResolvedValue({

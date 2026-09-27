@@ -80,8 +80,13 @@ function assertTelegramStorageKey(
   actorName: string
 ) {
   const normalizedKey = fileKey.replace(/^\/+/, "");
-  const isTelegramKey = normalizedKey.startsWith("telegrams/");
-  const isOwnerKey = normalizedKey.startsWith(`telegrams/${userId}/`);
+  const keyParts = normalizedKey.split("/");
+  const isTelegramKey =
+    keyParts.length === 3 &&
+    keyParts[0] === "telegrams" &&
+    /^\d+$/.test(keyParts[1] ?? "") &&
+    Boolean(keyParts[2]);
+  const isOwnerKey = keyParts[1] === String(userId);
   if (
     normalizedKey !== fileKey ||
     normalizedKey.includes("..") ||

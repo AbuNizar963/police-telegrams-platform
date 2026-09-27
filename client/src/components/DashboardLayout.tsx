@@ -20,17 +20,23 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
+import { SupabaseLoginForm } from "@/components/SupabaseLoginForm";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, Moon, PanelLeft, Shield, Sun } from "lucide-react";
+import {
+  LayoutDashboard,
+  LogOut,
+  Moon,
+  PanelLeft,
+  Shield,
+  Sun,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
-];
+const menuItems = [{ icon: LayoutDashboard, label: "لوحة القيادة", path: "/" }];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -46,14 +52,14 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const { loading, user, usesSupabase } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -71,13 +77,17 @@ export default function DashboardLayout({
               استخدم حسابك المعتمد حتى يظهر اسمك تلقائياً كمنشئ لكل برقية.
             </p>
           </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            تسجيل الدخول الآمن
-          </Button>
+          {usesSupabase ? (
+            <SupabaseLoginForm />
+          ) : (
+            <Button
+              onClick={() => startLogin()}
+              size="lg"
+              className="w-full shadow-lg hover:shadow-xl transition-all"
+            >
+              تسجيل الدخول الآمن
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -261,9 +271,21 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 p-4">
           <div className="mb-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">{theme === "dark" ? "وضع غرفة العمليات" : "الوضع النهاري"}</span>
-            <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="تبديل المظهر" className="h-9 w-9 rounded-xl bg-background">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="hidden sm:inline">
+              {theme === "dark" ? "وضع غرفة العمليات" : "الوضع النهاري"}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label="تبديل المظهر"
+              className="h-9 w-9 rounded-xl bg-background"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </Button>
           </div>
           {children}

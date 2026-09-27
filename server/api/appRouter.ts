@@ -110,6 +110,77 @@ function assertTelegramStorageKey(
   return normalizedKey;
 }
 
+const attachmentContentTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/webm",
+] as const;
+
+function validateAttachmentManifest(
+  manifest: string | undefined,
+  userId: number,
+  role: string,
+  actorName: string
+) {
+  if (!manifest) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(manifest);
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "بيانات المرفقات غير صالحة",
+    });
+  }
+  if (!Array.isArray(parsed) || parsed.length > 10) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "يجب أن تكون المرفقات قائمة لا تتجاوز 10 ملفات",
+    });
+  }
+  const normalized = parsed.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `بيانات المرفق رقم ${index + 1} غير صالحة`,
+      });
+    }
+    const entry = item as Record<string, unknown>;
+    const fileKey = entry.fileKey;
+    const fileName = entry.fileName;
+    const contentType = entry.contentType;
+    const size = entry.size;
+    if (
+      typeof fileKey !== "string" ||
+      typeof fileName !== "string" ||
+      typeof contentType !== "string" ||
+      !attachmentContentTypes.includes(
+        contentType as (typeof attachmentContentTypes)[number]
+      ) ||
+      !Number.isInteger(size) ||
+      (size as number) < 1 ||
+      (size as number) > 10 * 1024 * 1024
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `بيانات المرفق رقم ${index + 1} غير صالحة`,
+      });
+    }
+    const safeKey = assertTelegramStorageKey(fileKey, userId, role, actorName);
+    return {
+      fileKey: safeKey,
+      fileName: sanitizeAttachmentFileName(fileName),
+      contentType,
+      size,
+    };
+  });
+  return JSON.stringify(normalized);
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -244,15 +315,7 @@ export const appRouter = router({
       .input(
         z.object({
           fileName: z.string().trim().min(1).max(180),
-          contentType: z.enum([
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "application/pdf",
-            "audio/mpeg",
-            "audio/wav",
-            "audio/webm",
-          ]),
+          contentType: z.enum(attachmentContentTypes),
           base64: z.string().min(1).max(14_000_000),
         })
       )
@@ -450,6 +513,12 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const attachmentManifest = validateAttachmentManifest(
+          input.attachmentManifest,
+          ctx.user.id,
+          ctx.user.role,
+          ctx.user.name ?? ctx.user.email ?? "Officer"
+        );
         const serialNumber = await allocateSerialNumber();
         const numbering = await getOrCreateSettings(ctx.user.id);
         const dateParts = new Intl.DateTimeFormat("en-CA", {
@@ -471,6 +540,7 @@ export const appRouter = router({
             : null;
         const telegram = await createTelegram({
           ...input,
+          attachmentManifest,
           serialNumber,
           serialCode,
           createdByUserId: ctx.user.id,

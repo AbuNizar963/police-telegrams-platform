@@ -130,6 +130,31 @@ describe("telegram attachment security", () => {
     expect(mocked.storageGetSignedUrl).not.toHaveBeenCalled();
   });
 
+  it("rejects a telegram manifest that references another user's file", async () => {
+    const caller = appRouter.createCaller(createContext("user"));
+
+    await expect(
+      caller.telegrams.create({
+        subject: "بلاغ اختبار",
+        recipient: "غرفة العمليات",
+        body: "محتوى اختبار كافٍ",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        attachmentManifest: JSON.stringify([
+          {
+            fileKey: "telegrams/99/report.png",
+            fileName: "report.png",
+            contentType: "image/png",
+            size: 16,
+          },
+        ]),
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocked.allocateSerialNumber).not.toHaveBeenCalled();
+    expect(mocked.createTelegram).not.toHaveBeenCalled();
+  });
+
   it("allows an admin to inspect a telegram attachment key", async () => {
     const caller = appRouter.createCaller(createContext("admin"));
     mocked.invokeLLM.mockResolvedValue({

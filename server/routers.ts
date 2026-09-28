@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { authenticateLocalUser, clearAuthenticatedSession, publicUser, setAuthenticatedSession, verifyPassword } from "./_core/auth";
+import { authenticateLocalUser, clearAuthenticatedSession, publicUser, setAuthenticatedSession, verifyPassword, hashPassword } from "./_core/auth";
 import { ENV } from "./_core/env";
 import { z } from "zod";
 import {
@@ -69,29 +69,36 @@ export const appRouter = router({
 
         if (
           !user &&
-          ENV.ownerPasswordHash &&
-          normalizedUsername.toLowerCase() === ENV.ownerUsername.trim().toLowerCase()
+          normalizedUsername.toLowerCase() === ENV.ownerUsername.trim().toLowerCase() &&
+          (ENV.ownerPasswordHash || ENV.ownerInitialPassword)
         ) {
+          // The initial secret is only used to bootstrap a missing owner account.
+          // Existing accounts and their credentials are never overwritten.
+          const bootstrapHash =
+            ENV.ownerPasswordHash ||
+            (await hashPassword(ENV.ownerInitialPassword));
           const ownerPasswordMatches = await verifyPassword(
             input.password,
-            ENV.ownerPasswordHash,
+            bootstrapHash,
           );
 
           if (ownerPasswordMatches) {
             try {
               const owner = await createLocalOwnerUser({
                 username: ENV.ownerUsername.trim(),
-                passwordHash: ENV.ownerPasswordHash,
+                passwordHash: bootstrapHash,
               });
               user = publicUser(owner);
             } catch {
+              // A concurrent login may have created the owner first. Re-read and
+              // authenticate against the persisted credential rather than replacing it.
               const existing = await getUserByUsername(ENV.ownerUsername.trim());
-              if (existing) {
+              if (existing?.passwordHash) {
                 user = await authenticateLocalUser(
                   normalizedUsername,
                   input.password,
                 );
-              } else {
+              } else if (!existing) {
                 throw new TRPCError({
                   code: "INTERNAL_SERVER_ERROR",
                   message: "تعذر إنشاء حساب المالك",

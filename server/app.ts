@@ -19,7 +19,7 @@ export async function createApp(
     res.status(200).json({
       ok: true,
       service: "police-telegrams-platform",
-      auth: "supabase",
+      auth: "local-password",
       database: "supabase-postgres",
       timestamp: new Date().toISOString(),
     });

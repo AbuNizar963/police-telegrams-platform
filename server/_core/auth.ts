@@ -1,6 +1,6 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
-import { parse, stringify } from "cookie";
+import { parse } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
@@ -23,6 +23,24 @@ function deriveKey(
   });
 }
 export const SESSION_COOKIE = "police_telegrams_session";
+
+function serializeSessionCookie(
+  value: string,
+  options: { maxAge: number; expires?: Date },
+): string {
+  const parts = [
+    SESSION_COOKIE + "=" + encodeURIComponent(value),
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=" + options.maxAge,
+  ];
+
+  if (ENV.isProduction) parts.push("Secure");
+  if (options.expires) parts.push("Expires=" + options.expires.toUTCString());
+
+  return parts.join("; ");
+}
 const SESSION_MAX_AGE = 60 * 60 * 12;
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
@@ -56,27 +74,14 @@ export async function setAuthenticatedSession(
 
   res.setHeader(
     "Set-Cookie",
-    stringify(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: ENV.isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-    }),
+    serializeSessionCookie(token, { maxAge: SESSION_MAX_AGE }),
   );
 }
 
 export function clearAuthenticatedSession(res: Response): void {
   res.setHeader(
     "Set-Cookie",
-    stringify(SESSION_COOKIE, "", {
-      httpOnly: true,
-      secure: ENV.isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-      expires: new Date(0),
-    }),
+    serializeSessionCookie("", { maxAge: 0, expires: new Date(0) }),
   );
 }
 

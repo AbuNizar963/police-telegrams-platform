@@ -34,8 +34,6 @@ import {
   storageGetSignedUrl,
   storagePut,
 } from "./storage";
-import { invokeLLM } from "./_core/llm";
-import { transcribeAudio } from "./_core/voiceTranscription";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -242,111 +240,6 @@ export const appRouter = router({
           fileName: input.fileName,
           contentType: input.contentType,
           size: bytes.byteLength,
-        };
-      }),
-
-    extractTextFromImage: protectedProcedure
-      .input(z.object({ fileKey: z.string().min(1).max(500) }))
-      .mutation(async ({ ctx, input }) => {
-        let imageUrl: string;
-        try {
-          imageUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
-        } catch (error) {
-          if (error instanceof StorageAccessDeniedError) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية الوصول إلى هذا المرفق",
-            });
-          }
-          throw error;
-        }
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content:
-                "أنت محرك OCR احترافي. استخرج النص العربي والإنجليزي الظاهر في الصورة بدقة، وحافظ على ترتيب الأسطر. أعد النص فقط دون شرح.",
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "استخرج كل النص من هذه الصورة لاستخدامه داخل برقية رسمية.",
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: imageUrl,
-                    detail: "high",
-                  },
-                },
-              ],
-            },
-          ],
-        });
-
-        const content = response.choices?.[0]?.message?.content;
-
-        await writeAuditLog({
-          actorUserId: ctx.user.id,
-          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
-          action: "ocr.extract",
-          entityType: "telegram_attachment",
-          entityId: input.fileKey,
-          metadata: JSON.stringify({ provider: "vision" }),
-        });
-
-        return {
-          text: typeof content === "string" ? content.trim() : "",
-        };
-      }),
-
-    transcribeVoice: protectedProcedure
-      .input(
-        z.object({
-          fileKey: z.string().min(1).max(500),
-          language: z.string().length(2).default("ar"),
-        }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        let audioUrl: string;
-        try {
-          audioUrl = await storageGetSignedUrl(input.fileKey, ctx.user);
-        } catch (error) {
-          if (error instanceof StorageAccessDeniedError) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية الوصول إلى هذا المرفق",
-            });
-          }
-          throw error;
-        }
-        const result = await transcribeAudio({
-          audioUrl,
-          language: input.language,
-          prompt: "نص برقية شرطية رسمية باللغة العربية",
-        });
-
-        if (!("text" in result)) {
-          throw new TRPCError({
-            code: "BAD_GATEWAY",
-            message: result.error,
-          });
-        }
-
-        await writeAuditLog({
-          actorUserId: ctx.user.id,
-          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
-          action: "voice.transcribe",
-          entityType: "telegram_attachment",
-          entityId: input.fileKey,
-          metadata: JSON.stringify({ language: result.language }),
-        });
-
-        return {
-          text: result.text,
-          language: result.language,
         };
       }),
 

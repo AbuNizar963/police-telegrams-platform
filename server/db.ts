@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type {
   AuditLog,
   DepartmentSettings,
@@ -100,6 +101,32 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     .from("users")
     .upsert(values, { onConflict: "authUserId" });
   throwIfError(error, "Failed to upsert user");
+}
+
+export async function createLocalOwnerUser(input: {
+  username: string;
+  passwordHash: string;
+}): Promise<User> {
+  const authUserId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .insert({
+      authUserId,
+      username: input.username,
+      passwordHash: input.passwordHash,
+      name: input.username,
+      email: null,
+      loginMethod: "password",
+      role: "admin",
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: now,
+    })
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to create owner account");
+  return mapUser(data as Record<string, unknown>);
 }
 
 export async function getUserById(id: number): Promise<User | undefined> {

@@ -322,9 +322,15 @@ export const appRouter = router({
 
         const updated = await updateTelegram(id, {
           ...values,
-          attachmentManifest: values.attachmentManifest ?? null,
-          gpsLatitude: values.gpsLatitude ?? null,
-          gpsLongitude: values.gpsLongitude ?? null,
+          ...(values.attachmentManifest !== undefined
+            ? { attachmentManifest: values.attachmentManifest }
+            : {}),
+          ...(values.gpsLatitude !== undefined
+            ? { gpsLatitude: values.gpsLatitude }
+            : {}),
+          ...(values.gpsLongitude !== undefined
+            ? { gpsLongitude: values.gpsLongitude }
+            : {}),
         });
 
         await writeAuditLog({

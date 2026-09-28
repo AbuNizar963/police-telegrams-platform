@@ -246,15 +246,17 @@ function TelegramComposer({
       };
 
       recognition.onerror = event => {
+        // Browsers commonly emit no-speech during a pause. Keep listening and
+        // let onend restart the session instead of treating silence as failure.
+        if (event.error === "no-speech") return;
+
         speechShouldContinueRef.current = false;
         const message =
           event.error === "not-allowed"
             ? "اسمح للمتصفح بالوصول إلى الميكروفون"
             : event.error === "network"
               ? "خدمة التعرف الصوتي في المتصفح غير متاحة حاليًا"
-              : event.error === "no-speech"
-                ? "لم يتم اكتشاف كلام واضح"
-                : "تعذر تحويل الصوت إلى نص";
+              : "تعذر تحويل الصوت إلى نص";
 
         stopSpeechRecognition();
         toast.error(message);

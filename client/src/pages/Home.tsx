@@ -124,7 +124,66 @@ function TelegramComposer({ pending, close, submit }: { pending: boolean; close:
 function TelegramDetail({ telegram, settings, close }: { telegram: { serialCode: string; subject: string; recipient: string; body: string; creatorName: string; classification: Classification; priority: Priority; category: Category; status: Status; createdAt: Date; gpsLatitude?: string | null; gpsLongitude?: string | null }; settings?: { departmentName: string; unitName?: string; unitChiefRank?: string; unitChiefName?: string; timezone?: string; dateFormat?: string; numberSystem?: NumberSystem; logoUrl: string | null }; close: () => void }) {
   const paperRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "image" | "share" | "image-share" | null>(null);
-  const capture = async () => { if (!paperRef.current) throw new Error("تعذر تجهيز الورقة"); await document.fonts?.ready; return html2canvas(paperRef.current, { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false, windowWidth: paperRef.current.scrollWidth }); };
+  const capture = async () => {
+    const paper = paperRef.current;
+    if (!paper) throw new Error("تعذر تجهيز الورقة");
+
+    await document.fonts?.ready;
+
+    return html2canvas(paper, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      windowWidth: paper.scrollWidth,
+      onclone: clonedDocument => {
+        const clonedPaper = clonedDocument.querySelector<HTMLElement>(".telegram-paper");
+        if (!clonedPaper) return;
+
+        // html2canvas 1.x cannot parse CSS Color 4 functions (for example oklch()).
+        // Normalize only the cloned export DOM; the live page keeps its original styles.
+        const colorProbe = clonedDocument.createElement("canvas");
+        const context = colorProbe.getContext("2d");
+        if (!context) return;
+
+        const colorProperties = [
+          "color",
+          "background-color",
+          "border-top-color",
+          "border-right-color",
+          "border-bottom-color",
+          "border-left-color",
+          "outline-color",
+          "text-decoration-color",
+          "text-emphasis-color",
+          "column-rule-color",
+          "fill",
+          "stroke",
+          "box-shadow",
+          "text-shadow",
+        ];
+
+        const elements = [clonedPaper, ...clonedPaper.querySelectorAll<HTMLElement>("*")];
+        for (const element of elements) {
+          const computed = clonedDocument.defaultView?.getComputedStyle(element);
+          if (!computed) continue;
+
+          for (const property of colorProperties) {
+            const value = computed.getPropertyValue(property);
+            if (!value || !/(?:oklch|oklab|color\\()|color\\(/i.test(value)) continue;
+
+            // Canvas color parsing converts supported CSS Color 4 values to sRGB.
+            context.fillStyle = "#000000";
+            context.fillStyle = value;
+            const normalized = context.fillStyle;
+            if (normalized && !/(?:oklch|oklab|color\\()/i.test(normalized)) {
+              element.style.setProperty(property, normalized);
+            }
+          }
+        }
+      },
+    });
+  };
   const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };
   const downloadImage = async () => { setExporting("image"); try { const blob = await imageBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${telegram.serialCode}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.success("تم تنزيل صورة البرقية بدقة عالية"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة"); } finally { setExporting(null); } };
   const shareImage = async () => { setExporting("image-share"); try { const blob = await imageBlob(); const file = new File([blob], `${telegram.serialCode}.png`, { type: "image/png" }); if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة الصورة"); } else { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة"); } finally { setExporting(null); } };

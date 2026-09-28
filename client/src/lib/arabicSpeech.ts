@@ -8,7 +8,6 @@
 const wordCorrections: Readonly<Record<string, string>> = {
   الساعه: "الساعة",
   ساعه: "ساعة",
-  الساعهُ: "الساعة",
   المدرسه: "المدرسة",
   مدرسه: "مدرسة",
   الجامعه: "الجامعة",
@@ -157,16 +156,30 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
     let bestParts = dateParts.length;
 
     while (nextIndex < words.length) {
-      const nextPhrase = words.slice(nextIndex, nextIndex + phraseWords.length).map(comparableWord);
+      const nextPhrase = words
+        .slice(nextIndex, nextIndex + phraseWords.length)
+        .map(comparableWord);
       if (nextPhrase.join(" ") !== phraseWords.join(" ")) break;
 
       const candidateDate = words[nextIndex + phraseWords.length];
-      if (!candidateDate || !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(comparableWord(candidateDate))) break;
+      if (
+        !candidateDate ||
+        !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(
+          comparableWord(candidateDate),
+        )
+      ) {
+        break;
+      }
 
       const candidateParts = comparableWord(candidateDate).split(/[/.\-]/);
       const isProgression =
         candidateParts.length >= bestParts &&
-        candidateParts.slice(0, bestParts).every((part, partIndex) => part === bestDate.split(/[/.\-]/)[partIndex]);
+        candidateParts
+          .slice(0, bestParts)
+          .every(
+            (part, partIndex) =>
+              part === bestDate.split(/[/.\-]/)[partIndex],
+          );
 
       if (!isProgression) break;
       bestDate = comparableWord(candidateDate);

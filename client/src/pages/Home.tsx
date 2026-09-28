@@ -189,6 +189,7 @@ function TelegramComposer({
   const stopSpeechRecognition = () => {
     speechRecognitionRef.current?.stop();
     speechRecognitionRef.current = null;
+    setSpeechInterim("");
     setRecording(false);
   };
 
@@ -205,6 +206,7 @@ function TelegramComposer({
 
       recognition.onresult = event => {
         const transcripts: string[] = [];
+        const interim: string[] = [];
 
         for (
           let index = speechResultIndexRef.current;
@@ -212,16 +214,20 @@ function TelegramComposer({
           index += 1
         ) {
           const result = event.results[index];
+          const transcript = result?.[0]?.transcript?.trim();
 
-          if (result?.isFinal && result[0]?.transcript) {
-            transcripts.push(result[0].transcript);
-          }
+          if (!transcript) continue;
+
+          if (result.isFinal) transcripts.push(transcript);
+          else interim.push(transcript);
         }
 
         speechResultIndexRef.current = event.results.length;
+        setSpeechInterim(interim.join(" "));
 
         if (transcripts.length > 0) {
           appendText(transcripts.join(" "));
+          setSpeechInterim("");
         }
       };
 
@@ -242,10 +248,12 @@ function TelegramComposer({
 
       recognition.onend = () => {
         speechRecognitionRef.current = null;
+        setSpeechInterim("");
         setRecording(false);
       };
 
       recognition.onstart = () => {
+        setSpeechInterim("");
         setRecording(true);
       };
 

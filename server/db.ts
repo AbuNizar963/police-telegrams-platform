@@ -15,8 +15,11 @@ const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
 
 function mapUser(row: Record<string, unknown>): User {
+  const { password_hash, ...rest } = row;
   return {
-    ...(row as unknown as User),
+    ...(rest as unknown as User),
+    passwordHash:
+      typeof password_hash === "string" ? password_hash : null,
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
     lastSignedIn: asDate(row.lastSignedIn),

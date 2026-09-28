@@ -10,6 +10,9 @@ export const ENV = {
   supabaseStorageBucket:
     process.env.SUPABASE_STORAGE_BUCKET ?? "telegram-files",
   adminEmails: splitCsv(process.env.ADMIN_EMAILS),
+  authSessionSecret: process.env.AUTH_SESSION_SECRET ?? "",
+  ownerUsername: process.env.OWNER_USERNAME ?? "AbuNizar",
+  ownerPasswordHash: process.env.OWNER_PASSWORD_HASH ?? "",
   openAiApiKey: process.env.OPENAI_API_KEY ?? "",
   openAiBaseUrl: (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(
     /\/+$/,

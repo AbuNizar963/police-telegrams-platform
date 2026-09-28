@@ -4,6 +4,8 @@ import { correctArabicSpeechText, removeRepeatedSpeech } from "./arabicSpeech";
 describe("correctArabicSpeechText", () => {
   it("corrects frequent speech-to-text substitutions", () => {
     expect(correctArabicSpeechText("ذهبت إلى المدرسه")).toBe("ذهبت إلى المدرسة");
+    expect(correctArabicSpeechText("الساعه 15 من تاريخ السابع عشر من شهر تموز")).toBe("الساعة 15 من تاريخ السابع عشر من شهر تموز");
+    expect(correctArabicSpeechText("ساعه واحدة")).toBe("ساعة واحدة");
     expect(correctArabicSpeechText("مدرسه قريبة")).toBe("مدرسة قريبة");
     expect(correctArabicSpeechText("الجامعه والسياره")).toBe("الجامعة والسيارة");
     expect(correctArabicSpeechText("وصلت الرساله إلى الجهه المعنيه")).toBe(

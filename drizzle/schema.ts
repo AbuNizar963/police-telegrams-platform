@@ -32,6 +32,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   authUserId: uuid("authUserId").notNull().unique(),
   name: text("name"),
+  username: varchar("username", { length: 120 }),
+  passwordHash: text("password_hash"),
   badgeNumber: varchar("badgeNumber", { length: 80 }),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),

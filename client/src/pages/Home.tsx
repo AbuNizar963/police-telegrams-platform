@@ -149,7 +149,9 @@ function TelegramComposer({
   const [imageInputOpen, setImageInputOpen] = useState(false);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
-  const speechResultIndexRef = useRef(0);
+  const speechShouldContinueRef = useRef(false);
+  const speechBaseBodyRef = useRef("");
+  const speechRestartTimerRef = useRef<number | null>(null);
   const appendText = (text: string) => {
     const clean = text.trim();
     if (clean) {
@@ -189,10 +191,22 @@ function TelegramComposer({
   };
 
   const stopSpeechRecognition = () => {
-    speechRecognitionRef.current?.stop();
+    speechShouldContinueRef.current = false;
+    if (speechRestartTimerRef.current !== null) {
+      window.clearTimeout(speechRestartTimerRef.current);
+      speechRestartTimerRef.current = null;
+    }
+    const recognition = speechRecognitionRef.current;
     speechRecognitionRef.current = null;
     setSpeechInterim("");
     setRecording(false);
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch {
+        // The recognition session may already have ended.
+      }
+    }
   };
 
   const toggleRecording = () => {
@@ -203,39 +217,34 @@ function TelegramComposer({
 
     try {
       const recognition = createArabicSpeechRecognition();
-      speechResultIndexRef.current = 0;
+      speechShouldContinueRef.current = true;
+      speechBaseBodyRef.current = body.trim()
+        ? `${body.trim()}\n`
+        : "";
       speechRecognitionRef.current = recognition;
 
       recognition.onresult = event => {
-        const transcripts: string[] = [];
+        const finalized: string[] = [];
         const interim: string[] = [];
 
-        for (
-          let index = speechResultIndexRef.current;
-          index < event.results.length;
-          index += 1
-        ) {
+        for (let index = 0; index < event.results.length; index += 1) {
           const result = event.results[index];
           const transcript = result?.[0]?.transcript?.trim();
-
           if (!transcript) continue;
 
-          if (result.isFinal) transcripts.push(transcript);
+          if (result.isFinal) finalized.push(transcript);
           else interim.push(transcript);
         }
 
-        speechResultIndexRef.current = Math.max(0, event.results.length - (interim.length > 0 ? 1 : 0));
-        setSpeechInterim(interim.join(" "));
-
-        if (transcripts.length > 0) {
-          appendText(correctArabicSpeechText(transcripts.join(" ")));
-          setSpeechInterim("");
-        }
+        const finalText = correctArabicSpeechText(finalized.join(" "));
+        const interimText = correctArabicSpeechText(interim.join(" "));
+        const liveText = [finalText, interimText].filter(Boolean).join(" ");
+        setSpeechInterim(interimText);
+        setBody(`${speechBaseBodyRef.current}${liveText}`);
       };
 
       recognition.onerror = event => {
-        stopSpeechRecognition();
-
+        speechShouldContinueRef.current = false;
         const message =
           event.error === "not-allowed"
             ? "اسمح للمتصفح بالوصول إلى الميكروفون"
@@ -245,13 +254,41 @@ function TelegramComposer({
                 ? "لم يتم اكتشاف كلام واضح"
                 : "تعذر تحويل الصوت إلى نص";
 
+        stopSpeechRecognition();
         toast.error(message);
       };
 
       recognition.onend = () => {
-        speechRecognitionRef.current = null;
-        setSpeechInterim("");
-        setRecording(false);
+        const currentBody = body.trim();
+        if (currentBody) {
+          speechBaseBodyRef.current = `${currentBody}\n`;
+        }
+
+        if (!speechShouldContinueRef.current) {
+          speechRecognitionRef.current = null;
+          setSpeechInterim("");
+          setRecording(false);
+          return;
+        }
+
+        speechRestartTimerRef.current = window.setTimeout(() => {
+          if (!speechShouldContinueRef.current) return;
+
+          try {
+            const nextRecognition = createArabicSpeechRecognition();
+            speechRecognitionRef.current = nextRecognition;
+            nextRecognition.onresult = recognition.onresult;
+            nextRecognition.onerror = recognition.onerror;
+            nextRecognition.onend = recognition.onend;
+            nextRecognition.onstart = recognition.onstart;
+            nextRecognition.start();
+          } catch {
+            speechShouldContinueRef.current = false;
+            speechRecognitionRef.current = null;
+            setRecording(false);
+            toast.error("توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة");
+          }
+        }, 250);
       };
 
       recognition.onstart = () => {
@@ -261,6 +298,7 @@ function TelegramComposer({
 
       recognition.start();
     } catch (error) {
+      speechShouldContinueRef.current = false;
       speechRecognitionRef.current = null;
       setRecording(false);
       toast.error(
@@ -271,6 +309,10 @@ function TelegramComposer({
 
   useEffect(
     () => () => {
+      speechShouldContinueRef.current = false;
+      if (speechRestartTimerRef.current !== null) {
+        window.clearTimeout(speechRestartTimerRef.current);
+      }
       speechRecognitionRef.current?.stop();
       speechRecognitionRef.current = null;
     },

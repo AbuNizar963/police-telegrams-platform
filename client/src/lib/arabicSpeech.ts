@@ -99,7 +99,7 @@ export function correctArabicSpeechText(value: string): string {
 export function removeRepeatedSpeech(value: string): string {
   const words = value.trim().split(/\s+/).filter(Boolean);
   const comparable = (word: string) =>
-    word.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, "");
+    word.replace(/^[،؛,.!?؟:]+|[،؛,.!?؟:]+$/g, "");
 
   let index = 0;
   while (index < words.length) {

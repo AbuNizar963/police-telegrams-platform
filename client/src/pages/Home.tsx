@@ -170,13 +170,13 @@ function TelegramDetail({ telegram, settings, close }: { telegram: { serialCode:
 
           for (const property of colorProperties) {
             const value = computed.getPropertyValue(property);
-            if (!value || !/(?:oklch|oklab|color\\()|color\\(/i.test(value)) continue;
+            if (!value || !/\b(?:oklch|oklab|color)\(/i.test(value)) continue;
 
             // Canvas color parsing converts supported CSS Color 4 values to sRGB.
             context.fillStyle = "#000000";
             context.fillStyle = value;
             const normalized = context.fillStyle;
-            if (normalized && !/(?:oklch|oklab|color\\()/i.test(normalized)) {
+            if (normalized && !/\b(?:oklch|oklab|color)\(/i.test(normalized)) {
               element.style.setProperty(property, normalized);
             }
           }

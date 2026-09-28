@@ -2,13 +2,16 @@ import "dotenv/config";
 import { createServer } from "http";
 import net from "net";
 import { createApp } from "../app";
+import { setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
+
     server.listen(port, () => {
       server.close(() => resolve(true));
     });
+
     server.on("error", () => resolve(false));
   });
 }
@@ -19,18 +22,24 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
       return port;
     }
   }
+
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+async function startServer(): Promise<void> {
   const server = createServer();
-  const app = await createApp({
-    productionStatic: process.env.NODE_ENV !== "development",
-    viteServer: process.env.NODE_ENV === "development" ? server : undefined,
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const app = createApp({
+    productionStatic: !isDevelopment,
   });
+
+  if (isDevelopment) {
+    await setupVite(app, server);
+  }
+
   server.on("request", app);
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
+  const preferredPort = Number.parseInt(process.env.PORT || "3000", 10);
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
@@ -42,4 +51,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error("Failed to start server:", error);
+  process.exitCode = 1;
+});

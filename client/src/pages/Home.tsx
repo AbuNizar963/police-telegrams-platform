@@ -163,7 +163,7 @@ function TelegramDetail({ telegram, settings, close }: { telegram: { serialCode:
           "text-shadow",
         ];
 
-        const elements = [clonedPaper, ...clonedPaper.querySelectorAll<HTMLElement>("*")];
+        const elements = [clonedPaper, ...Array.from(clonedPaper.querySelectorAll<HTMLElement>("*"))];
         for (const element of elements) {
           const computed = clonedDocument.defaultView?.getComputedStyle(element);
           if (!computed) continue;

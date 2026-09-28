@@ -383,24 +383,7 @@ function TelegramComposer({
         <div className="flex flex-wrap gap-2">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
             <Camera className="h-4 w-4 text-[#9b7c3d]" />
-            {processingInput ? "جارٍ التحليل..." : "فتح الكاميرا"}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              disabled={processingInput}
-              onChange={event => {
-                const file = event.target.files?.[0];
-                if (file) void handleImage(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
-
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
-            <ImagePlus className="h-4 w-4 text-[#9b7c3d]" />
-            اختيار من المعرض
+            {processingInput ? "جارٍ التحليل..." : "إضافة صورة"}
             <input
               type="file"
               accept="image/*"

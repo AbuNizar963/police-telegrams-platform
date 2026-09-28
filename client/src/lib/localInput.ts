@@ -149,7 +149,7 @@ export function createArabicSpeechRecognition(): SpeechRecognition {
   const recognition = new Recognition();
   recognition.lang = "ar-SA";
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
   return recognition;

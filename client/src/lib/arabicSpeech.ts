@@ -6,6 +6,9 @@
  * انتباه are never changed by a blanket final-letter substitution.
  */
 const wordCorrections: Readonly<Record<string, string>> = {
+  الساعه: "الساعة",
+  ساعه: "ساعة",
+  الساعهُ: "الساعة",
   المدرسه: "المدرسة",
   مدرسه: "مدرسة",
   الجامعه: "الجامعة",

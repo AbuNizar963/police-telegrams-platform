@@ -1,4 +1,6 @@
 import { TRPCError } from "@trpc/server";
+import { authenticateLocalUser, clearAuthenticatedSession, publicUser, setAuthenticatedSession, verifyPassword } from "./_core/auth";
+import { ENV } from "./_core/env";
 import { z } from "zod";
 import {
   adminProcedure,
@@ -17,6 +19,8 @@ import {
   listTelegrams,
   updateDepartmentSettings,
   writeAuditLog,
+  createLocalOwnerUser,
+  getUserByUsername,
 } from "./db";
 import {
   StorageAccessDeniedError,
@@ -47,7 +51,69 @@ export const appRouter = router({
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(() => {
+
+    login: publicProcedure
+      .input(
+        z.object({
+          username: z.string().trim().min(3).max(120),
+          password: z.string().min(1).max(256),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const normalizedUsername = input.username.trim();
+
+        let user = await authenticateLocalUser(
+          normalizedUsername,
+          input.password,
+        );
+
+        if (
+          !user &&
+          ENV.ownerPasswordHash &&
+          normalizedUsername.toLowerCase() === ENV.ownerUsername.trim().toLowerCase()
+        ) {
+          const ownerPasswordMatches = await verifyPassword(
+            input.password,
+            ENV.ownerPasswordHash,
+          );
+
+          if (ownerPasswordMatches) {
+            try {
+              const owner = await createLocalOwnerUser({
+                username: ENV.ownerUsername.trim(),
+                passwordHash: ENV.ownerPasswordHash,
+              });
+              user = publicUser(owner);
+            } catch {
+              const existing = await getUserByUsername(ENV.ownerUsername.trim());
+              if (existing) {
+                user = await authenticateLocalUser(
+                  normalizedUsername,
+                  input.password,
+                );
+              } else {
+                throw new TRPCError({
+                  code: "INTERNAL_SERVER_ERROR",
+                  message: "تعذر إنشاء حساب المالك",
+                });
+              }
+            }
+          }
+        }
+
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "اسم المستخدم أو كلمة المرور غير صحيحة",
+          });
+        }
+
+        await setAuthenticatedSession(ctx.res, user);
+        return user;
+      }),
+
+    logout: publicProcedure.mutation(({ ctx }) => {
+      clearAuthenticatedSession(ctx.res);
       return { success: true } as const;
     }),
   }),

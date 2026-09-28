@@ -90,18 +90,21 @@ export function correctArabicSpeechText(value: string): string {
   );
 }
 
+function comparableWord(word: string): string {
+  return word.replace(/^[،؛,.!?؟:]+|[،؛,.!?؟:]+$/g, "");
+}
 
 /**
- * Removes consecutive duplicate words or short phrases emitted by speech
- * recognition. Only adjacent, exact repetitions are collapsed; intentional
- * repetitions separated by other words are preserved.
+ * Removes adjacent exact repeats and progressive repetitions of a timestamp
+ * phrase. Speech engines may repeatedly revise a date while appending digits
+ * (for example: "الساعة 15 من تاريخ 13" then "... 13/4" then "... 13/4/2026").
+ * In that case retain the most complete version instead of concatenating all
+ * intermediate hypotheses.
  */
 export function removeRepeatedSpeech(value: string): string {
   const words = value.trim().split(/\s+/).filter(Boolean);
-  const comparable = (word: string) =>
-    word.replace(/^[،؛,.!?؟:]+|[،؛,.!?؟:]+$/g, "");
-
   let index = 0;
+
   while (index < words.length) {
     let removed = false;
     const maxPhraseLength = Math.min(8, index, words.length - index);
@@ -110,8 +113,8 @@ export function removeRepeatedSpeech(value: string): string {
       const previousStart = index - length;
       if (previousStart < 0 || index + length > words.length) continue;
 
-      const previous = words.slice(previousStart, index).map(comparable);
-      const current = words.slice(index, index + length).map(comparable);
+      const previous = words.slice(previousStart, index).map(comparableWord);
+      const current = words.slice(index, index + length).map(comparableWord);
       if (previous.every((word, offset) => word && word === current[offset])) {
         words.splice(index, length);
         removed = true;
@@ -122,5 +125,55 @@ export function removeRepeatedSpeech(value: string): string {
     if (!removed) index += 1;
   }
 
-  return words.join(" ");
+  return collapseProgressiveDatePhrases(words).join(" ");
+}
+
+function collapseProgressiveDatePhrases(words: string[]): string[] {
+  const result: string[] = [];
+  let index = 0;
+
+  while (index < words.length) {
+    const remaining = words.slice(index);
+    const match = remaining.join(" ").match(
+      /^(الساعة\s+\d{1,2}(?::\d{2})?\s+من\s+تاريخ\s+)(\d{1,2}(?:[/.\-]\d{1,2}){0,2})(?=\s|$)/,
+    );
+
+    if (!match) {
+      result.push(words[index]);
+      index += 1;
+      continue;
+    }
+
+    const phrase = match[1];
+    const date = match[2];
+    const phraseWords = phrase.trim().split(/\s+/);
+    const dateParts = date.split(/[/.\-]/);
+    const consumed = phraseWords.length + 1;
+    let nextIndex = index + consumed;
+    let bestDate = date;
+    let bestParts = dateParts.length;
+
+    while (nextIndex < words.length) {
+      const nextPhrase = words.slice(nextIndex, nextIndex + phraseWords.length).map(comparableWord);
+      if (nextPhrase.join(" ") !== phraseWords.join(" ")) break;
+
+      const candidateDate = words[nextIndex + phraseWords.length];
+      if (!candidateDate || !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(comparableWord(candidateDate))) break;
+
+      const candidateParts = comparableWord(candidateDate).split(/[/.\-]/);
+      const isProgression =
+        candidateParts.length >= bestParts &&
+        candidateParts.slice(0, bestParts).every((part, partIndex) => part === bestDate.split(/[/.\-]/)[partIndex]);
+
+      if (!isProgression) break;
+      bestDate = comparableWord(candidateDate);
+      bestParts = candidateParts.length;
+      nextIndex += consumed;
+    }
+
+    result.push(...phraseWords, bestDate);
+    index = nextIndex;
+  }
+
+  return result;
 }

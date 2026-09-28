@@ -3,7 +3,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageRoutes } from "./_core/storageRoutes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
-import { serveStatic, setupVite } from "./_core/vite";
+import { serveStatic } from "./_core/static";
+import { setupVite } from "./_core/vite";
 import type { Server } from "http";
 
 export async function createApp(

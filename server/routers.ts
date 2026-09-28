@@ -19,6 +19,8 @@ import { systemRouter } from "./_core/systemRouter";
 import {
   allocateSerialNumber,
   createTelegram,
+  updateTelegram,
+  deleteTelegram,
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
@@ -290,6 +292,82 @@ export const appRouter = router({
         }
 
         return telegram;
+      }),
+
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          subject: z.string().trim().min(2).max(255),
+          recipient: z.string().trim().min(2).max(255),
+          body: z.string().trim().min(3).max(20000),
+          classification: classificationSchema,
+          priority: prioritySchema,
+          category: categorySchema,
+          status: statusSchema,
+          attachmentManifest: z.string().max(10000).nullable().optional(),
+          gpsLatitude: z.string().max(40).nullable().optional(),
+          gpsLongitude: z.string().max(40).nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...values } = input;
+        const existing = await getTelegramById(id);
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+
+        const updated = await updateTelegram(id, {
+          ...values,
+          attachmentManifest: values.attachmentManifest ?? null,
+          gpsLatitude: values.gpsLatitude ?? null,
+          gpsLongitude: values.gpsLongitude ?? null,
+        });
+
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+          action: "telegram.update",
+          entityType: "telegram",
+          entityId: String(id),
+          metadata: JSON.stringify({
+            serialNumber: existing.serialNumber,
+            createdByUserId: existing.createdByUserId,
+          }),
+        });
+
+        return updated;
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getTelegramById(input.id);
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+          action: "telegram.delete",
+          entityType: "telegram",
+          entityId: String(existing.id),
+          metadata: JSON.stringify({
+            serialNumber: existing.serialNumber,
+            createdByUserId: existing.createdByUserId,
+            creatorName: existing.creatorName,
+          }),
+        });
+
+        await deleteTelegram(existing.id);
+        return { success: true as const, id: existing.id };
       }),
 
     create: protectedProcedure

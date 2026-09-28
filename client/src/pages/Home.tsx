@@ -223,7 +223,7 @@ function TelegramComposer({
           else interim.push(transcript);
         }
 
-        speechResultIndexRef.current = event.results.length;
+        speechResultIndexRef.current = Math.max(0, event.results.length - (interim.length > 0 ? 1 : 0));
         setSpeechInterim(interim.join(" "));
 
         if (transcripts.length > 0) {

@@ -104,7 +104,7 @@ export function removeRepeatedSpeech(value: string): string {
   let index = 0;
   while (index < words.length) {
     let removed = false;
-    const maxPhraseLength = Math.min(8, Math.floor((index + 1) / 2));
+    const maxPhraseLength = Math.min(8, index, words.length - index);
 
     for (let length = maxPhraseLength; length >= 1; length -= 1) {
       const previousStart = index - length;

@@ -146,6 +146,7 @@ function TelegramComposer({
   const [processingInput, setProcessingInput] = useState(false);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechResultIndexRef = useRef(0);
   const appendText = (text: string) => {
     const clean = text.trim();
     if (clean) {
@@ -198,19 +199,29 @@ function TelegramComposer({
 
     try {
       const recognition = createArabicSpeechRecognition();
+      speechResultIndexRef.current = 0;
       speechRecognitionRef.current = recognition;
 
       recognition.onresult = event => {
         const transcripts: string[] = [];
 
-        for (let index = event.results.length - 1; index >= 0; index -= 1) {
+        for (
+          let index = speechResultIndexRef.current;
+          index < event.results.length;
+          index += 1
+        ) {
           const result = event.results[index];
-          if (result?.[0]?.transcript) {
-            transcripts.unshift(result[0].transcript);
+
+          if (result?.isFinal && result[0]?.transcript) {
+            transcripts.push(result[0].transcript);
           }
         }
 
-        appendText(transcripts.join(" "));
+        speechResultIndexRef.current = event.results.length;
+
+        if (transcripts.length > 0) {
+          appendText(transcripts.join(" "));
+        }
       };
 
       recognition.onerror = event => {

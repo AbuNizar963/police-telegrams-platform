@@ -144,6 +144,7 @@ function TelegramComposer({
   const [category, setCategory] = useState<Category>("administrative");
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
+  const [speechInterim, setSpeechInterim] = useState("");
   const [imageInputOpen, setImageInputOpen] = useState(false);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
@@ -387,6 +388,16 @@ function TelegramComposer({
             placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..."
             className="min-h-36 rounded-lg leading-7"
           />
+          {recording && speechInterim && (
+            <div
+              dir="rtl"
+              aria-live="polite"
+              className="rounded-lg border border-[#b4945a]/50 bg-[#fffaf0] px-3 py-2 text-sm font-normal leading-7 text-foreground dark:bg-[#2d281b]"
+            >
+              <span className="text-[10px] font-bold text-[#9b7c3d]">النص المباشر:</span>{" "}
+              {speechInterim}
+            </div>
+          )}
         </label>
 
         <div className="flex flex-wrap gap-2">

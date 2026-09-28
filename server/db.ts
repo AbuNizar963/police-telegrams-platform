@@ -303,6 +303,31 @@ export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
   return mapTelegram(data as Record<string, unknown>);
 }
 
+export async function updateTelegram(
+  id: number,
+  values: Pick<InsertTelegram, "subject" | "recipient" | "body" | "classification" | "priority" | "category" | "status" | "attachmentManifest" | "gpsLatitude" | "gpsLongitude">,
+): Promise<Telegram> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .update({ ...values, updatedAt: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to update telegram");
+  return mapTelegram(data as Record<string, unknown>);
+}
+
+export async function deleteTelegram(id: number): Promise<Telegram> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .delete()
+    .eq("id", id)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to delete telegram");
+  return mapTelegram(data as Record<string, unknown>);
+}
+
 export async function writeAuditLog(
   input: Omit<AuditLog, "id" | "createdAt">,
 ): Promise<void> {

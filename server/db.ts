@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type {
   AuditLog,
   DepartmentSettings,
@@ -110,14 +110,14 @@ export async function createLocalOwnerUser(input: {
   username: string;
   passwordHash: string;
 }): Promise<User> {
-  const authUserId = crypto.randomUUID();
+  const authUserId = randomUUID();
   const now = new Date().toISOString();
   const { data, error } = await getSupabaseAdmin()
     .from("users")
     .insert({
       authUserId,
       username: input.username,
-      passwordHash: input.passwordHash,
+      password_hash: input.passwordHash,
       name: input.username,
       email: null,
       loginMethod: "password",

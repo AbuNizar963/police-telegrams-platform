@@ -152,6 +152,8 @@ function TelegramComposer({
   const speechShouldContinueRef = useRef(false);
   const speechBaseBodyRef = useRef("");
   const speechRestartTimerRef = useRef<number | null>(null);
+  const bodyValueRef = useRef(body);
+  bodyValueRef.current = body;
   const appendText = (text: string) => {
     const clean = text.trim();
     if (clean) {
@@ -259,7 +261,7 @@ function TelegramComposer({
       };
 
       recognition.onend = () => {
-        const currentBody = body.trim();
+        const currentBody = bodyValueRef.current.trim();
         if (currentBody) {
           speechBaseBodyRef.current = `${currentBody}\n`;
         }

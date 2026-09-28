@@ -83,4 +83,12 @@ describe("Supabase Auth server adapter", () => {
     expect(mocked.getUser).not.toHaveBeenCalled();
     expect(mocked.upsertUser).not.toHaveBeenCalled();
   });
+
+  it("supports the VITE-prefixed Supabase URL used by Vercel builds", async () => {
+    delete process.env.SUPABASE_URL;
+    process.env.VITE_SUPABASE_URL = "https://vercel-project.supabase.co";
+    const { isSupabaseAuthConfigured } = await import("./_core/supabaseAuth");
+
+    expect(isSupabaseAuthConfigured).toBe(true);
+  });
 });

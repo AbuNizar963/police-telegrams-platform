@@ -49,6 +49,27 @@ export function SupabaseLoginForm({ onSuccess }: SupabaseLoginFormProps) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    setPending(true);
+    setMessage(null);
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
+    });
+    if (error) {
+      setMessage(
+        "تعذر بدء الدخول عبر Google. تأكد من تفعيل Google في إعدادات Supabase."
+      );
+      setPending(false);
+    }
+  };
+
   return (
     <div className="grid w-full gap-3 rounded-xl border bg-card p-4 text-right shadow-sm">
       <label className="grid gap-1.5 text-sm font-semibold">
@@ -77,6 +98,20 @@ export function SupabaseLoginForm({ onSuccess }: SupabaseLoginFormProps) {
       </label>
       <Button type="button" onClick={submit} disabled={pending}>
         {pending ? "جارٍ التحقق..." : isSignUp ? "إنشاء حساب شرطي" : "دخول آمن"}
+      </Button>
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        أو
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={signInWithGoogle}
+        disabled={pending}
+        className="w-full"
+      >
+        المتابعة باستخدام Google
       </Button>
       <button
         type="button"

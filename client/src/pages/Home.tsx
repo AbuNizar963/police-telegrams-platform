@@ -11,7 +11,7 @@ import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, Check
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createArabicSpeechRecognition, extractArabicTextFromImage } from "@/lib/localInput";
-import { correctArabicSpeechText } from "@/lib/arabicSpeech";
+import { correctArabicSpeechText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
@@ -239,7 +239,7 @@ function TelegramComposer({
         const finalText = correctArabicSpeechText(finalized.join(" "));
         const interimText = correctArabicSpeechText(interim.join(" "));
         const liveText = [finalText, interimText].filter(Boolean).join(" ");
-        setBody(`${speechBaseBodyRef.current}${liveText}`);
+        setBody(removeRepeatedSpeech(`${speechBaseBodyRef.current}${liveText}`));
       };
 
       recognition.onerror = event => {

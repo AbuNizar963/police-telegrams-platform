@@ -34,3 +34,25 @@ describe("correctArabicSpeechText", () => {
     expect(correctArabicSpeechText("مدرسهية")).toBe("مدرسهية");
   });
 });
+
+
+describe("removeRepeatedSpeech", () => {
+  it("collapses repeated words and phrases from speech recognition", () => {
+    expect(
+      removeRepeatedSpeech(
+        "في في الساعة في الساعة 15 في الساعة 15 في الساعة 15 من تاريخ",
+      ),
+    ).toBe("في الساعة 15 من تاريخ");
+  });
+
+  it("preserves repeated words when they are not adjacent", () => {
+    expect(removeRepeatedSpeech("في الساعة ثم في الساعة")).toBe(
+      "في الساعة ثم في الساعة",
+    );
+  });
+
+  it("handles punctuation and empty input", () => {
+    expect(removeRepeatedSpeech("الساعة، الساعة، 15")).toBe("الساعة، 15");
+    expect(removeRepeatedSpeech("   ")).toBe("");
+  });
+});

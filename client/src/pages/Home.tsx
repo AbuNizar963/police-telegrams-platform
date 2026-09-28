@@ -199,7 +199,6 @@ function TelegramComposer({
     }
     const recognition = speechRecognitionRef.current;
     speechRecognitionRef.current = null;
-    setSpeechInterim("");
     setRecording(false);
     if (recognition) {
       try {
@@ -268,7 +267,7 @@ function TelegramComposer({
 
         if (!speechShouldContinueRef.current) {
           speechRecognitionRef.current = null;
-            setRecording(false);
+          setRecording(false);
           return;
         }
 
@@ -293,7 +292,6 @@ function TelegramComposer({
       };
 
       recognition.onstart = () => {
-        setSpeechInterim("");
         setRecording(true);
       };
 

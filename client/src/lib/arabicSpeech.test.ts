@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { correctArabicSpeechText } from "./arabicSpeech";
+import { correctArabicSpeechText, removeRepeatedSpeech } from "./arabicSpeech";
 
 describe("correctArabicSpeechText", () => {
   it("corrects frequent speech-to-text substitutions", () => {
@@ -35,7 +35,6 @@ describe("correctArabicSpeechText", () => {
   });
 });
 
-
 describe("removeRepeatedSpeech", () => {
   it("collapses repeated words and phrases from speech recognition", () => {
     expect(
@@ -49,6 +48,22 @@ describe("removeRepeatedSpeech", () => {
     expect(removeRepeatedSpeech("في الساعة ثم في الساعة")).toBe(
       "في الساعة ثم في الساعة",
     );
+  });
+
+  it("collapses progressively revised Arabic date phrases", () => {
+    expect(
+      removeRepeatedSpeech(
+        "الساعة 15 من تاريخ 13 الساعة 15 من تاريخ 13/4 الساعة 15 من تاريخ 13/4/2026",
+      ),
+    ).toBe("الساعة 15 من تاريخ 13/4/2026");
+  });
+
+  it("supports date separators and keeps a complete date", () => {
+    expect(
+      removeRepeatedSpeech(
+        "الساعة 15 من تاريخ 13-4 الساعة 15 من تاريخ 13-4-2026",
+      ),
+    ).toBe("الساعة 15 من تاريخ 13-4-2026");
   });
 
   it("handles punctuation and empty input", () => {

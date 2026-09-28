@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileImage, FileText, Filter, ImagePlus, LocateFixed, LockKeyhole, MapPinned, Menu, Mic, Plus, Printer, Radio, Search, Save, Settings2, Share2, Shield, Siren, SlidersHorizontal, Square, Sun, Moon, Upload, UserRound, Users, X } from "lucide-react";
+import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileImage, FileText, Filter, LocateFixed, LockKeyhole, MapPinned, Menu, Mic, Plus, Printer, Radio, Search, Save, Settings2, Share2, Shield, Siren, SlidersHorizontal, Square, Sun, Moon, Upload, UserRound, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createArabicSpeechRecognition, extractArabicTextFromImage } from "@/lib/localInput";

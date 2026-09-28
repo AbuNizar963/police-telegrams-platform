@@ -89,3 +89,38 @@ export function correctArabicSpeechText(value: string): string {
     value,
   );
 }
+
+
+/**
+ * Removes consecutive duplicate words or short phrases emitted by speech
+ * recognition. Only adjacent, exact repetitions are collapsed; intentional
+ * repetitions separated by other words are preserved.
+ */
+export function removeRepeatedSpeech(value: string): string {
+  const words = value.trim().split(/\\s+/).filter(Boolean);
+  const comparable = (word: string) =>
+    word.replace(/^[،؛,.!?؟:()[\\]{}"'«»]+|[،؛,.!?؟:()[\\]{}"'«»]+$/g, "");
+
+  let index = 0;
+  while (index < words.length) {
+    let removed = false;
+    const maxPhraseLength = Math.min(8, Math.floor((index + 1) / 2));
+
+    for (let length = maxPhraseLength; length >= 1; length -= 1) {
+      const previousStart = index - length;
+      if (previousStart < 0 || index + length > words.length) continue;
+
+      const previous = words.slice(previousStart, index).map(comparable);
+      const current = words.slice(index, index + length).map(comparable);
+      if (previous.every((word, offset) => word && word === current[offset])) {
+        words.splice(index, length);
+        removed = true;
+        break;
+      }
+    }
+
+    if (!removed) index += 1;
+  }
+
+  return words.join(" ");
+}

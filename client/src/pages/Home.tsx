@@ -144,6 +144,7 @@ function TelegramComposer({
   const [category, setCategory] = useState<Category>("administrative");
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
+  const [imageInputOpen, setImageInputOpen] = useState(false);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const speechResultIndexRef = useRef(0);
@@ -381,21 +382,64 @@ function TelegramComposer({
         </label>
 
         <div className="flex flex-wrap gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
-            <Camera className="h-4 w-4 text-[#9b7c3d]" />
-            {processingInput ? "جارٍ التحليل..." : "إضافة صورة"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
+          <div className="relative">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setImageInputOpen(value => !value)}
               disabled={processingInput}
-              onChange={event => {
-                const file = event.target.files?.[0];
-                if (file) void handleImage(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+              className="h-9 rounded-lg text-xs"
+              aria-haspopup="menu"
+              aria-expanded={imageInputOpen}
+            >
+              <Camera className="ml-2 h-3.5 w-3.5 text-[#9b7c3d]" />
+              {processingInput ? "جارٍ التحليل..." : "إضافة صورة"}
+            </Button>
+            {imageInputOpen && !processingInput && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-20 mt-2 min-w-44 rounded-xl border bg-background p-1.5 shadow-lg"
+              >
+                <label
+                  role="menuitem"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-muted"
+                >
+                  <Camera className="h-4 w-4 text-[#9b7c3d]" />
+                  تصوير بالكاميرا
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={event => {
+                      const file = event.target.files?.[0];
+                      setImageInputOpen(false);
+                      if (file) void handleImage(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <label
+                  role="menuitem"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-muted"
+                >
+                  <ImagePlus className="h-4 w-4 text-[#9b7c3d]" />
+                  اختيار من المعرض
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={event => {
+                      const file = event.target.files?.[0];
+                      setImageInputOpen(false);
+                      if (file) void handleImage(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
 
           <Button
             type="button"

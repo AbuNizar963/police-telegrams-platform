@@ -4,13 +4,19 @@ import { registerStorageRoutes } from "./_core/storageRoutes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
-import { setupVite } from "./_core/vite";
-import type { Server } from "http";
 
-export async function createApp(
-  options: { productionStatic?: boolean; viteServer?: Server } = {},
-): Promise<Express> {
+/**
+ * Creates the HTTP application shared by the local server and Vercel.
+ *
+ * Vite is deliberately not imported here. Keeping development tooling out of
+ * this module prevents serverless bundlers from tracing Vite's native build
+ * dependencies into the production API function.
+ */
+export function createApp(
+  options: { productionStatic?: boolean } = {},
+): Express {
   const app = express();
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -36,8 +42,6 @@ export async function createApp(
 
   if (options.productionStatic) {
     serveStatic(app);
-  } else if (options.viteServer) {
-    await setupVite(app, options.viteServer);
   }
 
   return app;

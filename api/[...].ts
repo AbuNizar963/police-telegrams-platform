@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { createApp } from "../server/app";
+import { createApp } from "../dist/server/app.js";
 
 const appPromise = createApp({ productionStatic: false });
 

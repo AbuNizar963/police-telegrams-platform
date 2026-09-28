@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileImage, FileText, Filter, ImagePlus, LocateFixed, LockKeyhole, MapPinned, Menu, Mic, Plus, Printer, Radio, Search, Save, Settings2, Share2, Shield, Siren, SlidersHorizontal, Square, Sun, Moon, Upload, UserRound, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { createArabicSpeechRecognition, extractArabicTextFromImage } from "@/lib/localInput";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
@@ -118,15 +119,348 @@ export default function Home() {
 
 function QuickAction({ icon: Icon, label, detail, onClick }: { icon: typeof Plus; label: string; detail: string; onClick: () => void }) { return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-right transition-colors hover:border-[#b4945a] hover:bg-[#fffaf0] dark:hover:bg-[#2d281b]"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10233f] text-[#d8c38e]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-xs font-bold">{label}</span><span className="mt-0.5 block text-[10px] text-muted-foreground">{detail}</span></span><ChevronLeft className="mr-auto h-3.5 w-3.5 text-muted-foreground" /></button>; }
 
-function TelegramComposer({ pending, close, submit }: { pending: boolean; close: () => void; submit: (values: { subject: string; recipient: string; body: string; classification: Classification; priority: Priority; category: Category }) => void }) {
-  const [subject, setSubject] = useState(""); const [recipient, setRecipient] = useState(""); const [body, setBody] = useState(""); const [classification, setClassification] = useState<Classification>("normal"); const [priority, setPriority] = useState<Priority>("normal"); const [category, setCategory] = useState<Category>("administrative"); const [recording, setRecording] = useState(false); const [processingInput, setProcessingInput] = useState(false);
-  const recorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]);
-  const upload = trpc.telegrams.uploadAttachment.useMutation(); const ocr = trpc.telegrams.extractTextFromImage.useMutation(); const transcribe = trpc.telegrams.transcribeVoice.useMutation();
-  const appendText = (text: string) => { const clean = text.trim(); if (clean) setBody(current => current.trim() ? `${current.trim()}\n${clean}` : clean); };
-  const handleImage = async (file?: File) => { if (!file) return; if (!file.type.startsWith("image/")) return toast.error("اختر صورة واضحة"); if (file.size > 10 * 1024 * 1024) return toast.error("حجم الصورة يجب ألا يتجاوز 10 ميغابايت"); setProcessingInput(true); try { const contentType = file.type === "image/jpeg" ? "image/jpeg" : file.type === "image/webp" ? "image/webp" : "image/png"; const uploaded = await upload.mutateAsync({ fileName: file.name, contentType, base64: await readFileAsBase64(file) }); const result = await ocr.mutateAsync({ fileKey: uploaded.key }); appendText(result.text); toast.success(result.text ? "تم تحويل الصورة إلى نص" : "لم يتم العثور على نص واضح في الصورة"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تحويل الصورة إلى نص"); } finally { setProcessingInput(false); } };
-  const toggleRecording = async () => { if (recording) { recorderRef.current?.stop(); return; } if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast.error("المتصفح لا يدعم التسجيل الصوتي"); try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); const recorder = new MediaRecorder(stream); chunksRef.current = []; recorder.ondataavailable = event => { if (event.data.size > 0) chunksRef.current.push(event.data); }; recorder.onstop = async () => { stream.getTracks().forEach(track => track.stop()); setRecording(false); const audio = new File([new Blob(chunksRef.current, { type: "audio/webm" })], `telegram-voice-${Date.now()}.webm`, { type: "audio/webm" }); setProcessingInput(true); try { const uploaded = await upload.mutateAsync({ fileName: audio.name, contentType: "audio/webm", base64: await readFileAsBase64(audio) }); const result = await transcribe.mutateAsync({ fileKey: uploaded.key, language: "ar" }); appendText(result.text); toast.success("تم تحويل التسجيل الصوتي إلى نص"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تحويل الصوت إلى نص"); } finally { setProcessingInput(false); } }; recorderRef.current = recorder; recorder.start(); setRecording(true); } catch { toast.error("اسمح بالوصول إلى الميكروفون لبدء التسجيل"); } };
-  const save = () => { if (subject.trim().length < 2 || recipient.trim().length < 2 || body.trim().length < 3) return toast.error("أكمل الموضوع والجهة ونص البرقية"); submit({ subject: subject.trim(), recipient: recipient.trim(), body: body.trim(), classification, priority, category }); };
-  return <Modal title="إنشاء برقية تشغيلية" subtitle="سيتم تثبيت هويتك الرقمية تلقائياً من الحساب الموثق." close={close}><div className="grid gap-4"><label className="grid gap-1.5 text-xs font-bold">الموضوع<Input value={subject} onChange={event => setSubject(event.target.value)} placeholder="عنوان مختصر ودقيق للبلاغ" className="h-11 rounded-lg" /></label><label className="grid gap-1.5 text-xs font-bold">الجهة الموجهة إليها<Input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="القطاع أو المسؤول المعني" className="h-11 rounded-lg" /></label><div className="grid gap-1.5 text-xs font-bold"><span>درجة السرية</span><div className="grid grid-cols-2 gap-2">{(Object.keys(classificationLabels) as Classification[]).map(item => <button type="button" key={item} onClick={() => setClassification(item)} className={`rounded-lg border p-2.5 text-xs ${classification === item ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]" : "hover:bg-muted"}`}>{classificationLabels[item]}</button>)}</div></div><div className="grid gap-1.5 text-xs font-bold"><span>درجة الأولوية</span><div className="grid grid-cols-3 gap-2">{(Object.keys(priorityLabels) as Priority[]).map(item => <button type="button" key={item} onClick={() => setPriority(item)} className={`rounded-lg border p-2.5 text-xs ${priority === item ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]" : "hover:bg-muted"}`}>{priorityLabels[item]}</button>)}</div></div><div className="grid gap-1.5 text-xs font-bold"><span>تصنيف البلاغ</span><select value={category} onChange={event => setCategory(event.target.value as Category)} className="h-11 rounded-lg border bg-background px-3 text-sm font-normal">{(Object.keys(categoryLabels) as Category[]).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}</select></div><label className="grid gap-1.5 text-xs font-bold">نص البرقية<Textarea value={body} onChange={event => setBody(event.target.value)} placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..." className="min-h-36 rounded-lg leading-7" /></label><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted"><Camera className="h-4 w-4 text-[#9b7c3d]" />{processingInput ? "جارٍ التحليل..." : "فتح الكاميرا"}<input type="file" accept="image/*" capture="environment" className="hidden" disabled={processingInput} onChange={event => { const file = event.target.files?.[0]; if (file) void handleImage(file); event.currentTarget.value = ""; }} /></label><label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted"><ImagePlus className="h-4 w-4 text-[#9b7c3d]" />اختيار من المعرض<input type="file" accept="image/*" className="hidden" disabled={processingInput} onChange={event => { const file = event.target.files?.[0]; if (file) void handleImage(file); event.currentTarget.value = ""; }} /></label><Button type="button" variant={recording ? "destructive" : "outline"} onClick={toggleRecording} disabled={processingInput} className="h-9 rounded-lg text-xs">{recording ? <Square className="ml-2 h-3.5 w-3.5" /> : <Mic className="ml-2 h-3.5 w-3.5" />}{recording ? "إيقاف التسجيل" : "اضغط للتحدث"}</Button></div><p className="text-[11px] text-muted-foreground">تُرفع الصورة أو التسجيل إلى التخزين الآمن، ثم تتم المعالجة على الخادم ولا تُرسل مفاتيح النظام إلى المتصفح.</p></div><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row"><Button variant="outline" onClick={close} className="h-11 rounded-lg">إلغاء</Button><Button onClick={save} disabled={pending || processingInput || recording} className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]">{pending ? "جارٍ التسجيل..." : "تسجيل البرقية"}</Button></div></Modal>;
+function TelegramComposer({
+  pending,
+  close,
+  submit,
+}: {
+  pending: boolean;
+  close: () => void;
+  submit: (values: {
+    subject: string;
+    recipient: string;
+    body: string;
+    classification: Classification;
+    priority: Priority;
+    category: Category;
+  }) => void;
+}) {
+  const [subject, setSubject] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [body, setBody] = useState("");
+  const [classification, setClassification] =
+    useState<Classification>("normal");
+  const [priority, setPriority] = useState<Priority>("normal");
+  const [category, setCategory] = useState<Category>("administrative");
+  const [recording, setRecording] = useState(false);
+  const [processingInput, setProcessingInput] = useState(false);
+
+  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechResultIndexRef = useRef(0);
+  const appendText = (text: string) => {
+    const clean = text.trim();
+    if (clean) {
+      setBody(current =>
+        current.trim() ? `${current.trim()}\n${clean}` : clean,
+      );
+    }
+  };
+
+  const handleImage = async (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("اختر صورة واضحة");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب ألا يتجاوز 10 ميغابايت");
+      return;
+    }
+
+    setProcessingInput(true);
+    try {
+      const text = await extractArabicTextFromImage(file);
+      appendText(text);
+      toast.success(
+        text
+          ? "تم تحويل الصورة إلى نص مجانًا داخل المتصفح"
+          : "لم يتم العثور على نص واضح في الصورة",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تحويل الصورة إلى نص",
+      );
+    } finally {
+      setProcessingInput(false);
+    }
+  };
+
+  const stopSpeechRecognition = () => {
+    speechRecognitionRef.current?.stop();
+    speechRecognitionRef.current = null;
+    setRecording(false);
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      stopSpeechRecognition();
+      return;
+    }
+
+    try {
+      const recognition = createArabicSpeechRecognition();
+      speechResultIndexRef.current = 0;
+      speechRecognitionRef.current = recognition;
+
+      recognition.onresult = event => {
+        const transcripts: string[] = [];
+
+        for (
+          let index = speechResultIndexRef.current;
+          index < event.results.length;
+          index += 1
+        ) {
+          const result = event.results[index];
+
+          if (result?.isFinal && result[0]?.transcript) {
+            transcripts.push(result[0].transcript);
+          }
+        }
+
+        speechResultIndexRef.current = event.results.length;
+
+        if (transcripts.length > 0) {
+          appendText(transcripts.join(" "));
+        }
+      };
+
+      recognition.onerror = event => {
+        stopSpeechRecognition();
+
+        const message =
+          event.error === "not-allowed"
+            ? "اسمح للمتصفح بالوصول إلى الميكروفون"
+            : event.error === "network"
+              ? "خدمة التعرف الصوتي في المتصفح غير متاحة حاليًا"
+              : event.error === "no-speech"
+                ? "لم يتم اكتشاف كلام واضح"
+                : "تعذر تحويل الصوت إلى نص";
+
+        toast.error(message);
+      };
+
+      recognition.onend = () => {
+        speechRecognitionRef.current = null;
+        setRecording(false);
+      };
+
+      recognition.onstart = () => {
+        setRecording(true);
+      };
+
+      recognition.start();
+    } catch (error) {
+      speechRecognitionRef.current = null;
+      setRecording(false);
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي",
+      );
+    }
+  };
+
+  useEffect(
+    () => () => {
+      speechRecognitionRef.current?.stop();
+      speechRecognitionRef.current = null;
+    },
+    [],
+  );
+
+  const save = () => {
+    if (
+      subject.trim().length < 2 ||
+      recipient.trim().length < 2 ||
+      body.trim().length < 3
+    ) {
+      toast.error("أكمل الموضوع والجهة ونص البرقية");
+      return;
+    }
+
+    submit({
+      subject: subject.trim(),
+      recipient: recipient.trim(),
+      body: body.trim(),
+      classification,
+      priority,
+      category,
+    });
+  };
+
+  return (
+    <Modal
+      title="إنشاء برقية تشغيلية"
+      subtitle="سيتم تثبيت هويتك الرقمية تلقائيًا من الحساب الموثق."
+      close={close}
+    >
+      <div className="grid gap-4">
+        <label className="grid gap-1.5 text-xs font-bold">
+          الموضوع
+          <Input
+            value={subject}
+            onChange={event => setSubject(event.target.value)}
+            placeholder="عنوان مختصر ودقيق للبلاغ"
+            className="h-11 rounded-lg"
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-xs font-bold">
+          الجهة الموجهة إليها
+          <Input
+            value={recipient}
+            onChange={event => setRecipient(event.target.value)}
+            placeholder="القطاع أو المسؤول المعني"
+            className="h-11 rounded-lg"
+          />
+        </label>
+
+        <div className="grid gap-1.5 text-xs font-bold">
+          <span>درجة السرية</span>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(classificationLabels) as Classification[]).map(
+              item => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => setClassification(item)}
+                  className={`rounded-lg border p-2.5 text-xs ${
+                    classification === item
+                      ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {classificationLabels[item]}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-1.5 text-xs font-bold">
+          <span>درجة الأولوية</span>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(priorityLabels) as Priority[]).map(item => (
+              <button
+                type="button"
+                key={item}
+                onClick={() => setPriority(item)}
+                className={`rounded-lg border p-2.5 text-xs ${
+                  priority === item
+                    ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
+                    : "hover:bg-muted"
+                }`}
+              >
+                {priorityLabels[item]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-1.5 text-xs font-bold">
+          <span>تصنيف البلاغ</span>
+          <select
+            value={category}
+            onChange={event => setCategory(event.target.value as Category)}
+            className="h-11 rounded-lg border bg-background px-3 text-sm font-normal"
+          >
+            {(Object.keys(categoryLabels) as Category[]).map(item => (
+              <option key={item} value={item}>
+                {categoryLabels[item]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label className="grid gap-1.5 text-xs font-bold">
+          نص البرقية
+          <Textarea
+            value={body}
+            onChange={event => setBody(event.target.value)}
+            placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..."
+            className="min-h-36 rounded-lg leading-7"
+          />
+        </label>
+
+        <div className="flex flex-wrap gap-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
+            <Camera className="h-4 w-4 text-[#9b7c3d]" />
+            {processingInput ? "جارٍ التحليل..." : "فتح الكاميرا"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              disabled={processingInput}
+              onChange={event => {
+                const file = event.target.files?.[0];
+                if (file) void handleImage(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
+            <ImagePlus className="h-4 w-4 text-[#9b7c3d]" />
+            اختيار من المعرض
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={processingInput}
+              onChange={event => {
+                const file = event.target.files?.[0];
+                if (file) void handleImage(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+
+          <Button
+            type="button"
+            variant={recording ? "destructive" : "outline"}
+            onClick={toggleRecording}
+            disabled={processingInput}
+            className="h-9 rounded-lg text-xs"
+          >
+            {recording ? (
+              <Square className="ml-2 h-3.5 w-3.5" />
+            ) : (
+              <Mic className="ml-2 h-3.5 w-3.5" />
+            )}
+            {recording ? "إيقاف الاستماع" : "اضغط للتحدث"}
+          </Button>
+        </div>
+
+        <div className="rounded-lg border bg-muted/30 p-3 text-[11px] leading-6 text-muted-foreground">
+          <p>
+            <strong className="text-foreground">الصورة:</strong> تتم قراءتها
+            بمحرك Tesseract المجاني داخل المتصفح، ولا تحتاج إلى مفتاح OpenAI.
+          </p>
+          <p className="mt-1">
+            <strong className="text-foreground">الصوت:</strong> يستخدم التعرف
+            الصوتي المتاح في المتصفح باللغة العربية. قد يعتمد Chrome على خدمة
+            التعرف السحابية حسب إعدادات الجهاز والمتصفح.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
+        <Button
+          variant="outline"
+          onClick={close}
+          className="h-11 rounded-lg"
+        >
+          إلغاء
+        </Button>
+        <Button
+          onClick={save}
+          disabled={pending || processingInput || recording}
+          className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
+        >
+          {pending ? "جارٍ التسجيل..." : "تسجيل البرقية"}
+        </Button>
+      </div>
+    </Modal>
+  );
 }
 
 function TelegramDetail({ telegram, settings, close }: { telegram: { serialCode: string; subject: string; recipient: string; body: string; creatorName: string; classification: Classification; priority: Priority; category: Category; status: Status; createdAt: Date; gpsLatitude?: string | null; gpsLongitude?: string | null }; settings?: { departmentName: string; unitName?: string; unitChiefRank?: string; unitChiefName?: string; timezone?: string; dateFormat?: string; numberSystem?: NumberSystem; logoUrl: string | null }; close: () => void }) {

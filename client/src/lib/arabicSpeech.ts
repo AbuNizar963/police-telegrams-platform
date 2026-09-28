@@ -61,7 +61,6 @@ const wordCorrections: Readonly<Record<string, string>> = {
   المديريه: "المديرية",
   مديريه: "مديرية",
   البلاغه: "البلاغة",
-  البلاغه: "البلاغة",
 };
 
 const correctionPatterns = Object.entries(wordCorrections).map(

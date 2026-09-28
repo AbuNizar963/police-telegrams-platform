@@ -1,5 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { authenticateLocalUser, clearAuthenticatedSession, publicUser, setAuthenticatedSession, verifyPassword, hashPassword } from "./_core/auth";
+import {
+  authenticateLocalUser,
+  clearAuthenticatedSession,
+  hashPassword,
+  publicUser,
+  setAuthenticatedSession,
+  verifyPassword,
+} from "./_core/auth";
 import { ENV } from "./_core/env";
 import { z } from "zod";
 import {

@@ -1,7 +1,5 @@
-import { startLogin } from "@/const";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -11,50 +9,18 @@ type UseAuthOptions = {
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
   const utils = trpc.useUtils();
-  const [authReady, setAuthReady] = useState(false);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
-    enabled: authReady,
   });
 
-  useEffect(() => {
-    let subscription: { unsubscribe: () => void } | undefined;
-    let cancelled = false;
-
-    try {
-      const supabase = getSupabaseBrowserClient();
-      subscription = supabase.auth.onAuthStateChange(() => {
-        if (cancelled) return;
-        setAuthReady(true);
-        void utils.auth.me.invalidate();
-      }).data.subscription;
-
-      void supabase.auth.getSession().then(({ error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.warn("[Auth] Unable to restore Supabase session", error);
-        }
-        setAuthReady(true);
-        void utils.auth.me.invalidate();
-      });
-    } catch {
-      if (!cancelled) setAuthReady(true);
-    }
-
-    return () => {
-      cancelled = true;
-      subscription?.unsubscribe();
-    };
-  }, [utils]);
-
-  const logout = useCallback(async () => {
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    utils.auth.me.setData(undefined, null);
-    await utils.auth.me.invalidate();
-  }, [utils]);
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: async () => {
+      utils.auth.me.setData(undefined, null);
+      await utils.auth.me.invalidate();
+    },
+  });
 
   const state = useMemo(
     () => ({
@@ -67,16 +33,10 @@ export function useAuth(options?: UseAuthOptions) {
   );
 
   useEffect(() => {
-    if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || state.user) return;
+    if (!redirectOnUnauthenticated || meQuery.isLoading || state.user) return;
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
-
-    if (redirectPath) {
-      window.location.href = redirectPath;
-    } else {
-      void startLogin();
-    }
+    if (redirectPath) window.location.href = redirectPath;
   }, [
     redirectOnUnauthenticated,
     redirectPath,
@@ -87,6 +47,6 @@ export function useAuth(options?: UseAuthOptions) {
   return {
     ...state,
     refresh: () => meQuery.refetch(),
-    logout,
+    logout: () => logoutMutation.mutateAsync(),
   };
 }

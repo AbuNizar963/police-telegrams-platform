@@ -305,7 +305,21 @@ export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
 
 export async function updateTelegram(
   id: number,
-  values: Pick<InsertTelegram, "subject" | "recipient" | "body" | "classification" | "priority" | "category" | "status" | "attachmentManifest" | "gpsLatitude" | "gpsLongitude">,
+  values: Partial<
+    Pick<
+      InsertTelegram,
+      | "subject"
+      | "recipient"
+      | "body"
+      | "classification"
+      | "priority"
+      | "category"
+      | "status"
+      | "attachmentManifest"
+      | "gpsLatitude"
+      | "gpsLongitude"
+    >
+  >,
 ): Promise<Telegram> {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")

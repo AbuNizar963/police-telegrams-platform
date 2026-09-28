@@ -19,14 +19,15 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { LayoutDashboard, LogOut, Moon, PanelLeft, Shield, Sun } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { useTheme } from "@/contexts/ThemeContext";
+import { trpc } from "@/lib/trpc";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
@@ -47,6 +48,14 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const utils = trpc.useUtils();
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+    },
+  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -58,27 +67,75 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#10233f] text-[#d8c38e] shadow-lg">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <form
+          className="flex w-full max-w-md flex-col gap-6 rounded-2xl border bg-card p-8 shadow-lg"
+          onSubmit={event => {
+            event.preventDefault();
+            loginMutation.mutate({ username, password });
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#10233f] text-[#d8c38e] shadow-lg">
               <Shield className="h-8 w-8" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-center">
               تسجيل الدخول إلى النظام
             </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              استخدم حسابك المعتمد حتى يظهر اسمك تلقائياً كمنشئ لكل برقية.
+            <p className="text-sm text-muted-foreground text-center">
+              أدخل اسم المستخدم وكلمة المرور الخاصة بالحساب المعتمد.
             </p>
           </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="login-username" className="text-sm font-medium">
+                اسم المستخدم
+              </label>
+              <Input
+                id="login-username"
+                value={username}
+                onChange={event => setUsername(event.target.value)}
+                autoComplete="username"
+                autoFocus
+                dir="ltr"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="login-password" className="text-sm font-medium">
+                كلمة المرور
+              </label>
+              <Input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                autoComplete="current-password"
+                dir="ltr"
+                required
+              />
+            </div>
+          </div>
+
+          {loginMutation.error ? (
+            <p role="alert" className="text-sm text-destructive text-center">
+              {loginMutation.error.message}
+            </p>
+          ) : null}
+
           <Button
-            onClick={() => startLogin()}
+            type="submit"
             size="lg"
+            disabled={
+              loginMutation.isPending || !username.trim() || !password
+            }
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            تسجيل الدخول الآمن
+            {loginMutation.isPending ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول"}
           </Button>
-        </div>
+        </form>
       </div>
     );
   }

@@ -20,13 +20,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, Moon, PanelLeft, Shield, Sun } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Shield } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
 
 const menuItems = [
@@ -165,7 +164,6 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -317,12 +315,6 @@ function DashboardLayoutContent({
           </div>
         )}
         <main className="flex-1 p-4">
-          <div className="mb-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">{theme === "dark" ? "وضع غرفة العمليات" : "الوضع النهاري"}</span>
-            <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="تبديل المظهر" className="h-9 w-9 rounded-xl bg-background">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-          </div>
           {children}
         </main>
       </SidebarInset>

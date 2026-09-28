@@ -1,13 +1,27 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
-import { promisify } from "node:util";
-import { parse, serialize } from "cookie";
+import { parse, stringify } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 
-const scrypt = promisify(scryptCallback);
+function deriveKey(
+  password: string,
+  salt: Buffer,
+  keyLength: number,
+  options: { N: number; r: number; p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keyLength, options, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(derivedKey);
+    });
+  });
+}
 export const SESSION_COOKIE = "police_telegrams_session";
 const SESSION_MAX_AGE = 60 * 60 * 12;
 const SCRYPT_N = 16384;
@@ -22,11 +36,8 @@ function getSessionKey(): Uint8Array {
 }
 
 export function publicUser(user: User): User {
-  const safe = { ...user } as User & {
-    passwordHash?: string | null;
-  };
-  delete safe.passwordHash;
-  return safe;
+  const { passwordHash: _passwordHash, ...safe } = user;
+  return safe as User;
 }
 
 export async function setAuthenticatedSession(
@@ -45,7 +56,7 @@ export async function setAuthenticatedSession(
 
   res.setHeader(
     "Set-Cookie",
-    serialize(SESSION_COOKIE, token, {
+    stringify(SESSION_COOKIE, token, {
       httpOnly: true,
       secure: ENV.isProduction,
       sameSite: "lax",
@@ -58,7 +69,7 @@ export async function setAuthenticatedSession(
 export function clearAuthenticatedSession(res: Response): void {
   res.setHeader(
     "Set-Cookie",
-    serialize(SESSION_COOKIE, "", {
+    stringify(SESSION_COOKIE, "", {
       httpOnly: true,
       secure: ENV.isProduction,
       sameSite: "lax",
@@ -71,7 +82,7 @@ export function clearAuthenticatedSession(res: Response): void {
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const derived = (await scrypt(password, salt, 64, {
+  const derived = (await deriveKey(password, salt, 64, {
     N: SCRYPT_N,
     r: SCRYPT_R,
     p: SCRYPT_P,
@@ -98,7 +109,7 @@ export async function verifyPassword(
 
   const salt = Buffer.from(saltText, "base64url");
   const expected = Buffer.from(hashText, "base64url");
-  const derived = (await scrypt(password, salt, expected.length, {
+  const derived = (await deriveKey(password, salt, expected.length, {
     N: Number(n),
     r: Number(r),
     p: Number(p),

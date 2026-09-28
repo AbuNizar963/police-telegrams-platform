@@ -13,6 +13,7 @@ export const ENV = {
   authSessionSecret: process.env.AUTH_SESSION_SECRET ?? "",
   ownerUsername: process.env.OWNER_USERNAME ?? "AbuNizar",
   ownerPasswordHash: process.env.OWNER_PASSWORD_HASH ?? "",
+  ownerInitialPassword: process.env.OWNER_INITIAL_PASSWORD ?? "",
   openAiApiKey: process.env.OPENAI_API_KEY ?? "",
   openAiBaseUrl: (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(
     /\/+$/,

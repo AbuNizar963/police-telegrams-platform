@@ -1,14 +1,46 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
-import { promisify } from "node:util";
-import { parse, serialize } from "cookie";
+import { parse } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 
-const scrypt = promisify(scryptCallback);
+function deriveKey(
+  password: string,
+  salt: Buffer,
+  keyLength: number,
+  options: { N: number; r: number; p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keyLength, options, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(derivedKey);
+    });
+  });
+}
 export const SESSION_COOKIE = "police_telegrams_session";
+
+function serializeSessionCookie(
+  value: string,
+  options: { maxAge: number; expires?: Date },
+): string {
+  const parts = [
+    SESSION_COOKIE + "=" + encodeURIComponent(value),
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=" + options.maxAge,
+  ];
+
+  if (ENV.isProduction) parts.push("Secure");
+  if (options.expires) parts.push("Expires=" + options.expires.toUTCString());
+
+  return parts.join("; ");
+}
 const SESSION_MAX_AGE = 60 * 60 * 12;
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
@@ -21,17 +53,16 @@ function getSessionKey(): Uint8Array {
   return new TextEncoder().encode(ENV.authSessionSecret);
 }
 
-export function publicUser(user: User): User {
-  const safe = { ...user } as User & {
-    passwordHash?: string | null;
-  };
-  delete safe.passwordHash;
+export type PublicUser = Omit<User, "passwordHash">;
+
+export function publicUser(user: User): PublicUser {
+  const { passwordHash: _passwordHash, ...safe } = user;
   return safe;
 }
 
 export async function setAuthenticatedSession(
   res: Response,
-  user: User,
+  user: Pick<User, "id" | "role" | "authUserId">,
 ): Promise<void> {
   const token = await new SignJWT({
     role: user.role,
@@ -45,33 +76,20 @@ export async function setAuthenticatedSession(
 
   res.setHeader(
     "Set-Cookie",
-    serialize(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: ENV.isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE,
-    }),
+    serializeSessionCookie(token, { maxAge: SESSION_MAX_AGE }),
   );
 }
 
 export function clearAuthenticatedSession(res: Response): void {
   res.setHeader(
     "Set-Cookie",
-    serialize(SESSION_COOKIE, "", {
-      httpOnly: true,
-      secure: ENV.isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-      expires: new Date(0),
-    }),
+    serializeSessionCookie("", { maxAge: 0, expires: new Date(0) }),
   );
 }
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const derived = (await scrypt(password, salt, 64, {
+  const derived = (await deriveKey(password, salt, 64, {
     N: SCRYPT_N,
     r: SCRYPT_R,
     p: SCRYPT_P,
@@ -98,7 +116,7 @@ export async function verifyPassword(
 
   const salt = Buffer.from(saltText, "base64url");
   const expected = Buffer.from(hashText, "base64url");
-  const derived = (await scrypt(password, salt, expected.length, {
+  const derived = (await deriveKey(password, salt, expected.length, {
     N: Number(n),
     r: Number(r),
     p: Number(p),
@@ -112,7 +130,7 @@ export async function verifyPassword(
 
 export async function getAuthenticatedUserFromRequest(
   req: Request,
-): Promise<User | null> {
+): Promise<PublicUser | null> {
   const token = parse(req.headers.cookie ?? "")[SESSION_COOKIE];
   if (!token) return null;
 
@@ -133,7 +151,7 @@ export async function getAuthenticatedUserFromRequest(
 export async function authenticateLocalUser(
   username: string,
   password: string,
-): Promise<User | null> {
+): Promise<PublicUser | null> {
   const user = await db.getUserByUsername(username);
   if (!user?.passwordHash) return null;
 

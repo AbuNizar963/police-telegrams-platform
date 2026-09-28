@@ -53,14 +53,16 @@ function getSessionKey(): Uint8Array {
   return new TextEncoder().encode(ENV.authSessionSecret);
 }
 
-export function publicUser(user: User): User {
+export type PublicUser = Omit<User, "passwordHash">;
+
+export function publicUser(user: User): PublicUser {
   const { passwordHash: _passwordHash, ...safe } = user;
-  return safe as User;
+  return safe;
 }
 
 export async function setAuthenticatedSession(
   res: Response,
-  user: User,
+  user: Pick<User, "id" | "role" | "authUserId">,
 ): Promise<void> {
   const token = await new SignJWT({
     role: user.role,
@@ -128,7 +130,7 @@ export async function verifyPassword(
 
 export async function getAuthenticatedUserFromRequest(
   req: Request,
-): Promise<User | null> {
+): Promise<PublicUser | null> {
   const token = parse(req.headers.cookie ?? "")[SESSION_COOKIE];
   if (!token) return null;
 
@@ -149,7 +151,7 @@ export async function getAuthenticatedUserFromRequest(
 export async function authenticateLocalUser(
   username: string,
   password: string,
-): Promise<User | null> {
+): Promise<PublicUser | null> {
   const user = await db.getUserByUsername(username);
   if (!user?.passwordHash) return null;
 

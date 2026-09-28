@@ -102,6 +102,44 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   throwIfError(error, "Failed to upsert user");
 }
 
+export async function getUserById(id: number): Promise<User | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  throwIfError(error, "Failed to load user");
+  return data ? mapUser(data as Record<string, unknown>) : undefined;
+}
+
+export async function getUserByUsername(
+  username: string,
+): Promise<(User & { passwordHash: string | null }) | undefined> {
+  const normalized = username.trim().toLowerCase();
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .select("*")
+    .ilike("username", normalized)
+    .maybeSingle();
+  throwIfError(error, "Failed to load user by username");
+  return data
+    ? (mapUser(data as Record<string, unknown>) as User & {
+        passwordHash: string | null;
+      })
+    : undefined;
+}
+
+export async function updateUserLastSignedIn(id: number): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .update({
+      lastSignedIn: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id);
+  throwIfError(error, "Failed to update user sign-in time");
+}
+
 export async function getUserByAuthUserId(authUserId: string): Promise<User | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("users")

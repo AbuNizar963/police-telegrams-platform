@@ -609,357 +609,256 @@ function TelegramDetail({
     onError: error => toast.error(error.message || "تعذر حذف البرقية"),
   });
   const [exporting, setExporting] = useState<"pdf" | "image" | "share" | "image-share" | null>(null);
-  const capture = async () => {
-    const paper = paperRef.current;
-    if (!paper) {
-      throw new Error("تعذر العثور على ورقة البرقية");
-    }
+  const createExportPaper = () => {
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
+    const departmentName = settings?.departmentName ?? "قسم العمليات";
+    const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
+    const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const logo = settings?.logoUrl
+      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
+      : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = `
+      <style>
+        .telegram-export-page {
+          box-sizing: border-box;
+          width: 794px;
+          min-height: 1123px;
+          padding: 52px;
+          margin: 0;
+          background: #fff;
+          color: #172033;
+          direction: rtl;
+          font-family: Tahoma, Arial, sans-serif;
+          font-size: 15px;
+          line-height: 1.8;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .telegram-export-page * { box-sizing: border-box; }
+        .telegram-export-page .official-header {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
+          align-items: start;
+          gap: 18px;
+          padding: 0 0 22px;
+          border-bottom: 3px solid #b49a55;
+        }
+        .telegram-export-page .header-government,
+        .telegram-export-page .header-metadata { min-width: 0; }
+        .telegram-export-page .header-government { text-align: right; }
+        .telegram-export-page .header-metadata { text-align: left; }
+        .telegram-export-page .header-government p,
+        .telegram-export-page .header-metadata p { margin: 0; }
+        .telegram-export-page .government-name { font-size: 18px; font-weight: 700; }
+        .telegram-export-page .government-subtitle { font-size: 15px; font-weight: 600; }
+        .telegram-export-page .header-metadata { font-size: 13px; line-height: 1.9; }
+        .telegram-export-page .official-logo {
+          display: block;
+          width: 84px;
+          height: 84px;
+          margin: 0 auto;
+          object-fit: contain;
+        }
+        .telegram-export-page .official-seal {
+          width: 84px;
+          height: 84px;
+          margin: 0 auto;
+          border: 2px solid #b49a55;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #9a813c;
+          text-align: center;
+          line-height: 1.2;
+        }
+        .telegram-export-page .official-seal span { font-size: 20px; }
+        .telegram-export-page .official-seal strong { font-size: 11px; }
+        .telegram-export-page .classification {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          margin: 18px 0;
+          padding: 10px 14px;
+          border: 1px solid #d8dee8;
+          background: #f8fafc;
+          font-size: 13px;
+        }
+        .telegram-export-page .telegram-content {
+          min-height: 570px;
+          padding: 22px 24px;
+          border: 1.5px solid #253247;
+          display: flex;
+          flex-direction: column;
+        }
+        .telegram-export-page .routing {
+          padding-bottom: 14px;
+          border-bottom: 1px dotted #7b8493;
+          line-height: 2;
+        }
+        .telegram-export-page .routing p { margin: 0; }
+        .telegram-export-page .body-heading {
+          margin: 20px 0 14px;
+          text-align: center;
+          font-size: 17px;
+          font-weight: 700;
+        }
+        .telegram-export-page .telegram-body {
+          min-height: 150px;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          text-align: justify;
+          line-height: 2;
+          font-size: 16px;
+        }
+        .telegram-export-page .signature {
+          margin-top: auto;
+          padding-top: 26px;
+          text-align: left;
+          line-height: 1.9;
+        }
+        .telegram-export-page .signature p { margin: 0; }
+        .telegram-export-page .signature-label {
+          margin-top: 14px !important;
+          color: #667085;
+          font-size: 12px;
+        }
+        .telegram-export-page .document-footer {
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          margin-top: 16px;
+          color: #667085;
+          font-size: 11px;
+        }
+        .telegram-export-page .document-footer p { margin: 0; }
+        @media print {
+          @page { size: A4 portrait; margin: 0; }
+          html, body { margin: 0; padding: 0; background: #fff; }
+          .telegram-export-page { width: 210mm; min-height: 297mm; }
+        }
+      </style>
+      <article class="telegram-export-page" dir="rtl" lang="ar">
+        <header class="official-header">
+          <div class="header-government">
+            <p class="government-name">الجمهورية العربية السورية</p>
+            <p class="government-subtitle">وزارة الداخلية</p>
+            <p>${escapeHtml(unitName)}</p>
+            <p>${escapeHtml(departmentName)}</p>
+          </div>
+          <div>${logo}</div>
+          <div class="header-metadata">
+            <p><strong>رقم البرقية:</strong> ${escapeHtml(telegram.serialCode)}</p>
+            <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>
+            <p><strong>درجة السرية:</strong> ${escapeHtml(telegram.classification)}</p>
+            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(telegram.priority)}</p>
+          </div>
+        </header>
+        <section class="classification">
+          <span><strong>نوع الوثيقة:</strong> برقية رسمية</span>
+          <span><strong>الحالة:</strong> ${escapeHtml(telegram.status)}</span>
+        </section>
+        <main class="telegram-content">
+          <section class="routing">
+            <p><strong>من:</strong> ${escapeHtml(telegram.creatorName)} — ${escapeHtml(departmentName)}</p>
+            <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
+            <p><strong>للاطلاع:</strong> ................................................................................</p>
+          </section>
+          <h2 class="body-heading">نص البرقية</h2>
+          <div class="telegram-body">${escapeHtml(telegram.body)}</div>
+          <section class="signature">
+            <p><strong>${escapeHtml(settings?.unitChiefRank ?? "رئيس الوحدة")} ${escapeHtml(settings?.unitChiefName ?? "")}</strong></p>
+            <p>${escapeHtml(unitName)}</p>
+            <p class="signature-label">التوقيع والختم الرسمي</p>
+          </section>
+        </main>
+        <footer class="document-footer">
+          <p>الموقع: ${escapeHtml(telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p>تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+        </footer>
+      </article>`;
+
+    return wrapper;
+  };
+
+  const capture = async () => {
     await document.fonts.ready;
 
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      throw new Error("المتصفح لا يدعم تجهيز الصور");
+    const exportWrapper = createExportPaper();
+    const paper = exportWrapper.querySelector<HTMLElement>(".telegram-export-page");
+    if (!paper) {
+      throw new Error("تعذر تجهيز قالب البرقية للتصدير");
     }
 
-    const normalizeModernColors = (value: string) =>
-      value.replace(/(?:oklch|oklab)\((?:[^()]|\([^()]*\))*\)/gi, color => {
-        context.clearRect(0, 0, 1, 1);
-        context.fillStyle = "#000000";
-        context.fillStyle = color;
-        context.fillRect(0, 0, 1, 1);
-        const pixel = context.getImageData(0, 0, 1, 1).data;
-        return `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${Number((pixel[3] / 255).toFixed(3))})`;
-      });
+    const mount = document.createElement("div");
+    mount.setAttribute("aria-hidden", "true");
+    mount.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:794px;z-index:-1;pointer-events:none;";
+    mount.appendChild(exportWrapper);
+    document.body.appendChild(mount);
 
-    return html2canvas(paper, {
-      scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      // Render every export from a canonical A4-width canvas (96 CSS px/in).
-      // The on-clone paper width below is 794px, matching 210mm at 96dpi.
-      width: 794,
-      height: Math.max(paper.scrollHeight, 1123),
-      windowWidth: 794,
-      windowHeight: Math.max(paper.scrollHeight, 1123),
-      onclone: async clonedDocument => {
-        // html2canvas can produce a tainted canvas when an embedded image is
-        // served without valid CORS headers. Convert remote images to data URLs
-        // before rendering; omit only an image that cannot be safely fetched.
-        const clonedImages = Array.from(clonedDocument.querySelectorAll<HTMLImageElement>(".telegram-paper img"));
-        await Promise.all(clonedImages.map(async image => {
-          const source = image.currentSrc || image.src;
-          if (!source) {
-            image.remove();
-            return;
-          }
-
-          // Never leave a network-backed image in the canvas clone. Even a
-          // same-origin URL may redirect to a third-party host and taint the
-          // resulting canvas. Inline successful responses as data URLs.
-          if (source.startsWith("data:")) return;
-
+    try {
+      const images = Array.from(paper.querySelectorAll("img"));
+      await Promise.all(
+        images.map(async image => {
           try {
-            const imageUrl = new URL(source, clonedDocument.baseURI);
-            const response = await fetch(imageUrl.href, {
-              mode: "cors",
-              credentials: imageUrl.origin === window.location.origin ? "same-origin" : "omit",
-              cache: "force-cache",
-            });
-            if (!response.ok) {
-              throw new Error(`Image request failed: ${response.status}`);
-            }
-
-            const blob = await response.blob();
-            if (!blob.type.startsWith("image/")) {
-              throw new Error("Image response has an invalid content type");
-            }
-
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(String(reader.result));
-              reader.onerror = () => reject(new Error("Unable to read image"));
-              reader.readAsDataURL(blob);
-            });
-
-            image.removeAttribute("srcset");
-            image.removeAttribute("crossorigin");
-            image.src = dataUrl;
             await image.decode();
           } catch {
-            // A logo that cannot be fetched safely must not taint or block
-            // export. The rest of the official telegram remains available.
             image.remove();
           }
-        }));
+        }),
+      );
 
-        const clonedPaper = clonedDocument.querySelector<HTMLElement>(".telegram-paper");
-        if (!clonedPaper) {
-          throw new Error("تعذر تجهيز نسخة البرقية للتصدير");
-        }
-
-        const elements = [
-          clonedDocument.documentElement,
-          clonedDocument.body,
-          ...Array.from(clonedDocument.querySelectorAll<HTMLElement>("*")),
-        ];
-
-        for (const element of elements) {
-          const computed = clonedDocument.defaultView?.getComputedStyle(element);
-          if (!computed) continue;
-
-          for (let index = 0; index < computed.length; index += 1) {
-            const property = computed.item(index);
-            if (!property || property.startsWith("--")) continue;
-
-            const value = computed.getPropertyValue(property);
-            if (value) {
-              element.style.setProperty(
-                property,
-                normalizeModernColors(value),
-                computed.getPropertyPriority(property),
-              );
-            }
-          }
-
-          // Remove utility classes so the cloned export cannot re-read Tailwind
-          // declarations that contain unsupported modern color functions.
-          element.removeAttribute("class");
-        }
-
-        clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach(node => node.remove());
-
-        const paperAncestors = new Set<Element>();
-        let ancestor: Element | null = clonedPaper;
-        while (ancestor) {
-          paperAncestors.add(ancestor);
-          ancestor = ancestor.parentElement;
-        }
-
-        for (const element of Array.from(clonedDocument.body.querySelectorAll<HTMLElement>("*"))) {
-          if (!paperAncestors.has(element) && !clonedPaper.contains(element)) {
-            element.style.setProperty("visibility", "hidden", "important");
-          }
-        }
-
-        clonedPaper.style.setProperty("display", "block", "important");
-        clonedPaper.style.setProperty("visibility", "visible", "important");
-        clonedPaper.style.setProperty("box-sizing", "border-box", "important");
-        clonedPaper.style.setProperty("width", "794px", "important");
-        clonedPaper.style.setProperty("min-width", "794px", "important");
-        clonedPaper.style.setProperty("max-width", "794px", "important");
-        clonedPaper.style.setProperty("min-height", "1123px", "important");
-        clonedPaper.style.setProperty("height", "auto", "important");
-        clonedPaper.style.setProperty("padding", "53px", "important");
-        clonedPaper.style.setProperty("margin", "0", "important");
-        clonedPaper.style.setProperty("border-radius", "0", "important");
-        clonedPaper.style.setProperty("box-shadow", "none", "important");
-
-        // The capture clone can inherit narrow responsive widths from the modal.
-        // Normalize direct paper sections to the canonical page content width.
-        clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
-          section.style.setProperty("box-sizing", "border-box", "important");
-          section.style.setProperty("width", "100%", "important");
-          section.style.setProperty("max-width", "100%", "important");
-          section.style.setProperty("min-width", "0", "important");
-        });
-
-        // Restore the document's intentional three-part header and full-width
-        // content after responsive modal styles have been flattened for canvas.
-        const clonedHeader = clonedPaper.querySelector<HTMLElement>("header");
-        if (clonedHeader) {
-          clonedHeader.style.setProperty("display", "grid", "important");
-          clonedHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
-          clonedHeader.style.setProperty("align-items", "start", "important");
-          clonedHeader.style.setProperty("gap", "16px", "important");
-          const headerParts = Array.from(clonedHeader.children) as HTMLElement[];
-          headerParts.forEach((part, index) => {
-            part.style.setProperty("width", "auto", "important");
-            part.style.setProperty("min-width", "0", "important");
-            // In RTL, grid column 1 is the rightmost track.
-            part.style.setProperty("grid-column", String(index + 1), "important");
-          });
-          headerParts[0]?.style.setProperty("text-align", "right", "important");
-          headerParts[1]?.style.setProperty("display", "flex", "important");
-          headerParts[1]?.style.setProperty("justify-content", "center", "important");
-          headerParts[2]?.style.setProperty("text-align", "left", "important");
-        }
-
-        const clonedMain = clonedPaper.querySelector<HTMLElement>("main");
-        if (clonedMain) {
-          clonedMain.style.setProperty("display", "block", "important");
-          clonedMain.style.setProperty("width", "100%", "important");
-          clonedMain.style.setProperty("box-sizing", "border-box", "important");
-          clonedMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
-            child.style.setProperty("display", "block", "important");
-            child.style.setProperty("width", "100%", "important");
-            child.style.setProperty("max-width", "100%", "important");
-            child.style.setProperty("box-sizing", "border-box", "important");
-          });
-        }
-        clonedPaper.style.setProperty("overflow", "visible", "important");
-        // Prevent the modal's scrolling viewport from clipping the canonical page.
-        let parent = clonedPaper.parentElement;
-        while (parent && parent !== clonedDocument.body) {
-          parent.style.setProperty("overflow", "visible", "important");
-          parent.style.setProperty("height", "auto", "important");
-          parent.style.setProperty("max-height", "none", "important");
-          parent = parent.parentElement;
-        }
-        clonedPaper.querySelectorAll<HTMLElement>("*").forEach(element => {
-          element.style.setProperty("visibility", "visible", "important");
-        });
-      },
-    });
-  };
-  const printTelegram = async () => {
-    const paper = paperRef.current;
-    if (!paper) {
-      toast.error("تعذر العثور على ورقة البرقية للطباعة");
-      return;
+      const measuredHeight = Math.max(paper.scrollHeight, paper.getBoundingClientRect().height, 1123);
+      return await html2canvas(paper, {
+        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
+        width: 794,
+        height: Math.ceil(measuredHeight),
+        windowWidth: 794,
+        windowHeight: Math.ceil(measuredHeight),
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+      });
+    } finally {
+      mount.remove();
     }
+  };
 
+  const printTelegram = async () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
       return;
     }
 
-    const clonedPaper = paper.cloneNode(true) as HTMLElement;
-    const sourceElements = [paper, ...Array.from(paper.querySelectorAll<HTMLElement>("*"))];
-    const clonedElements = [clonedPaper, ...Array.from(clonedPaper.querySelectorAll<HTMLElement>("*"))];
-
-    sourceElements.forEach((source, index) => {
-      const target = clonedElements[index];
-      const computed = window.getComputedStyle(source);
-      for (let propertyIndex = 0; propertyIndex < computed.length; propertyIndex += 1) {
-        const property = computed.item(propertyIndex);
-        if (!property || property.startsWith("--")) continue;
-        const value = computed.getPropertyValue(property);
-        if (value) target.style.setProperty(property, value);
-      }
-      target.removeAttribute("class");
-    });
-
-    clonedPaper.style.setProperty("display", "block", "important");
-    clonedPaper.style.setProperty("box-sizing", "border-box", "important");
-    clonedPaper.style.setProperty("width", "210mm", "important");
-    clonedPaper.style.setProperty("min-width", "0", "important");
-    clonedPaper.style.setProperty("max-width", "none", "important");
-    clonedPaper.style.setProperty("padding", "14mm", "important");
-    clonedPaper.style.setProperty("min-height", "297mm", "important");
-    clonedPaper.style.setProperty("max-width", "none", "important");
-    clonedPaper.style.setProperty("height", "auto", "important");
-    clonedPaper.style.setProperty("max-height", "none", "important");
-    clonedPaper.style.setProperty("margin", "0", "important");
-    clonedPaper.style.setProperty("overflow", "visible", "important");
-    clonedPaper.style.setProperty("box-shadow", "none", "important");
-
-    // Copying computed styles from the mobile modal can freeze its narrow
-    // child widths. Expand direct sections to the A4 paper's content width.
-    clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
-      section.style.setProperty("box-sizing", "border-box", "important");
-      section.style.setProperty("width", "100%", "important");
-      section.style.setProperty("max-width", "100%", "important");
-      section.style.setProperty("min-width", "0", "important");
-    });
-
-    // Do not preserve mobile-modal widths in the standalone print document.
-    const printHeader = clonedPaper.querySelector<HTMLElement>("header");
-    if (printHeader) {
-      printHeader.style.setProperty("display", "grid", "important");
-      printHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
-      printHeader.style.setProperty("align-items", "start", "important");
-      printHeader.style.setProperty("gap", "16px", "important");
-      const headerParts = Array.from(printHeader.children) as HTMLElement[];
-      headerParts.forEach((part, index) => {
-        part.style.setProperty("width", "auto", "important");
-        part.style.setProperty("min-width", "0", "important");
-        // In RTL, grid column 1 is the rightmost track.
-        part.style.setProperty("grid-column", String(index + 1), "important");
-      });
-      headerParts[0]?.style.setProperty("text-align", "right", "important");
-      headerParts[1]?.style.setProperty("display", "flex", "important");
-      headerParts[1]?.style.setProperty("justify-content", "center", "important");
-      headerParts[2]?.style.setProperty("text-align", "left", "important");
-    }
-
-    const printMain = clonedPaper.querySelector<HTMLElement>("main");
-    if (printMain) {
-      printMain.style.setProperty("display", "block", "important");
-      printMain.style.setProperty("width", "100%", "important");
-      printMain.style.setProperty("box-sizing", "border-box", "important");
-      printMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
-        child.style.setProperty("display", "block", "important");
-        child.style.setProperty("width", "100%", "important");
-        child.style.setProperty("max-width", "100%", "important");
-        child.style.setProperty("box-sizing", "border-box", "important");
-      });
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(`<!doctype html>
+    const exportWrapper = createExportPaper();
+    const printDocument = `<!doctype html>
       <html lang="ar" dir="rtl">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>${telegram.serialCode}</title>
-          <style>
-            @page { size: A4 portrait; margin: 0; }
-            html, body {
-              width: 210mm;
-              min-width: 210mm;
-              margin: 0;
-              padding: 0;
-              background: #fff;
-            }
-            body {
-              color: #0f172a;
-              font-family: Arial, Tahoma, sans-serif;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .telegram-paper {
-              display: block !important;
-              box-sizing: border-box !important;
-              width: 210mm !important;
-              max-width: none !important;
-              min-height: 297mm;
-              margin: 0 !important;
-              padding: 14mm !important;
-              overflow: visible !important;
-              border: 0 !important;
-              border-radius: 0 !important;
-              box-shadow: none !important;
-              break-after: auto;
-              break-inside: auto;
-              background: #fff !important;
-            }
-            .telegram-paper img {
-              max-width: 100%;
-              object-fit: contain;
-              break-inside: avoid;
-            }
-            .telegram-paper > * {
-              max-width: 100%;
-              break-inside: avoid;
-            }
-            @media print {
-              html, body { width: 210mm; }
-              .telegram-paper { min-height: 297mm; }
-            }
-          </style>
         </head>
-        <body></body>
-      </html>`);
-    printWindow.document.body.appendChild(clonedPaper);
-    printWindow.document.close();
+        <body style="margin:0;padding:0;background:#fff">
+          ${exportWrapper.innerHTML}
+        </body>
+      </html>`;
 
-    // Invoke print immediately while the browser still considers this a
-    // direct user gesture. Awaiting fonts/images here can consume that gesture,
-    // causing mobile browsers to leave the new tab open without showing print UI.
+    printWindow.document.open();
+    printWindow.document.write(printDocument);
+    printWindow.document.close();
     printWindow.focus();
     printWindow.print();
   };

@@ -631,6 +631,7 @@ function TelegramDetail({
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
+        @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap");
         .telegram-export-page {
           position: relative;
           isolation: isolate;
@@ -642,7 +643,7 @@ function TelegramDetail({
           background: #fff;
           color: #172033;
           direction: rtl;
-          font-family: Tahoma, Arial, sans-serif;
+          font-family: "Cairo", Tahoma, Arial, sans-serif;
           font-size: 15px;
           line-height: 1.8;
           -webkit-print-color-adjust: exact;
@@ -654,8 +655,8 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 260px;
-          height: 260px;
+          width: 360px;
+          height: 360px;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;
@@ -691,7 +692,7 @@ function TelegramDetail({
         }
         .telegram-export-page .official-header {
           display: grid;
-          grid-template-columns: minmax(0, 1.2fr) 88px minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1.2fr) 120px minmax(0, 1fr);
           align-items: start;
           gap: 18px;
           padding: 0 0 22px;
@@ -703,19 +704,20 @@ function TelegramDetail({
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
         .telegram-export-page .header-metadata p { margin: 0; }
+        .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 18px; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .government-subtitle { font-size: 15px; font-weight: 600; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 13px; line-height: 1.9; }
+        .telegram-export-page .header-metadata { font-size: 13px; font-weight: 700; line-height: 1.9; }
         .telegram-export-page .official-logo {
           display: block;
-          width: 84px;
-          height: 84px;
+          width: 112px;
+          height: 112px;
           margin: 0 auto;
           object-fit: contain;
         }
         .telegram-export-page .official-seal {
-          width: 84px;
-          height: 84px;
+          width: 112px;
+          height: 112px;
           margin: 0 auto;
           border: 2px solid #b49a55;
           border-radius: 50%;
@@ -855,6 +857,7 @@ function TelegramDetail({
     document.body.appendChild(mount);
 
     try {
+      await document.fonts.load('700 18px "Cairo"');
       const images = Array.from(paper.querySelectorAll<HTMLImageElement>("img"));
       await Promise.all(
         images.map(async image => {

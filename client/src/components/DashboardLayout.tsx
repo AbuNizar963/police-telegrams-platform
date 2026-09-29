@@ -20,7 +20,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Shield } from "lucide-react";
+import { Bell, LayoutDashboard, LogOut, Moon, PanelLeft, Settings2, Shield, Sun } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -171,6 +172,8 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const { theme, toggleTheme } = useTheme();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -314,6 +317,44 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            {isMobile ? <SidebarTrigger className="h-9 w-9 rounded-lg" /> : null}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">{activeMenuItem?.label ?? "لوحة القيادة"}</p>
+              <p className="hidden text-xs text-muted-foreground sm:block">نظام البرقيات الشرطية</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl" aria-label="الإشعارات" title="الإشعارات">
+                  <Bell className="h-5 w-5" />
+                  <span className="sr-only">فتح الإشعارات</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-4" dir="rtl">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-semibold">الإشعارات</p>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">0</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <Bell className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-sm font-medium">لا توجد إشعارات جديدة</p>
+                  <p className="text-xs text-muted-foreground">ستظهر هنا التنبيهات عند توفرها.</p>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button type="button" variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"} className="h-10 w-10 rounded-xl">
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            {user?.role === "admin" ? (
+              <Button type="button" variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent("open-department-settings"))} aria-label="الإعدادات" title="الإعدادات" className="h-10 w-10 rounded-xl">
+                <Settings2 className="h-5 w-5" />
+              </Button>
+            ) : null}
+          </div>
+        </header>
         <main className="flex-1 p-4">
           {children}
         </main>

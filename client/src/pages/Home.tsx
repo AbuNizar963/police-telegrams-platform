@@ -12,6 +12,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createArabicSpeechRecognition, extractArabicTextFromImage } from "@/lib/localInput";
 import { correctArabicSpeechText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
+import qrcode from "@/lib/qrcode-generator";
+import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
+
+qrcode.stringToBytes = utf8StringToBytes;
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
@@ -627,6 +631,31 @@ function TelegramDetail({
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+    const qrPayload = JSON.stringify({
+      documentType: "برقية رسمية",
+      serialNumber: displaySerial,
+      createdAt,
+      classification: classificationLabels[telegram.classification],
+      priority: priorityLabels[telegram.priority],
+      category: categoryLabels[telegram.category],
+      status: statusLabels[telegram.status],
+      senderUnit: departmentName,
+      recipient: telegram.recipient,
+      subject: telegram.subject,
+      body: telegram.body,
+      creatorName: telegram.creatorName,
+      unitName,
+      unitChiefRank: settings?.unitChiefRank ?? "رئيس الوحدة",
+      unitChiefName: settings?.unitChiefName ?? "",
+      location: telegram.gpsLatitude != null && telegram.gpsLongitude != null
+        ? { latitude: telegram.gpsLatitude, longitude: telegram.gpsLongitude }
+        : null,
+    });
+    const qrCode = qrcode(0, "L");
+    qrCode.addData(qrPayload);
+    qrCode.make();
+    const qrSvg = qrCode.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: "رمز QR يحتوي على جميع بيانات البرقية" });
+
     const watermark = settings?.logoUrl
       ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
       : `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
@@ -757,7 +786,30 @@ function TelegramDetail({
           border-bottom: 1px dotted #7b8493;
           line-height: 2;
         }
+        .telegram-export-page .routing-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 113px;
+          align-items: start;
+          gap: 16px;
+          direction: rtl;
+        }
         .telegram-export-page .routing p { margin: 0; }
+        .telegram-export-page .routing-qr {
+          width: 113px;
+          height: 113px;
+          justify-self: start;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff;
+          overflow: hidden;
+        }
+        .telegram-export-page .routing-qr svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          shape-rendering: crispEdges;
+        }
         .telegram-export-page .body-heading {
           margin: 20px 0 14px;
           text-align: center;
@@ -785,14 +837,19 @@ function TelegramDetail({
           font-size: 12px;
         }
         .telegram-export-page .document-footer {
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+          align-items: start;
+          gap: 12px;
           margin-top: 16px;
           color: #667085;
           font-size: 11px;
+          direction: rtl;
         }
         .telegram-export-page .document-footer p { margin: 0; }
+        .telegram-export-page .footer-creator { text-align: right; }
+        .telegram-export-page .footer-location { text-align: center; }
+        .telegram-export-page .footer-date { text-align: left; }
         @media print {
           @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; padding: 0; background: #fff; }
@@ -823,9 +880,14 @@ function TelegramDetail({
         </section>
         <main class="telegram-content">
           <section class="routing">
-            <p><strong>من:</strong> ${escapeHtml(departmentName)}</p>
-            <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
-            <p><strong>الموضوع:</strong> ${escapeHtml(telegram.subject)}</p>
+            <div class="routing-layout">
+              <div class="routing-details">
+                <p><strong>من:</strong> ${escapeHtml(departmentName)}</p>
+                <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
+                <p><strong>الموضوع:</strong> ${escapeHtml(telegram.subject)}</p>
+              </div>
+              <div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>
+            </div>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
           <div class="telegram-body">${escapeHtml(telegram.body)}</div>
@@ -835,8 +897,9 @@ function TelegramDetail({
           </section>
         </main>
         <footer class="document-footer">
-          <p>الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}<br /><span class="document-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</span></p>
-          <p>تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+          <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</p>
+          <p class="footer-location">الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;
 

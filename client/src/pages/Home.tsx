@@ -964,9 +964,115 @@ function TelegramDetail({
     printWindow.print();
   };
 
-  const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };
-  const downloadImage = async () => { setExporting("image"); try { const blob = await imageBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${telegram.serialCode}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.success("تم تنزيل صورة البرقية بدقة عالية"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة"); } finally { setExporting(null); } };
-  const shareImage = async () => { setExporting("image-share"); try { const blob = await imageBlob(); const file = new File([blob], `${telegram.serialCode}.png`, { type: "image/png" }); if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة الصورة"); } else { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة"); } finally { setExporting(null); } };
+  const imageBlob = async (): Promise<Blob> => {
+    const canvas = await capture();
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        blob => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("تعذر إنشاء الصورة"));
+          }
+        },
+        "image/png",
+        1,
+      );
+    });
+  };
+
+  const downloadImage = async () => {
+    setExporting("image");
+
+    try {
+      const blob = await imageBlob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `${telegram.serialCode}.png`;
+      anchor.click();
+
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("تم تنزيل صورة البرقية بدقة عالية");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const shareImage = async () => {
+    setExporting("image-share");
+
+    try {
+      const blob = await imageBlob();
+      const file = new File([blob], `${telegram.serialCode}.png`, {
+        type: "image/png",
+      });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `برقية ${telegram.serialCode}`,
+          text: telegram.subject,
+          files: [file],
+        });
+        toast.success("تم فتح خيارات مشاركة الصورة");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة");
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة");
+      }
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportPdf = async (share = false) => {
+    setExporting(share ? "share" : "pdf");
+
+    try {
+      const pdf = await makePdf();
+      const blob = pdf.output("blob");
+      const file = new File([blob], `${telegram.serialCode}.pdf`, {
+        type: "application/pdf",
+      });
+
+      if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `برقية ${telegram.serialCode}`,
+          text: telegram.subject,
+          files: [file],
+        });
+        toast.success("تم فتح خيارات مشاركة البرقية");
+      } else {
+        pdf.save(`${telegram.serialCode}.pdf`);
+        toast.success(
+          share
+            ? "تم تنزيل ملف PDF للمشاركة"
+            : "تم تنزيل البرقية بصيغة PDF عالية الدقة",
+        );
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية");
+      }
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const makePdf = async () => {
     const sourceCanvas = await capture();
     const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });

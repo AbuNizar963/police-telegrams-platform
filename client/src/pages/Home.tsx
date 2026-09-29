@@ -630,7 +630,7 @@ function TelegramDetail({
         context.fillStyle = color;
         context.fillRect(0, 0, 1, 1);
         const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
-        return \`rgba(\${red}, \${green}, \${blue}, \${Number((alpha / 255).toFixed(3))})\`;
+        return `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
       });
 
     return html2canvas(paper, {

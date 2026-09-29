@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Vendored from qrcode-generator 2.0.4 (MIT); see LICENSE in upstream repository.
 //---------------------------------------------------------------------
 //

@@ -760,19 +760,20 @@ function TelegramDetail({
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(telegram.serialCode)}</p>
             <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>
-            <p><strong>درجة السرية:</strong> ${escapeHtml(telegram.classification)}</p>
-            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(telegram.priority)}</p>
+            <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
+            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
           <span><strong>نوع الوثيقة:</strong> برقية رسمية</span>
-          <span><strong>الحالة:</strong> ${escapeHtml(telegram.status)}</span>
+          <span><strong>التصنيف:</strong> ${escapeHtml(categoryLabels[telegram.category])}</span>
+          <span><strong>الحالة:</strong> ${escapeHtml(statusLabels[telegram.status])}</span>
         </section>
         <main class="telegram-content">
           <section class="routing">
             <p><strong>من:</strong> ${escapeHtml(telegram.creatorName)} — ${escapeHtml(departmentName)}</p>
             <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
-            <p><strong>للاطلاع:</strong> ................................................................................</p>
+            <p><strong>الموضوع:</strong> ${escapeHtml(telegram.subject)}</p>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
           <div class="telegram-body">${escapeHtml(telegram.body)}</div>
@@ -783,7 +784,7 @@ function TelegramDetail({
           </section>
         </main>
         <footer class="document-footer">
-          <p>الموقع: ${escapeHtml(telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p>الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
           <p>تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;

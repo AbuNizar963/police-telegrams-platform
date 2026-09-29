@@ -765,6 +765,39 @@ function TelegramDetail({
           section.style.setProperty("max-width", "100%", "important");
           section.style.setProperty("min-width", "0", "important");
         });
+
+        // Restore the document's intentional three-part header and full-width
+        // content after responsive modal styles have been flattened for canvas.
+        const clonedHeader = clonedPaper.querySelector<HTMLElement>("header");
+        if (clonedHeader) {
+          clonedHeader.style.setProperty("display", "grid", "important");
+          clonedHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
+          clonedHeader.style.setProperty("align-items", "start", "important");
+          clonedHeader.style.setProperty("gap", "16px", "important");
+          const headerParts = Array.from(clonedHeader.children) as HTMLElement[];
+          headerParts.forEach((part, index) => {
+            part.style.setProperty("width", "auto", "important");
+            part.style.setProperty("min-width", "0", "important");
+            part.style.setProperty("grid-column", String(3 - index), "important");
+          });
+          headerParts[0]?.style.setProperty("text-align", "right", "important");
+          headerParts[1]?.style.setProperty("display", "flex", "important");
+          headerParts[1]?.style.setProperty("justify-content", "center", "important");
+          headerParts[2]?.style.setProperty("text-align", "left", "important");
+        }
+
+        const clonedMain = clonedPaper.querySelector<HTMLElement>("main");
+        if (clonedMain) {
+          clonedMain.style.setProperty("display", "block", "important");
+          clonedMain.style.setProperty("width", "100%", "important");
+          clonedMain.style.setProperty("box-sizing", "border-box", "important");
+          clonedMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
+            child.style.setProperty("display", "block", "important");
+            child.style.setProperty("width", "100%", "important");
+            child.style.setProperty("max-width", "100%", "important");
+            child.style.setProperty("box-sizing", "border-box", "important");
+          });
+        }
         clonedPaper.style.setProperty("overflow", "visible", "important");
         // Prevent the modal's scrolling viewport from clipping the canonical page.
         let parent = clonedPaper.parentElement;
@@ -831,6 +864,38 @@ function TelegramDetail({
       section.style.setProperty("max-width", "100%", "important");
       section.style.setProperty("min-width", "0", "important");
     });
+
+    // Do not preserve mobile-modal widths in the standalone print document.
+    const printHeader = clonedPaper.querySelector<HTMLElement>("header");
+    if (printHeader) {
+      printHeader.style.setProperty("display", "grid", "important");
+      printHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
+      printHeader.style.setProperty("align-items", "start", "important");
+      printHeader.style.setProperty("gap", "16px", "important");
+      const headerParts = Array.from(printHeader.children) as HTMLElement[];
+      headerParts.forEach((part, index) => {
+        part.style.setProperty("width", "auto", "important");
+        part.style.setProperty("min-width", "0", "important");
+        part.style.setProperty("grid-column", String(3 - index), "important");
+      });
+      headerParts[0]?.style.setProperty("text-align", "right", "important");
+      headerParts[1]?.style.setProperty("display", "flex", "important");
+      headerParts[1]?.style.setProperty("justify-content", "center", "important");
+      headerParts[2]?.style.setProperty("text-align", "left", "important");
+    }
+
+    const printMain = clonedPaper.querySelector<HTMLElement>("main");
+    if (printMain) {
+      printMain.style.setProperty("display", "block", "important");
+      printMain.style.setProperty("width", "100%", "important");
+      printMain.style.setProperty("box-sizing", "border-box", "important");
+      printMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
+        child.style.setProperty("display", "block", "important");
+        child.style.setProperty("width", "100%", "important");
+        child.style.setProperty("max-width", "100%", "important");
+        child.style.setProperty("box-sizing", "border-box", "important");
+      });
+    }
 
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>

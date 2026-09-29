@@ -102,11 +102,99 @@
   button:active { transform: scale(0.98); }
 }
 
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
 @media print {
-  body { background: #fff !important; font-family: 'Cairo', 'IBM Plex Sans Arabic', sans-serif; }
-  body * { visibility: hidden; }
-  .fixed.inset-0, .fixed.inset-0 * { visibility: visible; }
-  .fixed.inset-0 { position: static; inset: auto; display: block; padding: 0; background: #fff; }
-  .fixed.inset-0 > div { max-height: none; max-width: none; overflow: visible; border-radius: 0; padding: 0; box-shadow: none; }
-  .fixed.inset-0 button { display: none !important; }
+  html,
+  body {
+    width: 100%;
+    min-height: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    font-family: 'Cairo', 'IBM Plex Sans Arabic', sans-serif;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Flatten the modal layout so hidden headings and controls do not create
+     blank pages before or after the actual telegram. */
+  .fixed.inset-0 {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+  }
+
+  .fixed.inset-0 > div {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  .fixed.inset-0 > div > :first-child,
+  .telegram-paper ~ *,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  .fixed.inset-0 > div > .mt-6 {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .telegram-paper,
+  .telegram-paper * {
+    visibility: visible !important;
+  }
+
+  .telegram-paper {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #0f172a !important;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .telegram-paper > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .telegram-paper img {
+    max-width: 100% !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

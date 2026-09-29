@@ -70,6 +70,7 @@ describe("telegrams.create", () => {
       creatorFingerprint: "00000000-0000-4000-8000-000000000042",
       serialNumber: 1001,
       serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
+      verificationToken: expect.stringMatching(/^[0-9a-f-]{36}$/i),
     }));
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       actorUserId: 42,

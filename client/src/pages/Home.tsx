@@ -611,9 +611,27 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<"pdf" | "image" | "share" | "image-share" | null>(null);
   const capture = async () => {
     const paper = paperRef.current;
-    if (!paper) throw new Error("تعذر تجهيز الورقة");
+    if (!paper) {
+      throw new Error("تعذر العثور على ورقة البرقية");
+    }
 
-    await document.fonts?.ready;
+    await document.fonts.ready;
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      throw new Error("المتصفح لا يدعم تجهيز الصور");
+    }
+
+    const normalizeModernColors = (value: string) =>
+      value.replace(/(?:oklch|oklab)\\((?:[^()]|\\([^()]*\\))*\\)/gi, color => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = "#000000";
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+        return `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
+      });
 
     return html2canvas(paper, {
       scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
@@ -626,37 +644,48 @@ function TelegramDetail({
       windowHeight: paper.scrollHeight,
       onclone: clonedDocument => {
         const clonedPaper = clonedDocument.querySelector<HTMLElement>(".telegram-paper");
-        if (!clonedPaper) return;
+        if (!clonedPaper) {
+          throw new Error("تعذر تجهيز نسخة البرقية للتصدير");
+        }
 
-        // html2canvas 1.x cannot parse modern CSS color functions (oklch/oklab).
-        // Freeze computed styles as inline RGB values in the cloned document, then
-        // remove stylesheets so html2canvas never parses unsupported declarations.
-        const allElements = [
+        const elements = [
           clonedDocument.documentElement,
           clonedDocument.body,
           ...Array.from(clonedDocument.querySelectorAll<HTMLElement>("*")),
         ];
 
-        for (const element of allElements) {
+        for (const element of elements) {
           const computed = clonedDocument.defaultView?.getComputedStyle(element);
           if (!computed) continue;
 
           for (let index = 0; index < computed.length; index += 1) {
             const property = computed.item(index);
             if (!property || property.startsWith("--")) continue;
+
             const value = computed.getPropertyValue(property);
-            if (value) element.style.setProperty(property, value, computed.getPropertyPriority(property));
+            if (value) {
+              element.style.setProperty(
+                property,
+                normalizeModernColors(value),
+                computed.getPropertyPriority(property),
+              );
+            }
           }
+
+          // Remove utility classes so the cloned export cannot re-read Tailwind
+          // declarations that contain unsupported modern color functions.
+          element.removeAttribute("class");
         }
 
         clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach(node => node.remove());
 
-        // The export is the paper only; hide the surrounding modal and action bar.
         for (const element of Array.from(clonedDocument.body.querySelectorAll<HTMLElement>("*"))) {
           if (element !== clonedPaper && !clonedPaper.contains(element)) {
-            element.style.setProperty("visibility", "hidden", "important");
+            element.style.setProperty("display", "none", "important");
           }
         }
+
+        clonedPaper.style.setProperty("display", "block", "important");
         clonedPaper.style.setProperty("visibility", "visible", "important");
         clonedPaper.querySelectorAll<HTMLElement>("*").forEach(element => {
           element.style.setProperty("visibility", "visible", "important");
@@ -667,7 +696,61 @@ function TelegramDetail({
   const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };
   const downloadImage = async () => { setExporting("image"); try { const blob = await imageBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${telegram.serialCode}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.success("تم تنزيل صورة البرقية بدقة عالية"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة"); } finally { setExporting(null); } };
   const shareImage = async () => { setExporting("image-share"); try { const blob = await imageBlob(); const file = new File([blob], `${telegram.serialCode}.png`, { type: "image/png" }); if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة الصورة"); } else { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة"); } finally { setExporting(null); } };
-  const makePdf = async () => { const canvas = await capture(); const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true }); const pageWidth = 190; const pageHeight = 277; const imageHeight = canvas.height * pageWidth / canvas.width; let remaining = imageHeight; let position = 10; const image = canvas.toDataURL("image/jpeg", 0.98); pdf.addImage(image, "JPEG", 10, position, pageWidth, imageHeight, undefined, "FAST"); remaining -= pageHeight; while (remaining > 0) { position = 10 - (imageHeight - remaining); pdf.addPage(); pdf.addImage(image, "JPEG", 10, position, pageWidth, imageHeight, undefined, "FAST"); remaining -= pageHeight; } return pdf; };
+  const makePdf = async () => {
+    const sourceCanvas = await capture();
+    const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
+    const margin = 10;
+    const pageWidth = 190;
+    const pageHeight = 277;
+    const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
+    const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
+    let sourceY = 0;
+    let pageIndex = 0;
+
+    while (sourceY < sourceCanvas.height) {
+      const sliceHeight = Math.min(pagePixelHeight, sourceCanvas.height - sourceY);
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = sourceCanvas.width;
+      pageCanvas.height = sliceHeight;
+
+      const pageContext = pageCanvas.getContext("2d");
+      if (!pageContext) {
+        throw new Error("تعذر تجهيز صفحات PDF");
+      }
+
+      pageContext.fillStyle = "#ffffff";
+      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      pageContext.drawImage(
+        sourceCanvas,
+        0,
+        sourceY,
+        sourceCanvas.width,
+        sliceHeight,
+        0,
+        0,
+        pageCanvas.width,
+        sliceHeight,
+      );
+
+      if (pageIndex > 0) pdf.addPage();
+      const sliceHeightMm = sliceHeight / sourcePixelsPerMm;
+      pdf.addImage(
+        pageCanvas.toDataURL("image/jpeg", 0.96),
+        "JPEG",
+        margin,
+        margin,
+        pageWidth,
+        sliceHeightMm,
+        undefined,
+        "FAST",
+      );
+
+      sourceY += sliceHeight;
+      pageIndex += 1;
+    }
+
+    return pdf;
+  };
   const exportPdf = async (share = false) => { setExporting(share ? "share" : "pdf"); try { const pdf = await makePdf(); const blob = pdf.output("blob"); const file = new File([blob], `${telegram.serialCode}.pdf`, { type: "application/pdf" }); if (share && navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة البرقية"); } else { pdf.save(`${telegram.serialCode}.pdf`); toast.success(share ? "تم تنزيل ملف PDF للمشاركة" : "تم تنزيل البرقية بصيغة PDF عالية الدقة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية"); } finally { setExporting(null); } };
   return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div ref={paperRef} className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"><div className="mb-5 border-b-2 border-[#b4945a] pb-4 text-center"><div className="flex items-center justify-center gap-3">{settings?.logoUrl ? <img src={settings.logoUrl} alt="شعار القسم" crossOrigin="anonymous" className="h-14 w-14 rounded-xl object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e]"><Shield className="h-7 w-7" /></div>}<div><p className="text-[10px] font-semibold tracking-[0.16em] text-[#9b7c3d]">برقية رسمية</p><h3 className="mt-1 text-lg font-bold">{settings?.unitName ?? "وحدة العمليات"}</h3><p className="text-xs text-slate-600">{settings?.departmentName ?? "إدارة الشرطة"}</p></div></div></div><div className="flex flex-wrap items-center gap-2"><PriorityBadge value={telegram.priority} /><SeverityBadge value={telegram.classification} /><StatusBadge value={telegram.status} /><span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{categoryLabels[telegram.category]}</span></div><div className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-2"><Info label="الجهة الموجهة" value={telegram.recipient} /><Info label="منشئ البرقية" value={telegram.creatorName} /><Info label="التاريخ والوقت" value={formatConfiguredDate(telegram.createdAt, settings)} /><Info label="الموقع" value={telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"} /></div><div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 p-4 text-sm leading-8">{telegram.body}</div><div className="mt-8 border-t-2 border-[#b4945a] pt-4 text-center"><p className="text-sm font-bold text-[#10233f]">{settings?.unitName ?? "وحدة العمليات"}</p><p className="mt-1 text-sm font-semibold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p><p className="mt-2 text-[11px] text-slate-500">التوقيع والختم الرسمي لرئيس الوحدة</p></div></div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={() => window.print()} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
 }

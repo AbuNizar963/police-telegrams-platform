@@ -756,6 +756,15 @@ function TelegramDetail({
         clonedPaper.style.setProperty("margin", "0", "important");
         clonedPaper.style.setProperty("border-radius", "0", "important");
         clonedPaper.style.setProperty("box-shadow", "none", "important");
+
+        // The capture clone can inherit narrow responsive widths from the modal.
+        // Normalize direct paper sections to the canonical page content width.
+        clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
+          section.style.setProperty("box-sizing", "border-box", "important");
+          section.style.setProperty("width", "100%", "important");
+          section.style.setProperty("max-width", "100%", "important");
+          section.style.setProperty("min-width", "0", "important");
+        });
         clonedPaper.style.setProperty("overflow", "visible", "important");
         // Prevent the modal's scrolling viewport from clipping the canonical page.
         let parent = clonedPaper.parentElement;
@@ -801,13 +810,27 @@ function TelegramDetail({
     });
 
     clonedPaper.style.setProperty("display", "block", "important");
-    clonedPaper.style.setProperty("width", "100%", "important");
+    clonedPaper.style.setProperty("box-sizing", "border-box", "important");
+    clonedPaper.style.setProperty("width", "210mm", "important");
+    clonedPaper.style.setProperty("min-width", "0", "important");
+    clonedPaper.style.setProperty("max-width", "none", "important");
+    clonedPaper.style.setProperty("padding", "14mm", "important");
+    clonedPaper.style.setProperty("min-height", "297mm", "important");
     clonedPaper.style.setProperty("max-width", "none", "important");
     clonedPaper.style.setProperty("height", "auto", "important");
     clonedPaper.style.setProperty("max-height", "none", "important");
     clonedPaper.style.setProperty("margin", "0", "important");
     clonedPaper.style.setProperty("overflow", "visible", "important");
     clonedPaper.style.setProperty("box-shadow", "none", "important");
+
+    // Copying computed styles from the mobile modal can freeze its narrow
+    // child widths. Expand direct sections to the A4 paper's content width.
+    clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
+      section.style.setProperty("box-sizing", "border-box", "important");
+      section.style.setProperty("width", "100%", "important");
+      section.style.setProperty("max-width", "100%", "important");
+      section.style.setProperty("min-width", "0", "important");
+    });
 
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>

@@ -333,7 +333,7 @@ function DashboardLayoutContent({
                   <span className="sr-only">فتح الإشعارات</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72 p-4" dir="rtl">
+              <DropdownMenuContent align="end" className="w-72 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="font-semibold">الإشعارات</p>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">0</span>

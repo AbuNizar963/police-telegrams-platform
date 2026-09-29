@@ -68,6 +68,7 @@ export const telegrams = pgTable(
     id: serial("id").primaryKey(),
     serialNumber: integer("serialNumber").notNull().unique(),
     serialCode: varchar("serialCode", { length: 48 }).notNull().unique(),
+    verificationToken: uuid("verificationToken").notNull().unique(),
     createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
     createdByUserId: integer("createdByUserId").notNull(),

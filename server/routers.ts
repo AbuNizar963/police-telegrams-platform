@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import {
   authenticateLocalUser,
@@ -415,6 +416,7 @@ export const appRouter = router({
           ...input,
           serialNumber,
           serialCode,
+          verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
           creatorName,
           creatorEmail: ctx.user.email ?? null,

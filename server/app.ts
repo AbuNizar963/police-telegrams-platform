@@ -4,6 +4,7 @@ import { registerStorageRoutes } from "./_core/storageRoutes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
+import { getSupabaseAdmin } from "./_core/supabase";
 
 /**
  * Creates the HTTP application shared by the local server and Vercel.
@@ -21,6 +22,47 @@ export function createApp(
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageRoutes(app);
+
+  app.get("/api/verify/:token", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const token = req.params.token;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
+      return res.status(404).json({ valid: false });
+    }
+
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data: telegram, error } = await supabase
+        .from("telegrams")
+        .select("serialCode, createdAt, archivedAt, status")
+        .eq("verificationToken", token)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!telegram) return res.status(404).json({ valid: false });
+
+      const { data: settings, error: settingsError } = await supabase
+        .from("department_settings")
+        .select("departmentName")
+        .eq("configKey", "primary")
+        .maybeSingle();
+
+      if (settingsError) throw settingsError;
+
+      return res.status(200).json({
+        valid: true,
+        status: telegram.status === "archived" || telegram.archivedAt ? "archived" : "valid",
+        serialCode: telegram.serialCode,
+        createdAt: telegram.createdAt,
+        issuer: settings?.departmentName ?? "الجهة المصدرة",
+      });
+    } catch (error) {
+      console.error("Telegram verification failed:", error);
+      return res.status(500).json({ valid: false, error: "تعذر التحقق حاليًا" });
+    }
+  });
 
   app.get("/api/health", (_req, res) => {
     res.status(200).json({

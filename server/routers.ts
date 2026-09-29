@@ -150,9 +150,11 @@ export const appRouter = router({
       .input(
         z.object({
           departmentName: z.string().trim().min(2).max(255),
-          unitName: z.string().trim().min(2).max(255).default("وحدة العمليات"),
-          unitChiefRank: z.string().trim().min(2).max(120).default("العقيد"),
-          unitChiefName: z.string().trim().min(2).max(255).default("رئيس الوحدة"),
+          // الوحدة التابعة ورئيسها حقول اختيارية؛ الواجهة تسمح بحفظ الإعدادات
+          // بدون وحدة تابعة، لذلك يجب قبول القيمة الفارغة بعد trim بدل رفضها.
+          unitName: z.string().trim().max(255).default("وحدة العمليات"),
+          unitChiefRank: z.string().trim().max(120).default("العقيد"),
+          unitChiefName: z.string().trim().max(255).default("رئيس الوحدة"),
           serialPrefix: z.string().trim().min(1).max(24).regex(/^[A-Z0-9-]+$/),
           serialStart: z.number().int().min(1).max(999999999),
           timezone: z.string().trim().min(3).max(64).default("Asia/Riyadh"),

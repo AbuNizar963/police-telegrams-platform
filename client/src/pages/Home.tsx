@@ -859,6 +859,31 @@ function TelegramDetail({
     printWindow.document.open();
     printWindow.document.write(printDocument);
     printWindow.document.close();
+
+    // Keep the popup opened synchronously from the user gesture, but wait for
+    // the standalone document's fonts and logo before opening the print dialog.
+    try {
+      await printWindow.document.fonts.ready;
+      const printImages = Array.from(printWindow.document.images);
+      await Promise.all(
+        printImages.map(async image => {
+          try {
+            if (!image.complete) {
+              await new Promise<void>((resolve, reject) => {
+                image.addEventListener("load", () => resolve(), { once: true });
+                image.addEventListener("error", () => reject(new Error("تعذر تحميل الشعار")), { once: true });
+              });
+            }
+            await image.decode();
+          } catch {
+            image.remove();
+          }
+        }),
+      );
+    } catch {
+      // Printing the text remains available even if an optional logo fails.
+    }
+
     printWindow.focus();
     printWindow.print();
   };

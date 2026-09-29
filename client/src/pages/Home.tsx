@@ -561,6 +561,7 @@ function TelegramDetail({
   telegram: {
     id: number;
     serialCode: string;
+    verificationToken: string;
     subject: string;
     recipient: string;
     body: string;

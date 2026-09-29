@@ -621,6 +621,8 @@ function TelegramDetail({
     const departmentName = settings?.departmentName ?? "قسم العمليات";
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const serialDigits = String(telegram.serialCode).split("-").pop() ?? String(telegram.serialCode);
+    const displaySerial = String(Number.parseInt(serialDigits, 10) || 0);
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
@@ -703,11 +705,11 @@ function TelegramDetail({
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.8; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 11px; font-weight: 700; line-height: 2.15; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 16px; font-weight: 700; white-space: normal; }
-        .telegram-export-page .government-subtitle { font-size: 16px; font-weight: 700; white-space: normal; }
-        .telegram-export-page .header-metadata { font-size: 16px; font-weight: 700; line-height: 1.8; }
+        .telegram-export-page .government-name { font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .government-subtitle { font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 11px; font-weight: 700; line-height: 2.15; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
         .telegram-export-page .official-logo {
           display: block;
@@ -807,7 +809,7 @@ function TelegramDetail({
           </div>
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
-            <p><strong>رقم البرقية:</strong> ${escapeHtml(telegram.serialCode)}</p>
+            <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
             <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
             <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>

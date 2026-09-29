@@ -778,7 +778,8 @@ function TelegramDetail({
           headerParts.forEach((part, index) => {
             part.style.setProperty("width", "auto", "important");
             part.style.setProperty("min-width", "0", "important");
-            part.style.setProperty("grid-column", String(3 - index), "important");
+            // In RTL, grid column 1 is the rightmost track.
+            part.style.setProperty("grid-column", String(index + 1), "important");
           });
           headerParts[0]?.style.setProperty("text-align", "right", "important");
           headerParts[1]?.style.setProperty("display", "flex", "important");
@@ -876,7 +877,8 @@ function TelegramDetail({
       headerParts.forEach((part, index) => {
         part.style.setProperty("width", "auto", "important");
         part.style.setProperty("min-width", "0", "important");
-        part.style.setProperty("grid-column", String(3 - index), "important");
+        // In RTL, grid column 1 is the rightmost track.
+        part.style.setProperty("grid-column", String(index + 1), "important");
       });
       headerParts[0]?.style.setProperty("text-align", "right", "important");
       headerParts[1]?.style.setProperty("display", "flex", "important");

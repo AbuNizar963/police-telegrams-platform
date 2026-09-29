@@ -996,7 +996,7 @@ function TelegramDetail({
       </header>
 
       <div className="mt-5 grid grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)] gap-0 border-2 border-slate-900">
-        <aside className="order-2 border-r-2 border-slate-900 text-sm">
+        <aside className="border-r-2 border-slate-900 text-sm">
           <section className="border-b-2 border-slate-900">
             <h4 className="bg-slate-100 px-3 py-2 text-center font-bold">ما يخص مكتب البرقيات</h4>
             <div className="space-y-3 p-3 leading-6">
@@ -1025,7 +1025,7 @@ function TelegramDetail({
           </section>
         </aside>
 
-        <main className="order-1 min-w-0 p-4">
+        <main className="min-w-0 p-4">
           <div className="border-b border-dotted border-slate-500 pb-3 text-sm leading-7">
             <p><span className="font-bold">من:</span> {telegram.creatorName} — {settings?.departmentName ?? "قسم العمليات"}</p>
             <p><span className="font-bold">إلى:</span> {telegram.recipient}</p>

@@ -6,8 +6,8 @@ type VerificationResult = {
   valid: boolean;
   status?: "valid" | "archived";
   serialCode?: string;
-  createdAt?: string;
-  issuer?: string;
+  unitName?: string;
+  creatorName?: string;
   error?: string;
 };
 
@@ -35,14 +35,21 @@ export default function VerifyTelegram() {
         const payload = (await response.json()) as VerificationResult;
         if (!cancelled) setResult(payload);
       } catch {
-        if (!cancelled) setResult({ valid: false, error: "تعذر الاتصال بخدمة التحقق. يرجى المحاولة لاحقًا." });
+        if (!cancelled) {
+          setResult({
+            valid: false,
+            error: "تعذر الاتصال بخدمة التحقق. يرجى المحاولة لاحقًا.",
+          });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     void verify();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const verified = result?.valid === true;
@@ -57,6 +64,7 @@ export default function VerifyTelegram() {
             <h1 className="text-xl font-bold">التحقق من صحة البرقية</h1>
           </div>
         </header>
+
         <div className="space-y-5 px-6 py-8 text-center">
           {loading ? (
             <>
@@ -70,17 +78,31 @@ export default function VerifyTelegram() {
               ) : (
                 <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" aria-hidden="true" />
               )}
+
               <h2 className="text-xl font-bold text-slate-900">
-                {result.status === "archived" ? "الوثيقة صحيحة لكنها مؤرشفة" : "تم التحقق من صحة البرقية"}
+                {result.status === "archived"
+                  ? "الوثيقة صحيحة لكنها مؤرشفة"
+                  : "تم التحقق من صحة البرقية"}
               </h2>
               <p className="text-sm leading-7 text-slate-600">
                 الرمز مرتبط بسجل موجود في منظومة البرقيات. هذه الصفحة تؤكد صحة المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.
               </p>
+
               <dl className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-right">
-                <div><dt className="text-xs text-slate-500">رقم البرقية</dt><dd className="mt-1 font-semibold text-slate-900" dir="ltr">{result.serialCode}</dd></div>
-                <div><dt className="text-xs text-slate-500">تاريخ الإصدار</dt><dd className="mt-1 font-semibold text-slate-900">{result.createdAt ? new Intl.DateTimeFormat("ar", { dateStyle: "long", timeStyle: "short" }).format(new Date(result.createdAt)) : "—"}</dd></div>
-                <div><dt className="text-xs text-slate-500">الجهة المصدرة</dt><dd className="mt-1 font-semibold text-slate-900">{result.issuer}</dd></div>
+                <div>
+                  <dt className="text-xs text-slate-500">اسم الوحدة الشرطية</dt>
+                  <dd className="mt-1 font-semibold text-slate-900">{result.unitName || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">رقم البرقية</dt>
+                  <dd className="mt-1 font-semibold text-slate-900" dir="ltr">{result.serialCode || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">اسم الشرطي المنشئ</dt>
+                  <dd className="mt-1 font-semibold text-slate-900">{result.creatorName || "—"}</dd>
+                </div>
               </dl>
+
               <p className="text-xs text-slate-500">للاطلاع على التفاصيل، يرجى الرجوع إلى الجهة المخولة.</p>
             </>
           ) : (
@@ -93,6 +115,7 @@ export default function VerifyTelegram() {
             </>
           )}
         </div>
+
         <footer className="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-500">
           خدمة تحقق رسمية — لا تشارك رابط التحقق مع غير المخولين.
         </footer>

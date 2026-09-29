@@ -27,6 +27,7 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
+import HeaderActions from "./HeaderActions";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
@@ -300,20 +301,21 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            {isMobile ? (
+              <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg" />
+            ) : null}
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-foreground sm:text-base">
+                {activeMenuItem?.label ?? "لوحة القيادة"}
+              </span>
             </div>
           </div>
-        )}
+
+          <HeaderActions onToggleSidebar={toggleSidebar} />
+        </header>
+
         <main className="flex-1 p-4">
           {children}
         </main>

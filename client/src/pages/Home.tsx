@@ -649,23 +649,46 @@ function TelegramDetail({
         const clonedImages = Array.from(clonedDocument.querySelectorAll<HTMLImageElement>(".telegram-paper img"));
         await Promise.all(clonedImages.map(async image => {
           const source = image.currentSrc || image.src;
-          if (!source) return;
+          if (!source) {
+            image.remove();
+            return;
+          }
+
+          // Never leave a network-backed image in the canvas clone. Even a
+          // same-origin URL may redirect to a third-party host and taint the
+          // resulting canvas. Inline successful responses as data URLs.
+          if (source.startsWith("data:")) return;
+
           try {
             const imageUrl = new URL(source, clonedDocument.baseURI);
-            if (imageUrl.origin === window.location.origin || source.startsWith("data:")) return;
-            const response = await fetch(imageUrl.href, { mode: "cors", credentials: "omit" });
-            if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+            const response = await fetch(imageUrl.href, {
+              mode: "cors",
+              credentials: imageUrl.origin === window.location.origin ? "same-origin" : "omit",
+              cache: "force-cache",
+            });
+            if (!response.ok) {
+              throw new Error(`Image request failed: ${response.status}`);
+            }
+
             const blob = await response.blob();
+            if (!blob.type.startsWith("image/")) {
+              throw new Error("Image response has an invalid content type");
+            }
+
             const dataUrl = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => resolve(String(reader.result));
               reader.onerror = () => reject(new Error("Unable to read image"));
               reader.readAsDataURL(blob);
             });
+
             image.removeAttribute("srcset");
+            image.removeAttribute("crossorigin");
             image.src = dataUrl;
+            await image.decode();
           } catch {
-            // A missing logo must not prevent exporting the rest of the telegram.
+            // A logo that cannot be fetched safely must not taint or block
+            // export. The rest of the official telegram remains available.
             image.remove();
           }
         }));
@@ -773,12 +796,49 @@ function TelegramDetail({
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>${telegram.serialCode}</title>
           <style>
-            @page { size: A4 portrait; margin: 12mm; }
-            html, body { width: 100%; margin: 0; padding: 0; background: #fff; }
-            body { color: #0f172a; font-family: Arial, sans-serif; }
-            .telegram-paper { box-sizing: border-box; break-inside: auto; }
-            .telegram-paper img { max-width: 100%; break-inside: avoid; }
-            @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+            @page { size: A4 portrait; margin: 0; }
+            html, body {
+              width: 210mm;
+              min-width: 210mm;
+              margin: 0;
+              padding: 0;
+              background: #fff;
+            }
+            body {
+              color: #0f172a;
+              font-family: Arial, Tahoma, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .telegram-paper {
+              display: block !important;
+              box-sizing: border-box !important;
+              width: 210mm !important;
+              max-width: none !important;
+              min-height: 297mm;
+              margin: 0 !important;
+              padding: 14mm !important;
+              overflow: visible !important;
+              border: 0 !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              break-after: auto;
+              break-inside: auto;
+              background: #fff !important;
+            }
+            .telegram-paper img {
+              max-width: 100%;
+              object-fit: contain;
+              break-inside: avoid;
+            }
+            .telegram-paper > * {
+              max-width: 100%;
+              break-inside: avoid;
+            }
+            @media print {
+              html, body { width: 210mm; }
+              .telegram-paper { min-height: 297mm; }
+            }
           </style>
         </head>
         <body></body>

@@ -1453,6 +1453,8 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
 
   useEffect(() => {
     const handler = () => setOpen(true);
+    window.addEventListener("open-department-settings", handler);
+    return () => window.removeEventListener("open-department-settings", handler);
   }, []);
   useEffect(() => {
     setDepartmentName(settings?.departmentName ?? ""); setUnitName(settings?.unitName ?? "وحدة العمليات"); setUnitChiefRank(settings?.unitChiefRank ?? "العقيد"); setUnitChiefName(settings?.unitChiefName ?? "رئيس الوحدة"); setSerialPrefix(settings?.serialPrefix ?? "POL"); setSerialStart(settings?.serialStart ?? 1); setTimezone(settings?.timezone ?? "Asia/Riyadh"); setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss"); setNumberSystem(settings?.numberSystem ?? "latin");

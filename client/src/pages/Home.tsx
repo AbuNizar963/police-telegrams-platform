@@ -7,9 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileImage, FileText, ImagePlus, Filter, LocateFixed, LockKeyhole, MapPinned, Menu, Mic, Plus, Printer, Radio, Search, Save, Settings2, Share2, Shield, Siren, SlidersHorizontal, Square, Sun, Moon, Upload, UserRound, Users, X } from "lucide-react";
+import { Activity, AlertTriangle, Archive, ArrowUpLeft, Building2, Camera, CheckCircle2, ChevronLeft, Clock3, Command, FileDown, FileImage, FileText, ImagePlus, Filter, LocateFixed, LockKeyhole, MapPinned, Menu, Mic, Plus, Printer, Radio, Search, Save, Settings2, Share2, Shield, Siren, SlidersHorizontal, Square, Upload, UserRound, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
 import { createArabicSpeechRecognition, extractArabicTextFromImage } from "@/lib/localInput";
 import { correctArabicSpeechText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import qrcode from "@/lib/qrcode-generator";
@@ -79,7 +78,6 @@ export default function Home() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
   const [displayColumns, setDisplayColumns] = useState<Record<DisplayColumn, boolean>>(DEFAULT_DISPLAY_COLUMNS);
-  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     try {
@@ -153,8 +151,6 @@ export default function Home() {
       <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm"><Radio className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">SECURE OPERATIONS</span><span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />النظام متصل</span></div><h1 className="mt-1 text-2xl font-bold tracking-tight">مركز القيادة والسيطرة</h1></div></div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex"><Clock3 className="h-3.5 w-3.5" />{formatConfiguredDate(new Date(), settings.data)}</div>
-        <Button type="button" variant="outline" onClick={toggleTheme} aria-label={theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"} className="h-10 w-10 rounded-xl border-border/70 bg-card p-0 shadow-sm transition-colors hover:bg-muted">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-        {me.data?.role === "admin" && <Button type="button" variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("open-department-settings"))} aria-label="الإعدادات" title="الإعدادات" className="h-10 w-10 rounded-xl border-border/70 bg-card p-0 shadow-sm transition-colors hover:bg-muted"><Settings2 className="h-4 w-4" /></Button>}
         <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setDisplayCustomizeOpen(true)} aria-haspopup="dialog" aria-expanded={displayCustomizeOpen}><SlidersHorizontal className="ml-2 h-4 w-4" />تخصيص العرض</Button>
         <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setFiltersOpen(value => !value)} aria-expanded={filtersOpen}><Filter className="ml-2 h-4 w-4" />الفلاتر{(severity !== "all" || priority !== "all" || status !== "all" || category !== "all") && <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10233f] px-1.5 text-[10px] text-white">{[severity !== "all", priority !== "all", status !== "all", category !== "all"].filter(Boolean).length}</span>}</Button>
         <Button onClick={() => setComposerOpen(true)} className="h-10 rounded-lg bg-[#10233f] px-4 text-white hover:bg-[#18375f]"><Plus className="ml-2 h-4 w-4" />برقية جديدة</Button>
@@ -1457,8 +1453,6 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
 
   useEffect(() => {
     const handler = () => setOpen(true);
-    window.addEventListener("open-department-settings", handler);
-    return () => window.removeEventListener("open-department-settings", handler);
   }, []);
   useEffect(() => {
     setDepartmentName(settings?.departmentName ?? ""); setUnitName(settings?.unitName ?? "وحدة العمليات"); setUnitChiefRank(settings?.unitChiefRank ?? "العقيد"); setUnitChiefName(settings?.unitChiefName ?? "رئيس الوحدة"); setSerialPrefix(settings?.serialPrefix ?? "POL"); setSerialStart(settings?.serialStart ?? 1); setTimezone(settings?.timezone ?? "Asia/Riyadh"); setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss"); setNumberSystem(settings?.numberSystem ?? "latin");

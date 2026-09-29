@@ -36,7 +36,7 @@ export function createApp(
       const supabase = getSupabaseAdmin();
       const { data: telegram, error } = await supabase
         .from("telegrams")
-        .select("serialCode, createdAt, archivedAt, status")
+        .select("serialCode, creatorName, archivedAt, status")
         .eq("verificationToken", token)
         .maybeSingle();
 
@@ -45,7 +45,7 @@ export function createApp(
 
       const { data: settings, error: settingsError } = await supabase
         .from("department_settings")
-        .select("departmentName")
+        .select("unitName")
         .eq("configKey", "primary")
         .maybeSingle();
 
@@ -55,8 +55,8 @@ export function createApp(
         valid: true,
         status: telegram.status === "archived" || telegram.archivedAt ? "archived" : "valid",
         serialCode: telegram.serialCode,
-        createdAt: telegram.createdAt,
-        issuer: settings?.departmentName ?? "الجهة المصدرة",
+        unitName: settings?.unitName ?? "الوحدة الشرطية",
+        creatorName: telegram.creatorName,
       });
     } catch (error) {
       console.error("Telegram verification failed:", error);

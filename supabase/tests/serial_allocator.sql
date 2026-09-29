@@ -29,7 +29,8 @@ select results_eq(
 
 -- Simulate a stale nextSerial value while preserving existing telegrams.
 update public.department_settings
-   set "nextSerial" = "serialStart"
+   set "serialStart" = 1,
+       "nextSerial" = 1
  where "configKey" = 'primary';
 
 select results_eq(

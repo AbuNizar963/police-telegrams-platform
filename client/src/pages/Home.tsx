@@ -759,19 +759,11 @@ function TelegramDetail({
     printWindow.document.body.appendChild(clonedPaper);
     printWindow.document.close();
 
-    try {
-      await printWindow.document.fonts.ready;
-      await Promise.all(
-        Array.from(printWindow.document.images).map(image =>
-          image.decode().catch(() => undefined),
-        ),
-      );
-      printWindow.focus();
-      printWindow.print();
-    } catch (error) {
-      printWindow.close();
-      toast.error(error instanceof Error ? error.message : "تعذرت تهيئة الطباعة");
-    }
+    // Invoke print immediately while the browser still considers this a
+    // direct user gesture. Awaiting fonts/images here can consume that gesture,
+    // causing mobile browsers to leave the new tab open without showing print UI.
+    printWindow.focus();
+    printWindow.print();
   };
 
   const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };

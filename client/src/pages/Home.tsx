@@ -756,6 +756,16 @@ function TelegramDetail({
         clonedPaper.style.setProperty("margin", "0", "important");
         clonedPaper.style.setProperty("border-radius", "0", "important");
         clonedPaper.style.setProperty("box-shadow", "none", "important");
+
+    // The source modal is responsive. Its computed child widths may be frozen
+    // at the phone viewport when copied into the print window; expand each
+    // first-level paper section to the full printable content width.
+    clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
+      section.style.setProperty("box-sizing", "border-box", "important");
+      section.style.setProperty("width", "100%", "important");
+      section.style.setProperty("max-width", "100%", "important");
+      section.style.setProperty("min-width", "0", "important");
+    });
         clonedPaper.style.setProperty("overflow", "visible", "important");
         // Prevent the modal's scrolling viewport from clipping the canonical page.
         let parent = clonedPaper.parentElement;
@@ -801,7 +811,12 @@ function TelegramDetail({
     });
 
     clonedPaper.style.setProperty("display", "block", "important");
-    clonedPaper.style.setProperty("width", "100%", "important");
+    clonedPaper.style.setProperty("box-sizing", "border-box", "important");
+    clonedPaper.style.setProperty("width", "210mm", "important");
+    clonedPaper.style.setProperty("min-width", "0", "important");
+    clonedPaper.style.setProperty("max-width", "none", "important");
+    clonedPaper.style.setProperty("padding", "14mm", "important");
+    clonedPaper.style.setProperty("min-height", "297mm", "important");
     clonedPaper.style.setProperty("max-width", "none", "important");
     clonedPaper.style.setProperty("height", "auto", "important");
     clonedPaper.style.setProperty("max-height", "none", "important");

@@ -3,6 +3,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -51,23 +52,6 @@ export default function HeaderActions() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        aria-label={theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}
-        title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}
-        onClick={toggleTheme}
-        disabled={!toggleTheme}
-        className="h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
-      >
-        {theme === "dark" ? (
-          <Sun className="h-[18px] w-[18px]" />
-        ) : (
-          <Moon className="h-[18px] w-[18px]" />
-        )}
-      </Button>
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -91,9 +75,22 @@ export default function HeaderActions() {
             </p>
           </div>
           <DropdownMenuSeparator />
-          <p className="px-3 py-2 text-right text-xs text-muted-foreground">
-            إعدادات الحساب التفصيلية غير متاحة حاليًا.
-          </p>
+          <DropdownMenuItem
+            onSelect={toggleTheme}
+            className="cursor-pointer justify-end gap-2"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span>{theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}</span>
+          </DropdownMenuItem>
+          {user?.role === "admin" && (
+            <DropdownMenuItem
+              onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}
+              className="cursor-pointer justify-end gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              <span>إعدادات القسم والموقع</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

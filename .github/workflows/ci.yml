@@ -44,6 +44,20 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase services
+        run: supabase start -x studio,edge-runtime,logflare,vector
+
+      - name: Apply migrations to local database
+        run: supabase db reset
+
+      - name: Run database tests
+        run: supabase test db
+
       - name: Production build
         run: pnpm build
 

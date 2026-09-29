@@ -30,6 +30,8 @@ type Priority = keyof typeof priorityLabels;
 type Category = keyof typeof categoryLabels;
 type Status = keyof typeof statusLabels;
 type NumberSystem = "latin" | "arabic" | "hindi";
+type DisplayColumn = "category" | "priority" | "creator";
+const DEFAULT_DISPLAY_COLUMNS: Record<DisplayColumn, boolean> = { category: true, priority: true, creator: true };
 
 const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
 const hindiDigits = "०१२३४५६७८९";
@@ -75,7 +77,64 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
+  const [displayColumns, setDisplayColumns] = useState<Record<DisplayColumn, boolean>>(DEFAULT_DISPLAY_COLUMNS);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("police-telegrams.display-columns");
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<Record<DisplayColumn, unknown>>;
+      setDisplayColumns({
+        category: parsed.category !== false,
+        priority: parsed.priority !== false,
+        creator: parsed.creator !== false,
+      });
+    } catch {
+      // Ignore invalid or unavailable local display preferences.
+    }
+  }, []);
+
+  const updateDisplayColumns = (column: DisplayColumn, visible: boolean) => {
+    setDisplayColumns(current => {
+      const next = { ...current, [column]: visible };
+      try {
+        window.localStorage.setItem("police-telegrams.display-columns", JSON.stringify(next));
+      } catch {
+        // Display customization still works for the current session if storage is unavailable.
+      }
+      return next;
+    });
+  };
+
+  const resetDisplayColumns = () => {
+    setDisplayColumns(DEFAULT_DISPLAY_COLUMNS);
+    try {
+      window.localStorage.removeItem("police-telegrams.display-columns");
+    } catch {
+      // Ignore storage errors; the in-memory defaults are still applied.
+    }
+  };
+
+  const desktopGridClass = [
+    "grid",
+    "w-full",
+    "gap-3",
+    "text-right",
+    "md:items-center",
+    "md:px-5",
+    "transition-colors",
+    "hover:bg-muted/40",
+    displayColumns.category && displayColumns.priority && displayColumns.creator ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]" :
+    displayColumns.category && displayColumns.priority ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_32px]" :
+    displayColumns.category && displayColumns.creator ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_145px_32px]" :
+    displayColumns.priority && displayColumns.creator ? "md:grid-cols-[110px_minmax(180px,1fr)_125px_145px_32px]" :
+    displayColumns.category ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_32px]" :
+    displayColumns.priority ? "md:grid-cols-[110px_minmax(180px,1fr)_125px_32px]" :
+    displayColumns.creator ? "md:grid-cols-[110px_minmax(180px,1fr)_145px_32px]" :
+    "md:grid-cols-[110px_minmax(180px,1fr)_32px]",
+  ].join(" ");
 
   const input = useMemo(() => ({ search: search.trim() || undefined, classification: severity === "all" ? undefined : severity, priority: priority === "all" ? undefined : priority, status: status === "all" ? undefined : status, category: category === "all" ? undefined : category }), [search, severity, priority, status, category]);
   const settings = trpc.settings.get.useQuery();
@@ -96,7 +155,8 @@ export default function Home() {
         <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex"><Clock3 className="h-3.5 w-3.5" />{formatConfiguredDate(new Date(), settings.data)}</div>
         <Button type="button" variant="outline" onClick={toggleTheme} aria-label={theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"} className="h-10 w-10 rounded-xl border-border/70 bg-card p-0 shadow-sm transition-colors hover:bg-muted">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
         {me.data?.role === "admin" && <Button type="button" variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("open-department-settings"))} aria-label="الإعدادات" title="الإعدادات" className="h-10 w-10 rounded-xl border-border/70 bg-card p-0 shadow-sm transition-colors hover:bg-muted"><Settings2 className="h-4 w-4" /></Button>}
-        <Button variant="outline" className="h-10 rounded-lg" onClick={() => setFiltersOpen(value => !value)}><SlidersHorizontal className="ml-2 h-4 w-4" />تخصيص العرض</Button>
+        <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setDisplayCustomizeOpen(true)} aria-haspopup="dialog" aria-expanded={displayCustomizeOpen}><SlidersHorizontal className="ml-2 h-4 w-4" />تخصيص العرض</Button>
+        <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setFiltersOpen(value => !value)} aria-expanded={filtersOpen}><Filter className="ml-2 h-4 w-4" />الفلاتر{(severity !== "all" || priority !== "all" || status !== "all" || category !== "all") && <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10233f] px-1.5 text-[10px] text-white">{[severity !== "all", priority !== "all", status !== "all", category !== "all"].filter(Boolean).length}</span>}</Button>
         <Button onClick={() => setComposerOpen(true)} className="h-10 rounded-lg bg-[#10233f] px-4 text-white hover:bg-[#18375f]"><Plus className="ml-2 h-4 w-4" />برقية جديدة</Button>
       </div>
     </div>
@@ -108,14 +168,15 @@ export default function Home() {
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
       <section className="min-w-0 rounded-2xl border border-border/70 bg-card shadow-sm">
         <div className="flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-2"><h2 className="text-lg font-bold">سجل البرقيات والبلاغات</h2><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">{formatCount(rows.length, numberSystem)} نتيجة</span></div><p className="mt-1 text-xs text-muted-foreground">مرجع موحّد للبرقيات مع ختم الهوية الرقمية وسجل زمني كامل.</p></div><div className="relative w-full lg:w-72"><Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={event => setSearch(event.target.value)} placeholder="بحث بالرقم، الموضوع، الاسم..." className="h-10 rounded-lg bg-background pr-10" /></div></div>
-        {(filtersOpen || severity !== "all" || priority !== "all" || status !== "all" || category !== "all") && <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3"><Filter className="h-3.5 w-3.5 text-muted-foreground" /><select value={severity} onChange={event => setSeverity(event.target.value as "all" | Classification)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل درجات السرية</option>{(Object.keys(classificationLabels) as Classification[]).map(item => <option key={item} value={item}>{classificationLabels[item]}</option>)}</select><select value={priority} onChange={event => setPriority(event.target.value as "all" | Priority)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الأولويات</option>{(Object.keys(priorityLabels) as Priority[]).map(item => <option key={item} value={item}>{priorityLabels[item]}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as "all" | Status)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الحالات</option>{(Object.keys(statusLabels) as Status[]).map(item => <option key={item} value={item}>{statusLabels[item]}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value as "all" | Category)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل التصنيفات</option>{(Object.keys(categoryLabels) as Category[]).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}</select><button onClick={() => { setSeverity("all"); setPriority("all"); setStatus("all"); setCategory("all"); }} className="mr-auto text-xs text-muted-foreground hover:text-foreground">مسح الفلاتر</button></div>}
-        <div className="hidden grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px] gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid"><span>الرقم</span><span>موضوع البلاغ</span><span>التصنيف</span><span>الأولوية / السرية</span><span>المنشئ / الوقت</span><span /></div>
-        <div className="divide-y">{list.isLoading && <div className="p-12 text-center text-sm text-muted-foreground">جارٍ مزامنة سجل العمليات...</div>}{!list.isLoading && rows.length === 0 && <div className="p-14 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground/30" /><p className="mt-3 font-semibold">لا توجد نتائج</p><p className="mt-1 text-xs text-muted-foreground">غيّر الفلاتر أو أنشئ برقية جديدة.</p></div>}{rows.map(row => <button key={row.id} onClick={() => setSelectedId(row.id)} className="group grid w-full gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px] md:items-center md:px-5"><div className="flex items-center gap-2"><span className="font-mono text-xs font-bold text-[#9b7c3d]">{localizeDigits(row.serialCode, numberSystem)}</span><span className="md:hidden"><StatusBadge value={row.status} /></span></div><div className="min-w-0"><p className="truncate text-sm font-bold">{row.subject}</p><p className="mt-1 truncate text-xs text-muted-foreground">إلى: {row.recipient}</p></div><span className="text-xs text-muted-foreground">{categoryLabels[row.category]}</span><div className="flex flex-wrap items-center gap-1"><PriorityBadge value={row.priority} /><SeverityBadge value={row.classification} /></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-3.5 w-3.5" /><span className="truncate">{row.creatorName}</span><span className="hidden lg:inline">{formatConfiguredDate(row.createdAt, settings.data)}</span></div><ChevronLeft className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-1 md:block" /></button>)}</div>
+        {filtersOpen && <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3"><Filter className="h-3.5 w-3.5 text-muted-foreground" /><select value={severity} onChange={event => setSeverity(event.target.value as "all" | Classification)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل درجات السرية</option>{(Object.keys(classificationLabels) as Classification[]).map(item => <option key={item} value={item}>{classificationLabels[item]}</option>)}</select><select value={priority} onChange={event => setPriority(event.target.value as "all" | Priority)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الأولويات</option>{(Object.keys(priorityLabels) as Priority[]).map(item => <option key={item} value={item}>{priorityLabels[item]}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value as "all" | Status)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل الحالات</option>{(Object.keys(statusLabels) as Status[]).map(item => <option key={item} value={item}>{statusLabels[item]}</option>)}</select><select value={category} onChange={event => setCategory(event.target.value as "all" | Category)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs"><option value="all">كل التصنيفات</option>{(Object.keys(categoryLabels) as Category[]).map(item => <option key={item} value={item}>{categoryLabels[item]}</option>)}</select><button onClick={() => { setSeverity("all"); setPriority("all"); setStatus("all"); setCategory("all"); }} className="mr-auto text-xs text-muted-foreground hover:text-foreground">مسح الفلاتر</button></div>}
+        <div className={`hidden gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid ${desktopGridClass.match(/md:grid-cols-\[[^\]]+\]/)?.[0] ?? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]"}`}><span>الرقم</span><span>موضوع البلاغ</span>{displayColumns.category && <span>التصنيف</span>}{displayColumns.priority && <span>الأولوية / السرية</span>}{displayColumns.creator && <span>المنشئ / الوقت</span>}<span /></div>
+        <div className="divide-y">{list.isLoading && <div className="p-12 text-center text-sm text-muted-foreground">جارٍ مزامنة سجل العمليات...</div>}{!list.isLoading && rows.length === 0 && <div className="p-14 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground/30" /><p className="mt-3 font-semibold">لا توجد نتائج</p><p className="mt-1 text-xs text-muted-foreground">غيّر الفلاتر أو أنشئ برقية جديدة.</p></div>}{rows.map(row => <button key={row.id} onClick={() => setSelectedId(row.id)} className={`group ${desktopGridClass} px-4 py-4`}><div className="flex items-center gap-2"><span className="font-mono text-xs font-bold text-[#9b7c3d]">{localizeDigits(row.serialCode, numberSystem)}</span><span className="md:hidden"><StatusBadge value={row.status} /></span></div><div className="min-w-0"><p className="truncate text-sm font-bold">{row.subject}</p><p className="mt-1 truncate text-xs text-muted-foreground">إلى: {row.recipient}</p></div>{displayColumns.category && <span className="text-xs text-muted-foreground">{categoryLabels[row.category]}</span>}{displayColumns.priority && <div className="flex flex-wrap items-center gap-1"><PriorityBadge value={row.priority} /><SeverityBadge value={row.classification} /></div>}{displayColumns.creator && <div className="flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-3.5 w-3.5" /><span className="truncate">{row.creatorName}</span><span className="hidden lg:inline">{formatConfiguredDate(row.createdAt, settings.data)}</span></div>}<ChevronLeft className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-1 md:block" /></button>)}</div>
       </section>
 
       <aside className="space-y-4"><Card className="border-border/70 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Command className="h-4 w-4 text-[#9b7c3d]" /><h3 className="font-bold">مركز الإجراءات</h3></div><Settings2 className="h-4 w-4 text-muted-foreground" /></div><div className="mt-4 space-y-2"><QuickAction icon={Plus} label="إنشاء برقية" detail="فتح نموذج موثق" onClick={() => setComposerOpen(true)} /><QuickAction icon={MapPinned} label="خريطة البلاغات" detail="المواقع المسجلة" onClick={() => toast.info("سيتم تفعيل خريطة العمليات في المرحلة القادمة") } /><QuickAction icon={Users} label="الوحدات الميدانية" detail="إدارة الموارد" onClick={() => toast.info("وحدة الموارد الميدانية قيد الإعداد") } /><QuickAction icon={Archive} label="الأرشيف" detail="السجلات المغلقة" onClick={() => setStatus("archived")} /></div></CardContent></Card><Card className="border-border/70 bg-[#10233f] text-white shadow-sm"><CardContent className="p-5"><div className="flex items-center gap-2 text-[#d8c38e]"><Shield className="h-4 w-4" /><span className="text-xs font-semibold tracking-wide">سلامة السجل</span></div><p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p><p className="mt-2 text-xs leading-6 text-slate-300">كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الحذف الإداري متاح للمالك فقط ويُسجل في سجل التدقيق.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />حماية تشغيلية نشطة</div></CardContent></Card></aside>
     </div>
 
+    {displayCustomizeOpen && <DisplayCustomizationModal columns={displayColumns} onChange={updateDisplayColumns} onReset={resetDisplayColumns} close={() => setDisplayCustomizeOpen(false)} />}
     {composerOpen && <TelegramComposer pending={create.isPending} close={() => setComposerOpen(false)} submit={values => create.mutate(values)} />}
     {selectedId !== null && detail.data && (
       <TelegramDetail
@@ -127,6 +188,42 @@ export default function Home() {
     )}
     {me.data?.role === "admin" && <DepartmentSettingsModal settings={settings.data} />}
   </div>;
+}
+
+function DisplayCustomizationModal({
+  columns,
+  onChange,
+  onReset,
+  close,
+}: {
+  columns: Record<DisplayColumn, boolean>;
+  onChange: (column: DisplayColumn, visible: boolean) => void;
+  onReset: () => void;
+  close: () => void;
+}) {
+  const options: Array<{ key: DisplayColumn; label: string; description: string }> = [
+    { key: "category", label: "التصنيف", description: "يعرض نوع البرقية مثل جنائي أو إداري." },
+    { key: "priority", label: "الأولوية والسرية", description: "يعرض مستوى الأولوية ودرجة السرية." },
+    { key: "creator", label: "المنشئ والوقت", description: "يعرض اسم المنشئ ووقت إنشاء البرقية." },
+  ];
+
+  return <Modal title="تخصيص عرض سجل البرقيات" subtitle="DISPLAY / TABLE SETTINGS" close={close}>
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+        اختر المعلومات التي تظهر في سجل البرقيات على الشاشات الكبيرة. الرقم والموضوع يبقيان ظاهرين دائمًا حتى لا تفقد هوية السجل الأساسية.
+      </div>
+      <div className="space-y-2">
+        {options.map(option => <label key={option.key} className="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/40">
+          <input type="checkbox" checked={columns[option.key]} onChange={event => onChange(option.key, event.target.checked)} className="mt-1 h-4 w-4 accent-[#10233f]" />
+          <span className="min-w-0"><span className="block text-sm font-bold">{option.label}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{option.description}</span></span>
+        </label>)}
+      </div>
+      <div className="flex items-center justify-between gap-3 border-t pt-4">
+        <button type="button" onClick={onReset} className="text-xs font-semibold text-muted-foreground hover:text-foreground">إعادة العرض الافتراضي</button>
+        <Button type="button" onClick={close} className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]">تم</Button>
+      </div>
+    </div>
+  </Modal>;
 }
 
 function QuickAction({ icon: Icon, label, detail, onClick }: { icon: typeof Plus; label: string; detail: string; onClick: () => void }) { return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-right transition-colors hover:border-[#b4945a] hover:bg-[#fffaf0] dark:hover:bg-[#2d281b]"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10233f] text-[#d8c38e]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-xs font-bold">{label}</span><span className="mt-0.5 block text-[10px] text-muted-foreground">{detail}</span></span><ChevronLeft className="mr-auto h-3.5 w-3.5 text-muted-foreground" /></button>; }

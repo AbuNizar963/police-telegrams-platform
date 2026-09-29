@@ -624,11 +624,16 @@ function TelegramDetail({
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+    const watermark = settings?.logoUrl
+      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
+      : `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
         .telegram-export-page {
+          position: relative;
+          isolation: isolate;
           box-sizing: border-box;
           width: 794px;
           min-height: 1123px;
@@ -644,6 +649,46 @@ function TelegramDetail({
           print-color-adjust: exact;
         }
         .telegram-export-page * { box-sizing: border-box; }
+        .telegram-export-page .page-watermark {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          z-index: 0;
+          width: 260px;
+          height: 260px;
+          transform: translate(-50%, -50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.075;
+          pointer-events: none;
+        }
+        .telegram-export-page .watermark-logo {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .telegram-export-page .watermark-seal {
+          width: 100%;
+          height: 100%;
+          border: 7px solid #9a813c;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #9a813c;
+          text-align: center;
+          line-height: 1.25;
+        }
+        .telegram-export-page .watermark-seal span { font-size: 68px; }
+        .telegram-export-page .watermark-seal strong { font-size: 28px; }
+        .telegram-export-page .official-header, .telegram-export-page .classification,
+        .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
+          position: relative;
+          z-index: 1;
+        }
         .telegram-export-page .official-header {
           display: grid;
           grid-template-columns: minmax(0, 1.2fr) 88px minmax(0, 1fr);
@@ -749,6 +794,7 @@ function TelegramDetail({
         }
       </style>
       <article class="telegram-export-page" dir="rtl" lang="ar">
+        <div class="page-watermark">${watermark}</div>
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>

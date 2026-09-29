@@ -624,13 +624,13 @@ function TelegramDetail({
     }
 
     const normalizeModernColors = (value: string) =>
-      value.replace(/(?:oklch|oklab)\\((?:[^()]|\\([^()]*\\))*\\)/gi, color => {
+      value.replace(/(?:oklch|oklab)\((?:[^()]|\([^()]*\))*\)/gi, color => {
         context.clearRect(0, 0, 1, 1);
         context.fillStyle = "#000000";
         context.fillStyle = color;
         context.fillRect(0, 0, 1, 1);
         const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
-        return `rgba(${red}, ${green}, ${blue}, ${Number((alpha / 255).toFixed(3))})`;
+        return \`rgba(\${red}, \${green}, \${blue}, \${Number((alpha / 255).toFixed(3))})\`;
       });
 
     return html2canvas(paper, {
@@ -679,9 +679,16 @@ function TelegramDetail({
 
         clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach(node => node.remove());
 
+        const paperAncestors = new Set<Element>();
+        let ancestor: Element | null = clonedPaper;
+        while (ancestor) {
+          paperAncestors.add(ancestor);
+          ancestor = ancestor.parentElement;
+        }
+
         for (const element of Array.from(clonedDocument.body.querySelectorAll<HTMLElement>("*"))) {
-          if (element !== clonedPaper && !clonedPaper.contains(element)) {
-            element.style.setProperty("display", "none", "important");
+          if (!paperAncestors.has(element) && !clonedPaper.contains(element)) {
+            element.style.setProperty("visibility", "hidden", "important");
           }
         }
 
@@ -693,6 +700,80 @@ function TelegramDetail({
       },
     });
   };
+  const printTelegram = async () => {
+    const paper = paperRef.current;
+    if (!paper) {
+      toast.error("تعذر العثور على ورقة البرقية للطباعة");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
+      return;
+    }
+
+    const clonedPaper = paper.cloneNode(true) as HTMLElement;
+    const sourceElements = [paper, ...Array.from(paper.querySelectorAll<HTMLElement>("*"))];
+    const clonedElements = [clonedPaper, ...Array.from(clonedPaper.querySelectorAll<HTMLElement>("*"))];
+
+    sourceElements.forEach((source, index) => {
+      const target = clonedElements[index];
+      const computed = window.getComputedStyle(source);
+      for (let propertyIndex = 0; propertyIndex < computed.length; propertyIndex += 1) {
+        const property = computed.item(propertyIndex);
+        if (!property || property.startsWith("--")) continue;
+        const value = computed.getPropertyValue(property);
+        if (value) target.style.setProperty(property, value);
+      }
+      target.removeAttribute("class");
+    });
+
+    clonedPaper.style.setProperty("display", "block", "important");
+    clonedPaper.style.setProperty("width", "100%", "important");
+    clonedPaper.style.setProperty("max-width", "none", "important");
+    clonedPaper.style.setProperty("height", "auto", "important");
+    clonedPaper.style.setProperty("max-height", "none", "important");
+    clonedPaper.style.setProperty("margin", "0", "important");
+    clonedPaper.style.setProperty("overflow", "visible", "important");
+    clonedPaper.style.setProperty("box-shadow", "none", "important");
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+      <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>${telegram.serialCode}</title>
+          <style>
+            @page { size: A4 portrait; margin: 12mm; }
+            html, body { width: 100%; margin: 0; padding: 0; background: #fff; }
+            body { color: #0f172a; font-family: Arial, sans-serif; }
+            .telegram-paper { box-sizing: border-box; break-inside: auto; }
+            .telegram-paper img { max-width: 100%; break-inside: avoid; }
+            @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+          </style>
+        </head>
+        <body></body>
+      </html>`);
+    printWindow.document.body.appendChild(clonedPaper);
+    printWindow.document.close();
+
+    try {
+      await printWindow.document.fonts.ready;
+      await Promise.all(
+        Array.from(printWindow.document.images).map(image =>
+          image.decode().catch(() => undefined),
+        ),
+      );
+      printWindow.focus();
+      printWindow.print();
+    } catch (error) {
+      printWindow.close();
+      toast.error(error instanceof Error ? error.message : "تعذرت تهيئة الطباعة");
+    }
+  };
+
   const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };
   const downloadImage = async () => { setExporting("image"); try { const blob = await imageBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${telegram.serialCode}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.success("تم تنزيل صورة البرقية بدقة عالية"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة"); } finally { setExporting(null); } };
   const shareImage = async () => { setExporting("image-share"); try { const blob = await imageBlob(); const file = new File([blob], `${telegram.serialCode}.png`, { type: "image/png" }); if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة الصورة"); } else { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة"); } finally { setExporting(null); } };
@@ -752,7 +833,7 @@ function TelegramDetail({
     return pdf;
   };
   const exportPdf = async (share = false) => { setExporting(share ? "share" : "pdf"); try { const pdf = await makePdf(); const blob = pdf.output("blob"); const file = new File([blob], `${telegram.serialCode}.pdf`, { type: "application/pdf" }); if (share && navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة البرقية"); } else { pdf.save(`${telegram.serialCode}.pdf`); toast.success(share ? "تم تنزيل ملف PDF للمشاركة" : "تم تنزيل البرقية بصيغة PDF عالية الدقة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية"); } finally { setExporting(null); } };
-  return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div ref={paperRef} className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"><div className="mb-5 border-b-2 border-[#b4945a] pb-4 text-center"><div className="flex items-center justify-center gap-3">{settings?.logoUrl ? <img src={settings.logoUrl} alt="شعار القسم" crossOrigin="anonymous" className="h-14 w-14 rounded-xl object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e]"><Shield className="h-7 w-7" /></div>}<div><p className="text-[10px] font-semibold tracking-[0.16em] text-[#9b7c3d]">برقية رسمية</p><h3 className="mt-1 text-lg font-bold">{settings?.unitName ?? "وحدة العمليات"}</h3><p className="text-xs text-slate-600">{settings?.departmentName ?? "إدارة الشرطة"}</p></div></div></div><div className="flex flex-wrap items-center gap-2"><PriorityBadge value={telegram.priority} /><SeverityBadge value={telegram.classification} /><StatusBadge value={telegram.status} /><span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{categoryLabels[telegram.category]}</span></div><div className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-2"><Info label="الجهة الموجهة" value={telegram.recipient} /><Info label="منشئ البرقية" value={telegram.creatorName} /><Info label="التاريخ والوقت" value={formatConfiguredDate(telegram.createdAt, settings)} /><Info label="الموقع" value={telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"} /></div><div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 p-4 text-sm leading-8">{telegram.body}</div><div className="mt-8 border-t-2 border-[#b4945a] pt-4 text-center"><p className="text-sm font-bold text-[#10233f]">{settings?.unitName ?? "وحدة العمليات"}</p><p className="mt-1 text-sm font-semibold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p><p className="mt-2 text-[11px] text-slate-500">التوقيع والختم الرسمي لرئيس الوحدة</p></div></div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={() => window.print()} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
+  return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div ref={paperRef} className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"><div className="mb-5 border-b-2 border-[#b4945a] pb-4 text-center"><div className="flex items-center justify-center gap-3">{settings?.logoUrl ? <img src={settings.logoUrl} alt="شعار القسم" crossOrigin="anonymous" className="h-14 w-14 rounded-xl object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e]"><Shield className="h-7 w-7" /></div>}<div><p className="text-[10px] font-semibold tracking-[0.16em] text-[#9b7c3d]">برقية رسمية</p><h3 className="mt-1 text-lg font-bold">{settings?.unitName ?? "وحدة العمليات"}</h3><p className="text-xs text-slate-600">{settings?.departmentName ?? "إدارة الشرطة"}</p></div></div></div><div className="flex flex-wrap items-center gap-2"><PriorityBadge value={telegram.priority} /><SeverityBadge value={telegram.classification} /><StatusBadge value={telegram.status} /><span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{categoryLabels[telegram.category]}</span></div><div className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-2"><Info label="الجهة الموجهة" value={telegram.recipient} /><Info label="منشئ البرقية" value={telegram.creatorName} /><Info label="التاريخ والوقت" value={formatConfiguredDate(telegram.createdAt, settings)} /><Info label="الموقع" value={telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"} /></div><div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 p-4 text-sm leading-8">{telegram.body}</div><div className="mt-8 border-t-2 border-[#b4945a] pt-4 text-center"><p className="text-sm font-bold text-[#10233f]">{settings?.unitName ?? "وحدة العمليات"}</p><p className="mt-1 text-sm font-semibold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p><p className="mt-2 text-[11px] text-slate-500">التوقيع والختم الرسمي لرئيس الوحدة</p></div></div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
 }
 function TelegramEditModal({
   telegram,

@@ -616,56 +616,51 @@ function TelegramDetail({
     await document.fonts?.ready;
 
     return html2canvas(paper, {
-      scale: 3,
+      scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
+      width: paper.scrollWidth,
+      height: paper.scrollHeight,
       windowWidth: paper.scrollWidth,
+      windowHeight: paper.scrollHeight,
       onclone: clonedDocument => {
         const clonedPaper = clonedDocument.querySelector<HTMLElement>(".telegram-paper");
         if (!clonedPaper) return;
 
-        // html2canvas 1.x cannot parse CSS Color 4 functions (for example oklch()).
-        // Normalize only the cloned export DOM; the live page keeps its original styles.
-        const colorProbe = clonedDocument.createElement("canvas");
-        const context = colorProbe.getContext("2d");
-        if (!context) return;
-
-        const colorProperties = [
-          "color",
-          "background-color",
-          "border-top-color",
-          "border-right-color",
-          "border-bottom-color",
-          "border-left-color",
-          "outline-color",
-          "text-decoration-color",
-          "text-emphasis-color",
-          "column-rule-color",
-          "fill",
-          "stroke",
-          "box-shadow",
-          "text-shadow",
+        // html2canvas 1.x cannot parse modern CSS color functions (oklch/oklab).
+        // Freeze computed styles as inline RGB values in the cloned document, then
+        // remove stylesheets so html2canvas never parses unsupported declarations.
+        const allElements = [
+          clonedDocument.documentElement,
+          clonedDocument.body,
+          ...Array.from(clonedDocument.querySelectorAll<HTMLElement>("*")),
         ];
 
-        const elements = [clonedPaper, ...Array.from(clonedPaper.querySelectorAll<HTMLElement>("*"))];
-        for (const element of elements) {
+        for (const element of allElements) {
           const computed = clonedDocument.defaultView?.getComputedStyle(element);
           if (!computed) continue;
 
-          for (const property of colorProperties) {
+          for (let index = 0; index < computed.length; index += 1) {
+            const property = computed.item(index);
+            if (!property || property.startsWith("--")) continue;
             const value = computed.getPropertyValue(property);
-            if (!value || !/\b(?:oklch|oklab|color)\(/i.test(value)) continue;
-
-            // Canvas color parsing converts supported CSS Color 4 values to sRGB.
-            context.fillStyle = "#000000";
-            context.fillStyle = value;
-            const normalized = context.fillStyle;
-            if (normalized && !/\b(?:oklch|oklab|color)\(/i.test(normalized)) {
-              element.style.setProperty(property, normalized);
-            }
+            if (value) element.style.setProperty(property, value, computed.getPropertyPriority(property));
           }
         }
+
+        clonedDocument.querySelectorAll("style, link[rel='stylesheet']").forEach(node => node.remove());
+
+        // The export is the paper only; hide the surrounding modal and action bar.
+        for (const element of Array.from(clonedDocument.body.querySelectorAll<HTMLElement>("*"))) {
+          if (element !== clonedPaper && !clonedPaper.contains(element)) {
+            element.style.setProperty("visibility", "hidden", "important");
+          }
+        }
+        clonedPaper.style.setProperty("visibility", "visible", "important");
+        clonedPaper.querySelectorAll<HTMLElement>("*").forEach(element => {
+          element.style.setProperty("visibility", "visible", "important");
+        });
       },
     });
   };

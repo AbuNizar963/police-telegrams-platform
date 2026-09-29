@@ -809,12 +809,49 @@ function TelegramDetail({
     document.body.appendChild(mount);
 
     try {
-      const images = Array.from(paper.querySelectorAll("img"));
+      const images = Array.from(paper.querySelectorAll<HTMLImageElement>("img"));
       await Promise.all(
         images.map(async image => {
           try {
+            const source = image.currentSrc || image.src;
+            if (!source) {
+              image.remove();
+              return;
+            }
+
+            // Inline images before canvas capture. A successfully decoded remote
+            // image can still taint the canvas when its host does not grant CORS.
+            if (!source.startsWith("data:")) {
+              const imageUrl = new URL(source, document.baseURI);
+              const response = await fetch(imageUrl.href, {
+                mode: "cors",
+                credentials: imageUrl.origin === window.location.origin ? "same-origin" : "omit",
+                cache: "force-cache",
+              });
+              if (!response.ok) {
+                throw new Error(`Image request failed: ${response.status}`);
+              }
+
+              const blob = await response.blob();
+              if (!blob.type.startsWith("image/")) {
+                throw new Error("Image response has an invalid content type");
+              }
+
+              const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () => reject(new Error("Unable to read image"));
+                reader.readAsDataURL(blob);
+              });
+
+              image.removeAttribute("srcset");
+              image.removeAttribute("crossorigin");
+              image.src = dataUrl;
+            }
+
             await image.decode();
           } catch {
+            // Keep export usable if an optional logo cannot be fetched safely.
             image.remove();
           }
         }),

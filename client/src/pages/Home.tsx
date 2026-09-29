@@ -631,26 +631,11 @@ function TelegramDetail({
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
-    const qrPayload = JSON.stringify({
-      documentType: "برقية رسمية",
-      serialNumber: displaySerial,
-      createdAt,
-      classification: classificationLabels[telegram.classification],
-      priority: priorityLabels[telegram.priority],
-      category: categoryLabels[telegram.category],
-      status: statusLabels[telegram.status],
-      senderUnit: departmentName,
-      recipient: telegram.recipient,
-      subject: telegram.subject,
-      body: telegram.body,
-      creatorName: telegram.creatorName,
-      unitName,
-      unitChiefRank: settings?.unitChiefRank ?? "رئيس الوحدة",
-      unitChiefName: settings?.unitChiefName ?? "",
-      location: telegram.gpsLatitude != null && telegram.gpsLongitude != null
-        ? { latitude: telegram.gpsLatitude, longitude: telegram.gpsLongitude }
-        : null,
-    });
+    const verificationUrl = new URL(
+      `/verify/${encodeURIComponent(telegram.verificationToken)}`,
+      window.location.origin,
+    ).toString();
+    const qrPayload = verificationUrl;
     const createQrCode = qrcode as unknown as (
       typeNumber: number,
       errorCorrectionLevel: string,
@@ -662,7 +647,7 @@ function TelegramDetail({
     const qrCode = createQrCode(0, "L");
     qrCode.addData(qrPayload);
     qrCode.make();
-    const qrSvg = qrCode.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: "رمز QR يحتوي على جميع بيانات البرقية" });
+    const qrSvg = qrCode.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: "رمز QR للتحقق من أصالة البرقية" });
 
     const watermark = settings?.logoUrl
       ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`

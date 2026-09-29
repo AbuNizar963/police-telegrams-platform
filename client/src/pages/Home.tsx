@@ -785,14 +785,20 @@ function TelegramDetail({
           font-size: 12px;
         }
         .telegram-export-page .document-footer {
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+          align-items: start;
+          gap: 12px;
           margin-top: 16px;
           color: #667085;
           font-size: 11px;
+          direction: rtl;
         }
         .telegram-export-page .document-footer p { margin: 0; }
+        .telegram-export-page .document-footer .footer-creator { text-align: right; }
+        .telegram-export-page .document-footer .footer-location { text-align: center; }
+        .telegram-export-page .document-footer .footer-date { text-align: left; }
+        .telegram-export-page .document-footer .footer-label { display: block; }
         @media print {
           @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; padding: 0; background: #fff; }
@@ -835,8 +841,9 @@ function TelegramDetail({
           </section>
         </main>
         <footer class="document-footer">
-          <p>الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}<br /><span class="document-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</span></p>
-          <p>تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+          <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</p>
+          <p class="footer-location"><span class="footer-label">الموقع:</span>${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;
 

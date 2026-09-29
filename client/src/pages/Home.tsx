@@ -958,7 +958,105 @@ function TelegramDetail({
     return pdf;
   };
   const exportPdf = async (share = false) => { setExporting(share ? "share" : "pdf"); try { const pdf = await makePdf(); const blob = pdf.output("blob"); const file = new File([blob], `${telegram.serialCode}.pdf`, { type: "application/pdf" }); if (share && navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة البرقية"); } else { pdf.save(`${telegram.serialCode}.pdf`); toast.success(share ? "تم تنزيل ملف PDF للمشاركة" : "تم تنزيل البرقية بصيغة PDF عالية الدقة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية"); } finally { setExporting(null); } };
-  return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div ref={paperRef} className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"><div className="mb-5 border-b-2 border-[#b4945a] pb-4 text-center"><div className="flex items-center justify-center gap-3">{settings?.logoUrl ? <img src={settings.logoUrl} alt="شعار القسم" crossOrigin="anonymous" className="h-14 w-14 rounded-xl object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e]"><Shield className="h-7 w-7" /></div>}<div><p className="text-[10px] font-semibold tracking-[0.16em] text-[#9b7c3d]">برقية رسمية</p><h3 className="mt-1 text-lg font-bold">{settings?.unitName ?? "وحدة العمليات"}</h3><p className="text-xs text-slate-600">{settings?.departmentName ?? "إدارة الشرطة"}</p></div></div></div><div className="flex flex-wrap items-center gap-2"><PriorityBadge value={telegram.priority} /><SeverityBadge value={telegram.classification} /><StatusBadge value={telegram.status} /><span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{categoryLabels[telegram.category]}</span></div><div className="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-2"><Info label="الجهة الموجهة" value={telegram.recipient} /><Info label="منشئ البرقية" value={telegram.creatorName} /><Info label="التاريخ والوقت" value={formatConfiguredDate(telegram.createdAt, settings)} /><Info label="الموقع" value={telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"} /></div><div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 p-4 text-sm leading-8">{telegram.body}</div><div className="mt-8 border-t-2 border-[#b4945a] pt-4 text-center"><p className="text-sm font-bold text-[#10233f]">{settings?.unitName ?? "وحدة العمليات"}</p><p className="mt-1 text-sm font-semibold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p><p className="mt-2 text-[11px] text-slate-500">التوقيع والختم الرسمي لرئيس الوحدة</p></div></div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
+  return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div
+      ref={paperRef}
+      className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"
+      dir="rtl"
+      lang="ar"
+    >
+      <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 border-b-2 border-[#b49a55] pb-5">
+        <div className="text-right text-sm leading-7">
+          <p className="font-bold">الجمهورية العربية السورية</p>
+          <p className="font-semibold">وزارة الداخلية</p>
+          <p>{settings?.unitName ?? "قيادة الأمن الداخلي"}</p>
+          <p>{settings?.departmentName ?? "قسم العمليات"}</p>
+        </div>
+
+        <div className="flex justify-center pt-1">
+          {settings?.logoUrl ? (
+            <img
+              src={settings.logoUrl}
+              alt="الشعار الرسمي"
+              crossOrigin="anonymous"
+              className="h-20 w-20 object-contain"
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#b49a55] text-[#b49a55]">
+              <Shield className="h-10 w-10" />
+            </div>
+          )}
+        </div>
+
+        <div className="text-left text-sm leading-7">
+          <p><span className="font-semibold">رقم البرقية:</span> {telegram.serialCode}</p>
+          <p><span className="font-semibold">التاريخ والوقت:</span> {formatConfiguredDate(telegram.createdAt, settings)}</p>
+          <p><span className="font-semibold">درجة السرية:</span> {telegram.classification}</p>
+          <p><span className="font-semibold">درجة الأسبقية:</span> {telegram.priority}</p>
+        </div>
+      </header>
+
+      <div className="mt-5 grid grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)] gap-0 border-2 border-slate-900">
+        <aside className="order-2 border-r-2 border-slate-900 text-sm">
+          <section className="border-b-2 border-slate-900">
+            <h4 className="bg-slate-100 px-3 py-2 text-center font-bold">ما يخص مكتب البرقيات</h4>
+            <div className="space-y-3 p-3 leading-6">
+              <p>الرقم المتسلسل: ................................</p>
+              <p>عدد الكلمات: ....................................</p>
+              <p>ساعة إرسال البرقية: □ □ □ □</p>
+              <p>ساعة استلام البرقية: □ □ □ □</p>
+              <p>تاريخ الإرسال أو الاستلام: ...................</p>
+              <p>رتبة واسم المستلم: ............................</p>
+              <p>رتبة واسم وتوقيع المرسل: ..................</p>
+              <p className="text-center font-semibold">الخاتم الرسمي</p>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="bg-slate-100 px-3 py-2 text-center font-bold">ما يخص مركز الإشارة</h4>
+            <div className="space-y-3 p-3 leading-6">
+              <p>النداء: ...........................................</p>
+              <p>ساعة إرسال البرقية: □ □ □ □</p>
+              <p>ساعة استلام البرقية: □ □ □ □</p>
+              <p>تاريخ الإرسال أو الاستلام: ...................</p>
+              <p>واسطة الإرسال: ................................</p>
+              <p>رتبة واسم المستلم: ............................</p>
+              <p>رتبة واسم وتوقيع المرسل: ..................</p>
+            </div>
+          </section>
+        </aside>
+
+        <main className="order-1 min-w-0 p-4">
+          <div className="border-b border-dotted border-slate-500 pb-3 text-sm leading-7">
+            <p><span className="font-bold">من:</span> {telegram.creatorName} — {settings?.departmentName ?? "قسم العمليات"}</p>
+            <p><span className="font-bold">إلى:</span> {telegram.recipient}</p>
+            <p><span className="font-bold">للاطلاع:</span> ................................................................................</p>
+          </div>
+
+          <div className="my-4 flex flex-wrap items-center gap-2">
+            <span className="rounded border border-slate-400 px-3 py-1 text-xs font-semibold">{categoryLabels[telegram.category]}</span>
+            <PriorityBadge value={telegram.priority} />
+            <SeverityBadge value={telegram.classification} />
+            <StatusBadge value={telegram.status} />
+          </div>
+
+          <h3 className="mb-3 text-center text-base font-bold">نص البرقية</h3>
+          <div className="min-h-[180px] whitespace-pre-wrap break-words text-justify text-[15px] leading-8">
+            {telegram.body}
+          </div>
+
+          <div className="mt-8 border-t border-dotted border-slate-500 pt-4 text-left leading-7">
+            <p className="font-bold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p>
+            <p className="text-sm">{settings?.unitName ?? "قيادة الأمن الداخلي"}</p>
+            <p className="mt-4 text-xs text-slate-500">التوقيع والختم الرسمي</p>
+          </div>
+
+          <div className="mt-6 border-t border-slate-300 pt-3 text-xs leading-6 text-slate-600">
+            <p><span className="font-semibold">الموقع:</span> {telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"}</p>
+            <p><span className="font-semibold">تاريخ إنشاء البرقية:</span> {formatConfiguredDate(telegram.createdAt, settings)}</p>
+          </div>
+        </main>
+      </div>
+    </div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
 }
 function TelegramEditModal({
   telegram,

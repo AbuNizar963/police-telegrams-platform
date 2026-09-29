@@ -757,15 +757,14 @@ function TelegramDetail({
         clonedPaper.style.setProperty("border-radius", "0", "important");
         clonedPaper.style.setProperty("box-shadow", "none", "important");
 
-    // The source modal is responsive. Its computed child widths may be frozen
-    // at the phone viewport when copied into the print window; expand each
-    // first-level paper section to the full printable content width.
-    clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
-      section.style.setProperty("box-sizing", "border-box", "important");
-      section.style.setProperty("width", "100%", "important");
-      section.style.setProperty("max-width", "100%", "important");
-      section.style.setProperty("min-width", "0", "important");
-    });
+        // The capture clone can inherit narrow responsive widths from the modal.
+        // Normalize direct paper sections to the canonical page content width.
+        clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
+          section.style.setProperty("box-sizing", "border-box", "important");
+          section.style.setProperty("width", "100%", "important");
+          section.style.setProperty("max-width", "100%", "important");
+          section.style.setProperty("min-width", "0", "important");
+        });
         clonedPaper.style.setProperty("overflow", "visible", "important");
         // Prevent the modal's scrolling viewport from clipping the canonical page.
         let parent = clonedPaper.parentElement;
@@ -823,6 +822,15 @@ function TelegramDetail({
     clonedPaper.style.setProperty("margin", "0", "important");
     clonedPaper.style.setProperty("overflow", "visible", "important");
     clonedPaper.style.setProperty("box-shadow", "none", "important");
+
+    // Copying computed styles from the mobile modal can freeze its narrow
+    // child widths. Expand direct sections to the A4 paper's content width.
+    clonedPaper.querySelectorAll<HTMLElement>(":scope > *").forEach(section => {
+      section.style.setProperty("box-sizing", "border-box", "important");
+      section.style.setProperty("width", "100%", "important");
+      section.style.setProperty("max-width", "100%", "important");
+      section.style.setProperty("min-width", "0", "important");
+    });
 
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>

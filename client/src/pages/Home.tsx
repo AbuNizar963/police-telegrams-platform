@@ -823,7 +823,7 @@ function TelegramDetail({
         </section>
         <main class="telegram-content">
           <section class="routing">
-            <p><strong>من:</strong> ${escapeHtml(telegram.creatorName)} — ${escapeHtml(departmentName)}</p>
+            <p><strong>من:</strong> ${escapeHtml(departmentName)}</p>
             <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
             <p><strong>الموضوع:</strong> ${escapeHtml(telegram.subject)}</p>
           </section>
@@ -832,11 +832,10 @@ function TelegramDetail({
           <section class="signature">
             <p><strong>${escapeHtml(settings?.unitChiefRank ?? "رئيس الوحدة")} ${escapeHtml(settings?.unitChiefName ?? "")}</strong></p>
             <p>رئيس ${escapeHtml(departmentName)}</p>
-            <p class="signature-label">التوقيع والختم الرسمي</p>
           </section>
         </main>
         <footer class="document-footer">
-          <p>الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p>الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}<br /><span class="document-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</span></p>
           <p>تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;

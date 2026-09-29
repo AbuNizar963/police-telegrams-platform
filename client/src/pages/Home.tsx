@@ -638,10 +638,12 @@ function TelegramDetail({
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
-      width: paper.scrollWidth,
+      // Render every export from a canonical A4-width canvas (96 CSS px/in).
+      // The on-clone paper width below is 794px, matching 210mm at 96dpi.
+      width: 794,
       height: paper.scrollHeight,
-      windowWidth: paper.scrollWidth,
-      windowHeight: paper.scrollHeight,
+      windowWidth: 794,
+      windowHeight: Math.max(paper.scrollHeight, 1123),
       onclone: async clonedDocument => {
         // html2canvas can produce a tainted canvas when an embedded image is
         // served without valid CORS headers. Convert remote images to data URLs
@@ -744,6 +746,25 @@ function TelegramDetail({
 
         clonedPaper.style.setProperty("display", "block", "important");
         clonedPaper.style.setProperty("visibility", "visible", "important");
+        clonedPaper.style.setProperty("box-sizing", "border-box", "important");
+        clonedPaper.style.setProperty("width", "794px", "important");
+        clonedPaper.style.setProperty("min-width", "794px", "important");
+        clonedPaper.style.setProperty("max-width", "794px", "important");
+        clonedPaper.style.setProperty("min-height", "1123px", "important");
+        clonedPaper.style.setProperty("height", "auto", "important");
+        clonedPaper.style.setProperty("padding", "53px", "important");
+        clonedPaper.style.setProperty("margin", "0", "important");
+        clonedPaper.style.setProperty("border-radius", "0", "important");
+        clonedPaper.style.setProperty("box-shadow", "none", "important");
+        clonedPaper.style.setProperty("overflow", "visible", "important");
+        // Prevent the modal's scrolling viewport from clipping the canonical page.
+        let parent = clonedPaper.parentElement;
+        while (parent && parent !== clonedDocument.body) {
+          parent.style.setProperty("overflow", "visible", "important");
+          parent.style.setProperty("height", "auto", "important");
+          parent.style.setProperty("max-height", "none", "important");
+          parent = parent.parentElement;
+        }
         clonedPaper.querySelectorAll<HTMLElement>("*").forEach(element => {
           element.style.setProperty("visibility", "visible", "important");
         });
@@ -859,9 +880,11 @@ function TelegramDetail({
   const makePdf = async () => {
     const sourceCanvas = await capture();
     const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
-    const margin = 10;
-    const pageWidth = 190;
-    const pageHeight = 277;
+    // Match the same A4 page box used by browser printing: 210 × 297 mm,
+    // with the paper's internal 14mm padding already included in the captured pixels.
+    const margin = 0;
+    const pageWidth = 210;
+    const pageHeight = 297;
     const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
     const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
     let sourceY = 0;

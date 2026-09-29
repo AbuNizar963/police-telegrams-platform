@@ -4,22 +4,38 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
+import HeaderActions from "./components/HeaderActions";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
+
+function DashboardPage({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <HeaderActions />
+      <DashboardLayout>{children}</DashboardLayout>
+    </>
+  );
+}
 
 function Router() {
   return (
     <Switch>
       <Route path="/verify/:token" component={VerifyTelegram} />
       <Route path="/">
-        <DashboardLayout><Home /></DashboardLayout>
+        <DashboardPage>
+          <Home />
+        </DashboardPage>
       </Route>
       <Route path="/404">
-        <DashboardLayout><NotFound /></DashboardLayout>
+        <DashboardPage>
+          <NotFound />
+        </DashboardPage>
       </Route>
       <Route>
-        <DashboardLayout><NotFound /></DashboardLayout>
+        <DashboardPage>
+          <NotFound />
+        </DashboardPage>
       </Route>
     </Switch>
   );

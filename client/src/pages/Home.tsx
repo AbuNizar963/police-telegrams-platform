@@ -692,9 +692,9 @@ function TelegramDetail({
         }
         .telegram-export-page .official-header {
           display: grid;
-          grid-template-columns: minmax(0, 1.2fr) 120px minmax(0, 1fr);
-          align-items: start;
-          gap: 18px;
+          grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
           padding: 0 0 22px;
           border-bottom: 3px solid #b49a55;
         }
@@ -703,21 +703,22 @@ function TelegramDetail({
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.8; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 24px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .government-subtitle { font-size: 20px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 16px; font-weight: 700; line-height: 1.9; }
+        .telegram-export-page .government-name { font-size: 16px; font-weight: 700; white-space: normal; }
+        .telegram-export-page .government-subtitle { font-size: 16px; font-weight: 700; white-space: normal; }
+        .telegram-export-page .header-metadata { font-size: 16px; font-weight: 700; line-height: 1.8; }
+         .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
         .telegram-export-page .official-logo {
           display: block;
-          width: 150px;
-          height: 150px;
+          width: 190px;
+          height: 190px;
           margin: 0 auto;
           object-fit: contain;
         }
         .telegram-export-page .official-seal {
-          width: 112px;
-          height: 112px;
+          width: 190px;
+          height: 190px;
           margin: 0 auto;
           border: 2px solid #b49a55;
           border-radius: 50%;
@@ -766,7 +767,7 @@ function TelegramDetail({
           overflow-wrap: anywhere;
           text-align: justify;
           line-height: 2;
-          font-size: 21px;
+          font-size: 16px;
         }
         .telegram-export-page .signature {
           margin-top: auto;
@@ -804,7 +805,7 @@ function TelegramDetail({
             <p>${escapeHtml(unitName)}</p>
             <p>${escapeHtml(departmentName)}</p>
           </div>
-          <div>${logo}</div>
+          <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(telegram.serialCode)}</p>
             <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>

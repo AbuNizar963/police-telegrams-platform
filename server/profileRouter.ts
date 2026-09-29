@@ -5,7 +5,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getUserById, updateUserPassword, updateUserProfile } from "./db";
 
 export const profileRouter = router({
-  get: protectedProcedure.query(({ ctx }) => publicUser(ctx.user)),
+  get: protectedProcedure.query(({ ctx }) => ctx.user),
 
   update: protectedProcedure
     .input(z.object({

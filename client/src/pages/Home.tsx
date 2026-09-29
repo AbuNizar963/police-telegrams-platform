@@ -622,7 +622,8 @@ function TelegramDetail({
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
     const serialDigits = String(telegram.serialCode).split("-").pop() ?? String(telegram.serialCode);
-    const displaySerial = String(Number.parseInt(serialDigits, 10) || 0);
+    const parsedSerial = Number.parseInt(serialDigits, 10);
+    const displaySerial = Number.isFinite(parsedSerial) ? String(parsedSerial) : String(telegram.serialCode);
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;

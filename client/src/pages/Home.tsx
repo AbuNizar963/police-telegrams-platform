@@ -642,7 +642,34 @@ function TelegramDetail({
       height: paper.scrollHeight,
       windowWidth: paper.scrollWidth,
       windowHeight: paper.scrollHeight,
-      onclone: clonedDocument => {
+      onclone: async clonedDocument => {
+        // html2canvas can produce a tainted canvas when an embedded image is
+        // served without valid CORS headers. Convert remote images to data URLs
+        // before rendering; omit only an image that cannot be safely fetched.
+        const clonedImages = Array.from(clonedDocument.querySelectorAll<HTMLImageElement>(".telegram-paper img"));
+        await Promise.all(clonedImages.map(async image => {
+          const source = image.currentSrc || image.src;
+          if (!source) return;
+          try {
+            const imageUrl = new URL(source, clonedDocument.baseURI);
+            if (imageUrl.origin === window.location.origin || source.startsWith("data:")) return;
+            const response = await fetch(imageUrl.href, { mode: "cors", credentials: "omit" });
+            if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result));
+              reader.onerror = () => reject(new Error("Unable to read image"));
+              reader.readAsDataURL(blob);
+            });
+            image.removeAttribute("srcset");
+            image.src = dataUrl;
+          } catch {
+            // A missing logo must not prevent exporting the rest of the telegram.
+            image.remove();
+          }
+        }));
+
         const clonedPaper = clonedDocument.querySelector<HTMLElement>(".telegram-paper");
         if (!clonedPaper) {
           throw new Error("تعذر تجهيز نسخة البرقية للتصدير");

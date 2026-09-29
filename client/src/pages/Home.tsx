@@ -641,7 +641,7 @@ function TelegramDetail({
       // Render every export from a canonical A4-width canvas (96 CSS px/in).
       // The on-clone paper width below is 794px, matching 210mm at 96dpi.
       width: 794,
-      height: paper.scrollHeight,
+      height: Math.max(paper.scrollHeight, 1123),
       windowWidth: 794,
       windowHeight: Math.max(paper.scrollHeight, 1123),
       onclone: async clonedDocument => {

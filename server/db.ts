@@ -387,3 +387,38 @@ export async function getDashboardStats(userId: number, canViewAll: boolean) {
 
   return { total, urgent, secret, normal, pending, inProgress, resolved, today };
 }
+
+export type UserProfileUpdate = {
+  name: string;
+  badgeNumber: string | null;
+  phone: string | null;
+  rank: string | null;
+  unit: string | null;
+  bio: string | null;
+  avatarKey?: string | null;
+};
+
+export async function updateUserProfile(
+  id: number,
+  values: UserProfileUpdate,
+): Promise<User> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .update({ ...values, updatedAt: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to update user profile");
+  return mapUser(data as Record<string, unknown>);
+}
+
+export async function updateUserPassword(
+  id: number,
+  passwordHash: string,
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .update({ password_hash: passwordHash, updatedAt: new Date().toISOString() })
+    .eq("id", id);
+  throwIfError(error, "Failed to update user password");
+}

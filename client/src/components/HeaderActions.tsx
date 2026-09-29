@@ -10,27 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 
-function ActionButton({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      aria-label={label}
-      title={label}
-      className="h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
-    >
-      {children}
-    </Button>
-  );
-}
-
 /**
  * Compact, accessible quick actions displayed in the dashboard's upper corner.
  * Notification and account menus intentionally show only information currently

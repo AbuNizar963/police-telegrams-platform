@@ -1256,7 +1256,7 @@ function TelegramDetail({
         <div className="border-b border-dotted border-slate-500 pb-3 text-sm leading-7">
           <p><span className="font-bold">من:</span> {telegram.creatorName} — {settings?.departmentName ?? "قسم العمليات"}</p>
           <p><span className="font-bold">إلى:</span> {telegram.recipient}</p>
-          <p><span className="font-bold">للاطلاع:</span> ................................................................................</p>
+
         </div>
 
         <h3 className="mb-4 mt-5 text-center text-base font-bold">نص البرقية</h3>

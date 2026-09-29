@@ -1,4 +1,4 @@
-import { Bell, Moon, Settings, Sun } from "lucide-react";
+import { Bell, Moon, Settings, Sun, UserRound } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
@@ -75,6 +75,10 @@ export default function HeaderActions() {
             </p>
           </div>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => { window.location.href = "/profile"; }} className="cursor-pointer justify-end gap-2">
+            <UserRound className="h-4 w-4" />
+            <span>الملف الشخصي</span>
+          </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={toggleTheme}
             className="cursor-pointer justify-end gap-2"

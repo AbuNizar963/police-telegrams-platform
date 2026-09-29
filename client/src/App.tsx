@@ -8,6 +8,7 @@ import HeaderActions from "./components/HeaderActions";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
+import Profile from "./pages/Profile";
 
 function DashboardPage({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/verify/:token" component={VerifyTelegram} />
+      <Route path="/profile"><DashboardPage><Profile /></DashboardPage></Route>
       <Route path="/">
         <DashboardPage>
           <Home />

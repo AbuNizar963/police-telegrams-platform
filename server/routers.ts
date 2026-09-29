@@ -17,6 +17,7 @@ import {
   router,
 } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
+import { profileRouter } from "./profileRouter";
 import {
   allocateSerialNumber,
   createTelegram,
@@ -56,6 +57,7 @@ const statusSchema = z.enum([
 
 export const appRouter = router({
   system: systemRouter,
+  profile: profileRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

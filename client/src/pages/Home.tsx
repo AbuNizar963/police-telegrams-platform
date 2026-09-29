@@ -655,8 +655,8 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 360px;
-          height: 360px;
+          width: 430px;
+          height: 430px;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;
@@ -705,13 +705,13 @@ function TelegramDetail({
         .telegram-export-page .header-government p,
         .telegram-export-page .header-metadata p { margin: 0; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 18px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .government-subtitle { font-size: 15px; font-weight: 600; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 13px; font-weight: 700; line-height: 1.9; }
+        .telegram-export-page .government-name { font-size: 24px; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .government-subtitle { font-size: 20px; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 16px; font-weight: 700; line-height: 1.9; }
         .telegram-export-page .official-logo {
           display: block;
-          width: 112px;
-          height: 112px;
+          width: 150px;
+          height: 150px;
           margin: 0 auto;
           object-fit: contain;
         }
@@ -766,7 +766,7 @@ function TelegramDetail({
           overflow-wrap: anywhere;
           text-align: justify;
           line-height: 2;
-          font-size: 16px;
+          font-size: 21px;
         }
         .telegram-export-page .signature {
           margin-top: auto;
@@ -827,7 +827,7 @@ function TelegramDetail({
           <div class="telegram-body">${escapeHtml(telegram.body)}</div>
           <section class="signature">
             <p><strong>${escapeHtml(settings?.unitChiefRank ?? "رئيس الوحدة")} ${escapeHtml(settings?.unitChiefName ?? "")}</strong></p>
-            <p>${escapeHtml(unitName)}</p>
+            <p>رئيس ${escapeHtml(departmentName)}</p>
             <p class="signature-label">التوقيع والختم الرسمي</p>
           </section>
         </main>

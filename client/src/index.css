@@ -155,7 +155,7 @@
 
   .fixed.inset-0 > div > :first-child,
   .telegram-paper ~ *,
-  .print\\:hidden {
+  .print\:hidden {
     display: none !important;
   }
 

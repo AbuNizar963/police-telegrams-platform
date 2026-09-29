@@ -765,6 +765,40 @@ function TelegramDetail({
           section.style.setProperty("max-width", "100%", "important");
           section.style.setProperty("min-width", "0", "important");
         });
+
+        // Restore the document's intentional three-part header and full-width
+        // content after responsive modal styles have been flattened for canvas.
+        const clonedHeader = clonedPaper.querySelector<HTMLElement>("header");
+        if (clonedHeader) {
+          clonedHeader.style.setProperty("display", "grid", "important");
+          clonedHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
+          clonedHeader.style.setProperty("align-items", "start", "important");
+          clonedHeader.style.setProperty("gap", "16px", "important");
+          const headerParts = Array.from(clonedHeader.children) as HTMLElement[];
+          headerParts.forEach((part, index) => {
+            part.style.setProperty("width", "auto", "important");
+            part.style.setProperty("min-width", "0", "important");
+            // In RTL, grid column 1 is the rightmost track.
+            part.style.setProperty("grid-column", String(index + 1), "important");
+          });
+          headerParts[0]?.style.setProperty("text-align", "right", "important");
+          headerParts[1]?.style.setProperty("display", "flex", "important");
+          headerParts[1]?.style.setProperty("justify-content", "center", "important");
+          headerParts[2]?.style.setProperty("text-align", "left", "important");
+        }
+
+        const clonedMain = clonedPaper.querySelector<HTMLElement>("main");
+        if (clonedMain) {
+          clonedMain.style.setProperty("display", "block", "important");
+          clonedMain.style.setProperty("width", "100%", "important");
+          clonedMain.style.setProperty("box-sizing", "border-box", "important");
+          clonedMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
+            child.style.setProperty("display", "block", "important");
+            child.style.setProperty("width", "100%", "important");
+            child.style.setProperty("max-width", "100%", "important");
+            child.style.setProperty("box-sizing", "border-box", "important");
+          });
+        }
         clonedPaper.style.setProperty("overflow", "visible", "important");
         // Prevent the modal's scrolling viewport from clipping the canonical page.
         let parent = clonedPaper.parentElement;
@@ -832,6 +866,39 @@ function TelegramDetail({
       section.style.setProperty("min-width", "0", "important");
     });
 
+    // Do not preserve mobile-modal widths in the standalone print document.
+    const printHeader = clonedPaper.querySelector<HTMLElement>("header");
+    if (printHeader) {
+      printHeader.style.setProperty("display", "grid", "important");
+      printHeader.style.setProperty("grid-template-columns", "minmax(0, 1fr) 80px minmax(0, 1fr)", "important");
+      printHeader.style.setProperty("align-items", "start", "important");
+      printHeader.style.setProperty("gap", "16px", "important");
+      const headerParts = Array.from(printHeader.children) as HTMLElement[];
+      headerParts.forEach((part, index) => {
+        part.style.setProperty("width", "auto", "important");
+        part.style.setProperty("min-width", "0", "important");
+        // In RTL, grid column 1 is the rightmost track.
+        part.style.setProperty("grid-column", String(index + 1), "important");
+      });
+      headerParts[0]?.style.setProperty("text-align", "right", "important");
+      headerParts[1]?.style.setProperty("display", "flex", "important");
+      headerParts[1]?.style.setProperty("justify-content", "center", "important");
+      headerParts[2]?.style.setProperty("text-align", "left", "important");
+    }
+
+    const printMain = clonedPaper.querySelector<HTMLElement>("main");
+    if (printMain) {
+      printMain.style.setProperty("display", "block", "important");
+      printMain.style.setProperty("width", "100%", "important");
+      printMain.style.setProperty("box-sizing", "border-box", "important");
+      printMain.querySelectorAll<HTMLElement>(":scope > *").forEach(child => {
+        child.style.setProperty("display", "block", "important");
+        child.style.setProperty("width", "100%", "important");
+        child.style.setProperty("max-width", "100%", "important");
+        child.style.setProperty("box-sizing", "border-box", "important");
+      });
+    }
+
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>
       <html lang="ar" dir="rtl">
@@ -897,9 +964,115 @@ function TelegramDetail({
     printWindow.print();
   };
 
-  const imageBlob = async () => { const canvas = await capture(); return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("تعذر إنشاء الصورة")), "image/png", 1)); };
-  const downloadImage = async () => { setExporting("image"); try { const blob = await imageBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${telegram.serialCode}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.success("تم تنزيل صورة البرقية بدقة عالية"); } catch (error) { toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة"); } finally { setExporting(null); } };
-  const shareImage = async () => { setExporting("image-share"); try { const blob = await imageBlob(); const file = new File([blob], `${telegram.serialCode}.png`, { type: "image/png" }); if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة الصورة"); } else { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = file.name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة"); } finally { setExporting(null); } };
+  const imageBlob = async (): Promise<Blob> => {
+    const canvas = await capture();
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        blob => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("تعذر إنشاء الصورة"));
+          }
+        },
+        "image/png",
+        1,
+      );
+    });
+  };
+
+  const downloadImage = async () => {
+    setExporting("image");
+
+    try {
+      const blob = await imageBlob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `${telegram.serialCode}.png`;
+      anchor.click();
+
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("تم تنزيل صورة البرقية بدقة عالية");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تصدير الصورة");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const shareImage = async () => {
+    setExporting("image-share");
+
+    try {
+      const blob = await imageBlob();
+      const file = new File([blob], `${telegram.serialCode}.png`, {
+        type: "image/png",
+      });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `برقية ${telegram.serialCode}`,
+          text: telegram.subject,
+          files: [file],
+        });
+        toast.success("تم فتح خيارات مشاركة الصورة");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة");
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة");
+      }
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportPdf = async (share = false) => {
+    setExporting(share ? "share" : "pdf");
+
+    try {
+      const pdf = await makePdf();
+      const blob = pdf.output("blob");
+      const file = new File([blob], `${telegram.serialCode}.pdf`, {
+        type: "application/pdf",
+      });
+
+      if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `برقية ${telegram.serialCode}`,
+          text: telegram.subject,
+          files: [file],
+        });
+        toast.success("تم فتح خيارات مشاركة البرقية");
+      } else {
+        pdf.save(`${telegram.serialCode}.pdf`);
+        toast.success(
+          share
+            ? "تم تنزيل ملف PDF للمشاركة"
+            : "تم تنزيل البرقية بصيغة PDF عالية الدقة",
+        );
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية");
+      }
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const makePdf = async () => {
     const sourceCanvas = await capture();
     const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
@@ -957,7 +1130,6 @@ function TelegramDetail({
 
     return pdf;
   };
-  const exportPdf = async (share = false) => { setExporting(share ? "share" : "pdf"); try { const pdf = await makePdf(); const blob = pdf.output("blob"); const file = new File([blob], `${telegram.serialCode}.pdf`, { type: "application/pdf" }); if (share && navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ title: `برقية ${telegram.serialCode}`, text: telegram.subject, files: [file] }); toast.success("تم فتح خيارات مشاركة البرقية"); } else { pdf.save(`${telegram.serialCode}.pdf`); toast.success(share ? "تم تنزيل ملف PDF للمشاركة" : "تم تنزيل البرقية بصيغة PDF عالية الدقة"); } } catch (error) { if ((error as DOMException)?.name !== "AbortError") toast.error(error instanceof Error ? error.message : "تعذر تصدير البرقية"); } finally { setExporting(null); } };
   return <Modal title={telegram.subject} subtitle={telegram.serialCode} close={close}><div
       ref={paperRef}
       className="telegram-paper bg-white p-4 text-slate-900 sm:p-8"

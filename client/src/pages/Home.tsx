@@ -651,7 +651,15 @@ function TelegramDetail({
         ? { latitude: telegram.gpsLatitude, longitude: telegram.gpsLongitude }
         : null,
     });
-    const qrCode = qrcode(0, "L");
+    const createQrCode = qrcode as unknown as (
+      typeNumber: number,
+      errorCorrectionLevel: string,
+    ) => {
+      addData: (data: string) => void;
+      make: () => void;
+      createSvgTag: (options: { cellSize: number; margin: number; scalable: boolean; alt: string }) => string;
+    };
+    const qrCode = createQrCode(0, "L");
     qrCode.addData(qrPayload);
     qrCode.make();
     const qrSvg = qrCode.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: "رمز QR يحتوي على جميع بيانات البرقية" });

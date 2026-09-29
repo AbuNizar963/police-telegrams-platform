@@ -248,6 +248,7 @@ function TelegramComposer({
         const liveText = [finalText, interimText].filter(Boolean).join(" ");
         setBody(removeRepeatedSpeech(`${speechBaseBodyRef.current}${liveText}`));
       };
+
       recognition.onerror = event => {
         // Browsers commonly emit no-speech during a pause. Keep listening and
         // let onend restart the session instead of treating silence as failure.
@@ -497,6 +498,7 @@ function TelegramComposer({
               </div>
             )}
           </div>
+
           <Button
             type="button"
             variant={recording ? "destructive" : "outline"}
@@ -745,7 +747,8 @@ function TelegramDetail({
           html, body { margin: 0; padding: 0; background: #fff; }
           .telegram-export-page { width: 210mm; min-height: 297mm; }
         }
-      </style>      <article class="telegram-export-page" dir="rtl" lang="ar">
+      </style>
+      <article class="telegram-export-page" dir="rtl" lang="ar">
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>
@@ -994,7 +997,8 @@ function TelegramDetail({
         toast.error(error instanceof Error ? error.message : "تعذر مشاركة الصورة");
       }
     } finally {
-      setExporting(null);    }
+      setExporting(null);
+    }
   };
 
   const exportPdf = async (share = false) => {
@@ -1243,7 +1247,8 @@ function TelegramEditModal({
         </div>
       </form>
     </Modal>
-  );}
+  );
+}
 
 function Info({ label, value }: { label: string; value: string }) { return <div><span className="block text-muted-foreground">{label}</span><span className="mt-1 block font-semibold">{value}</span></div>; }
 function Modal({ title, subtitle, close, children }: { title: string; subtitle: string; close: () => void; children: React.ReactNode }) { return <div className="telegram-print-modal fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div dir="rtl" className="max-h-[94vh] w-full overflow-y-auto rounded-t-[1.5rem] bg-background p-5 shadow-2xl sm:max-w-2xl sm:rounded-2xl sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-xs font-bold text-[#9b7c3d]">{subtitle}</p><h2 className="mt-1 text-xl font-bold">{title}</h2></div><button onClick={close} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button></div><div className="mt-6">{children}</div></div></div>; }

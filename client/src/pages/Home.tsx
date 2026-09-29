@@ -964,7 +964,7 @@ function TelegramDetail({
       dir="rtl"
       lang="ar"
     >
-      <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 border-b-2 border-[#b49a55] pb-5">
+      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-start gap-4 border-b-2 border-[#b49a55] pb-4">
         <div className="text-right text-sm leading-7">
           <p className="font-bold">الجمهورية العربية السورية</p>
           <p className="font-semibold">وزارة الداخلية</p>
@@ -981,81 +981,84 @@ function TelegramDetail({
               className="h-20 w-20 object-contain"
             />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#b49a55] text-[#b49a55]">
-              <Shield className="h-10 w-10" />
+            <div className="flex h-20 w-20 items-center justify-center text-[#b49a55]">
+              <Shield className="h-16 w-16" />
             </div>
           )}
         </div>
 
         <div className="text-left text-sm leading-7">
           <p><span className="font-semibold">رقم البرقية:</span> {telegram.serialCode}</p>
-          <p><span className="font-semibold">التاريخ والوقت:</span> {formatConfiguredDate(telegram.createdAt, settings)}</p>
+          <p><span className="font-semibold">الوقت والتاريخ:</span> {formatConfiguredDate(telegram.createdAt, settings)}</p>
           <p><span className="font-semibold">درجة السرية:</span> {telegram.classification}</p>
           <p><span className="font-semibold">درجة الأسبقية:</span> {telegram.priority}</p>
         </div>
       </header>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)] gap-0 border-2 border-slate-900">
-        <aside className="border-r-2 border-slate-900 text-sm">
-          <section className="border-b-2 border-slate-900">
-            <h4 className="bg-slate-100 px-3 py-2 text-center font-bold">ما يخص مكتب البرقيات</h4>
-            <div className="space-y-3 p-3 leading-6">
-              <p>الرقم المتسلسل: ................................</p>
-              <p>عدد الكلمات: ....................................</p>
-              <p>ساعة إرسال البرقية: □ □ □ □</p>
-              <p>ساعة استلام البرقية: □ □ □ □</p>
-              <p>تاريخ الإرسال أو الاستلام: ...................</p>
-              <p>رتبة واسم المستلم: ............................</p>
-              <p>رتبة واسم وتوقيع المرسل: ..................</p>
-              <p className="text-center font-semibold">الخاتم الرسمي</p>
-            </div>
-          </section>
+      <table
+        className="w-full table-fixed border-2 border-slate-900 text-sm"
+        style={{ borderCollapse: "collapse" }}
+      >
+        <colgroup>
+          <col style={{ width: "30%" }} />
+          <col style={{ width: "70%" }} />
+        </colgroup>
+        <tbody>
+          <tr>
+            <td className="border-2 border-slate-900 p-0 align-top">
+              <section>
+                <h4 className="border-b-2 border-slate-900 bg-slate-100 px-2 py-2 text-center font-bold">ما يخص مكتب البرقيات</h4>
+                <div className="space-y-3 p-3 leading-6">
+                  <p>الرقم المتسلسل: ................................</p>
+                  <p>عدد الكلمات: ....................................</p>
+                  <p>ساعة إرسال البرقية: □ □ □ □</p>
+                  <p>ساعة استلام البرقية: □ □ □ □</p>
+                  <p>تاريخ الإرسال أو الاستلام: ...................</p>
+                  <p>رتبة واسم المستلم: ............................</p>
+                  <p>رتبة واسم وتوقيع المرسل: ..................</p>
+                  <p className="pt-2 text-center font-semibold">الخاتم الرسمي</p>
+                </div>
+              </section>
+              <section className="border-t-2 border-slate-900">
+                <h4 className="border-b-2 border-slate-900 bg-slate-100 px-2 py-2 text-center font-bold">ما يخص مركز الإشارة</h4>
+                <div className="space-y-3 p-3 leading-6">
+                  <p>النداء: ...........................................</p>
+                  <p>ساعة إرسال البرقية: □ □ □ □</p>
+                  <p>ساعة استلام البرقية: □ □ □ □</p>
+                  <p>تاريخ الإرسال أو الاستلام: ...................</p>
+                  <p>واسطة الإرسال: ................................</p>
+                  <p>رتبة واسم المستلم: ............................</p>
+                  <p>رتبة واسم وتوقيع المرسل: ..................</p>
+                </div>
+              </section>
+            </td>
+            <td className="border-2 border-slate-900 p-4 align-top">
+              <div className="min-h-[420px]">
+                <div className="border-b border-dotted border-slate-500 pb-3 text-sm leading-7">
+                  <p><span className="font-bold">من:</span> {telegram.creatorName} — {settings?.departmentName ?? "قسم العمليات"}</p>
+                  <p><span className="font-bold">إلى:</span> {telegram.recipient}</p>
+                  <p><span className="font-bold">للاطلاع:</span> ................................................................................</p>
+                </div>
 
-          <section>
-            <h4 className="bg-slate-100 px-3 py-2 text-center font-bold">ما يخص مركز الإشارة</h4>
-            <div className="space-y-3 p-3 leading-6">
-              <p>النداء: ...........................................</p>
-              <p>ساعة إرسال البرقية: □ □ □ □</p>
-              <p>ساعة استلام البرقية: □ □ □ □</p>
-              <p>تاريخ الإرسال أو الاستلام: ...................</p>
-              <p>واسطة الإرسال: ................................</p>
-              <p>رتبة واسم المستلم: ............................</p>
-              <p>رتبة واسم وتوقيع المرسل: ..................</p>
-            </div>
-          </section>
-        </aside>
+                <h3 className="mb-3 mt-4 text-center text-base font-bold">نص البرقية</h3>
+                <div className="whitespace-pre-wrap break-words text-justify text-[15px] leading-8">
+                  {telegram.body}
+                </div>
 
-        <main className="min-w-0 p-4">
-          <div className="border-b border-dotted border-slate-500 pb-3 text-sm leading-7">
-            <p><span className="font-bold">من:</span> {telegram.creatorName} — {settings?.departmentName ?? "قسم العمليات"}</p>
-            <p><span className="font-bold">إلى:</span> {telegram.recipient}</p>
-            <p><span className="font-bold">للاطلاع:</span> ................................................................................</p>
-          </div>
-
-          <div className="my-4 flex flex-wrap items-center gap-2">
-            <span className="rounded border border-slate-400 px-3 py-1 text-xs font-semibold">{categoryLabels[telegram.category]}</span>
-            <PriorityBadge value={telegram.priority} />
-            <SeverityBadge value={telegram.classification} />
-            <StatusBadge value={telegram.status} />
-          </div>
-
-          <h3 className="mb-3 text-center text-base font-bold">نص البرقية</h3>
-          <div className="min-h-[180px] whitespace-pre-wrap break-words text-justify text-[15px] leading-8">
-            {telegram.body}
-          </div>
-
-          <div className="mt-8 border-t border-dotted border-slate-500 pt-4 text-left leading-7">
-            <p className="font-bold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p>
-            <p className="text-sm">{settings?.unitName ?? "قيادة الأمن الداخلي"}</p>
-            <p className="mt-4 text-xs text-slate-500">التوقيع والختم الرسمي</p>
-          </div>
-
-          <div className="mt-6 border-t border-slate-300 pt-3 text-xs leading-6 text-slate-600">
-            <p><span className="font-semibold">الموقع:</span> {telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"}</p>
-            <p><span className="font-semibold">تاريخ إنشاء البرقية:</span> {formatConfiguredDate(telegram.createdAt, settings)}</p>
-          </div>
-        </main>
-      </div>
+                <div className="mt-8 border-t border-dotted border-slate-500 pt-4 text-left leading-7">
+                  <p className="font-bold">{settings?.unitChiefRank ?? "رئيس الوحدة"} {settings?.unitChiefName ?? ""}</p>
+                  <p className="text-sm">{settings?.unitName ?? "قيادة الأمن الداخلي"}</p>
+                  <p className="mt-4 text-xs text-slate-500">التوقيع والختم الرسمي</p>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <footer className="mt-3 flex justify-between gap-4 text-xs text-slate-600">
+        <p>الموقع: {telegram.gpsLatitude ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد"}</p>
+        <p>تاريخ إنشاء البرقية: {formatConfiguredDate(telegram.createdAt, settings)}</p>
+      </footer>
     </div><div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button><Button onClick={() => { if (window.confirm(`هل أنت متأكد من حذف البرقية ${telegram.serialCode}؟ لا يمكن التراجع عن هذا الإجراء.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}</Button></>}</div>{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
 }
 function TelegramEditModal({

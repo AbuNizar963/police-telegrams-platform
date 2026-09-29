@@ -36,7 +36,7 @@ export function createApp(
       const supabase = getSupabaseAdmin();
       const { data: telegram, error } = await supabase
         .from("telegrams")
-        .select("serialCode, createdAt, archivedAt, status, verificationToken")
+        .select("serialCode, createdAt, archivedAt, status")
         .eq("verificationToken", token)
         .maybeSingle();
 
@@ -53,7 +53,7 @@ export function createApp(
 
       return res.status(200).json({
         valid: true,
-        status: telegram.archivedAt ? "archived" : "valid",
+        status: telegram.status === "archived" || telegram.archivedAt ? "archived" : "valid",
         serialCode: telegram.serialCode,
         createdAt: telegram.createdAt,
         issuer: settings?.departmentName ?? "الجهة المصدرة",

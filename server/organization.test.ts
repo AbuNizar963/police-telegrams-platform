@@ -6,19 +6,19 @@ const mocks = vi.hoisted(() => {
   const eq = vi.fn();
   const order = vi.fn();
   const limit = vi.fn();
-  const mocks.maybeSingle = vi.fn();
+  const maybeSingle = vi.fn();
   const insert = vi.fn();
-  const mocks.upsert = vi.fn();
-  const mocks.single = vi.fn();
-  const mocks.rpc = vi.fn();
+  const upsert = vi.fn();
+  const single = vi.fn();
+  const rpc = vi.fn();
 
-  from.mockReturnValue({ select, insert, mocks.upsert });
-  select.mockReturnValue({ eq, mocks.single });
-  eq.mockReturnValue({ eq, order, limit, mocks.maybeSingle });
+  from.mockReturnValue({ select, insert, upsert });
+  select.mockReturnValue({ eq, single });
+  eq.mockReturnValue({ eq, order, limit, maybeSingle });
   order.mockReturnValue({ limit });
-  limit.mockReturnValue({ mocks.maybeSingle });
+  limit.mockReturnValue({ maybeSingle });
   insert.mockReturnValue({ select });
-  mocks.upsert.mockReturnValue({ select });
+  upsert.mockReturnValue({ select });
 
   return {
     from,
@@ -26,24 +26,25 @@ const mocks = vi.hoisted(() => {
     eq,
     order,
     limit,
-    mocks.maybeSingle,
+    maybeSingle,
     insert,
-    mocks.upsert,
-    mocks.single,
-    mocks.rpc,
+    upsert,
+    single,
+    rpc,
   };
 });
 
 vi.mock("./_core/supabase", () => ({
   getSupabaseAdmin: vi.fn(() => ({
     from: mocks.from,
-    mocks.rpc: mocks.rpc,
+    rpc: mocks.rpc,
   })),
 }));
 
 import {
   addOrganizationMembership,
   getUserOrganizationMembership,
+  routeTelegram,
 } from "./organization";
 
 describe("organization repository", () => {
@@ -64,19 +65,6 @@ describe("organization repository", () => {
   });
 
   it("loads the active organization membership for a user", async () => {
-    mocks.maybeSingle.mockResolvedValueOnce({
-      data: {
-        id: 1,
-        organizationId: "00000000-0000-0000-0000-000000000001",
-        userId: 7,
-        role: "dispatcher",
-        isActive: true,
-        createdAt: "2026-10-01T00:00:00.000Z",
-        updatedAt: "2026-10-01T00:00:00.000Z",
-      },
-      error: null,
-    });
-
     await expect(getUserOrganizationMembership(7)).resolves.toMatchObject({
       userId: 7,
       organizationId: "00000000-0000-0000-0000-000000000001",
@@ -116,8 +104,6 @@ describe("organization repository", () => {
       { onConflict: "organizationId,userId" },
     );
   });
-});
-
 
   it("routes through the atomic database function using the member organization as source", async () => {
     mocks.rpc.mockResolvedValueOnce({
@@ -137,7 +123,7 @@ describe("organization repository", () => {
     });
 
     await expect(
-      (await import("./organization")).routeTelegram({
+      routeTelegram({
         telegramId: 100,
         toOrganizationId: "00000000-0000-0000-0000-000000000002",
         forwardedByUserId: 7,
@@ -157,3 +143,4 @@ describe("organization repository", () => {
       p_note: "إحالة إلى القيادة",
     });
   });
+});

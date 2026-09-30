@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { from, select, eq, order, limit, maybeSingle, insert, upsert, single } =
+const { from, select, eq, order, limit, maybeSingle, insert, upsert, single, rpc } =
   vi.hoisted(() => {
     const from = vi.fn();
     const select = vi.fn();

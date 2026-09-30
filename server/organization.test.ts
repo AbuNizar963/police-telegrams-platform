@@ -13,7 +13,7 @@ const { from, select, eq, order, limit, maybeSingle, insert, upsert, single } =
     const single = vi.fn();
 
     from.mockReturnValue({ select, insert, upsert });
-    select.mockReturnValue({ eq });
+    select.mockReturnValue({ eq, single });
     eq.mockReturnValue({ eq, order, limit, maybeSingle });
     order.mockReturnValue({ limit });
     limit.mockReturnValue({ maybeSingle });

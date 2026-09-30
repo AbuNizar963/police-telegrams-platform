@@ -75,9 +75,9 @@ export const users = pgTable(
   {
     id: serial("id").primaryKey(),
     authUserId: uuid("authUserId").notNull().unique(),
-  organizationId: uuid("organizationId")
-    .notNull()
-    .references(() => organizations.id),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
     name: text("name"),
     username: varchar("username", { length: 120 }),
     passwordHash: text("password_hash"),

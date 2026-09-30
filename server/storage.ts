@@ -145,8 +145,5 @@ export async function storagePutDepartmentLogo(
     cacheControl: "3600",
   });
 
-  return {
-    key,
-    url: await storageCreateSignedUrl(key),
-  };
+  return { key, url: stableStorageUrl(key) };
 }

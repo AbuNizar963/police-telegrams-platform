@@ -150,6 +150,9 @@ export const telegrams = pgTable(
     organizationId: uuid("organizationId")
       .notNull()
       .references(() => organizations.id),
+    currentOrganizationId: uuid("currentOrganizationId")
+      .notNull()
+      .references(() => organizations.id),
     creatorName: varchar("creatorName", { length: 255 }).notNull(),
     creatorEmail: varchar("creatorEmail", { length: 320 }),
     creatorBadgeId: varchar("creatorBadgeId", { length: 80 }),
@@ -170,6 +173,7 @@ export const telegrams = pgTable(
   table => [
     index("telegrams_creator_idx").on(table.createdByUserId),
     index("telegrams_organization_idx").on(table.organizationId),
+    index("telegrams_current_organization_idx").on(table.currentOrganizationId),
     index("telegrams_created_at_idx").on(table.createdAt),
     index("telegrams_classification_idx").on(table.classification),
   ],

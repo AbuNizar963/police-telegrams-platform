@@ -289,6 +289,7 @@ export async function allocateSerialNumber(): Promise<number> {
 export async function listTelegrams(
   userId: number,
   canViewAll: boolean,
+  organizationId: string | null,
   search?: string,
   classification?: "secret" | "normal",
   priority?: "slow" | "normal" | "urgent",
@@ -301,7 +302,14 @@ export async function listTelegrams(
     .order("createdAt", { ascending: false })
     .limit(200);
 
-  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  if (!canViewAll) {
+    if (!organizationId) {
+      throw new Error("Organization scope is required to list telegrams");
+    }
+    query = query.or(
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+    );
+  }
   if (classification) query = query.eq("classification", classification);
   if (priority) query = query.eq("priority", priority);
   if (category) query = query.eq("category", category);
@@ -399,19 +407,31 @@ export async function writeAuditLog(
 async function countTelegrams(
   userId: number,
   canViewAll: boolean,
+  organizationId: string | null,
   apply: (query: any) => any = query => query,
 ): Promise<number> {
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("id", { count: "exact", head: true });
-  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  if (!canViewAll) {
+    if (!organizationId) {
+      throw new Error("Organization scope is required to count telegrams");
+    }
+    query = query.or(
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+    );
+  }
   query = apply(query);
   const { count, error } = await query;
   throwIfError(error, "Failed to count telegrams");
   return count ?? 0;
 }
 
-export async function getDashboardStats(userId: number, canViewAll: boolean) {
+export async function getDashboardStats(
+  userId: number,
+  canViewAll: boolean,
+  organizationId: string | null,
+) {
   const now = new Date();
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -420,14 +440,14 @@ export async function getDashboardStats(userId: number, canViewAll: boolean) {
 
   const [total, urgent, secret, normal, pending, inProgress, resolved, today] =
     await Promise.all([
-      countTelegrams(userId, canViewAll),
-      countTelegrams(userId, canViewAll, q => q.eq("priority", "urgent")),
-      countTelegrams(userId, canViewAll, q => q.eq("classification", "secret")),
-      countTelegrams(userId, canViewAll, q => q.eq("classification", "normal")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "pending")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "in_progress")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "resolved")),
-      countTelegrams(userId, canViewAll, q =>
+      countTelegrams(userId, canViewAll, organizationId),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("priority", "urgent")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "secret")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "normal")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "pending")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "in_progress")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "resolved")),
+      countTelegrams(userId, canViewAll, organizationId, q =>
         q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString()),
       ),
     ]);

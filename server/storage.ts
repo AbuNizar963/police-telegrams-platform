@@ -27,7 +27,7 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
-function stableStorageUrl(key: string): string {
+export function storageStableUrl(key: string): string {
   const encoded = key
     .split("/")
     .map(part => encodeURIComponent(part))
@@ -61,6 +61,33 @@ export function canAccessStorageKey(
 
   const ownerId = Number(segments[1]);
   return Number.isInteger(ownerId) && ownerId === user.id;
+}
+
+export function storageKeyFromStoredUrl(value: string, bucket: string): string | null {
+  const trimmed = value.trim();
+
+  if (trimmed.startsWith("/api/storage/")) {
+    const encodedKey = trimmed.slice("/api/storage/".length);
+    try {
+      return encodedKey
+        .split("/")
+        .map(segment => decodeURIComponent(segment))
+        .join("/");
+    } catch {
+      return null;
+    }
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+
+  try {
+    const url = new URL(trimmed);
+    const path = decodeURIComponent(url.pathname);
+    const prefix = `/storage/v1/object/sign/${bucket}/`;
+    return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+  } catch {
+    return null;
+  }
 }
 
 export class StorageAccessDeniedError extends Error {
@@ -97,7 +124,7 @@ export async function storagePut(
     cacheControl: "3600",
   });
 
-  return { key, url: stableStorageUrl(key) };
+  return { key, url: storageStableUrl(key) };
 }
 
 export async function storageCreateSignedUrl(
@@ -145,5 +172,5 @@ export async function storagePutDepartmentLogo(
     cacheControl: "3600",
   });
 
-  return { key, url: stableStorageUrl(key) };
+  return { key, url: storageStableUrl(key) };
 }

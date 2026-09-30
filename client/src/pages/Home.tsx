@@ -788,15 +788,15 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 100%;
-          height: 100%;
-          max-width: none;
-          max-height: none;
+          width: 75%;
+          height: 75%;
+          max-width: 595px;
+          max-height: 842px;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;
           justify-content: center;
-          opacity: 0.16;
+          opacity: 0.12;
           pointer-events: none;
         }
         .telegram-export-page .watermark-logo {
@@ -1137,6 +1137,9 @@ function TelegramDetail({
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet" />
           <title>${escapeHtml(telegram.serialCode)}</title>
         </head>
         <body style="margin:0;padding:0;background:#fff">
@@ -1172,6 +1175,8 @@ function TelegramDetail({
       }
 
       try {
+        await printDocument.fonts?.load('400 16px "Cairo"');
+        await printDocument.fonts?.load('700 18px "Cairo"');
         await printDocument.fonts?.ready;
         await Promise.all(
           Array.from(printDocument.images).map(async image => {

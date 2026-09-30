@@ -17,6 +17,7 @@ vi.mock("../storage", async () => {
   };
 });
 
+import { canAccessStorageKey } from "../storage";
 import { registerStorageRoutes } from "./storageRoutes";
 
 type FakeResponse = {

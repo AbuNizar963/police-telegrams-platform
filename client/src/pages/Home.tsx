@@ -777,8 +777,10 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 430px;
-          height: 430px;
+          width: 75%;
+          height: 75%;
+          max-width: 595px;
+          max-height: 842px;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;

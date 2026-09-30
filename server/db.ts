@@ -287,7 +287,7 @@ export async function allocateSerialNumber(): Promise<number> {
 }
 
 export async function listTelegrams(
-  userId: number,
+  _userId: number,
   canViewAll: boolean,
   organizationId: string | null,
   search?: string,
@@ -405,7 +405,7 @@ export async function writeAuditLog(
 }
 
 async function countTelegrams(
-  userId: number,
+  _userId: number,
   canViewAll: boolean,
   organizationId: string | null,
   apply: (query: any) => any = query => query,

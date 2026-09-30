@@ -16,6 +16,16 @@ import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
 
 qrcode.stringToBytes = utf8StringToBytes;
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
 const numberFormatter = new Intl.NumberFormat("en-US");
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
 const priorityLabels = { slow: "بطيء", normal: "عادي", urgent: "عاجل" } as const;

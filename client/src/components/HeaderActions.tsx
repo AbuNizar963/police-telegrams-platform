@@ -84,7 +84,7 @@ export default function HeaderActions() {
                 className="cursor-pointer justify-end gap-2"
               >
                 <UserRound className="h-4 w-4" />
-                <span>إدارة حسابات الشرطيين</span>
+                <span>إضافة مستخدمي النظام (الشرطيين)</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}

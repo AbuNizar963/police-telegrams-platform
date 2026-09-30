@@ -14,7 +14,11 @@ import {
   storageStableUrl,
 } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
-import { getUserOrganizationMembership } from "./organization";
+import {
+  addOrganizationMembership,
+  getPrimaryOrganization,
+  getUserOrganizationMembership,
+} from "./organization";
 
 const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
@@ -129,10 +133,13 @@ export async function createLocalOwnerUser(input: {
 }): Promise<User> {
   const authUserId = randomUUID();
   const now = new Date().toISOString();
+  const organization = await getPrimaryOrganization();
+
   const { data, error } = await getSupabaseAdmin()
     .from("users")
     .insert({
       authUserId,
+      organizationId: organization.id,
       username: input.username,
       password_hash: input.passwordHash,
       name: input.username,
@@ -145,8 +152,23 @@ export async function createLocalOwnerUser(input: {
     })
     .select("*")
     .single();
+
   throwIfError(error, "Failed to create owner account");
-  return mapUser(data as Record<string, unknown>);
+
+  const owner = mapUser(data as Record<string, unknown>);
+
+  try {
+    await addOrganizationMembership({
+      organizationId: organization.id,
+      userId: owner.id,
+      role: "organization_admin",
+    });
+  } catch (error) {
+    await getSupabaseAdmin().from("users").delete().eq("id", owner.id);
+    throw error;
+  }
+
+  return owner;
 }
 
 export async function getUserById(id: number): Promise<User | undefined> {

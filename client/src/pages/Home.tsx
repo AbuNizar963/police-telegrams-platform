@@ -1118,57 +1118,75 @@ function TelegramDetail({
   };
 
   const printTelegram = async () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
-      return;
-    }
-
     const exportWrapper = createExportPaper();
     const printDocument = `<!doctype html>
       <html lang="ar" dir="rtl">
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>${telegram.serialCode}</title>
+          <title>${escapeHtml(telegram.serialCode)}</title>
         </head>
         <body style="margin:0;padding:0;background:#fff">
           ${exportWrapper.innerHTML}
         </body>
       </html>`;
 
-    printWindow.document.open();
-    printWindow.document.write(printDocument);
-    printWindow.document.close();
+    // Print from a hidden frame instead of opening an about:blank tab. This
+    // avoids an extra navigation step on mobile while preserving the system
+    // print service and the existing A4 export layout.
+    const printFrame = document.createElement("iframe");
+    printFrame.setAttribute("title", "معاينة الطباعة");
+    printFrame.setAttribute("aria-hidden", "true");
+    printFrame.style.position = "fixed";
+    printFrame.style.right = "0";
+    printFrame.style.bottom = "0";
+    printFrame.style.width = "1px";
+    printFrame.style.height = "1px";
+    printFrame.style.border = "0";
+    printFrame.style.opacity = "0";
+    printFrame.style.pointerEvents = "none";
 
-    // Keep the popup opened synchronously from the user gesture, but wait for
-    // the standalone document's fonts and logo before opening the print dialog.
-    try {
-      await printWindow.document.fonts.ready;
-      const printImages = Array.from(printWindow.document.images);
-      await Promise.all(
-        printImages.map(async image => {
-          try {
-            if (!image.complete) {
-              await new Promise<void>((resolve, reject) => {
-                image.addEventListener("load", () => resolve(), { once: true });
-                image.addEventListener("error", () => reject(new Error("تعذر تحميل الشعار")), { once: true });
-              });
+    const removePrintFrame = () => {
+      printFrame.remove();
+    };
+    printFrame.onload = async () => {
+      const printDocument = printFrame.contentDocument;
+      const printWindow = printFrame.contentWindow;
+      if (!printDocument || !printWindow) {
+        removePrintFrame();
+        toast.error("تعذر تجهيز مستند الطباعة");
+        return;
+      }
+
+      try {
+        await printDocument.fonts?.ready;
+        await Promise.all(
+          Array.from(printDocument.images).map(async image => {
+            try {
+              if (!image.complete) {
+                await new Promise<void>((resolve, reject) => {
+                  image.addEventListener("load", () => resolve(), { once: true });
+                  image.addEventListener("error", () => reject(new Error("تعذر تحميل الشعار")), { once: true });
+                });
+              }
+              await image.decode();
+            } catch {
+              image.remove();
             }
-            await image.decode();
-          } catch {
-            image.remove();
-          }
-        }),
-      );
-    } catch {
-      // Printing the text remains available even if an optional logo fails.
-    }
+          }),
+        );
+      } catch {
+        // Text remains printable if an optional font or logo cannot be loaded.
+      }
 
-    printWindow.focus();
-    printWindow.print();
+      printWindow.addEventListener("afterprint", removePrintFrame, { once: true });
+      printWindow.focus();
+      printWindow.print();
+    };
+
+    printFrame.srcdoc = printDocument;
+    document.body.appendChild(printFrame);
   };
-
   const imageBlob = async (): Promise<Blob> => {
     const canvas = await capture();
 

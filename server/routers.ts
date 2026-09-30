@@ -37,6 +37,7 @@ import {
   StorageAccessDeniedError,
   storageGetSignedUrl,
   storagePut,
+  storagePutDepartmentLogo,
 } from "./storage";
 
 const classificationSchema = z.enum(["secret", "normal"]);
@@ -145,6 +146,30 @@ export const appRouter = router({
     get: protectedProcedure.query(({ ctx }) =>
       getOrCreateSettings(ctx.user.id),
     ),
+
+    uploadLogo: adminProcedure
+      .input(
+        z.object({
+          fileName: z.string().trim().min(1).max(180),
+          contentType: z.enum(["image/jpeg", "image/png"]),
+          base64: z.string().min(1).max(7_000_000),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const bytes = Buffer.from(input.base64, "base64");
+        if (bytes.byteLength > 5 * 1024 * 1024) {
+          throw new TRPCError({
+            code: "PAYLOAD_TOO_LARGE",
+            message: "حجم الشعار يتجاوز 5 ميغابايت",
+          });
+        }
+
+        return storagePutDepartmentLogo(
+          input.fileName,
+          bytes,
+          input.contentType,
+        );
+      }),
 
     update: adminProcedure
       .input(

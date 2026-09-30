@@ -26,5 +26,9 @@ describe("storage access control", () => {
     expect(canAccessStorageKey("telegrams/42/../other.pdf", officer)).toBe(false);
     expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", officer)).toBe(false);
     expect(canAccessStorageKey("telegrams/42/report.pdf/extra", officer)).toBe(false);
+    expect(canAccessStorageKey("telegrams/42/", officer)).toBe(false);
+    expect(canAccessStorageKey("telegrams/42/.", officer)).toBe(false);
+    expect(canAccessStorageKey("telegrams/42/..", officer)).toBe(false);
+    expect(canAccessStorageKey("telegrams/42/folder\\\\file.pdf", officer)).toBe(false);
   });
 });

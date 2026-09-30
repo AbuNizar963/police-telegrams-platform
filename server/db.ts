@@ -108,6 +108,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     lastSignedIn: (user.lastSignedIn ?? new Date()).toISOString(),
   };
 
+  if (user.organizationId !== undefined) {
+    values.organizationId = user.organizationId;
+  }
+
   for (const field of ["name", "email", "loginMethod", "badgeNumber"] as const) {
     if (user[field] !== undefined) values[field] = user[field] ?? null;
   }
@@ -125,6 +129,25 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     .from("users")
     .upsert(values, { onConflict: "authUserId" });
   throwIfError(error, "Failed to upsert user");
+
+  const persisted = await getSupabaseAdmin()
+    .from("users")
+    .select("id, organizationId, role")
+    .eq("authUserId", user.authUserId)
+    .single();
+  throwIfError(persisted.error, "Failed to load upserted user");
+
+  const persistedUser = persisted.data as {
+    id: number;
+    organizationId: string;
+    role: "user" | "admin";
+  };
+
+  await addOrganizationMembership({
+    organizationId: persistedUser.organizationId,
+    userId: persistedUser.id,
+    role: persistedUser.role === "admin" ? "organization_admin" : "dispatcher",
+  });
 }
 
 export async function createLocalOwnerUser(input: {

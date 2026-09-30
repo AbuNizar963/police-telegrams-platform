@@ -30,6 +30,23 @@ function mapMembership(row: Record<string, unknown>): OrganizationMembership {
   };
 }
 
+export async function getPrimaryOrganization(): Promise<Organization> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("*")
+    .eq("code", "LEGACY-PRIMARY")
+    .eq("isActive", true)
+    .maybeSingle();
+
+  throwIfError(error, "Failed to load primary organization");
+
+  if (!data) {
+    throw new Error("No active primary organization is configured");
+  }
+
+  return mapOrganization(data as Record<string, unknown>);
+}
+
 export async function getUserOrganizationMembership(
   userId: number,
 ): Promise<OrganizationMembership | null> {

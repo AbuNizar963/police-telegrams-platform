@@ -788,15 +788,15 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 75%;
-          height: 75%;
-          max-width: 595px;
-          max-height: 842px;
+          width: 100%;
+          height: 100%;
+          max-width: none;
+          max-height: none;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;
           justify-content: center;
-          opacity: 0.075;
+          opacity: 0.16;
           pointer-events: none;
         }
         .telegram-export-page .watermark-logo {

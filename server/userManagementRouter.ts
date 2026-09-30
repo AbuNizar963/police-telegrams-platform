@@ -20,7 +20,7 @@ export const userManagementRouter = router({
     .input(z.object({
       name: z.string().trim().min(2).max(255),
       username: z.string().trim().min(3).max(120).regex(/^[a-zA-Z0-9._-]+$/, "اسم المستخدم يقبل الأحرف الإنجليزية والأرقام والنقطة والشرطة فقط"),
-      password: z.string().min(12).max(256),
+      password: z.string().min(4, "يجب أن تتكون كلمة المرور من 4 أحرف على الأقل").max(256),
       badgeNumber: z.string().trim().max(80).nullable().optional(),
       rank: z.string().trim().max(120).nullable().optional(),
       unit: z.string().trim().max(255).nullable().optional(),

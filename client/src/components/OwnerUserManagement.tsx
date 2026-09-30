@@ -87,7 +87,8 @@ export default function OwnerUserManagement() {
               <span className="text-xs font-normal text-muted-foreground">أحرف إنجليزية وأرقام ونقطة وشرطة فقط.</span>
             </label>
             <label className="grid gap-1.5 text-sm font-medium">كلمة المرور المؤقتة
-              <Input type="password" dir="ltr" autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} minLength={12} maxLength={256} required placeholder="12 حرفًا على الأقل" />
+              <Input type="password" dir="ltr" autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} minLength={4} maxLength={256} required placeholder="4 أحرف على الأقل" />
+              <span className="text-xs font-normal text-muted-foreground">يمكن استخدام كلمة مرور من 4 أحرف أو أكثر.</span>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium">الرقم الوظيفي
@@ -104,7 +105,7 @@ export default function OwnerUserManagement() {
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
               الحساب يُنشأ بصلاحية ضابط عادي، ولا يمكنه الوصول إلى إعدادات المالك.
             </div>
-            <Button type="submit" className="w-full bg-[#10233f] text-white hover:bg-[#18375f]" disabled={createUser.isPending || name.trim().length < 2 || username.trim().length < 3 || password.length < 12}>
+            <Button type="submit" className="w-full bg-[#10233f] text-white hover:bg-[#18375f]" disabled={createUser.isPending || name.trim().length < 2 || username.trim().length < 3 || password.length < 4}>
               {createUser.isPending ? "جارٍ إنشاء الحساب..." : "إنشاء حساب الضابط"}
             </Button>
           </form>

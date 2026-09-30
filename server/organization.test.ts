@@ -1,30 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { from, select, eq, order, limit, maybeSingle, insert, upsert, single, rpc } =
-  vi.hoisted(() => {
-    const from = vi.fn();
-    const select = vi.fn();
-    const eq = vi.fn();
-    const order = vi.fn();
-    const limit = vi.fn();
-    const maybeSingle = vi.fn();
-    const insert = vi.fn();
-    const upsert = vi.fn();
-    const single = vi.fn();
-    const rpc = vi.fn();
+const mocks = vi.hoisted(() => {
+  const from = vi.fn();
+  const select = vi.fn();
+  const eq = vi.fn();
+  const order = vi.fn();
+  const limit = vi.fn();
+  const mocks.maybeSingle = vi.fn();
+  const insert = vi.fn();
+  const mocks.upsert = vi.fn();
+  const mocks.single = vi.fn();
+  const mocks.rpc = vi.fn();
 
-    from.mockReturnValue({ select, insert, upsert });
-    select.mockReturnValue({ eq, single });
-    eq.mockReturnValue({ eq, order, limit, maybeSingle });
-    order.mockReturnValue({ limit });
-    limit.mockReturnValue({ maybeSingle });
-    insert.mockReturnValue({ select });
-    upsert.mockReturnValue({ select });
-    return { from, select, eq, order, limit, maybeSingle, insert, upsert, single, rpc };
-  });
+  from.mockReturnValue({ select, insert, mocks.upsert });
+  select.mockReturnValue({ eq, mocks.single });
+  eq.mockReturnValue({ eq, order, limit, mocks.maybeSingle });
+  order.mockReturnValue({ limit });
+  limit.mockReturnValue({ mocks.maybeSingle });
+  insert.mockReturnValue({ select });
+  mocks.upsert.mockReturnValue({ select });
+
+  return {
+    from,
+    select,
+    eq,
+    order,
+    limit,
+    mocks.maybeSingle,
+    insert,
+    mocks.upsert,
+    mocks.single,
+    mocks.rpc,
+  };
+});
 
 vi.mock("./_core/supabase", () => ({
-  getSupabaseAdmin: vi.fn(() => ({ from, rpc })),
+  getSupabaseAdmin: vi.fn(() => ({
+    from: mocks.from,
+    mocks.rpc: mocks.rpc,
+  })),
 }));
 
 import {
@@ -35,7 +49,7 @@ import {
 describe("organization repository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    maybeSingle.mockResolvedValue({
+    mocks.maybeSingle.mockResolvedValue({
       data: {
         id: 1,
         organizationId: "00000000-0000-0000-0000-000000000001",
@@ -50,7 +64,7 @@ describe("organization repository", () => {
   });
 
   it("loads the active organization membership for a user", async () => {
-    maybeSingle.mockResolvedValueOnce({
+    mocks.maybeSingle.mockResolvedValueOnce({
       data: {
         id: 1,
         organizationId: "00000000-0000-0000-0000-000000000001",
@@ -71,7 +85,7 @@ describe("organization repository", () => {
   });
 
   it("writes a membership with an active role", async () => {
-    single.mockResolvedValueOnce({
+    mocks.single.mockResolvedValueOnce({
       data: {
         id: 2,
         organizationId: "00000000-0000-0000-0000-000000000001",
@@ -92,7 +106,7 @@ describe("organization repository", () => {
       }),
     ).resolves.toMatchObject({ role: "reviewer", userId: 7 });
 
-    expect(upsert).toHaveBeenCalledWith(
+    expect(mocks.upsert).toHaveBeenCalledWith(
       {
         organizationId: "00000000-0000-0000-0000-000000000001",
         userId: 7,
@@ -106,7 +120,7 @@ describe("organization repository", () => {
 
 
   it("routes through the atomic database function using the member organization as source", async () => {
-    rpc.mockResolvedValueOnce({
+    mocks.rpc.mockResolvedValueOnce({
       data: {
         id: 9,
         telegramId: 100,
@@ -135,7 +149,7 @@ describe("organization repository", () => {
       status: "sent",
     });
 
-    expect(rpc).toHaveBeenCalledWith("route_telegram", {
+    expect(mocks.rpc).toHaveBeenCalledWith("route_telegram", {
       p_telegram_id: 100,
       p_from_organization_id: "00000000-0000-0000-0000-000000000001",
       p_to_organization_id: "00000000-0000-0000-0000-000000000002",

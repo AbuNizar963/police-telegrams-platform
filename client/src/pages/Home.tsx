@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import OwnerUserManagement from "@/components/OwnerUserManagement";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
@@ -193,6 +194,7 @@ export default function Home() {
       />
     )}
     {me.data?.role === "admin" && <DepartmentSettingsModal settings={settings.data} />}
+    {me.data?.role === "admin" && <OwnerUserManagement />}
   </div>;
 }
 

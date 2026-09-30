@@ -1463,7 +1463,7 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
 
   const handleLogo = async (file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("اختر ملف صورة للشعار");
+    if (file.type !== "image/png" && file.type !== "image/jpeg") return toast.error("صيغة الشعار يجب أن تكون PNG أو JPG");
     if (file.size > 5 * 1024 * 1024) return toast.error("حجم الشعار يجب ألا يتجاوز 5 ميغابايت");
     setUploading(true);
     try {

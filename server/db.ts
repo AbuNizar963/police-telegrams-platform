@@ -14,6 +14,7 @@ import {
   storageStableUrl,
 } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
+import { getUserOrganizationMembership } from "./organization";
 
 const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
@@ -194,6 +195,14 @@ export async function getUserByAuthUserId(authUserId: string): Promise<User | un
     .maybeSingle();
   throwIfError(error, "Failed to load user");
   return data ? mapUser(data as Record<string, unknown>) : undefined;
+}
+
+export async function getUserOrganizationId(userId: number): Promise<string> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+  return membership.organizationId;
 }
 
 export async function getOrCreateSettings(

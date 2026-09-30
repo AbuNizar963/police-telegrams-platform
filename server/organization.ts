@@ -76,7 +76,7 @@ export async function listOrganizationsForUser(
     .map(row => {
       const organization = row.organizations;
       return organization && typeof organization === "object"
-        ? mapOrganization(organization as Record<string, unknown>)
+        ? mapOrganization(organization as unknown as Record<string, unknown>)
         : null;
     })
     .filter((organization): organization is Organization => Boolean(organization));

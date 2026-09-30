@@ -15,6 +15,7 @@ import {
   protectedProcedure,
   publicProcedure,
   router,
+  organizationAdminProcedure,
 } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { profileRouter } from "./profileRouter";
@@ -34,6 +35,13 @@ import {
   getUserByUsername,
   getUserOrganizationId,
 } from "./db";
+import {
+  addOrganizationMembership,
+  createOrganization,
+  listOrganizationsForUser,
+  listRoutingTargets,
+  routeTelegram,
+} from "./organization";
 import {
   StorageAccessDeniedError,
   storageGetSignedUrl,
@@ -135,6 +143,56 @@ export const appRouter = router({
       clearAuthenticatedSession(ctx.res);
       return { success: true } as const;
     }),
+  }),
+
+  organizations: router({
+    mine: protectedProcedure.query(({ ctx }) =>
+      listOrganizationsForUser(ctx.user.id),
+    ),
+
+    routingTargets: protectedProcedure.query(({ ctx }) =>
+      listRoutingTargets(ctx.user.id),
+    ),
+
+    create: adminProcedure
+      .input(
+        z.object({
+          parentOrganizationId: z.string().uuid().nullable().optional(),
+          code: z.string().trim().min(2).max(64).regex(/^[A-Z0-9_-]+$/i),
+          name: z.string().trim().min(2).max(255),
+          type: z.enum(["central", "command", "department", "station", "unit"]),
+        }),
+      )
+      .mutation(({ input }) => createOrganization(input)),
+
+    assignMember: organizationAdminProcedure
+      .input(
+        z.object({
+          organizationId: z.string().uuid(),
+          userId: z.number().int().positive(),
+          role: z.enum([
+            "system_admin",
+            "organization_admin",
+            "dispatcher",
+            "reviewer",
+            "reader",
+            "auditor",
+          ]),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (
+          ctx.user.role !== "admin" &&
+          ctx.organizationMembership.organizationId !== input.organizationId
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا يمكن تعيين مستخدم خارج الجهة التي تديرها",
+          });
+        }
+
+        return addOrganizationMembership(input);
+      }),
   }),
 
   dashboard: router({
@@ -407,6 +465,37 @@ export const appRouter = router({
         return { success: true as const, id: existing.id };
       }),
 
+    route: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          toOrganizationId: z.string().uuid(),
+          note: z.string().trim().max(2000).nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const route = await routeTelegram({
+          telegramId: input.id,
+          toOrganizationId: input.toOrganizationId,
+          forwardedByUserId: ctx.user.id,
+          note: input.note ?? null,
+        });
+
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "telegram.route",
+          entityType: "telegram",
+          entityId: String(input.id),
+          metadata: JSON.stringify({
+            routeId: route.id,
+            toOrganizationId: route.toOrganizationId,
+          }),
+        });
+
+        return route;
+      }),
+
     create: protectedProcedure
       .input(
         z.object({
@@ -450,6 +539,7 @@ export const appRouter = router({
           verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
           organizationId,
+          currentOrganizationId: organizationId,
           creatorName,
           creatorEmail: ctx.user.email ?? null,
           creatorBadgeId: ctx.user.badgeNumber ?? null,

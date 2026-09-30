@@ -2,6 +2,7 @@ import type {
   Organization,
   OrganizationMembership,
   OrganizationMemberRole,
+  TelegramRoute,
 } from "../drizzle/schema";
 import { getSupabaseAdmin } from "./_core/supabase";
 
@@ -19,6 +20,15 @@ function mapOrganization(row: Record<string, unknown>): Organization {
     ...(row as unknown as Organization),
     createdAt: new Date(String(row.createdAt)),
     updatedAt: new Date(String(row.updatedAt)),
+  };
+}
+
+function mapRoute(row: Record<string, unknown>): TelegramRoute {
+  return {
+    ...(row as unknown as TelegramRoute),
+    createdAt: new Date(String(row.createdAt)),
+    receivedAt: row.receivedAt ? new Date(String(row.receivedAt)) : null,
+    completedAt: row.completedAt ? new Date(String(row.completedAt)) : null,
   };
 }
 
@@ -141,4 +151,70 @@ export async function addOrganizationMembership(input: {
 
   throwIfError(error, "Failed to assign organization membership");
   return mapMembership(data as Record<string, unknown>);
+}
+
+export async function listRoutingTargets(userId: number): Promise<Organization[]> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+
+  const current = await getOrganizationById(membership.organizationId);
+  if (!current) {
+    throw new Error("Current organization is unavailable");
+  }
+
+  const client = getSupabaseAdmin();
+  const [parentResult, childrenResult] = await Promise.all([
+    current.parentOrganizationId
+      ? client
+          .from("organizations")
+          .select("*")
+          .eq("id", current.parentOrganizationId)
+          .eq("isActive", true)
+      : Promise.resolve({ data: [], error: null }),
+    client
+      .from("organizations")
+      .select("*")
+      .eq("parentOrganizationId", current.id)
+      .eq("isActive", true)
+      .order("name", { ascending: true }),
+  ]);
+
+  throwIfError(parentResult.error, "Failed to load parent routing target");
+  throwIfError(childrenResult.error, "Failed to load child routing targets");
+
+  const rows = [
+    ...(parentResult.data ?? []),
+    ...(childrenResult.data ?? []),
+  ];
+
+  return rows
+    .map(row => mapOrganization(row as Record<string, unknown>))
+    .filter((organization, index, all) =>
+      all.findIndex(candidate => candidate.id === organization.id) === index,
+    );
+}
+
+export async function routeTelegram(input: {
+  telegramId: number;
+  toOrganizationId: string;
+  forwardedByUserId: number;
+  note?: string | null;
+}): Promise<TelegramRoute> {
+  const membership = await getUserOrganizationMembership(input.forwardedByUserId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+
+  const { data, error } = await getSupabaseAdmin().rpc("route_telegram", {
+    p_telegram_id: input.telegramId,
+    p_from_organization_id: membership.organizationId,
+    p_to_organization_id: input.toOrganizationId,
+    p_forwarded_by_user_id: input.forwardedByUserId,
+    p_note: input.note ?? null,
+  });
+
+  throwIfError(error, "Failed to route telegram");
+  return mapRoute(data as Record<string, unknown>);
 }

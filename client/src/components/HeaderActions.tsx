@@ -87,13 +87,22 @@ export default function HeaderActions() {
             <span>{theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}</span>
           </DropdownMenuItem>
           {user?.role === "admin" && (
-            <DropdownMenuItem
-              onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}
-              className="cursor-pointer justify-end gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              <span>إعدادات القسم والموقع</span>
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem
+                onSelect={() => window.dispatchEvent(new CustomEvent("open-owner-user-management"))}
+                className="cursor-pointer justify-end gap-2"
+              >
+                <UserRound className="h-4 w-4" />
+                <span>إدارة حسابات الضباط</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}
+                className="cursor-pointer justify-end gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span>إعدادات القسم والموقع</span>
+              </DropdownMenuItem>
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

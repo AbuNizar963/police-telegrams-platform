@@ -32,6 +32,7 @@ import {
   writeAuditLog,
   createLocalOwnerUser,
   getUserByUsername,
+  getUserOrganizationId,
 } from "./db";
 import {
   StorageAccessDeniedError,
@@ -434,6 +435,7 @@ export const appRouter = router({
         );
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
+        const organizationId = await getUserOrganizationId(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
@@ -447,6 +449,7 @@ export const appRouter = router({
           serialCode,
           verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
+          organizationId,
           creatorName,
           creatorEmail: ctx.user.email ?? null,
           creatorBadgeId: ctx.user.badgeNumber ?? null,

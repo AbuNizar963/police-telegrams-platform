@@ -46,7 +46,13 @@ export function canAccessStorageKey(
   if (
     segments.length !== 3 ||
     segments[0] !== "telegrams" ||
-    segments.some(segment => segment === "." || segment === "..")
+    !segments[2] ||
+    segments.some(
+      segment =>
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("\\"),
+    )
   ) {
     return false;
   }

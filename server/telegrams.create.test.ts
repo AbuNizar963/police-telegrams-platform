@@ -70,6 +70,7 @@ describe("telegrams.create", () => {
     expect(mocked.createTelegram).toHaveBeenCalledWith(expect.objectContaining({
       createdByUserId: 42,
       organizationId: "00000000-0000-0000-0000-000000000001",
+      currentOrganizationId: "00000000-0000-0000-0000-000000000001",
       creatorName: "النقيب أحمد",
       creatorEmail: "ahmad@example.com",
       creatorFingerprint: "00000000-0000-4000-8000-000000000042",

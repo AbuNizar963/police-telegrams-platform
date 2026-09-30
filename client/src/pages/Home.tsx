@@ -1124,6 +1124,21 @@ function TelegramDetail({
         useCORS: true,
         allowTaint: false,
         logging: false,
+        onclone: clonedDocument => {
+          // html2canvas cannot parse modern oklch() colors emitted by the app's
+          // Tailwind theme. The export sheet is self-contained, so isolate the
+          // cloned document from application styles and retain only its print CSS.
+          clonedDocument.head
+            .querySelectorAll('style, link[rel="stylesheet"]')
+            .forEach(stylesheet => stylesheet.remove());
+
+          const exportStyles = exportWrapper.querySelector("style");
+          if (exportStyles) {
+            const isolatedStyles = clonedDocument.createElement("style");
+            isolatedStyles.textContent = exportStyles.textContent ?? "";
+            clonedDocument.head.appendChild(isolatedStyles);
+          }
+        },
       });
     } finally {
       mount.remove();

@@ -66,15 +66,6 @@ export default function HeaderActions() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-          <DropdownMenuLabel className="text-right">الحساب الحالي</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <div className="space-y-1 px-3 py-2 text-right">
-            <p className="text-sm font-medium">{user?.name || "مستخدم النظام"}</p>
-            <p dir="ltr" className="break-all text-xs text-muted-foreground">
-              {user?.email || "—"}
-            </p>
-          </div>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => { window.location.href = "/profile"; }} className="cursor-pointer justify-end gap-2">
             <UserRound className="h-4 w-4" />
             <span>الملف الشخصي</span>
@@ -93,7 +84,7 @@ export default function HeaderActions() {
                 className="cursor-pointer justify-end gap-2"
               >
                 <UserRound className="h-4 w-4" />
-                <span>إدارة حسابات الضباط</span>
+                <span>إدارة حسابات الشرطيين</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}

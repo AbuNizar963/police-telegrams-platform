@@ -196,9 +196,14 @@ export const appRouter = router({
   }),
 
   dashboard: router({
-    stats: protectedProcedure.query(({ ctx }) =>
-      getDashboardStats(ctx.user.id, ctx.user.role === "admin"),
-    ),
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      const canViewAll = ctx.user.role === "admin";
+      const organizationId = canViewAll
+        ? null
+        : await getUserOrganizationId(ctx.user.id);
+
+      return getDashboardStats(ctx.user.id, canViewAll, organizationId);
+    }),
   }),
 
   settings: router({
@@ -346,17 +351,23 @@ export const appRouter = router({
           })
           .optional(),
       )
-      .query(({ ctx, input }) =>
-        listTelegrams(
+      .query(async ({ ctx, input }) => {
+        const canViewAll = ctx.user.role === "admin";
+        const organizationId = canViewAll
+          ? null
+          : await getUserOrganizationId(ctx.user.id);
+
+        return listTelegrams(
           ctx.user.id,
-          ctx.user.role === "admin",
+          canViewAll,
+          organizationId,
           input?.search,
           input?.classification,
           input?.priority,
           input?.category,
           input?.status,
-        ),
-      ),
+        );
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))

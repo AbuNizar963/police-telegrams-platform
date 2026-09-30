@@ -18,7 +18,13 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
-      const url = key.startsWith("department/logos/")
+      const isDepartmentLogo =
+        /^department\/logos\/[0-9a-f-]{36}-[^/]+\.(?:png|jpg)$/i.test(key);
+      if (key.startsWith("department/logos/") && !isDepartmentLogo) {
+        throw new StorageAccessDeniedError();
+      }
+
+      const url = isDepartmentLogo
         ? await storageCreateSignedUrl(key, 10 * 60)
         : await storageGetSignedUrl(key, user);
       res.set("Cache-Control", "private, max-age=300");

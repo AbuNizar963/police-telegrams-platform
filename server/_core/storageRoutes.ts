@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { getAuthenticatedUserFromRequest } from "./auth";
-import { StorageAccessDeniedError, storageGetSignedUrl } from "../storage";
+import { StorageAccessDeniedError, storageCreateSignedUrl, storageGetSignedUrl } from "../storage";
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*", async (req, res) => {
@@ -18,7 +18,9 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
-      const url = await storageGetSignedUrl(key, user);
+      const url = key.startsWith("department/logos/")
+        ? await storageCreateSignedUrl(key, 10 * 60)
+        : await storageGetSignedUrl(key, user);
       res.set("Cache-Control", "private, max-age=300");
       res.redirect(307, url);
     } catch (error) {

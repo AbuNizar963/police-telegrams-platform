@@ -8,7 +8,11 @@ import type {
   User,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { storageCreateSignedUrl } from "./storage";
+import {
+  storageCreateSignedUrl,
+  storageKeyFromStoredUrl,
+  storageStableUrl,
+} from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
 
 const asDate = (value: unknown): Date =>
@@ -52,6 +56,18 @@ async function mapSettingsView(
       ...settings,
       logoUrl: null,
       logoKey: null,
+    };
+  }
+
+  const resolvedKey = storageKeyFromStoredUrl(
+    logoKey,
+    ENV.supabaseStorageBucket,
+  );
+  if (resolvedKey?.startsWith("department/logos/")) {
+    return {
+      ...settings,
+      logoUrl: storageStableUrl(resolvedKey),
+      logoKey: resolvedKey,
     };
   }
 

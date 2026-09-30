@@ -765,7 +765,6 @@ function TelegramDetail({
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
-        @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap");
         .telegram-export-page {
           position: relative;
           isolation: isolate;
@@ -778,8 +777,8 @@ function TelegramDetail({
           color: #172033;
           direction: rtl;
           font-family: "Cairo", Tahoma, Arial, sans-serif;
-          font-size: 17px;
-          line-height: 1.9;
+          font-size: 19px;
+          line-height: 1.85;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
@@ -828,7 +827,7 @@ function TelegramDetail({
         }
         .telegram-export-page .official-header {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 113px minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr) 160px minmax(0, 1fr);
           align-items: center;
           gap: 12px;
           padding: 0 0 22px;
@@ -847,8 +846,8 @@ function TelegramDetail({
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;
-          width: 145px;
-          height: 145px;
+          width: 160px;
+          height: 160px;
           margin: 0 auto;
           object-fit: contain;
         }
@@ -926,7 +925,7 @@ function TelegramDetail({
           overflow-wrap: anywhere;
           text-align: justify;
           line-height: 2;
-          font-size: 18px;
+          font-size: 20px;
         }
         .telegram-export-page .signature {
           margin-top: auto;

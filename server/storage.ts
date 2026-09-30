@@ -1,6 +1,5 @@
 import type { User } from "../drizzle/schema";
-import { ENV } from "./_core/env";
-import { getSupabaseAdmin } from "./_core/supabase";
+import { getStorageProvider } from "./storageProvider";
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
@@ -87,15 +86,10 @@ export async function storagePut(
   );
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
-  const { error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .upload(key, body, {
-      contentType,
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (error) throw new Error(`Storage upload failed: ${error.message}`);
+  await getStorageProvider().upload(key, body, {
+    contentType,
+    cacheControl: "3600",
+  });
 
   return { key, url: stableStorageUrl(key) };
 }
@@ -113,17 +107,7 @@ export async function storageCreateSignedUrl(
     throw new StorageAccessDeniedError();
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .createSignedUrl(key, expiresInSeconds);
-
-  if (error || !data?.signedUrl) {
-    throw new Error(
-      `Storage signed URL failed: ${error?.message ?? "empty URL"}`,
-    );
-  }
-
-  return data.signedUrl;
+  return getStorageProvider().createSignedUrl(key, expiresInSeconds);
 }
 
 export async function storageGetSignedUrl(
@@ -150,17 +134,10 @@ export async function storagePutDepartmentLogo(
   const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
-  const { error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .upload(key, body, {
-      contentType,
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`Department logo upload failed: ${error.message}`);
-  }
+  await getStorageProvider().upload(key, body, {
+    contentType,
+    cacheControl: "3600",
+  });
 
   return {
     key,

@@ -530,6 +530,9 @@ function TelegramComposer({
           نص البرقية
           <Textarea
             value={body}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={event => setBody(event.target.value)}
             placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..."
             className="min-h-36 rounded-lg leading-7"
@@ -763,8 +766,8 @@ function TelegramDetail({
           color: #172033;
           direction: rtl;
           font-family: "Cairo", Tahoma, Arial, sans-serif;
-          font-size: 15px;
-          line-height: 1.8;
+          font-size: 17px;
+          line-height: 1.9;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
@@ -828,16 +831,16 @@ function TelegramDetail({
         .telegram-export-page .government-subtitle { font-size: 12px; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .header-metadata { font-size: 11px; font-weight: 700; line-height: 2.15; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
-        .telegram-export-page .official-logo {
+         .telegram-export-page .official-logo {
           display: block;
-          width: 113px;
-          height: 113px;
+          width: 145px;
+          height: 145px;
           margin: 0 auto;
           object-fit: contain;
         }
-        .telegram-export-page .official-seal {
-          width: 113px;
-          height: 113px;
+         .telegram-export-page .official-seal {
+          width: 145px;
+          height: 145px;
           margin: 0 auto;
           border: 2px solid #b49a55;
           border-radius: 50%;
@@ -903,13 +906,13 @@ function TelegramDetail({
           font-size: 17px;
           font-weight: 700;
         }
-        .telegram-export-page .telegram-body {
+         .telegram-export-page .telegram-body {
           min-height: 150px;
           white-space: pre-wrap;
           overflow-wrap: anywhere;
           text-align: justify;
           line-height: 2;
-          font-size: 16px;
+          font-size: 18px;
         }
         .telegram-export-page .signature {
           margin-top: auto;

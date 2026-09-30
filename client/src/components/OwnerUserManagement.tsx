@@ -103,7 +103,7 @@ export default function OwnerUserManagement() {
             </label>
             <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-              الحساب يُنشأ بصلاحية ضابط عادي، ولا يمكنه الوصول إلى إعدادات المالك.
+              يُنشأ الحساب بصلاحيات شرطي، ولا يمكنه الوصول إلى إعدادات المالك.
             </div>
             <Button type="submit" className="w-full bg-[#10233f] text-white hover:bg-[#18375f]" disabled={createUser.isPending || name.trim().length < 2 || username.trim().length < 3 || password.length < 4}>
               {createUser.isPending ? "جارٍ إنشاء الحساب..." : "إنشاء حساب الشرطي"}

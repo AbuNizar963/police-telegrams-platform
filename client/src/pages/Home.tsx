@@ -1449,7 +1449,7 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const update = trpc.settings.update.useMutation({ onSuccess: result => { setOpen(false); setLogoUrl(result?.logoUrl ?? null); toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة"); }, onError: error => toast.error(error.message || "تعذر تحديث إعدادات القسم") });
-  const upload = trpc.telegrams.uploadAttachment.useMutation();
+  const upload = trpc.settings.uploadLogo.useMutation();
 
   useEffect(() => {
     const handler = () => setOpen(true);

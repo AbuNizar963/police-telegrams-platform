@@ -35,6 +35,18 @@ import {
 describe("organization repository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: 1,
+        organizationId: "00000000-0000-0000-0000-000000000001",
+        userId: 7,
+        role: "dispatcher",
+        isActive: true,
+        createdAt: "2026-10-01T00:00:00.000Z",
+        updatedAt: "2026-10-01T00:00:00.000Z",
+      },
+      error: null,
+    });
   });
 
   it("loads the active organization membership for a user", async () => {

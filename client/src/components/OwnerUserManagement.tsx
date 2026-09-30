@@ -21,7 +21,7 @@ export default function OwnerUserManagement() {
   const utils = trpc.useUtils();
   const createUser = trpc.userManagement.create.useMutation({
     onSuccess: async () => {
-      toast.success("تم إنشاء حساب الضابط بنجاح");
+      toast.success("تم إنشاء حساب الشرطي بنجاح");
       setName("");
       setUsername("");
       setPassword("");
@@ -80,7 +80,7 @@ export default function OwnerUserManagement() {
               <h3 className="font-bold">إنشاء حساب شرطي</h3>
             </div>
             <label className="grid gap-1.5 text-sm font-medium">الاسم الكامل
-              <Input autoComplete="name" value={name} onChange={event => setName(event.target.value)} minLength={2} maxLength={255} required placeholder="اسم الضابط أو الشرطي" />
+              <Input autoComplete="name" value={name} onChange={event => setName(event.target.value)} minLength={2} maxLength={255} required placeholder="اسم الشرطي" />
             </label>
             <label className="grid gap-1.5 text-sm font-medium">اسم المستخدم
               <Input autoComplete="off" dir="ltr" value={username} onChange={event => setUsername(event.target.value.replace(/[^a-zA-Z0-9._-]/g, ""))} minLength={3} maxLength={120} required placeholder="officer01" />
@@ -106,7 +106,7 @@ export default function OwnerUserManagement() {
               الحساب يُنشأ بصلاحية ضابط عادي، ولا يمكنه الوصول إلى إعدادات المالك.
             </div>
             <Button type="submit" className="w-full bg-[#10233f] text-white hover:bg-[#18375f]" disabled={createUser.isPending || name.trim().length < 2 || username.trim().length < 3 || password.length < 4}>
-              {createUser.isPending ? "جارٍ إنشاء الحساب..." : "إنشاء حساب الضابط"}
+              {createUser.isPending ? "جارٍ إنشاء الحساب..." : "إنشاء حساب الشرطي"}
             </Button>
           </form>
 
@@ -128,7 +128,7 @@ export default function OwnerUserManagement() {
                       <p dir="ltr" className="mt-0.5 truncate text-right font-mono text-xs text-muted-foreground">@{user.username}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{[user.rank, user.badgeNumber ? `الرقم الوظيفي: ${user.badgeNumber}` : null, user.unit].filter(Boolean).join(" • ") || "لم تُضف تفاصيل وظيفية"}</p>
                     </div>
-                    <span className={user.role === "admin" ? "shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300" : "shrink-0 rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"}>{user.role === "admin" ? "مالك" : "ضابط"}</span>
+                    <span className={user.role === "admin" ? "shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300" : "shrink-0 rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"}>{user.role === "admin" ? "مالك" : "شرطي"}</span>
                   </div>
                 </li>
               ))}

@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgEnum,
@@ -27,8 +28,51 @@ export const telegramStatus = pgEnum("telegram_status", [
   "archived",
 ]);
 export const numberSystem = pgEnum("number_system", ["latin", "arabic", "hindi"]);
+export const organizationType = pgEnum("organization_type", [
+  "central",
+  "command",
+  "department",
+  "station",
+  "unit",
+]);
+export const organizationMemberRole = pgEnum("organization_member_role", [
+  "system_admin",
+  "organization_admin",
+  "dispatcher",
+  "reviewer",
+  "reader",
+  "auditor",
+]);
+export const telegramRouteStatus = pgEnum("telegram_route_status", [
+  "sent",
+  "received",
+  "accepted",
+  "completed",
+  "rejected",
+  "cancelled",
+]);
 
-export const users = pgTable("users", {
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    parentOrganizationId: uuid("parentOrganizationId"),
+    code: varchar("code", { length: 64 }).notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: organizationType("type").default("department").notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    index("organizations_parent_idx").on(table.parentOrganizationId),
+    index("organizations_active_idx").on(table.isActive),
+  ],
+);
+
+export const users = pgTable(
+  "users",
+  {
   id: serial("id").primaryKey(),
   authUserId: uuid("authUserId").notNull().unique(),
   name: text("name"),
@@ -46,7 +90,9 @@ export const users = pgTable("users", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
-});
+  },
+  table => [index("users_organization_idx").on(table.organizationId)],
+);
 
 export const departmentSettings = pgTable("department_settings", {
   id: serial("id").primaryKey(),
@@ -66,6 +112,27 @@ export const departmentSettings = pgTable("department_settings", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const organizationMemberships = pgTable(
+  "organization_memberships",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: organizationMemberRole("role").default("dispatcher").notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    index("organization_memberships_user_idx").on(table.userId),
+    index("organization_memberships_org_role_idx").on(table.organizationId, table.role),
+  ],
+);
 
 export const telegrams = pgTable(
   "telegrams",
@@ -101,6 +168,36 @@ export const telegrams = pgTable(
   ],
 );
 
+export const telegramRoutes = pgTable(
+  "telegram_routes",
+  {
+    id: serial("id").primaryKey(),
+    telegramId: integer("telegramId")
+      .notNull()
+      .references(() => telegrams.id, { onDelete: "restrict" }),
+    fromOrganizationId: uuid("fromOrganizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    toOrganizationId: uuid("toOrganizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    forwardedByUserId: integer("forwardedByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: telegramRouteStatus("status").default("sent").notNull(),
+    note: text("note"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    receivedAt: timestamp("receivedAt", { withTimezone: true }),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+  },
+  table => [
+    index("telegram_routes_telegram_idx").on(table.telegramId, table.createdAt),
+    index("telegram_routes_destination_idx").on(table.toOrganizationId, table.status),
+    index("telegram_routes_source_idx").on(table.fromOrganizationId, table.createdAt),
+    index("telegram_routes_forwarder_idx").on(table.forwardedByUserId),
+  ],
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -119,6 +216,12 @@ export const auditLogs = pgTable(
   ],
 );
 
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
+export type OrganizationMemberRole = (typeof organizationMemberRole.enumValues)[number];
+export type TelegramRoute = typeof telegramRoutes.$inferSelect;
+export type InsertTelegramRoute = typeof telegramRoutes.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Telegram = typeof telegrams.$inferSelect;

@@ -143,6 +143,7 @@ export const userManagementRouter = router({
       if (!target.data) throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
       if (target.data.role === "admin") throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن تعطيل حساب مالك النظام" });
       const { error } = await client.from("users").update({
+        authUserId: randomUUID(),
         password_hash: null,
         loginMethod: "disabled",
         updatedAt: new Date().toISOString(),

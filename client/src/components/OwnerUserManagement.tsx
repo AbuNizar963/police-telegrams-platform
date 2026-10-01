@@ -40,7 +40,7 @@ export default function OwnerUserManagement() {
 
   const updateUser = trpc.userManagement.update.useMutation({ onSuccess: async () => { toast.success("تم تحديث الحساب"); setEditing(null); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تعديل الحساب") });
   const disableUser = trpc.userManagement.disable.useMutation({ onSuccess: async () => { toast.success("تم تعطيل الحساب مع الحفاظ على سجلاته وبرقياته"); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تعطيل الحساب") });
-  const enableUser = trpc.userManagement.enable.useMutation({ onSuccess: async () => { toast.success("تمت إعادة تفعيل الحساب"); setEnablePassword(current => ({ ...current, [editing?.id ?? -1]: "" })); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تفعيل الحساب") });
+  const enableUser = trpc.userManagement.enable.useMutation({ onSuccess: async (_data, variables) => { toast.success("تمت إعادة تفعيل الحساب"); setEnablePassword(current => ({ ...current, [variables.id]: "" })); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تفعيل الحساب") });
 
   useEffect(() => {
     const show = () => setOpen(true);

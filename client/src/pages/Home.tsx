@@ -790,8 +790,8 @@ function TelegramDetail({
           z-index: 0;
           width: 75%;
           height: 75%;
-          max-width: 595px;
-          max-height: 842px;
+          max-width: none;
+          max-height: none;
           transform: translate(-50%, -50%);
           display: flex;
           align-items: center;
@@ -1160,79 +1160,99 @@ function TelegramDetail({
 
   const printTelegram = async () => {
     const exportWrapper = createExportPaper();
-    const printDocument = `<!doctype html>
-      <html lang="ar" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet" />
-          <title>${escapeHtml(telegram.serialCode)}</title>
-        </head>
-        <body style="margin:0;padding:0;background:#fff">
-          ${exportWrapper.innerHTML}
-        </body>
-      </html>`;
+    const printRoot = document.createElement("div");
+    const printStyle = document.createElement("style");
 
-    // Print from a hidden frame instead of opening an about:blank tab. This
-    // avoids an extra navigation step on mobile while preserving the system
-    // print service and the existing A4 export layout.
-    const printFrame = document.createElement("iframe");
-    printFrame.setAttribute("title", "معاينة الطباعة");
-    printFrame.setAttribute("aria-hidden", "true");
-    printFrame.style.position = "fixed";
-    printFrame.style.right = "0";
-    printFrame.style.bottom = "0";
-    printFrame.style.width = "1px";
-    printFrame.style.height = "1px";
-    printFrame.style.border = "0";
-    printFrame.style.opacity = "0";
-    printFrame.style.pointerEvents = "none";
+    printRoot.id = "telegram-print-root";
+    printRoot.setAttribute("dir", "rtl");
+    printRoot.setAttribute("aria-hidden", "true");
+    printRoot.style.position = "fixed";
+    printRoot.style.inset = "0";
+    printRoot.style.zIndex = "-1";
+    printRoot.style.width = "210mm";
+    printRoot.style.minHeight = "297mm";
+    printRoot.style.background = "#fff";
 
-    const removePrintFrame = () => {
-      printFrame.remove();
-    };
-    printFrame.onload = async () => {
-      const printDocument = printFrame.contentDocument;
-      const printWindow = printFrame.contentWindow;
-      if (!printDocument || !printWindow) {
-        removePrintFrame();
-        toast.error("تعذر تجهيز مستند الطباعة");
-        return;
+    printStyle.id = "telegram-print-style";
+    printStyle.textContent = `
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+
+        body > *:not(#telegram-print-root) {
+          display: none !important;
+        }
+
+        #telegram-print-root {
+          position: static !important;
+          inset: auto !important;
+          z-index: auto !important;
+          display: block !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+
+        #telegram-print-root .telegram-export-page {
+          width: 210mm !important;
+          min-height: 297mm !important;
+          margin: 0 !important;
+        }
+
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
       }
+    `;
 
-      try {
-        await printDocument.fonts?.load('400 16px "Cairo"');
-        await printDocument.fonts?.load('700 18px "Cairo"');
-        await printDocument.fonts?.ready;
-        await Promise.all(
-          Array.from(printDocument.images).map(async image => {
-            try {
-              if (!image.complete) {
-                await new Promise<void>((resolve, reject) => {
-                  image.addEventListener("load", () => resolve(), { once: true });
-                  image.addEventListener("error", () => reject(new Error("تعذر تحميل الشعار")), { once: true });
-                });
-              }
-              await image.decode();
-            } catch {
-              image.remove();
+    printRoot.appendChild(exportWrapper);
+    document.head.appendChild(printStyle);
+    document.body.appendChild(printRoot);
+
+    const cleanup = () => {
+      printStyle.remove();
+      printRoot.remove();
+    };
+
+    try {
+      const images = Array.from(printRoot.images);
+      await Promise.all(
+        images.map(async image => {
+          try {
+            if (!image.complete) {
+              await new Promise<void>(resolve => {
+                image.addEventListener("load", () => resolve(), { once: true });
+                image.addEventListener("error", () => resolve(), { once: true });
+              });
             }
-          }),
-        );
-      } catch {
-        // Text remains printable if an optional font or logo cannot be loaded.
-      }
+            await image.decode?.();
+          } catch {
+            // Keep printing even when an optional image cannot be decoded.
+          }
+        }),
+      );
 
-      printWindow.addEventListener("afterprint", removePrintFrame, { once: true });
-      printWindow.focus();
-      printWindow.print();
-    };
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
 
-    printFrame.srcdoc = printDocument;
-    document.body.appendChild(printFrame);
+      window.addEventListener("afterprint", cleanup, { once: true });
+      window.print();
+
+      // Some mobile browsers do not reliably dispatch afterprint.
+      window.setTimeout(cleanup, 30000);
+    } catch (error) {
+      cleanup();
+      toast.error(error instanceof Error ? error.message : "تعذر تجهيز الطباعة");
+    }
   };
+
   const imageBlob = async (): Promise<Blob> => {
     const canvas = await capture();
 

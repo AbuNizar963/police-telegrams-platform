@@ -142,7 +142,7 @@ export async function getAuthenticatedUserFromRequest(
     if (!Number.isInteger(userId) || userId < 1) return null;
 
     const user = await db.getUserById(userId);
-    return user ? publicUser(user) : null;
+    return user && user.loginMethod !== "disabled" ? publicUser(user) : null;
   } catch {
     return null;
   }
@@ -153,7 +153,7 @@ export async function authenticateLocalUser(
   password: string,
 ): Promise<PublicUser | null> {
   const user = await db.getUserByUsername(username);
-  if (!user?.passwordHash) return null;
+  if (!user?.passwordHash || user.loginMethod === "disabled") return null;
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;

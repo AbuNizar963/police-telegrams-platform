@@ -11,6 +11,7 @@ export default function OwnerUserManagement() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
+  const [phone, setPhone] = useState("");
   const [rank, setRank] = useState("");
   const [unit, setUnit] = useState("");
 
@@ -26,6 +27,7 @@ export default function OwnerUserManagement() {
       setUsername("");
       setPassword("");
       setBadgeNumber("");
+      setPhone("");
       setRank("");
       setUnit("");
       await utils.userManagement.list.invalidate();
@@ -46,6 +48,7 @@ export default function OwnerUserManagement() {
       username: username.trim().toLowerCase(),
       password,
       badgeNumber: badgeNumber.trim() || null,
+      phone: phone.trim() || null,
       rank: rank.trim() || null,
       unit: unit.trim() || null,
     });
@@ -98,6 +101,10 @@ export default function OwnerUserManagement() {
                 <Input value={rank} onChange={event => setRank(event.target.value)} maxLength={120} placeholder="اختياري" />
               </label>
             </div>
+            <label className="grid gap-1.5 text-sm font-medium">رقم الهاتف
+              <Input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={phone} onChange={event => setPhone(event.target.value)} maxLength={32} placeholder="+963 9XX XXX XXX" />
+              <span className="text-xs font-normal text-muted-foreground">اختياري، ويمكن تعديله لاحقًا من الملف الشخصي.</span>
+            </label>
             <label className="grid gap-1.5 text-sm font-medium">القسم أو المخفر
               <Input value={unit} onChange={event => setUnit(event.target.value)} maxLength={255} placeholder="الجهة الشرطية" />
             </label>
@@ -126,7 +133,7 @@ export default function OwnerUserManagement() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{user.name}</p>
                       <p dir="ltr" className="mt-0.5 truncate text-right font-mono text-xs text-muted-foreground">@{user.username}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{[user.rank, user.badgeNumber ? `الرقم الوظيفي: ${user.badgeNumber}` : null, user.unit].filter(Boolean).join(" • ") || "لم تُضف تفاصيل وظيفية"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{[user.rank, user.badgeNumber ? `الرقم الوظيفي: ${user.badgeNumber}` : null, user.phone ? `الهاتف: ${user.phone}` : null, user.unit].filter(Boolean).join(" • ") || "لم تُضف تفاصيل وظيفية"}</p>
                     </div>
                     <span className={user.role === "admin" ? "shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300" : "shrink-0 rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"}>{user.role === "admin" ? "مالك" : "شرطي"}</span>
                   </div>

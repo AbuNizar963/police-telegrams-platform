@@ -100,7 +100,11 @@ export const userManagementRouter = router({
         unit: input.unit?.trim() || null,
         updatedAt: new Date().toISOString(),
       };
-      if (input.password) values.password_hash = await hashPassword(input.password);
+      if (input.password) {
+        values.password_hash = await hashPassword(input.password);
+        // Revoke existing sessions after an administrator resets the password.
+        values.authUserId = randomUUID();
+      }
       const { data, error } = await client.from("users").update(values).eq("id", input.id)
         .select("id, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn").single();
       if (error || !data) {

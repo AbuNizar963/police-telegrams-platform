@@ -1221,7 +1221,7 @@ function TelegramDetail({
     };
 
     try {
-      const images = Array.from(printRoot.images);
+      const images = Array.from(printRoot.querySelectorAll<HTMLImageElement>("img"));
       await Promise.all(
         images.map(async image => {
           try {

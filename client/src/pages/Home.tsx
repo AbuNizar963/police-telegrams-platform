@@ -1128,16 +1128,29 @@ function TelegramDetail({
           // html2canvas cannot parse modern oklch() colors emitted by the app's
           // Tailwind theme. The export sheet is self-contained, so isolate the
           // cloned document from application styles and retain only its print CSS.
-          clonedDocument.head
+          // Remove application styles from the entire cloned document, not
+          // only <head>. Some bundlers inject style elements into <body>, and
+          // html2canvas parses those rules even when the export sheet itself
+          // uses only browser-safe colors. This is the source of the
+          // "unsupported color function oklch" failure on image/PDF export.
+          clonedDocument
             .querySelectorAll('style, link[rel="stylesheet"]')
             .forEach(stylesheet => stylesheet.remove());
 
+          // Export CSS is deliberately self-contained and uses hexadecimal
+          // colors, so restore only those rules after removing app styles.
           const exportStyles = exportWrapper.querySelector("style");
           if (exportStyles) {
             const isolatedStyles = clonedDocument.createElement("style");
             isolatedStyles.textContent = exportStyles.textContent ?? "";
             clonedDocument.head.appendChild(isolatedStyles);
           }
+
+          // Avoid inherited theme colors on the cloned root/body.
+          clonedDocument.documentElement.style.colorScheme = "light";
+          clonedDocument.documentElement.style.backgroundColor = "#ffffff";
+          clonedDocument.body.style.color = "#172033";
+          clonedDocument.body.style.backgroundColor = "#ffffff";
         },
       });
     } finally {

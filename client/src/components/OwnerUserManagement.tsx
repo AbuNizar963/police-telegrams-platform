@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, UserPlus, Users, ShieldCheck } from "lucide-react";
+import { X, UserPlus, Users, ShieldCheck, Pencil, Trash2, RotateCcw } from "lucide-react";
 
 export default function OwnerUserManagement() {
   const [open, setOpen] = useState(false);
@@ -14,6 +14,9 @@ export default function OwnerUserManagement() {
   const [phone, setPhone] = useState("");
   const [rank, setRank] = useState("");
   const [unit, setUnit] = useState("");
+  const [editing, setEditing] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: "", username: "", badgeNumber: "", phone: "", rank: "", unit: "", password: "" });
+  const [enablePassword, setEnablePassword] = useState<Record<number, string>>({});
 
   const users = trpc.userManagement.list.useQuery(undefined, {
     enabled: open,
@@ -34,6 +37,10 @@ export default function OwnerUserManagement() {
     },
     onError: error => toast.error(error.message || "تعذر إنشاء الحساب"),
   });
+
+  const updateUser = trpc.userManagement.update.useMutation({ onSuccess: async () => { toast.success("تم تحديث الحساب"); setEditing(null); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تعديل الحساب") });
+  const disableUser = trpc.userManagement.disable.useMutation({ onSuccess: async () => { toast.success("تم تعطيل الحساب مع الحفاظ على سجلاته وبرقياته"); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تعطيل الحساب") });
+  const enableUser = trpc.userManagement.enable.useMutation({ onSuccess: async () => { toast.success("تمت إعادة تفعيل الحساب"); setEnablePassword(current => ({ ...current, [editing?.id ?? -1]: "" })); await utils.userManagement.list.invalidate(); }, onError: error => toast.error(error.message || "تعذر تفعيل الحساب") });
 
   useEffect(() => {
     const show = () => setOpen(true);
@@ -135,13 +142,14 @@ export default function OwnerUserManagement() {
                       <p dir="ltr" className="mt-0.5 truncate text-right font-mono text-xs text-muted-foreground">@{user.username}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{[user.rank, user.badgeNumber ? `الرقم الوظيفي: ${user.badgeNumber}` : null, user.phone ? `الهاتف: ${user.phone}` : null, user.unit].filter(Boolean).join(" • ") || "لم تُضف تفاصيل وظيفية"}</p>
                     </div>
-                    <span className={user.role === "admin" ? "shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300" : "shrink-0 rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"}>{user.role === "admin" ? "مالك" : "شرطي"}</span>
+                    <div className="flex shrink-0 flex-col items-end gap-2"><span className={user.role === "admin" ? "rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300" : "rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"}>{user.role === "admin" ? "مالك" : "شرطي"}</span>{user.loginMethod === "disabled" && <span className="rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-600">معطّل</span>}{user.role !== "admin" && <div className="flex items-center gap-1"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:bg-emerald-500/10" title="تعديل الحساب" aria-label={`تعديل حساب ${user.name}`} onClick={() => { setEditing(user); setEditForm({ name:user.name ?? "", username:user.username ?? "", badgeNumber:user.badgeNumber ?? "", phone:user.phone ?? "", rank:user.rank ?? "", unit:user.unit ?? "", password:"" }); }}><Pencil className="h-4 w-4"/></Button>{user.loginMethod === "disabled" ? <div className="flex items-center gap-1"><Input aria-label={`كلمة مرور جديدة لـ ${user.name}`} type="password" className="h-8 w-28" placeholder="كلمة مرور جديدة" value={enablePassword[user.id] ?? ""} onChange={e=>setEnablePassword(v=>({...v,[user.id]:e.target.value}))}/><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-blue-600" title="إعادة تفعيل الحساب" aria-label={`إعادة تفعيل ${user.name}`} disabled={(enablePassword[user.id] ?? "").length<4 || enableUser.isPending} onClick={()=>enableUser.mutate({id:user.id,password:enablePassword[user.id]})}><RotateCcw className="h-4 w-4"/></Button></div> : <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-500/10" title="تعطيل الحساب" aria-label={`تعطيل حساب ${user.name}`} onClick={()=>{ if(window.confirm(`هل تريد تعطيل حساب ${user.name}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`)) disableUser.mutate({id:user.id}); }} disabled={disableUser.isPending}><Trash2 className="h-4 w-4"/></Button>}</div>}</div>
                   </div>
                 </li>
               ))}
             </ul>
           </section>
         </div>
+        {editing && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4"><form role="dialog" aria-modal="true" aria-labelledby="edit-user-title" dir="rtl" onSubmit={e=>{e.preventDefault(); updateUser.mutate({id:editing.id,...editForm,name:editForm.name.trim(),username:editForm.username.trim().toLowerCase(),badgeNumber:editForm.badgeNumber.trim()||null,phone:editForm.phone.trim()||null,rank:editForm.rank.trim()||null,unit:editForm.unit.trim()||null});}} className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-xl bg-background p-5 shadow-xl"><div className="flex items-center justify-between"><h3 id="edit-user-title" className="text-lg font-bold">تعديل بيانات الشرطي</h3><Button type="button" variant="ghost" size="icon" onClick={()=>setEditing(null)} aria-label="إغلاق"><X className="h-4 w-4"/></Button></div>{([["name","الاسم الكامل"],["username","اسم المستخدم"],["badgeNumber","الرقم الوظيفي"],["rank","الرتبة"],["phone","رقم الهاتف"],["unit","القسم أو المخفر"]] as const).map(([key,label])=><label key={key} className="grid gap-1 text-sm font-medium">{label}<Input dir={key==="username"||key==="phone"?"ltr":undefined} value={editForm[key]} onChange={e=>setEditForm(v=>({...v,[key]:e.target.value}))} required={key==="name"||key==="username"} minLength={key==="name"?2:key==="username"?3:undefined}/></label>)}<label className="grid gap-1 text-sm font-medium">كلمة مرور جديدة (اختياري)<Input type="password" autoComplete="new-password" value={editForm.password} onChange={e=>setEditForm(v=>({...v,password:e.target.value}))} minLength={editForm.password?4:undefined}/></label><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={()=>setEditing(null)}>إلغاء</Button><Button type="submit" disabled={updateUser.isPending}>{updateUser.isPending?"جارٍ الحفظ...":"حفظ التعديلات"}</Button></div></form></div>}
         <footer className="mt-5 flex justify-end">
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>إغلاق</Button>
         </footer>

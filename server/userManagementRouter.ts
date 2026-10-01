@@ -10,7 +10,7 @@ export const userManagementRouter = router({
   list: adminProcedure.query(async () => {
     const { data, error } = await getSupabaseAdmin()
       .from("users")
-      .select("id, username, name, badgeNumber, rank, unit, role, createdAt, lastSignedIn")
+      .select("id, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn")
       .order("createdAt", { ascending: false });
     if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر تحميل حسابات المستخدمين" });
     return data ?? [];
@@ -22,6 +22,7 @@ export const userManagementRouter = router({
       username: z.string().trim().min(3).max(120).regex(/^[a-zA-Z0-9._-]+$/, "اسم المستخدم يقبل الأحرف الإنجليزية والأرقام والنقطة والشرطة فقط"),
       password: z.string().min(4, "يجب أن تتكون كلمة المرور من 4 أحرف على الأقل").max(256),
       badgeNumber: z.string().trim().max(80).nullable().optional(),
+      phone: z.string().trim().max(32).nullable().optional(),
       rank: z.string().trim().max(120).nullable().optional(),
       unit: z.string().trim().max(255).nullable().optional(),
     }))
@@ -39,6 +40,7 @@ export const userManagementRouter = router({
         password_hash: await hashPassword(input.password),
         name: input.name,
         badgeNumber: input.badgeNumber?.trim() || null,
+        phone: input.phone?.trim() || null,
         rank: input.rank?.trim() || null,
         unit: input.unit?.trim() || null,
         email: null,
@@ -47,10 +49,11 @@ export const userManagementRouter = router({
         createdAt: now,
         updatedAt: now,
         lastSignedIn: now,
-      }).select("id, username, name, badgeNumber, rank, unit, role, createdAt, lastSignedIn").single();
+      }).select("id, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn").single();
 
       if (error || !data) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء حساب المستخدم" });
+        console.error("[userManagement.create] Supabase insert failed", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء حساب المستخدم. تحقق من إعدادات قاعدة البيانات وحاول مجددًا." });
       }
 
       await writeAuditLog({

@@ -142,7 +142,9 @@ export async function getAuthenticatedUserFromRequest(
     if (!Number.isInteger(userId) || userId < 1) return null;
 
     const user = await db.getUserById(userId);
-    return user && user.loginMethod !== "disabled" ? publicUser(user) : null;
+    if (!user || user.loginMethod === "disabled") return null;
+    if (typeof payload.authUserId !== "string" || payload.authUserId !== user.authUserId) return null;
+    return publicUser(user);
   } catch {
     return null;
   }

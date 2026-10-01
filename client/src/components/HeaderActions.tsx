@@ -1,4 +1,4 @@
-import { Bell, Moon, Settings, Sun, UserRound } from "lucide-react";
+import { Bell, Moon, Settings, Sun, UserRound, Users } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
@@ -79,12 +79,16 @@ export default function HeaderActions() {
           </DropdownMenuItem>
           {user?.role === "admin" && (
             <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-right text-xs font-bold text-[#9b7c3d]">
+                إعدادات المالك
+              </DropdownMenuLabel>
               <DropdownMenuItem
                 onSelect={() => window.dispatchEvent(new CustomEvent("open-owner-user-management"))}
                 className="cursor-pointer justify-end gap-2"
               >
-                <UserRound className="h-4 w-4" />
-                <span>إضافة مستخدمي النظام (الشرطيين)</span>
+                <Users className="h-4 w-4" />
+                <span>إدارة حسابات الشرطيين وإضافتها</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => window.dispatchEvent(new CustomEvent("open-department-settings"))}

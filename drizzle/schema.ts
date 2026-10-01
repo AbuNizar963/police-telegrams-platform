@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   index,
   uniqueIndex,
@@ -5,7 +6,6 @@ import {
   pgEnum,
   pgTable,
   serial,
-  sql,
   text,
   timestamp,
   uuid,
@@ -49,7 +49,9 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
 }, table => [
-  uniqueIndex("users_username_lower_unique_idx").on(sql`lower(${table.username})`).where(sql`${table.username} is not null`),
+  uniqueIndex("users_username_lower_unique_idx")
+    .on(sql`lower(${table.username})`)
+    .where(sql`${table.username} is not null`),
 ]);
 
 export const departmentSettings = pgTable("department_settings", {

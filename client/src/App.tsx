@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import HeaderActions from "./components/HeaderActions";
+import OwnerUserManagement from "./components/OwnerUserManagement";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
@@ -15,6 +16,7 @@ function DashboardPage({ children }: { children: React.ReactNode }) {
     <>
       <HeaderActions />
       <DashboardLayout>{children}</DashboardLayout>
+      <OwnerUserManagement />
     </>
   );
 }

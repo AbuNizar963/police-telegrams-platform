@@ -10,7 +10,7 @@ export const userManagementRouter = router({
   list: adminProcedure.query(async () => {
     const { data, error } = await getSupabaseAdmin()
       .from("users")
-      .select("id, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn")
+      .select("id, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn")
       .order("createdAt", { ascending: false });
     if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر تحميل حسابات المستخدمين" });
     return data ?? [];
@@ -116,6 +116,21 @@ export const userManagementRouter = router({
         metadata: JSON.stringify({ username, passwordReset: Boolean(input.password) }),
       });
       return data;
+    }),
+
+  enable: adminProcedure
+    .input(z.object({ id: z.number().int().positive(), password: z.string().min(4).max(256) }))
+    .mutation(async ({ ctx, input }) => {
+      const client = getSupabaseAdmin();
+      const target = await client.from("users").select("id, role, username, loginMethod").eq("id", input.id).maybeSingle();
+      if (target.error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر تحميل الحساب المطلوب" });
+      if (!target.data) throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      if (target.data.role === "admin") throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن إعادة تفعيل حساب مالك النظام من هذه الشاشة" });
+      if (target.data.loginMethod !== "disabled") throw new TRPCError({ code: "CONFLICT", message: "الحساب مفعّل بالفعل" });
+      const { error } = await client.from("users").update({ password_hash: await hashPassword(input.password), loginMethod: "password", updatedAt: new Date().toISOString() }).eq("id", input.id);
+      if (error) { console.error("[userManagement.enable] Supabase update failed", error); throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إعادة تفعيل الحساب" }); }
+      await writeAuditLog({ actorUserId: ctx.user.id, actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام", action: "user.enable", entityType: "user", entityId: String(input.id), metadata: JSON.stringify({ username: target.data.username }) });
+      return { success: true };
     }),
 
   disable: adminProcedure

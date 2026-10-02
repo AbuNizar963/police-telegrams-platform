@@ -4,7 +4,7 @@ import type { TrpcContext } from "./_core/context";
 
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
-  createTelegram: vi.fn(),
+  createTelegramWithAttachments: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
   getOrCreateSettings: vi.fn(),
@@ -18,7 +18,7 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("./data/database", () => ({
   allocateSerialNumber: mocked.allocateSerialNumber,
-  createTelegram: mocked.createTelegram,
+  createTelegramWithAttachments: mocked.createTelegramWithAttachments,
   writeAuditLog: mocked.writeAuditLog,
   getDashboardStats: mocked.getDashboardStats,
   getOrCreateSettings: mocked.getOrCreateSettings,
@@ -152,7 +152,7 @@ describe("telegram attachment security", () => {
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocked.allocateSerialNumber).not.toHaveBeenCalled();
-    expect(mocked.createTelegram).not.toHaveBeenCalled();
+    expect(mocked.createTelegramWithAttachments).not.toHaveBeenCalled();
   });
 
   it("allows an admin to inspect a telegram attachment key", async () => {

@@ -4,6 +4,8 @@ import {
   auditLogs,
   departmentSettings,
   InsertTelegram,
+  InsertTelegramAttachment,
+  telegramAttachments,
   telegrams,
   InsertUser,
   users,
@@ -163,6 +165,42 @@ export async function createTelegram(input: InsertTelegram) {
   if (!db) throw new Error("Database is not available");
   const result = await db.insert(telegrams).values(input);
   return getTelegramById(Number(result[0].insertId));
+}
+
+export async function createTelegramWithAttachments(
+  input: InsertTelegram,
+  attachments: Omit<InsertTelegramAttachment, "telegramId">[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  return db.transaction(async tx => {
+    const result = await tx.insert(telegrams).values(input);
+    const telegramId = Number(result[0].insertId);
+    if (attachments.length > 0) {
+      await tx.insert(telegramAttachments).values(
+        attachments.map(attachment => ({
+          ...attachment,
+          telegramId,
+        }))
+      );
+    }
+    const rows = await tx
+      .select()
+      .from(telegrams)
+      .where(eq(telegrams.id, telegramId))
+      .limit(1);
+    return rows[0];
+  });
+}
+
+export async function listTelegramAttachments(telegramId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(telegramAttachments)
+    .where(eq(telegramAttachments.telegramId, telegramId))
+    .orderBy(desc(telegramAttachments.createdAt));
 }
 
 export async function updateTelegramStatus(

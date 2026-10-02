@@ -115,6 +115,32 @@ export const telegrams = mysqlTable(
   })
 );
 
+export const telegramAttachments = mysqlTable(
+  "telegram_attachments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    telegramId: int("telegramId").notNull(),
+    fileKey: varchar("fileKey", { length: 500 }).notNull().unique(),
+    fileName: varchar("fileName", { length: 180 }).notNull(),
+    contentType: varchar("contentType", { length: 120 }).notNull(),
+    size: int("size").notNull(),
+    checksumSha256: varchar("checksumSha256", { length: 64 }),
+    uploadedByUserId: int("uploadedByUserId").notNull(),
+    scanStatus: mysqlEnum("scanStatus", ["pending", "clean", "blocked"])
+      .default("pending")
+      .notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    telegramIdx: index("telegram_attachments_telegram_idx").on(
+      table.telegramId
+    ),
+    uploaderIdx: index("telegram_attachments_uploader_idx").on(
+      table.uploadedByUserId
+    ),
+  })
+);
+
 export const auditLogs = mysqlTable(
   "audit_logs",
   {
@@ -139,3 +165,5 @@ export type Telegram = typeof telegrams.$inferSelect;
 export type InsertTelegram = typeof telegrams.$inferInsert;
 export type DepartmentSettings = typeof departmentSettings.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type TelegramAttachment = typeof telegramAttachments.$inferSelect;
+export type InsertTelegramAttachment = typeof telegramAttachments.$inferInsert;

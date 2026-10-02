@@ -4,12 +4,13 @@ import type { TrpcContext } from "./_core/context";
 
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
-  createTelegram: vi.fn(),
+  createTelegramWithAttachments: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
   getOrCreateSettings: vi.fn(),
   getTelegramById: vi.fn(),
   getTelegramByIdempotencyKey: vi.fn(),
+  listTelegramAttachments: vi.fn(),
   listTelegrams: vi.fn(),
   updateTelegramStatus: vi.fn(),
 }));
@@ -38,13 +39,14 @@ describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
-    mocked.createTelegram.mockImplementation(async input => ({
+    mocked.createTelegramWithAttachments.mockImplementation(async input => ({
       id: 7,
       createdAt: new Date(),
       ...input,
     }));
     mocked.writeAuditLog.mockResolvedValue(undefined);
     mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
+    mocked.listTelegramAttachments.mockResolvedValue([]);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -59,19 +61,19 @@ describe("telegrams.create", () => {
     });
 
     expect(result?.serialNumber).toBe(1001);
-    expect(mocked.createTelegram).toHaveBeenCalledWith(
+    expect(mocked.createTelegramWithAttachments).toHaveBeenCalledWith(
       expect.objectContaining({
         createdByUserId: 42,
         creatorName: "النقيب أحمد",
         creatorEmail: "ahmad@example.com",
         serialNumber: 1001,
         serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
-      })
+      }),
+      []
     );
-    expect(mocked.createTelegram.mock.calls[0]?.[0]).not.toHaveProperty(
-      "creatorName",
-      "مستخدم آخر"
-    );
+    expect(
+      mocked.createTelegramWithAttachments.mock.calls[0]?.[0]
+    ).not.toHaveProperty("creatorName", "مستخدم آخر");
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUserId: 42,
@@ -98,7 +100,76 @@ describe("telegrams.create", () => {
     const second = await caller.telegrams.create(input);
 
     expect(second).toEqual(first);
-    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+    expect(mocked.createTelegramWithAttachments).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes validated attachment metadata into the atomic transaction", async () => {
+    const caller = appRouter.createCaller(createContext());
+    const checksum = "a".repeat(64);
+
+    await caller.telegrams.create({
+      subject: "بلاغ مرفق",
+      recipient: "غرفة العمليات",
+      body: "تسجيل مرفق مرتبط بالبرقية",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+      attachmentManifest: JSON.stringify([
+        {
+          fileKey: "telegrams/42/report.png",
+          fileName: "report.png",
+          contentType: "image/png",
+          size: 16,
+          checksumSha256: checksum,
+        },
+      ]),
+    });
+
+    expect(mocked.createTelegramWithAttachments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ attachmentManifest: expect.any(String) }),
+      [
+        expect.objectContaining({
+          fileKey: "telegrams/42/report.png",
+          fileName: "report.png",
+          contentType: "image/png",
+          size: 16,
+          checksumSha256: checksum,
+          uploadedByUserId: 42,
+          scanStatus: "pending",
+        }),
+      ]
+    );
+  });
+
+  it("returns attachment metadata for an authorized telegram detail", async () => {
+    const telegram = {
+      id: 7,
+      status: "pending" as const,
+      createdByUserId: 42,
+      subject: "بلاغ محفوظ",
+    };
+    const attachments = [
+      {
+        id: 3,
+        telegramId: 7,
+        fileKey: "telegrams/42/report.png",
+        fileName: "report.png",
+        contentType: "image/png",
+        size: 16,
+        checksumSha256: "a".repeat(64),
+        uploadedByUserId: 42,
+        scanStatus: "pending" as const,
+        createdAt: new Date(),
+      },
+    ];
+    mocked.getTelegramById.mockResolvedValue(telegram);
+    mocked.listTelegramAttachments.mockResolvedValue(attachments);
+
+    const caller = appRouter.createCaller(createContext());
+    const result = await caller.telegrams.get({ id: 7 });
+
+    expect(result.attachments).toEqual(attachments);
+    expect(mocked.listTelegramAttachments).toHaveBeenCalledWith(7);
   });
 
   it("allows administrators to move a telegram through the supported lifecycle", async () => {
@@ -167,7 +238,7 @@ describe("telegrams.create", () => {
   });
 
   it("audits attachment cleanup when telegram persistence fails", async () => {
-    mocked.createTelegram.mockRejectedValueOnce(
+    mocked.createTelegramWithAttachments.mockRejectedValueOnce(
       new Error("database unavailable")
     );
     const caller = appRouter.createCaller(createContext());

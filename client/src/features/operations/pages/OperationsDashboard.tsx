@@ -28,6 +28,7 @@ import {
   MapPinned,
   Menu,
   Mic,
+  Paperclip,
   Plus,
   Printer,
   Radio,
@@ -697,6 +698,7 @@ function TelegramComposer({
     classification: Classification;
     priority: Priority;
     category: Category;
+    attachmentManifest?: string;
   }) => void;
 }) {
   const [subject, setSubject] = useState("");
@@ -706,6 +708,15 @@ function TelegramComposer({
     useState<Classification>("normal");
   const [priority, setPriority] = useState<Priority>("normal");
   const [category, setCategory] = useState<Category>("administrative");
+  const [attachments, setAttachments] = useState<
+    Array<{
+      fileKey: string;
+      fileName: string;
+      contentType: string;
+      size: number;
+      checksumSha256?: string;
+    }>
+  >([]);
   const [idempotencyKey] = useState(() => {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
       return crypto.randomUUID();
@@ -725,6 +736,54 @@ function TelegramComposer({
       setBody(current =>
         current.trim() ? `${current.trim()}\n${clean}` : clean
       );
+  };
+  const handleAttachment = async (file?: File) => {
+    if (!file) return;
+    const supported = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+      "audio/mpeg",
+      "audio/wav",
+      "audio/webm",
+    ];
+    if (!supported.includes(file.type))
+      return toast.error("نوع الملف غير مدعوم");
+    if (file.size > 10 * 1024 * 1024)
+      return toast.error("حجم المرفق يجب ألا يتجاوز 10 ميغابايت");
+    if (attachments.length >= 10)
+      return toast.error("لا يمكن إضافة أكثر من 10 مرفقات");
+    setProcessingInput(true);
+    try {
+      const uploaded = await upload.mutateAsync({
+        fileName: file.name,
+        contentType: file.type as
+          | "image/jpeg"
+          | "image/png"
+          | "image/webp"
+          | "application/pdf"
+          | "audio/mpeg"
+          | "audio/wav"
+          | "audio/webm",
+        base64: await readFileAsBase64(file),
+      });
+      setAttachments(current => [
+        ...current,
+        {
+          fileKey: uploaded.key,
+          fileName: uploaded.fileName,
+          contentType: uploaded.contentType,
+          size: uploaded.size,
+          checksumSha256: uploaded.checksumSha256,
+        },
+      ]);
+      toast.success("تم رفع المرفق وربطه عند تسجيل البرقية");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر رفع المرفق");
+    } finally {
+      setProcessingInput(false);
+    }
   };
   const handleImage = async (file?: File) => {
     if (!file) return;
@@ -824,6 +883,9 @@ function TelegramComposer({
       classification,
       priority,
       category,
+      attachmentManifest: attachments.length
+        ? JSON.stringify(attachments)
+        : undefined,
     });
   };
   return (
@@ -932,10 +994,46 @@ function TelegramComposer({
             )}
             {recording ? "إيقاف التسجيل" : "اضغط للتحدث"}
           </Button>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">
+            <Paperclip className="h-4 w-4 text-[#9b7c3d]" />
+            إضافة مرفق
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
+              className="hidden"
+              onChange={event => {
+                void handleAttachment(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
         </div>
+        {attachments.length > 0 && (
+          <div className="rounded-lg border bg-muted/20 p-3 text-xs">
+            <p className="font-bold">
+              المرفقات المرتبطة ({attachments.length}/10)
+            </p>
+            <div className="mt-2 space-y-1.5">
+              {attachments.map(attachment => (
+                <div
+                  key={attachment.fileKey}
+                  className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5"
+                >
+                  <Paperclip className="h-3.5 w-3.5 text-[#9b7c3d]" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {attachment.fileName}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {Math.ceil(attachment.size / 1024)} KB
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <p className="text-[11px] text-muted-foreground">
-          تُرفع الصورة أو التسجيل إلى التخزين الآمن، ثم تتم المعالجة على الخادم
-          ولا تُرسل مفاتيح النظام إلى المتصفح.
+          تُرفع المرفقات والصور والتسجيلات إلى التخزين الآمن، وتُحفظ بياناتها مع
+          البرقية بعد نجاح الحفظ الذري. لا تُرسل مفاتيح النظام إلى المتصفح.
         </p>
       </div>
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
@@ -972,6 +1070,14 @@ function TelegramDetail({
     createdAt: Date;
     gpsLatitude?: string | null;
     gpsLongitude?: string | null;
+    attachments?: Array<{
+      id: number;
+      fileName: string;
+      contentType: string;
+      size: number;
+      checksumSha256?: string | null;
+      scanStatus: "pending" | "clean" | "blocked";
+    }>;
   };
   settings?: {
     departmentName: string;
@@ -1197,6 +1303,28 @@ function TelegramDetail({
         <div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 p-4 text-sm leading-8">
           {telegram.body}
         </div>
+        {telegram.attachments && telegram.attachments.length > 0 && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
+            <p className="font-bold text-[#10233f]">المرفقات المؤرشفة</p>
+            <div className="mt-2 space-y-1.5">
+              {telegram.attachments.map(attachment => (
+                <div
+                  key={attachment.id}
+                  className="flex items-center gap-2 rounded-md bg-white px-2.5 py-2"
+                >
+                  <Paperclip className="h-3.5 w-3.5 text-[#9b7c3d]" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {attachment.fileName}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {Math.ceil(attachment.size / 1024)} KB ·{" "}
+                    {attachment.scanStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-8 border-t-2 border-[#b4945a] pt-4 text-center">
           <p className="text-sm font-bold text-[#10233f]">
             {settings?.unitName ?? "وحدة العمليات"}

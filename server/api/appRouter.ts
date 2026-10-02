@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { createHash } from "node:crypto";
 import { getSessionCookieOptions } from "../_core/cookies";
 import {
   adminProcedure,
@@ -11,12 +12,13 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   allocateSerialNumber,
-  createTelegram,
+  createTelegramWithAttachments,
   getDashboardStats,
   getOrCreateSettings,
   getTelegramById,
   getTelegramByIdempotencyKey,
   listTelegrams,
+  listTelegramAttachments,
   updateTelegramStatus,
   writeAuditLog,
 } from "../data/database";
@@ -182,10 +184,14 @@ function validateAttachmentManifest(
     const fileName = entry.fileName;
     const contentType = entry.contentType;
     const size = entry.size;
+    const checksumSha256 = entry.checksumSha256;
     if (
       typeof fileKey !== "string" ||
       typeof fileName !== "string" ||
       typeof contentType !== "string" ||
+      (checksumSha256 !== undefined &&
+        (typeof checksumSha256 !== "string" ||
+          !/^[a-f0-9]{64}$/i.test(checksumSha256))) ||
       !attachmentContentTypes.includes(
         contentType as (typeof attachmentContentTypes)[number]
       ) ||
@@ -204,6 +210,7 @@ function validateAttachmentManifest(
       fileName: sanitizeAttachmentFileName(fileName),
       contentType,
       size,
+      checksumSha256: checksumSha256 ?? null,
     };
   });
   return JSON.stringify(normalized);
@@ -412,6 +419,7 @@ export const appRouter = router({
           bytes,
           input.contentType
         );
+        const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
@@ -422,6 +430,7 @@ export const appRouter = router({
             fileName,
             contentType: input.contentType,
             size: bytes.byteLength,
+            checksumSha256,
           }),
         });
         return {
@@ -429,6 +438,7 @@ export const appRouter = router({
           fileName,
           contentType: input.contentType,
           size: bytes.byteLength,
+          checksumSha256,
         };
       }),
     extractTextFromImage: protectedProcedure
@@ -556,7 +566,8 @@ export const appRouter = router({
             code: "FORBIDDEN",
             message: "لا تملك صلاحية عرض هذه البرقية",
           });
-        return telegram;
+        const attachments = await listTelegramAttachments(input.id);
+        return { ...telegram, attachments };
       }),
     updateStatus: adminProcedure
       .input(
@@ -644,6 +655,25 @@ export const appRouter = router({
           ctx.user.role,
           ctx.user.name ?? ctx.user.email ?? "Officer"
         );
+        const attachmentRecords = attachmentManifest
+          ? (
+              JSON.parse(attachmentManifest) as Array<{
+                fileKey: string;
+                fileName: string;
+                contentType: string;
+                size: number;
+                checksumSha256: string | null;
+              }>
+            ).map(attachment => ({
+              fileKey: attachment.fileKey,
+              fileName: attachment.fileName,
+              contentType: attachment.contentType,
+              size: attachment.size,
+              checksumSha256: attachment.checksumSha256,
+              uploadedByUserId: ctx.user.id,
+              scanStatus: "pending" as const,
+            }))
+          : [];
         const serialNumber = await allocateSerialNumber();
         const numbering = await getOrCreateSettings(ctx.user.id);
         const dateParts = new Intl.DateTimeFormat("en-CA", {
@@ -665,18 +695,21 @@ export const appRouter = router({
             : null;
         let telegram;
         try {
-          telegram = await createTelegram({
-            ...input,
-            attachmentManifest,
-            serialNumber,
-            serialCode,
-            createdByUserId: ctx.user.id,
-            creatorName,
-            creatorEmail: ctx.user.email ?? null,
-            creatorBadgeId: ctx.user.badgeNumber ?? null,
-            creatorIp,
-            creatorFingerprint: ctx.user.openId,
-          });
+          telegram = await createTelegramWithAttachments(
+            {
+              ...input,
+              attachmentManifest,
+              serialNumber,
+              serialCode,
+              createdByUserId: ctx.user.id,
+              creatorName,
+              creatorEmail: ctx.user.email ?? null,
+              creatorBadgeId: ctx.user.badgeNumber ?? null,
+              creatorIp,
+              creatorFingerprint: ctx.user.openId,
+            },
+            attachmentRecords
+          );
         } catch (error) {
           if (!input.idempotencyKey || !isDuplicateEntryError(error)) {
             await recordOrphanedAttachmentManifest(

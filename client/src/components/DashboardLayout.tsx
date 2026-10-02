@@ -263,12 +263,9 @@ function DashboardLayoutContent({
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
-              <BrandMark
-                size="sm"
-                showLabel={!isCollapsed}
-                compactLabel={isCollapsed}
-                className="min-w-0"
-              />
+              {!isCollapsed ? (
+                <BrandMark size="sm" showLabel className="min-w-0" />
+              ) : null}
             </div>
           </SidebarHeader>
 

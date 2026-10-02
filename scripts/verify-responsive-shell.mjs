@@ -37,8 +37,15 @@ assert(
 );
 
 assert(
-  !homePage.includes("BrandMark"),
-  "The dashboard page must not render a second brand mark beside the sidebar brand."
+  homePage.includes('showStandaloneBrand ? <BrandMark size="md" /> : null'),
+  "The dashboard page must render the standalone brand only when the desktop sidebar is collapsed."
+);
+
+assert(
+  dashboardLayout.includes(
+    '{!isCollapsed ? (\n                <BrandMark size="sm" showLabel className="min-w-0" />'
+  ),
+  "The sidebar brand must be hidden when the desktop sidebar is collapsed."
 );
 
 assert(

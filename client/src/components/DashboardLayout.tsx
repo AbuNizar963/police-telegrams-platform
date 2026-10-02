@@ -208,10 +208,11 @@ function DashboardLayoutContent({
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const isMobile = useIsMobile();
+  const showSidebarBrand = isMobile || !isCollapsed;
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (isCollapsed) {
@@ -257,23 +258,27 @@ function DashboardLayoutContent({
           className="border-l-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed ? (
+          <SidebarHeader className="border-b border-sidebar-border bg-sidebar/95 px-3 py-4">
+            <div className="flex w-full items-center justify-between gap-3">
+              {showSidebarBrand ? (
                 <BrandMark size="sm" showLabel className="min-w-0" />
               ) : null}
+              <button
+                onClick={toggleSidebar}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar-accent/40 text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="إغلاق القائمة الجانبية"
+                title="إغلاق القائمة"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+          <SidebarContent className="gap-0 px-3 py-5">
+            <p className="mb-3 px-2 text-[11px] font-semibold tracking-[0.14em] text-sidebar-foreground/55">
+              التنقل الرئيسي
+            </p>
+            <SidebarMenu className="gap-1.5">
               {menuItems
                 .filter(item => !item.adminOnly || user?.role === "admin")
                 .map(item => {
@@ -296,10 +301,10 @@ function DashboardLayoutContent({
                           }
                         }}
                         tooltip={item.label}
-                        className="h-10 font-normal transition-all"
+                        className="h-11 rounded-xl px-3 font-medium transition-colors data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-md data-[active=true]:hover:bg-primary/90"
                       >
                         <item.icon
-                          className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                          className={`h-[18px] w-[18px] ${isActive ? "text-current" : "text-sidebar-foreground/70"}`}
                         />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
@@ -309,10 +314,10 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="border-t border-sidebar-border p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button className="flex w-full items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-2.5 py-2.5 text-left transition-colors hover:bg-sidebar-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
                       {user?.name?.charAt(0).toUpperCase()}
@@ -351,10 +356,11 @@ function DashboardLayoutContent({
 
       <SidebarInset>
         {!isMobile && (
-          <div className="sticky top-0 z-40 flex h-12 items-center border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+          <div className="sticky top-0 z-40 flex h-14 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
             <SidebarTrigger
-              className="h-9 w-9 rounded-lg bg-background"
+              className="h-10 w-10 rounded-xl border bg-background shadow-sm"
               aria-label="فتح القائمة الجانبية"
+              title="فتح القائمة"
             />
           </div>
         )}

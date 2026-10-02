@@ -201,13 +201,19 @@ function SeverityBadge({ value }: { value: Classification }) {
 }
 
 function StatusBadge({ value }: { value: Status }) {
+  const statusDotClass =
+    value === "in_progress" || value === "in_review"
+      ? "animate-pulse bg-blue-500"
+      : value === "resolved" || value === "approved" || value === "completed"
+        ? "bg-emerald-500"
+        : value === "pending" || value === "returned"
+          ? "bg-amber-500"
+          : "bg-slate-400";
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusStyles[value]}`}
     >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${value === "in_progress" || value === "in_review" ? "animate-pulse bg-blue-500" : value === "resolved" || value === "approved" || value === "completed" ? "bg-emerald-500" : value === "pending" || value === "returned" ? "bg-amber-500" : "bg-slate-400"}`}
-      />
+      <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass}`} />
       {statusLabels[value]}
     </span>
   );
@@ -350,6 +356,9 @@ export default function Home() {
                   ? "md:grid-cols-[110px_minmax(180px,1fr)_145px_32px]"
                   : "md:grid-cols-[110px_minmax(180px,1fr)_32px]",
   ].join(" ");
+  const desktopGridHeaderClass =
+    desktopGridClass.match(/md:grid-cols-\[[^\]]+\]/)?.[0] ??
+    "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]";
 
   const input = useMemo(
     () => ({
@@ -667,7 +676,7 @@ export default function Home() {
             </div>
           )}
           <div
-            className={`hidden gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid ${desktopGridClass.match(/md:grid-cols-\[[^\]]+\]/)?.[0] ?? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]"}`}
+            className={`hidden gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid ${desktopGridHeaderClass}`}
           >
             <span>الرقم</span>
             <span>موضوع البرقية</span>
@@ -1811,6 +1820,10 @@ function TelegramDetail({
     const departmentName = settings?.departmentName ?? "قسم العمليات";
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const location =
+      telegram.gpsLatitude != null && telegram.gpsLongitude != null
+        ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
+        : "غير محدد";
     const serialDigits =
       String(telegram.serialCode).split("-").pop() ??
       String(telegram.serialCode);
@@ -2092,7 +2105,7 @@ function TelegramDetail({
         </main>
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</p>
-          <p class="footer-location">الموقع: ${escapeHtml(telegram.gpsLatitude != null && telegram.gpsLongitude != null ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}` : "غير محدد")}</p>
+          <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
           <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;

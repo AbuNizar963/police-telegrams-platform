@@ -26,8 +26,10 @@ describe("profile router", () => {
   const caller = () => appRouter.createCaller(contextFor());
 
   it("returns the authenticated user's profile", async () => {
-    const user = contextFor().user;
-    await expect(caller().profile.get()).resolves.toEqual(user);
+    const context = contextFor();
+    await expect(
+      appRouter.createCaller(context).profile.get(),
+    ).resolves.toEqual(context.user);
   });
 
   it("rejects names shorter than two characters", async () => {

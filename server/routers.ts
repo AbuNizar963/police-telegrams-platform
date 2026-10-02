@@ -15,6 +15,7 @@ import {
   protectedProcedure,
   publicProcedure,
   router,
+  organizationAdminProcedure,
 } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { profileRouter } from "./profileRouter";
@@ -33,11 +34,20 @@ import {
   writeAuditLog,
   createLocalOwnerUser,
   getUserByUsername,
+  getUserOrganizationId,
 } from "./db";
+import {
+  addOrganizationMembership,
+  createOrganization,
+  listOrganizationsForUser,
+  listRoutingTargets,
+  routeTelegram,
+} from "./organization";
 import {
   StorageAccessDeniedError,
   storageGetSignedUrl,
   storagePut,
+  storagePutDepartmentLogo,
 } from "./storage";
 
 const classificationSchema = z.enum(["secret", "normal"]);
@@ -137,16 +147,95 @@ export const appRouter = router({
     }),
   }),
 
-  dashboard: router({
-    stats: protectedProcedure.query(({ ctx }) =>
-      getDashboardStats(ctx.user.id, ctx.user.role === "admin"),
+  organizations: router({
+    mine: protectedProcedure.query(({ ctx }) =>
+      listOrganizationsForUser(ctx.user.id),
     ),
+
+    routingTargets: protectedProcedure.query(({ ctx }) =>
+      listRoutingTargets(ctx.user.id),
+    ),
+
+    create: adminProcedure
+      .input(
+        z.object({
+          parentOrganizationId: z.string().uuid().nullable().optional(),
+          code: z.string().trim().min(2).max(64).regex(/^[A-Z0-9_-]+$/i),
+          name: z.string().trim().min(2).max(255),
+          type: z.enum(["central", "command", "department", "station", "unit"]),
+        }),
+      )
+      .mutation(({ input }) => createOrganization(input)),
+
+    assignMember: organizationAdminProcedure
+      .input(
+        z.object({
+          organizationId: z.string().uuid(),
+          userId: z.number().int().positive(),
+          role: z.enum([
+            "system_admin",
+            "organization_admin",
+            "dispatcher",
+            "reviewer",
+            "reader",
+            "auditor",
+          ]),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (
+          ctx.user.role !== "admin" &&
+          ctx.organizationMembership.organizationId !== input.organizationId
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا يمكن تعيين مستخدم خارج الجهة التي تديرها",
+          });
+        }
+
+        return addOrganizationMembership(input);
+      }),
+  }),
+
+  dashboard: router({
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      const canViewAll = ctx.user.role === "admin";
+      const organizationId = canViewAll
+        ? null
+        : await getUserOrganizationId(ctx.user.id);
+
+      return getDashboardStats(ctx.user.id, canViewAll, organizationId);
+    }),
   }),
 
   settings: router({
     get: protectedProcedure.query(({ ctx }) =>
       getOrCreateSettings(ctx.user.id),
     ),
+
+    uploadLogo: adminProcedure
+      .input(
+        z.object({
+          fileName: z.string().trim().min(1).max(180),
+          contentType: z.enum(["image/jpeg", "image/png"]),
+          base64: z.string().min(1).max(7_000_000),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const bytes = Buffer.from(input.base64, "base64");
+        if (bytes.byteLength > 5 * 1024 * 1024) {
+          throw new TRPCError({
+            code: "PAYLOAD_TOO_LARGE",
+            message: "حجم الشعار يتجاوز 5 ميغابايت",
+          });
+        }
+
+        return storagePutDepartmentLogo(
+          input.fileName,
+          bytes,
+          input.contentType,
+        );
+      }),
 
     update: adminProcedure
       .input(
@@ -264,17 +353,23 @@ export const appRouter = router({
           })
           .optional(),
       )
-      .query(({ ctx, input }) =>
-        listTelegrams(
+      .query(async ({ ctx, input }) => {
+        const canViewAll = ctx.user.role === "admin";
+        const organizationId = canViewAll
+          ? null
+          : await getUserOrganizationId(ctx.user.id);
+
+        return listTelegrams(
           ctx.user.id,
-          ctx.user.role === "admin",
+          canViewAll,
+          organizationId,
           input?.search,
           input?.classification,
           input?.priority,
           input?.category,
           input?.status,
-        ),
-      ),
+        );
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
@@ -288,10 +383,14 @@ export const appRouter = router({
           });
         }
 
-        if (
-          ctx.user.role !== "admin" &&
-          telegram.createdByUserId !== ctx.user.id
-        ) {
+        if (ctx.user.role === "admin") return telegram;
+
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const canRead =
+          telegram.organizationId === organizationId ||
+          telegram.currentOrganizationId === organizationId;
+
+        if (!canRead) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "لا تملك صلاحية عرض هذه البرقية",
@@ -383,6 +482,37 @@ export const appRouter = router({
         return { success: true as const, id: existing.id };
       }),
 
+    route: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          toOrganizationId: z.string().uuid(),
+          note: z.string().trim().max(2000).nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const route = await routeTelegram({
+          telegramId: input.id,
+          toOrganizationId: input.toOrganizationId,
+          forwardedByUserId: ctx.user.id,
+          note: input.note ?? null,
+        });
+
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "telegram.route",
+          entityType: "telegram",
+          entityId: String(input.id),
+          metadata: JSON.stringify({
+            routeId: route.id,
+            toOrganizationId: route.toOrganizationId,
+          }),
+        });
+
+        return route;
+      }),
+
     create: protectedProcedure
       .input(
         z.object({
@@ -411,6 +541,7 @@ export const appRouter = router({
         );
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
+        const organizationId = await getUserOrganizationId(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
@@ -424,6 +555,8 @@ export const appRouter = router({
           serialCode,
           verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
+          organizationId,
+          currentOrganizationId: organizationId,
           creatorName,
           creatorEmail: ctx.user.email ?? null,
           creatorBadgeId: ctx.user.badgeNumber ?? null,

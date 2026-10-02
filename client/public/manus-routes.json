@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "path": "/", "title": "مركز البرقيات" },
+    { "path": "/profile", "title": "الملف الشخصي" },
+    { "path": "/verify/:token", "title": "التحقق من البرقية" }
+  ]
+}

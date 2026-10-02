@@ -1536,7 +1536,7 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const update = trpc.settings.update.useMutation({ onSuccess: result => { setOpen(false); setLogoUrl(result?.logoUrl ?? null); toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة"); }, onError: error => toast.error(error.message || "تعذر تحديث إعدادات القسم") });
-  const upload = trpc.telegrams.uploadAttachment.useMutation();
+  const upload = trpc.settings.uploadLogo.useMutation();
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -1550,7 +1550,7 @@ function DepartmentSettingsModal({ settings }: { settings?: { id: number; depart
 
   const handleLogo = async (file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("اختر ملف صورة للشعار");
+    if (file.type !== "image/png" && file.type !== "image/jpeg") return toast.error("صيغة الشعار يجب أن تكون PNG أو JPG");
     if (file.size > 5 * 1024 * 1024) return toast.error("حجم الشعار يجب ألا يتجاوز 5 ميغابايت");
     setUploading(true);
     try {

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { getAuthenticatedUserFromRequest } from "./auth";
-import { StorageAccessDeniedError, storageGetSignedUrl } from "../storage";
+import { StorageAccessDeniedError, storageCreateSignedUrl, storageGetSignedUrl } from "../storage";
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*", async (req, res) => {
@@ -18,7 +18,15 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
-      const url = await storageGetSignedUrl(key, user);
+      const isDepartmentLogo =
+        /^department\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i.test(key);
+      if (key.startsWith("department/logos/") && !isDepartmentLogo) {
+        throw new StorageAccessDeniedError();
+      }
+
+      const url = isDepartmentLogo
+        ? await storageCreateSignedUrl(key, 10 * 60)
+        : await storageGetSignedUrl(key, user);
       res.set("Cache-Control", "private, max-age=300");
       res.redirect(307, url);
     } catch (error) {

@@ -8,8 +8,17 @@ import type {
   User,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { storageCreateSignedUrl } from "./storage";
+import {
+  storageCreateSignedUrl,
+  storageKeyFromStoredUrl,
+  storageStableUrl,
+} from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
+import {
+  addOrganizationMembership,
+  getPrimaryOrganization,
+  getUserOrganizationMembership,
+} from "./organization";
 
 const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
@@ -55,6 +64,18 @@ async function mapSettingsView(
     };
   }
 
+  const resolvedKey = storageKeyFromStoredUrl(
+    logoKey,
+    ENV.supabaseStorageBucket,
+  );
+  if (resolvedKey?.startsWith("department/logos/")) {
+    return {
+      ...settings,
+      logoUrl: storageStableUrl(resolvedKey),
+      logoKey: resolvedKey,
+    };
+  }
+
   const logoUrl = /^https?:\/\//i.test(logoKey)
     ? logoKey
     : await storageCreateSignedUrl(logoKey, 60 * 60);
@@ -87,6 +108,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     lastSignedIn: (user.lastSignedIn ?? new Date()).toISOString(),
   };
 
+  if (user.organizationId !== undefined) {
+    values.organizationId = user.organizationId;
+  }
+
   for (const field of ["name", "email", "loginMethod", "badgeNumber"] as const) {
     if (user[field] !== undefined) values[field] = user[field] ?? null;
   }
@@ -104,6 +129,25 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     .from("users")
     .upsert(values, { onConflict: "authUserId" });
   throwIfError(error, "Failed to upsert user");
+
+  const persisted = await getSupabaseAdmin()
+    .from("users")
+    .select("id, organizationId, role")
+    .eq("authUserId", user.authUserId)
+    .single();
+  throwIfError(persisted.error, "Failed to load upserted user");
+
+  const persistedUser = persisted.data as {
+    id: number;
+    organizationId: string;
+    role: "user" | "admin";
+  };
+
+  await addOrganizationMembership({
+    organizationId: persistedUser.organizationId,
+    userId: persistedUser.id,
+    role: persistedUser.role === "admin" ? "organization_admin" : "dispatcher",
+  });
 }
 
 export async function createLocalOwnerUser(input: {
@@ -112,10 +156,13 @@ export async function createLocalOwnerUser(input: {
 }): Promise<User> {
   const authUserId = randomUUID();
   const now = new Date().toISOString();
+  const organization = await getPrimaryOrganization();
+
   const { data, error } = await getSupabaseAdmin()
     .from("users")
     .insert({
       authUserId,
+      organizationId: organization.id,
       username: input.username,
       password_hash: input.passwordHash,
       name: input.username,
@@ -128,8 +175,23 @@ export async function createLocalOwnerUser(input: {
     })
     .select("*")
     .single();
+
   throwIfError(error, "Failed to create owner account");
-  return mapUser(data as Record<string, unknown>);
+
+  const owner = mapUser(data as Record<string, unknown>);
+
+  try {
+    await addOrganizationMembership({
+      organizationId: organization.id,
+      userId: owner.id,
+      role: "organization_admin",
+    });
+  } catch (error) {
+    await getSupabaseAdmin().from("users").delete().eq("id", owner.id);
+    throw error;
+  }
+
+  return owner;
 }
 
 export async function getUserById(id: number): Promise<User | undefined> {
@@ -178,6 +240,14 @@ export async function getUserByAuthUserId(authUserId: string): Promise<User | un
     .maybeSingle();
   throwIfError(error, "Failed to load user");
   return data ? mapUser(data as Record<string, unknown>) : undefined;
+}
+
+export async function getUserOrganizationId(userId: number): Promise<string> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+  return membership.organizationId;
 }
 
 export async function getOrCreateSettings(
@@ -240,8 +310,9 @@ export async function allocateSerialNumber(): Promise<number> {
 }
 
 export async function listTelegrams(
-  userId: number,
+  _userId: number,
   canViewAll: boolean,
+  organizationId: string | null,
   search?: string,
   classification?: "secret" | "normal",
   priority?: "slow" | "normal" | "urgent",
@@ -254,7 +325,14 @@ export async function listTelegrams(
     .order("createdAt", { ascending: false })
     .limit(200);
 
-  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  if (!canViewAll) {
+    if (!organizationId) {
+      throw new Error("Organization scope is required to list telegrams");
+    }
+    query = query.or(
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+    );
+  }
   if (classification) query = query.eq("classification", classification);
   if (priority) query = query.eq("priority", priority);
   if (category) query = query.eq("category", category);
@@ -350,21 +428,33 @@ export async function writeAuditLog(
 }
 
 async function countTelegrams(
-  userId: number,
+  _userId: number,
   canViewAll: boolean,
+  organizationId: string | null,
   apply: (query: any) => any = query => query,
 ): Promise<number> {
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("id", { count: "exact", head: true });
-  if (!canViewAll) query = query.eq("createdByUserId", userId);
+  if (!canViewAll) {
+    if (!organizationId) {
+      throw new Error("Organization scope is required to count telegrams");
+    }
+    query = query.or(
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+    );
+  }
   query = apply(query);
   const { count, error } = await query;
   throwIfError(error, "Failed to count telegrams");
   return count ?? 0;
 }
 
-export async function getDashboardStats(userId: number, canViewAll: boolean) {
+export async function getDashboardStats(
+  userId: number,
+  canViewAll: boolean,
+  organizationId: string | null,
+) {
   const now = new Date();
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -373,14 +463,14 @@ export async function getDashboardStats(userId: number, canViewAll: boolean) {
 
   const [total, urgent, secret, normal, pending, inProgress, resolved, today] =
     await Promise.all([
-      countTelegrams(userId, canViewAll),
-      countTelegrams(userId, canViewAll, q => q.eq("priority", "urgent")),
-      countTelegrams(userId, canViewAll, q => q.eq("classification", "secret")),
-      countTelegrams(userId, canViewAll, q => q.eq("classification", "normal")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "pending")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "in_progress")),
-      countTelegrams(userId, canViewAll, q => q.eq("status", "resolved")),
-      countTelegrams(userId, canViewAll, q =>
+      countTelegrams(userId, canViewAll, organizationId),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("priority", "urgent")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "secret")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "normal")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "pending")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "in_progress")),
+      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "resolved")),
+      countTelegrams(userId, canViewAll, organizationId, q =>
         q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString()),
       ),
     ]);

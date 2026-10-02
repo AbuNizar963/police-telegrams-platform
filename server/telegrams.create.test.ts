@@ -12,6 +12,7 @@ const mocked = vi.hoisted(() => ({
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
   updateDepartmentSettings: vi.fn(),
+  getUserOrganizationId: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -39,6 +40,9 @@ describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
+    mocked.getUserOrganizationId.mockResolvedValue(
+      "00000000-0000-0000-0000-000000000001",
+    );
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "POL",
       timezone: "Asia/Riyadh",
@@ -65,6 +69,8 @@ describe("telegrams.create", () => {
     expect(result?.serialNumber).toBe(1001);
     expect(mocked.createTelegram).toHaveBeenCalledWith(expect.objectContaining({
       createdByUserId: 42,
+      organizationId: "00000000-0000-0000-0000-000000000001",
+      currentOrganizationId: "00000000-0000-0000-0000-000000000001",
       creatorName: "النقيب أحمد",
       creatorEmail: "ahmad@example.com",
       creatorFingerprint: "00000000-0000-4000-8000-000000000042",

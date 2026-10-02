@@ -1,6 +1,5 @@
 import type { User } from "../drizzle/schema";
-import { ENV } from "./_core/env";
-import { getSupabaseAdmin } from "./_core/supabase";
+import { getStorageProvider } from "./storageProvider";
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
@@ -28,7 +27,7 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
-function stableStorageUrl(key: string): string {
+export function storageStableUrl(key: string): string {
   const encoded = key
     .split("/")
     .map(part => encodeURIComponent(part))
@@ -47,7 +46,13 @@ export function canAccessStorageKey(
   if (
     segments.length !== 3 ||
     segments[0] !== "telegrams" ||
-    segments.some(segment => segment === "." || segment === "..")
+    !segments[2] ||
+    segments.some(
+      segment =>
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("\\"),
+    )
   ) {
     return false;
   }
@@ -56,6 +61,33 @@ export function canAccessStorageKey(
 
   const ownerId = Number(segments[1]);
   return Number.isInteger(ownerId) && ownerId === user.id;
+}
+
+export function storageKeyFromStoredUrl(value: string, bucket: string): string | null {
+  const trimmed = value.trim();
+
+  if (trimmed.startsWith("/api/storage/")) {
+    const encodedKey = trimmed.slice("/api/storage/".length);
+    try {
+      return encodedKey
+        .split("/")
+        .map(segment => decodeURIComponent(segment))
+        .join("/");
+    } catch {
+      return null;
+    }
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+
+  try {
+    const url = new URL(trimmed);
+    const path = decodeURIComponent(url.pathname);
+    const prefix = `/storage/v1/object/sign/${bucket}/`;
+    return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+  } catch {
+    return null;
+  }
 }
 
 export class StorageAccessDeniedError extends Error {
@@ -87,17 +119,12 @@ export async function storagePut(
   );
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
-  const { error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .upload(key, body, {
-      contentType,
-      cacheControl: "3600",
-      upsert: false,
-    });
+  await getStorageProvider().upload(key, body, {
+    contentType,
+    cacheControl: "3600",
+  });
 
-  if (error) throw new Error(`Storage upload failed: ${error.message}`);
-
-  return { key, url: stableStorageUrl(key) };
+  return { key, url: storageStableUrl(key) };
 }
 
 export async function storageCreateSignedUrl(
@@ -113,17 +140,7 @@ export async function storageCreateSignedUrl(
     throw new StorageAccessDeniedError();
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .createSignedUrl(key, expiresInSeconds);
-
-  if (error || !data?.signedUrl) {
-    throw new Error(
-      `Storage signed URL failed: ${error?.message ?? "empty URL"}`,
-    );
-  }
-
-  return data.signedUrl;
+  return getStorageProvider().createSignedUrl(key, expiresInSeconds);
 }
 
 export async function storageGetSignedUrl(
@@ -150,20 +167,10 @@ export async function storagePutDepartmentLogo(
   const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
-  const { error } = await getSupabaseAdmin()
-    .storage.from(ENV.supabaseStorageBucket)
-    .upload(key, body, {
-      contentType,
-      cacheControl: "3600",
-      upsert: false,
-    });
+  await getStorageProvider().upload(key, body, {
+    contentType,
+    cacheControl: "3600",
+  });
 
-  if (error) {
-    throw new Error(`Department logo upload failed: ${error.message}`);
-  }
-
-  return {
-    key,
-    url: await storageCreateSignedUrl(key),
-  };
+  return { key, url: storageStableUrl(key) };
 }

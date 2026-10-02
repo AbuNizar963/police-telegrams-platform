@@ -74,7 +74,7 @@ const updateInput = {
   classification: "normal" as const,
   priority: "urgent" as const,
   category: "security" as const,
-  status: "in_progress" as const,
+  status: "pending" as const,
 };
 
 describe("telegram administration permissions", () => {

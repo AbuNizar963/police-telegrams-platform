@@ -5,6 +5,7 @@ import { adminProcedure, router } from "./_core/trpc";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
+import { addOrganizationMembership, getPrimaryOrganization } from "./organization";
 
 export const userManagementRouter = router({
   list: adminProcedure.query(async () => {
@@ -34,8 +35,10 @@ export const userManagementRouter = router({
       if (existing.data) throw new TRPCError({ code: "CONFLICT", message: "اسم المستخدم مستخدم بالفعل" });
 
       const now = new Date().toISOString();
+      const organization = await getPrimaryOrganization();
       const { data, error } = await client.from("users").insert({
         authUserId: randomUUID(),
+        organizationId: organization.id,
         username,
         password_hash: await hashPassword(input.password),
         name: input.name,
@@ -55,6 +58,12 @@ export const userManagementRouter = router({
         console.error("[userManagement.create] Supabase insert failed", error);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء حساب المستخدم. تحقق من إعدادات قاعدة البيانات وحاول مجددًا." });
       }
+
+      await addOrganizationMembership({
+        organizationId: organization.id,
+        userId: data.id,
+        role: "dispatcher",
+      });
 
       await writeAuditLog({
         actorUserId: ctx.user.id,

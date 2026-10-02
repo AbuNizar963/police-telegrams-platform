@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import {
   authenticateLocalUser,
@@ -23,13 +23,19 @@ import { userManagementRouter } from "./userManagementRouter";
 import {
   allocateSerialNumber,
   createTelegram,
+  createTelegramAttachment,
   updateTelegram,
   deleteTelegram,
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
   getTelegramById,
+  getTelegramByIdempotencyKey,
+  getTelegramReport,
   listTelegrams,
+  recordTelegramAction,
+  recordTelegramVersion,
+  transitionTelegram,
   updateDepartmentSettings,
   writeAuditLog,
   createLocalOwnerUser,
@@ -60,9 +66,17 @@ const categorySchema = z.enum([
   "tactical",
 ]);
 const statusSchema = z.enum([
+  "draft",
+  "submitted",
+  "in_review",
+  "approved",
+  "returned",
+  "rejected",
+  "forwarded",
   "pending",
   "in_progress",
   "resolved",
+  "completed",
   "archived",
 ]);
 
@@ -208,6 +222,31 @@ export const appRouter = router({
     }),
   }),
 
+  reports: router({
+    telegrams: adminProcedure
+      .input(
+        z.object({
+          search: z.string().max(120).optional(),
+          classification: classificationSchema.optional(),
+          priority: prioritySchema.optional(),
+          category: categorySchema.optional(),
+          status: statusSchema.optional(),
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+          page: z.number().int().min(1).default(1),
+          pageSize: z.number().int().min(1).max(100).default(50),
+        }),
+      )
+      .query(async ({ input }) => {
+        const report = await getTelegramReport(input);
+        return {
+          ...report,
+          generatedAt: new Date().toISOString(),
+          filters: input,
+        };
+      }),
+  }),
+
   settings: router({
     get: protectedProcedure.query(({ ctx }) =>
       getOrCreateSettings(ctx.user.id),
@@ -291,6 +330,7 @@ export const appRouter = router({
     uploadAttachment: protectedProcedure
       .input(
         z.object({
+          telegramId: z.number().int().positive(),
           fileName: z.string().trim().min(1).max(180),
           contentType: z.enum([
             "image/jpeg",
@@ -305,6 +345,16 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "البرقية غير موجودة" });
+        }
+        if (ctx.user.role !== "admin") {
+          const organizationId = await getUserOrganizationId(ctx.user.id);
+          if (telegram.organizationId !== organizationId && telegram.currentOrganizationId !== organizationId) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية إرفاق ملف بهذه البرقية" });
+          }
+        }
         const bytes = Buffer.from(input.base64, "base64");
 
         if (bytes.byteLength > 10 * 1024 * 1024) {
@@ -320,12 +370,22 @@ export const appRouter = router({
           input.contentType,
         );
 
+        await createTelegramAttachment({
+          telegramId: input.telegramId,
+          storageKey: uploaded.key,
+          originalName: input.fileName,
+          mimeType: input.contentType,
+          sizeBytes: bytes.byteLength,
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+          uploadedByUserId: ctx.user.id,
+        });
+
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "attachment.upload",
           entityType: "telegram_attachment",
-          entityId: uploaded.key,
+          entityId: String(input.telegramId),
           metadata: JSON.stringify({
             fileName: input.fileName,
             contentType: input.contentType,
@@ -350,6 +410,8 @@ export const appRouter = router({
             priority: prioritySchema.optional(),
             category: categorySchema.optional(),
             status: statusSchema.optional(),
+            page: z.number().int().min(1).max(100000).default(1),
+            pageSize: z.number().int().min(1).max(100).default(50),
           })
           .optional(),
       )
@@ -368,6 +430,8 @@ export const appRouter = router({
           input?.priority,
           input?.category,
           input?.status,
+          input?.page,
+          input?.pageSize,
         );
       }),
 
@@ -423,6 +487,13 @@ export const appRouter = router({
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "البرقية غير موجودة",
+          });
+        }
+
+        if (input.status !== existing.status) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "تغيير الحالة يجب أن يتم عبر مسار دورة الحياة المعتمد",
           });
         }
 
@@ -513,6 +584,53 @@ export const appRouter = router({
         return route;
       }),
 
+    transition: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          toStatus: statusSchema,
+          reason: z.string().trim().max(2000).nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getTelegramById(input.id);
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+
+        try {
+          const transitioned = await transitionTelegram({
+            telegramId: input.id,
+            actorUserId: ctx.user.id,
+            toStatus: input.toStatus,
+            reason: input.reason ?? null,
+            metadata: { serialCode: existing.serialCode },
+          });
+          await writeAuditLog({
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+            action: "telegram.status.transition",
+            entityType: "telegram",
+            entityId: String(input.id),
+            metadata: JSON.stringify({
+              fromStatus: existing.status,
+              toStatus: input.toStatus,
+              reason: input.reason ?? null,
+            }),
+          });
+          return transitioned;
+        } catch (error) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error instanceof Error ? error.message : "تعذر تغيير حالة البرقية",
+            cause: error,
+          });
+        }
+      }),
+
     create: protectedProcedure
       .input(
         z.object({
@@ -522,12 +640,18 @@ export const appRouter = router({
           classification: classificationSchema,
           priority: prioritySchema,
           category: categorySchema,
+          idempotencyKey: z.string().trim().min(16).max(120).optional(),
           attachmentManifest: z.string().max(10000).optional(),
           gpsLatitude: z.string().max(40).optional(),
           gpsLongitude: z.string().max(40).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
+        if (input.idempotencyKey) {
+          const existing = await getTelegramByIdempotencyKey(input.idempotencyKey);
+          if (existing) return existing;
+        }
+
         const serialNumber = await allocateSerialNumber();
         const numbering = await getOrCreateSettings(ctx.user.id);
         const dateParts = new Intl.DateTimeFormat("en-CA", {
@@ -553,6 +677,7 @@ export const appRouter = router({
           ...input,
           serialNumber,
           serialCode,
+          idempotencyKey: input.idempotencyKey ?? null,
           verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
           organizationId,
@@ -574,6 +699,28 @@ export const appRouter = router({
             serialNumber,
             classification: input.classification,
           }),
+        });
+
+        await recordTelegramAction({
+          telegramId: telegram.id,
+          actorUserId: ctx.user.id,
+          action: "telegram.create",
+          toStatus: telegram.status,
+          metadata: { serialNumber: telegram.serialNumber },
+        });
+        await recordTelegramVersion({
+          telegramId: telegram.id,
+          changedByUserId: ctx.user.id,
+          changeReason: "الإصدار الأول عند إنشاء البرقية",
+          snapshot: {
+            subject: telegram.subject,
+            recipient: telegram.recipient,
+            body: telegram.body,
+            classification: telegram.classification,
+            priority: telegram.priority,
+            category: telegram.category,
+            status: telegram.status,
+          },
         });
 
         return telegram;

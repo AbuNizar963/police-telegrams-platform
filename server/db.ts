@@ -93,6 +93,7 @@ function mapTelegram(row: Record<string, unknown>): Telegram {
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
     archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
+    closedAt: row.closedAt ? asDate(row.closedAt) : null,
   };
 }
 
@@ -317,13 +318,29 @@ export async function listTelegrams(
   classification?: "secret" | "normal",
   priority?: "slow" | "normal" | "urgent",
   category?: "criminal" | "administrative" | "traffic" | "security" | "tactical",
-  status?: "pending" | "in_progress" | "resolved" | "archived",
+  status?:
+    | "draft"
+    | "submitted"
+    | "in_review"
+    | "approved"
+    | "returned"
+    | "rejected"
+    | "forwarded"
+    | "pending"
+    | "in_progress"
+    | "resolved"
+    | "completed"
+    | "archived",
+  page = 1,
+  pageSize = 50,
 ): Promise<Telegram[]> {
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("*")
     .order("createdAt", { ascending: false })
-    .limit(200);
+    .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
   if (!canViewAll) {
     if (!organizationId) {
@@ -355,6 +372,51 @@ export async function listTelegrams(
   return (data ?? []).map(row => mapTelegram(row as Record<string, unknown>));
 }
 
+export async function getTelegramReport(input: {
+  search?: string;
+  classification?: "secret" | "normal";
+  priority?: "slow" | "normal" | "urgent";
+  category?: "criminal" | "administrative" | "traffic" | "security" | "tactical";
+  status?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  pageSize: number;
+}): Promise<{ rows: Telegram[]; total: number }> {
+  const page = Math.max(1, Math.floor(input.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize)));
+  let query = getSupabaseAdmin()
+    .from("telegrams")
+    .select("*", { count: "exact" })
+    .order("createdAt", { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1);
+
+  if (input.classification) query = query.eq("classification", input.classification);
+  if (input.priority) query = query.eq("priority", input.priority);
+  if (input.category) query = query.eq("category", input.category);
+  if (input.status) query = query.eq("status", input.status);
+  if (input.from) query = query.gte("createdAt", input.from);
+  if (input.to) query = query.lt("createdAt", input.to);
+  if (input.search?.trim()) {
+    const safe = input.search.trim().replace(/[,%()]/g, " ").slice(0, 120);
+    const filters = [
+      `subject.ilike.%${safe}%`,
+      `recipient.ilike.%${safe}%`,
+      `body.ilike.%${safe}%`,
+      `creatorName.ilike.%${safe}%`,
+    ];
+    if (/^\d+$/.test(safe)) filters.push(`serialNumber.eq.${Number(safe)}`);
+    query = query.or(filters.join(","));
+  }
+
+  const { data, count, error } = await query;
+  throwIfError(error, "Failed to generate telegram report");
+  return {
+    rows: (data ?? []).map(row => mapTelegram(row as Record<string, unknown>)),
+    total: count ?? 0,
+  };
+}
+
 export async function getTelegramById(id: number): Promise<Telegram | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
@@ -362,6 +424,18 @@ export async function getTelegramById(id: number): Promise<Telegram | undefined>
     .eq("id", id)
     .maybeSingle();
   throwIfError(error, "Failed to load telegram");
+  return data ? mapTelegram(data as Record<string, unknown>) : undefined;
+}
+
+export async function getTelegramByIdempotencyKey(
+  idempotencyKey: string,
+): Promise<Telegram | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .select("*")
+    .eq("idempotencyKey", idempotencyKey)
+    .maybeSingle();
+  throwIfError(error, "Failed to load idempotent telegram");
   return data ? mapTelegram(data as Record<string, unknown>) : undefined;
 }
 
@@ -378,6 +452,92 @@ export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
     .select("*")
     .single();
   throwIfError(error, "Failed to create telegram");
+  return mapTelegram(data as Record<string, unknown>);
+}
+
+export async function recordTelegramVersion(input: {
+  telegramId: number;
+  changedByUserId: number;
+  changeReason: string;
+  snapshot: Record<string, unknown>;
+}): Promise<void> {
+  const { data: latest, error: latestError } = await getSupabaseAdmin()
+    .from("telegram_versions")
+    .select("versionNumber")
+    .eq("telegramId", input.telegramId)
+    .order("versionNumber", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  throwIfError(latestError, "Failed to load telegram version");
+
+  const { error } = await getSupabaseAdmin().from("telegram_versions").insert({
+    telegramId: input.telegramId,
+    versionNumber: Number(latest?.versionNumber ?? 0) + 1,
+    changedByUserId: input.changedByUserId,
+    changeReason: input.changeReason.trim(),
+    snapshot: JSON.stringify(input.snapshot),
+  });
+  throwIfError(error, "Failed to record telegram version");
+}
+
+export async function recordTelegramAction(input: {
+  telegramId: number;
+  actorUserId: number;
+  action: string;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  reason?: string | null;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("telegram_actions").insert({
+    telegramId: input.telegramId,
+    actorUserId: input.actorUserId,
+    action: input.action,
+    fromStatus: input.fromStatus ?? null,
+    toStatus: input.toStatus ?? null,
+    reason: input.reason?.trim() || null,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
+  throwIfError(error, "Failed to record telegram action");
+}
+
+export async function createTelegramAttachment(input: {
+  telegramId: number;
+  storageKey: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  uploadedByUserId: number;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("telegram_attachments").insert({
+    telegramId: input.telegramId,
+    storageKey: input.storageKey,
+    originalName: input.originalName,
+    mimeType: input.mimeType,
+    sizeBytes: input.sizeBytes,
+    sha256: input.sha256,
+    uploadedByUserId: input.uploadedByUserId,
+    scanStatus: "unavailable",
+  });
+  throwIfError(error, "Failed to record attachment metadata");
+}
+
+export async function transitionTelegram(input: {
+  telegramId: number;
+  actorUserId: number;
+  toStatus: string;
+  reason?: string | null;
+  metadata?: Record<string, unknown>;
+}): Promise<Telegram> {
+  const { data, error } = await getSupabaseAdmin().rpc("transition_telegram", {
+    p_telegram_id: input.telegramId,
+    p_actor_user_id: input.actorUserId,
+    p_to_status: input.toStatus,
+    p_reason: input.reason ?? null,
+    p_metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
+  throwIfError(error, "Telegram transition failed");
   return mapTelegram(data as Record<string, unknown>);
 }
 

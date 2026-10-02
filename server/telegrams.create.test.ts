@@ -13,6 +13,9 @@ const mocked = vi.hoisted(() => ({
   listTelegrams: vi.fn(),
   updateDepartmentSettings: vi.fn(),
   getUserOrganizationId: vi.fn(),
+  getTelegramByIdempotencyKey: vi.fn(),
+  recordTelegramAction: vi.fn(),
+  recordTelegramVersion: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -53,6 +56,9 @@ describe("telegrams.create", () => {
       ...input,
     }));
     mocked.writeAuditLog.mockResolvedValue(undefined);
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
+    mocked.recordTelegramAction.mockResolvedValue(undefined);
+    mocked.recordTelegramVersion.mockResolvedValue(undefined);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {

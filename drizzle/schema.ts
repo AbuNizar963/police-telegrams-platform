@@ -24,9 +24,17 @@ export const category = pgEnum("telegram_category", [
   "tactical",
 ]);
 export const telegramStatus = pgEnum("telegram_status", [
+  "draft",
+  "submitted",
+  "in_review",
+  "approved",
+  "returned",
+  "rejected",
+  "forwarded",
   "pending",
   "in_progress",
   "resolved",
+  "completed",
   "archived",
 ]);
 export const numberSystem = pgEnum("number_system", ["latin", "arabic", "hindi"]);
@@ -150,6 +158,7 @@ export const telegrams = pgTable(
     id: serial("id").primaryKey(),
     serialNumber: integer("serialNumber").notNull().unique(),
     serialCode: varchar("serialCode", { length: 48 }).notNull().unique(),
+    idempotencyKey: varchar("idempotencyKey", { length: 120 }),
     verificationToken: uuid("verificationToken").notNull().unique(),
     createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -172,10 +181,12 @@ export const telegrams = pgTable(
     priority: priority("priority").default("normal").notNull(),
     category: category("category").default("administrative").notNull(),
     status: telegramStatus("status").default("pending").notNull(),
+    workflowReason: text("workflowReason"),
     attachmentManifest: text("attachmentManifest"),
     gpsLatitude: varchar("gpsLatitude", { length: 40 }),
     gpsLongitude: varchar("gpsLongitude", { length: 40 }),
     archivedAt: timestamp("archivedAt", { withTimezone: true }),
+    closedAt: timestamp("closedAt", { withTimezone: true }),
   },
   table => [
     index("telegrams_creator_idx").on(table.createdByUserId),
@@ -183,6 +194,75 @@ export const telegrams = pgTable(
     index("telegrams_current_organization_idx").on(table.currentOrganizationId),
     index("telegrams_created_at_idx").on(table.createdAt),
     index("telegrams_classification_idx").on(table.classification),
+    uniqueIndex("telegrams_idempotency_key_idx").on(table.idempotencyKey),
+  ],
+);
+
+export const telegramVersions = pgTable(
+  "telegram_versions",
+  {
+    id: serial("id").primaryKey(),
+    telegramId: integer("telegramId")
+      .notNull()
+      .references(() => telegrams.id, { onDelete: "restrict" }),
+    versionNumber: integer("versionNumber").notNull(),
+    changedByUserId: integer("changedByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    changeReason: text("changeReason").notNull(),
+    snapshot: text("snapshot").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("telegram_versions_number_idx").on(table.telegramId, table.versionNumber),
+    index("telegram_versions_telegram_idx").on(table.telegramId, table.createdAt),
+  ],
+);
+
+export const telegramAttachments = pgTable(
+  "telegram_attachments",
+  {
+    id: serial("id").primaryKey(),
+    telegramId: integer("telegramId")
+      .notNull()
+      .references(() => telegrams.id, { onDelete: "restrict" }),
+    storageKey: text("storageKey").notNull().unique(),
+    originalName: varchar("originalName", { length: 180 }).notNull(),
+    mimeType: varchar("mimeType", { length: 120 }).notNull(),
+    sizeBytes: integer("sizeBytes").notNull(),
+    sha256: varchar("sha256", { length: 64 }).notNull(),
+    uploadedByUserId: integer("uploadedByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    scanStatus: varchar("scanStatus", { length: 32 }).default("pending").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    index("telegram_attachments_telegram_idx").on(table.telegramId, table.createdAt),
+    index("telegram_attachments_scan_idx").on(table.scanStatus),
+  ],
+);
+
+export const telegramActions = pgTable(
+  "telegram_actions",
+  {
+    id: serial("id").primaryKey(),
+    telegramId: integer("telegramId")
+      .notNull()
+      .references(() => telegrams.id, { onDelete: "restrict" }),
+    actorUserId: integer("actorUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    action: varchar("action", { length: 80 }).notNull(),
+    fromStatus: telegramStatus("fromStatus"),
+    toStatus: telegramStatus("toStatus"),
+    reason: text("reason"),
+    metadata: text("metadata"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    index("telegram_actions_telegram_idx").on(table.telegramId, table.createdAt),
+    index("telegram_actions_actor_idx").on(table.actorUserId, table.createdAt),
   ],
 );
 
@@ -244,5 +324,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Telegram = typeof telegrams.$inferSelect;
 export type InsertTelegram = typeof telegrams.$inferInsert;
+export type TelegramVersion = typeof telegramVersions.$inferSelect;
+export type TelegramAttachment = typeof telegramAttachments.$inferSelect;
+export type TelegramAction = typeof telegramActions.$inferSelect;
 export type DepartmentSettings = typeof departmentSettings.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;

@@ -219,6 +219,17 @@ export default function HeaderActions() {
                 <Settings className="h-4 w-4" />
                 <span>إعدادات القسم والموقع</span>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("open-owner-organization-management")
+                  )
+                }
+                className="cursor-pointer justify-end gap-2"
+              >
+                <Users className="h-4 w-4" />
+                <span>إدارة المناطق والأقسام والمخافر</span>
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

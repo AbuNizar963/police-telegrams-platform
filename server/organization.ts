@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
 
 function throwIfError(
   error: { message: string } | null,
-  context: string,
+  context: string
 ): void {
   if (error) {
     throw new Error(`${context}: ${error.message}`);
@@ -29,6 +29,7 @@ function mapRoute(row: Record<string, unknown>): TelegramRoute {
     createdAt: new Date(String(row.createdAt)),
     receivedAt: row.receivedAt ? new Date(String(row.receivedAt)) : null,
     completedAt: row.completedAt ? new Date(String(row.completedAt)) : null,
+    approvedAt: row.approvedAt ? new Date(String(row.approvedAt)) : null,
   };
 }
 
@@ -58,7 +59,7 @@ export async function getPrimaryOrganization(): Promise<Organization> {
 }
 
 export async function getUserOrganizationMembership(
-  userId: number,
+  userId: number
 ): Promise<OrganizationMembership | null> {
   const { data, error } = await getSupabaseAdmin()
     .from("organization_memberships")
@@ -74,7 +75,7 @@ export async function getUserOrganizationMembership(
 }
 
 export async function getOrganizationById(
-  organizationId: string,
+  organizationId: string
 ): Promise<Organization | null> {
   const { data, error } = await getSupabaseAdmin()
     .from("organizations")
@@ -88,7 +89,7 @@ export async function getOrganizationById(
 }
 
 export async function listOrganizationsForUser(
-  userId: number,
+  userId: number
 ): Promise<Organization[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("organization_memberships")
@@ -106,7 +107,9 @@ export async function listOrganizationsForUser(
         ? mapOrganization(organization as unknown as Record<string, unknown>)
         : null;
     })
-    .filter((organization): organization is Organization => Boolean(organization));
+    .filter((organization): organization is Organization =>
+      Boolean(organization)
+    );
 }
 
 export async function createOrganization(input: {
@@ -115,6 +118,10 @@ export async function createOrganization(input: {
   name: string;
   type: Organization["type"];
 }): Promise<Organization> {
+  await validateOrganizationParent(
+    input.parentOrganizationId ?? null,
+    input.type
+  );
   const { data, error } = await getSupabaseAdmin()
     .from("organizations")
     .insert({
@@ -128,6 +135,118 @@ export async function createOrganization(input: {
 
   throwIfError(error, "Failed to create organization");
   return mapOrganization(data as Record<string, unknown>);
+}
+
+async function validateOrganizationParent(
+  parentOrganizationId: string | null,
+  type: Organization["type"]
+): Promise<void> {
+  const parent = parentOrganizationId
+    ? await getOrganizationById(parentOrganizationId)
+    : null;
+  const allowedParents: Record<Organization["type"], Organization["type"][]> = {
+    central: [],
+    governorate: ["central"],
+    region: ["governorate"],
+    police_department: ["region"],
+    station: ["police_department", "region"],
+    command: ["central", "governorate"],
+    department: ["command", "governorate", "region"],
+    unit: ["department", "station", "region"],
+  };
+  if (type === "central" && !parentOrganizationId) return;
+  if (
+    !parentOrganizationId ||
+    !parent ||
+    !allowedParents[type].includes(parent.type)
+  ) {
+    throw new Error("الجهة الأب لا تتوافق مع المستوى التنظيمي المحدد");
+  }
+}
+
+export async function listAllOrganizations(): Promise<Organization[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("*")
+    .order("type", { ascending: true })
+    .order("name", { ascending: true });
+  throwIfError(error, "Failed to list organizations");
+  return (data ?? []).map(row =>
+    mapOrganization(row as Record<string, unknown>)
+  );
+}
+
+export async function updateOrganization(input: {
+  id: string;
+  parentOrganizationId?: string | null;
+  code: string;
+  name: string;
+  type: Organization["type"];
+  isActive: boolean;
+}): Promise<Organization> {
+  await validateOrganizationParent(
+    input.parentOrganizationId ?? null,
+    input.type
+  );
+  if (input.id === (await getPrimaryOrganization()).id && !input.isActive) {
+    throw new Error("لا يمكن تعطيل المركز الرئيسي");
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .update({
+      parentOrganizationId: input.parentOrganizationId ?? null,
+      code: input.code.trim().toUpperCase(),
+      name: input.name.trim(),
+      type: input.type,
+      isActive: input.isActive,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to update organization");
+  return mapOrganization(data as Record<string, unknown>);
+}
+
+const SYRIAN_GOVERNORATES = [
+  ["DAMASCUS", "دمشق"],
+  ["RURAL_DAMASCUS", "ريف دمشق"],
+  ["ALEPPO", "حلب"],
+  ["HOMS", "حمص"],
+  ["HAMA", "حماة"],
+  ["LATAKIA", "اللاذقية"],
+  ["TARTUS", "طرطوس"],
+  ["IDLIB", "إدلب"],
+  ["DARAA", "درعا"],
+  ["SUWEIDA", "السويداء"],
+  ["QUNEITRA", "القنيطرة"],
+  ["DEIR_EZZOR", "دير الزور"],
+  ["RAQQA", "الرقة"],
+  ["HASAKA", "الحسكة"],
+] as const;
+
+export async function seedSyrianGovernorates(): Promise<Organization[]> {
+  const central = await getPrimaryOrganization();
+  const created: Organization[] = [];
+  for (const [code, name] of SYRIAN_GOVERNORATES) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("organizations")
+      .upsert(
+        {
+          parentOrganizationId: central.id,
+          code: `GOV-${code}`,
+          name: `قيادة شرطة محافظة ${name}`,
+          type: "governorate",
+          isActive: true,
+        },
+        { onConflict: "code" }
+      )
+      .select("*")
+      .single();
+    throwIfError(error, `Failed to seed governorate ${name}`);
+    created.push(mapOrganization(data as Record<string, unknown>));
+  }
+  return created;
 }
 
 export async function addOrganizationMembership(input: {
@@ -144,7 +263,7 @@ export async function addOrganizationMembership(input: {
         role: input.role,
         isActive: true,
       },
-      { onConflict: "organizationId,userId" },
+      { onConflict: "organizationId,userId" }
     )
     .select("*")
     .single();
@@ -153,7 +272,9 @@ export async function addOrganizationMembership(input: {
   return mapMembership(data as Record<string, unknown>);
 }
 
-export async function listRoutingTargets(userId: number): Promise<Organization[]> {
+export async function listRoutingTargets(
+  userId: number
+): Promise<Organization[]> {
   const membership = await getUserOrganizationMembership(userId);
   if (!membership) {
     throw new Error("User is not assigned to an active organization");
@@ -164,36 +285,17 @@ export async function listRoutingTargets(userId: number): Promise<Organization[]
     throw new Error("Current organization is unavailable");
   }
 
-  const client = getSupabaseAdmin();
-  const [parentResult, childrenResult] = await Promise.all([
-    current.parentOrganizationId
-      ? client
-          .from("organizations")
-          .select("*")
-          .eq("id", current.parentOrganizationId)
-          .eq("isActive", true)
-      : Promise.resolve({ data: [], error: null }),
-    client
-      .from("organizations")
-      .select("*")
-      .eq("parentOrganizationId", current.id)
-      .eq("isActive", true)
-      .order("name", { ascending: true }),
-  ]);
-
-  throwIfError(parentResult.error, "Failed to load parent routing target");
-  throwIfError(childrenResult.error, "Failed to load child routing targets");
-
-  const rows = [
-    ...(parentResult.data ?? []),
-    ...(childrenResult.data ?? []),
-  ];
-
-  return rows
-    .map(row => mapOrganization(row as Record<string, unknown>))
-    .filter((organization, index, all) =>
-      all.findIndex(candidate => candidate.id === organization.id) === index,
-    );
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("*")
+    .eq("isActive", true)
+    .neq("id", current.id)
+    .order("type", { ascending: true })
+    .order("name", { ascending: true });
+  throwIfError(error, "Failed to load routing targets");
+  return (data ?? []).map(row =>
+    mapOrganization(row as Record<string, unknown>)
+  );
 }
 
 export async function routeTelegram(input: {
@@ -202,7 +304,9 @@ export async function routeTelegram(input: {
   forwardedByUserId: number;
   note?: string | null;
 }): Promise<TelegramRoute> {
-  const membership = await getUserOrganizationMembership(input.forwardedByUserId);
+  const membership = await getUserOrganizationMembership(
+    input.forwardedByUserId
+  );
   if (!membership) {
     throw new Error("User is not assigned to an active organization");
   }
@@ -217,4 +321,61 @@ export async function routeTelegram(input: {
 
   throwIfError(error, "Failed to route telegram");
   return mapRoute(data as Record<string, unknown>);
+}
+
+export async function approveTelegramRoute(input: {
+  routeId: number;
+  approverUserId: number;
+  approved: boolean;
+  reason?: string | null;
+}): Promise<TelegramRoute> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "approve_telegram_route",
+    {
+      p_route_id: input.routeId,
+      p_approver_user_id: input.approverUserId,
+      p_approved: input.approved,
+      p_reason: input.reason ?? null,
+    }
+  );
+  throwIfError(error, "Failed to decide telegram route approval");
+  return mapRoute(data as Record<string, unknown>);
+}
+
+export async function listPendingRouteApprovals(
+  userId: number,
+  canViewAll = false
+): Promise<Array<Record<string, unknown>>> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) return [];
+  const organizations = await listAllOrganizations();
+  const byId = new Map(
+    organizations.map(organization => [organization.id, organization])
+  );
+  const governorateFor = (organizationId: string): string | null => {
+    let current = byId.get(organizationId);
+    const visited = new Set<string>();
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      if (current.type === "governorate") return current.id;
+      current = current.parentOrganizationId
+        ? byId.get(current.parentOrganizationId)
+        : undefined;
+    }
+    return null;
+  };
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .select(
+      "*, telegrams(serialCode, subject, priority), fromOrganization:fromOrganizationId(name), toOrganization:toOrganizationId(name)"
+    )
+    .eq("approvalStatus", "pending")
+    .order("createdAt", { ascending: true });
+  throwIfError(error, "Failed to list pending route approvals");
+  return (data ?? []).filter(
+    route =>
+      canViewAll ||
+      governorateFor(String(route.fromOrganizationId)) ===
+        membership.organizationId
+  ) as Array<Record<string, unknown>>;
 }

@@ -48,11 +48,16 @@ import {
 } from "./db";
 import {
   addOrganizationMembership,
+  approveTelegramRoute,
   createOrganization,
   getUserOrganizationMembership,
+  listAllOrganizations,
   listOrganizationsForUser,
+  listPendingRouteApprovals,
   listRoutingTargets,
   routeTelegram,
+  seedSyrianGovernorates,
+  updateOrganization,
 } from "./organization";
 import {
   StorageAccessDeniedError,
@@ -195,6 +200,11 @@ export const appRouter = router({
       listRoutingTargets(ctx.user.id)
     ),
 
+    all: adminProcedure.query(() => listAllOrganizations()),
+    pendingApprovals: protectedProcedure.query(({ ctx }) =>
+      listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
+    ),
+
     create: adminProcedure
       .input(
         z.object({
@@ -206,10 +216,50 @@ export const appRouter = router({
             .max(64)
             .regex(/^[A-Z0-9_-]+$/i),
           name: z.string().trim().min(2).max(255),
-          type: z.enum(["central", "command", "department", "station", "unit"]),
+          type: z.enum([
+            "central",
+            "governorate",
+            "region",
+            "police_department",
+            "command",
+            "department",
+            "station",
+            "unit",
+          ]),
         })
       )
       .mutation(({ input }) => createOrganization(input)),
+
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          parentOrganizationId: z.string().uuid().nullable(),
+          code: z
+            .string()
+            .trim()
+            .min(2)
+            .max(64)
+            .regex(/^[A-Z0-9_-]+$/i),
+          name: z.string().trim().min(2).max(255),
+          type: z.enum([
+            "central",
+            "governorate",
+            "region",
+            "police_department",
+            "command",
+            "department",
+            "station",
+            "unit",
+          ]),
+          isActive: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => updateOrganization(input)),
+
+    seedSyrianGovernorates: adminProcedure.mutation(() =>
+      seedSyrianGovernorates()
+    ),
 
     assignMember: organizationAdminProcedure
       .input(
@@ -798,6 +848,34 @@ export const appRouter = router({
           }
         }
         return route;
+      }),
+    approveRoute: protectedProcedure
+      .input(
+        z.object({
+          routeId: z.number().int().positive(),
+          approved: z.boolean(),
+          reason: z.string().trim().max(2000).nullable().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const membership = await getUserOrganizationMembership(ctx.user.id);
+        if (
+          !membership ||
+          !["system_admin", "organization_admin", "reviewer"].includes(
+            membership.role
+          )
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا تملك صلاحية اعتماد إحالات البرقيات",
+          });
+        }
+        return approveTelegramRoute({
+          routeId: input.routeId,
+          approverUserId: ctx.user.id,
+          approved: input.approved,
+          reason: input.reason,
+        });
       }),
 
     transition: protectedProcedure

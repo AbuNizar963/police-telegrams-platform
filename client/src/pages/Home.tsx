@@ -1739,8 +1739,12 @@ function TelegramDetail({
   const [routeTarget, setRouteTarget] = useState("");
   const [routeNote, setRouteNote] = useState("");
   const routeTelegram = trpc.telegrams.route.useMutation({
-    onSuccess: async () => {
-      toast.success("تمت إحالة البرقية إلى الوحدة الشرطية");
+    onSuccess: async route => {
+      toast.success(
+        route.approvalStatus === "pending"
+          ? "تم إرسال طلب الإحالة إلى قيادة المحافظة للموافقة"
+          : "تمت إحالة البرقية إلى الوحدة الشرطية"
+      );
       await Promise.all([
         utils.telegrams.get.invalidate({ id: telegram.id }),
         utils.telegrams.list.invalidate(),

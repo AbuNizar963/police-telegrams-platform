@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import HeaderActions from "./components/HeaderActions";
 import OwnerUserManagement from "./components/OwnerUserManagement";
+import OwnerOrganizationManagement from "./components/OwnerOrganizationManagement";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
@@ -17,6 +18,7 @@ function DashboardPage({ children }: { children: React.ReactNode }) {
       <HeaderActions />
       <DashboardLayout>{children}</DashboardLayout>
       <OwnerUserManagement />
+      <OwnerOrganizationManagement />
     </>
   );
 }
@@ -25,7 +27,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/verify/:token" component={VerifyTelegram} />
-      <Route path="/profile"><DashboardPage><Profile /></DashboardPage></Route>
+      <Route path="/profile">
+        <DashboardPage>
+          <Profile />
+        </DashboardPage>
+      </Route>
       <Route path="/">
         <DashboardPage>
           <Home />

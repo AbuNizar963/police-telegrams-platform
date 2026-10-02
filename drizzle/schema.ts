@@ -51,6 +51,9 @@ export const numberSystem = pgEnum("number_system", [
 ]);
 export const organizationType = pgEnum("organization_type", [
   "central",
+  "governorate",
+  "region",
+  "police_department",
   "command",
   "department",
   "station",
@@ -358,6 +361,12 @@ export const telegramRoutes = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     status: telegramRouteStatus("status").default("sent").notNull(),
+    approvalStatus: varchar("approvalStatus", { length: 24 })
+      .default("not_required")
+      .notNull(),
+    approvedByUserId: integer("approvedByUserId"),
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    approvalReason: text("approvalReason"),
     note: text("note"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
@@ -444,6 +453,7 @@ export type OrganizationMemberRole =
   (typeof organizationMemberRole.enumValues)[number];
 export type TelegramRoute = typeof telegramRoutes.$inferSelect;
 export type InsertTelegramRoute = typeof telegramRoutes.$inferInsert;
+export type OrganizationType = (typeof organizationType.enumValues)[number];
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

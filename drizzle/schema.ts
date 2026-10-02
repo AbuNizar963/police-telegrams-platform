@@ -81,6 +81,9 @@ export const organizations = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     parentOrganizationId: uuid("parentOrganizationId"),
+    telegramDestinationOrganizationId: uuid(
+      "telegramDestinationOrganizationId"
+    ),
     code: varchar("code", { length: 64 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     type: organizationType("type").default("department").notNull(),
@@ -94,6 +97,9 @@ export const organizations = pgTable(
   },
   table => [
     index("organizations_parent_idx").on(table.parentOrganizationId),
+    index("organizations_telegram_destination_idx").on(
+      table.telegramDestinationOrganizationId
+    ),
     index("organizations_active_idx").on(table.isActive),
   ]
 );

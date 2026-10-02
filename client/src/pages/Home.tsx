@@ -1656,7 +1656,7 @@ function TelegramComposer({
           disabled={pending || processingInput || recording || !online}
           className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
         >
-          {pending ? "جارٍ التسجيل..." : "تسجيل البرقية"}
+          {pending ? "جارٍ الإرسال..." : "إرسال البرقية"}
         </Button>
       </div>
     </Modal>

@@ -25,6 +25,7 @@ export default function OwnerOrganizationManagement() {
     name: "",
     type: "governorate" as OrganizationType,
     parentOrganizationId: "",
+    telegramDestinationOrganizationId: "",
   });
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
@@ -83,6 +84,7 @@ export default function OwnerOrganizationManagement() {
       name: "",
       type: "governorate",
       parentOrganizationId: "",
+      telegramDestinationOrganizationId: "",
     });
   };
   const parents = useMemo(
@@ -100,6 +102,8 @@ export default function OwnerOrganizationManagement() {
       name: form.name.trim(),
       type: form.type,
       parentOrganizationId: form.parentOrganizationId || null,
+      telegramDestinationOrganizationId:
+        form.telegramDestinationOrganizationId || null,
     };
     if (editingId) update.mutate({ ...input, id: editingId, isActive: true });
     else create.mutate(input);
@@ -214,6 +218,39 @@ export default function OwnerOrganizationManagement() {
                 ))}
               </select>
             </label>
+            <label className="grid gap-1 text-sm font-medium">
+              الجهة التابع لها (مستلم البرقيات)
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+                value={form.telegramDestinationOrganizationId}
+                onChange={event =>
+                  setForm(current => ({
+                    ...current,
+                    telegramDestinationOrganizationId: event.target.value,
+                  }))
+                }
+                required={
+                  form.type === "police_department" || form.type === "station"
+                }
+              >
+                <option value="">
+                  {form.type === "police_department" || form.type === "station"
+                    ? "اختر الجهة التي تستقبل برقيات هذه الجهة"
+                    : "بدون وجهة تلقائية"}
+                </option>
+                {(organizations.data ?? [])
+                  .filter(item => item.isActive && item.id !== editingId)
+                  .map(item => (
+                    <option key={item.id} value={item.id}>
+                      {typeLabels[item.type as OrganizationType] ?? item.type} —{" "}
+                      {item.name}
+                    </option>
+                  ))}
+              </select>
+              <span className="text-xs font-normal text-muted-foreground">
+                عند إرسال برقية من هذه الجهة ستنتقل تلقائيًا إلى الاختيار هنا.
+              </span>
+            </label>
             <div className="rounded-lg bg-blue-500/10 p-3 text-xs leading-5 text-blue-800 dark:text-blue-200">
               يمنع الخادم اختيار جهة أب غير متوافقة مع المستوى التنظيمي، ولا
               يمكن تجاوز قيادة المحافظة في الإحالات العابرة للمناطق.
@@ -292,6 +329,8 @@ export default function OwnerOrganizationManagement() {
                           name: item.name,
                           type: item.type as OrganizationType,
                           parentOrganizationId: item.parentOrganizationId ?? "",
+                          telegramDestinationOrganizationId:
+                            item.telegramDestinationOrganizationId ?? "",
                         });
                       }}
                     >

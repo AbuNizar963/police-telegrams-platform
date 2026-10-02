@@ -16,9 +16,19 @@ const mocked = vi.hoisted(() => ({
   getTelegramByIdempotencyKey: vi.fn(),
   recordTelegramAction: vi.fn(),
   recordTelegramVersion: vi.fn(),
+  getConfiguredTelegramDestination: vi.fn(),
+  routeTelegram: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
+vi.mock("./organization", async importOriginal => {
+  const actual = await importOriginal<typeof import("./organization")>();
+  return {
+    ...actual,
+    getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
+    routeTelegram: mocked.routeTelegram,
+  };
+});
 
 function createContext(): TrpcContext {
   return {
@@ -59,6 +69,8 @@ describe("telegrams.create", () => {
     mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
     mocked.recordTelegramAction.mockResolvedValue(undefined);
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
+    mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
+    mocked.routeTelegram.mockResolvedValue(undefined);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -94,6 +106,7 @@ describe("telegrams.create", () => {
         entityType: "telegram",
       })
     );
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
   });
 
   it("returns the persisted telegram when a concurrent retry wins the idempotency race", async () => {
@@ -126,5 +139,40 @@ describe("telegrams.create", () => {
     expect(mocked.writeAuditLog).not.toHaveBeenCalled();
     expect(mocked.recordTelegramAction).not.toHaveBeenCalled();
     expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
+  });
+
+  it("routes a new telegram to the organization configured for the source unit", async () => {
+    const destination = {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "قيادة المنطقة",
+    };
+    const routedTelegram = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "POL-2026-10-02-01001",
+      status: "forwarded",
+      currentOrganizationId: destination.id,
+    };
+    mocked.getConfiguredTelegramDestination.mockResolvedValue(destination);
+    mocked.getTelegramById.mockResolvedValue(routedTelegram);
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.create({
+        subject: "إحالة اختبارية",
+        recipient: "قيادة المنطقة",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+      })
+    ).resolves.toEqual(routedTelegram);
+
+    expect(mocked.routeTelegram).toHaveBeenCalledWith({
+      telegramId: 7,
+      toOrganizationId: destination.id,
+      forwardedByUserId: 42,
+      note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+    });
   });
 });

@@ -50,6 +50,7 @@ import {
   addOrganizationMembership,
   approveTelegramRoute,
   createOrganization,
+  getConfiguredTelegramDestination,
   getUserOrganizationMembership,
   listAllOrganizations,
   listIncomingTelegramRoutes,
@@ -211,6 +212,11 @@ export const appRouter = router({
       .input(
         z.object({
           parentOrganizationId: z.string().uuid().nullable().optional(),
+          telegramDestinationOrganizationId: z
+            .string()
+            .uuid()
+            .nullable()
+            .optional(),
           code: z
             .string()
             .trim()
@@ -237,6 +243,7 @@ export const appRouter = router({
         z.object({
           id: z.string().uuid(),
           parentOrganizationId: z.string().uuid().nullable(),
+          telegramDestinationOrganizationId: z.string().uuid().nullable(),
           code: z
             .string()
             .trim()
@@ -1049,6 +1056,9 @@ export const appRouter = router({
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const organizationId = await getUserOrganizationId(ctx.user.id);
+        const configuredDestination = await getConfiguredTelegramDestination(
+          ctx.user.id
+        );
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
@@ -1082,6 +1092,17 @@ export const appRouter = router({
             if (existing) return existing;
           }
           throw error;
+        }
+
+        if (configuredDestination) {
+          await routeTelegram({
+            telegramId: telegram.id,
+            toOrganizationId: configuredDestination.id,
+            forwardedByUserId: ctx.user.id,
+            note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+          });
+          const routedTelegram = await getTelegramById(telegram.id);
+          if (routedTelegram) telegram = routedTelegram;
         }
 
         await writeAuditLog({

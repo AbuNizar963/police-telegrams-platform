@@ -114,6 +114,7 @@ export async function listOrganizationsForUser(
 
 export async function createOrganization(input: {
   parentOrganizationId?: string | null;
+  telegramDestinationOrganizationId?: string | null;
   code: string;
   name: string;
   type: Organization["type"];
@@ -122,10 +123,16 @@ export async function createOrganization(input: {
     input.parentOrganizationId ?? null,
     input.type
   );
+  await validateTelegramDestination(
+    input.telegramDestinationOrganizationId ?? null,
+    input.type
+  );
   const { data, error } = await getSupabaseAdmin()
     .from("organizations")
     .insert({
       parentOrganizationId: input.parentOrganizationId ?? null,
+      telegramDestinationOrganizationId:
+        input.telegramDestinationOrganizationId ?? null,
       code: input.code.trim().toUpperCase(),
       name: input.name.trim(),
       type: input.type,
@@ -164,6 +171,28 @@ async function validateOrganizationParent(
   }
 }
 
+async function validateTelegramDestination(
+  destinationOrganizationId: string | null,
+  type: Organization["type"],
+  sourceOrganizationId?: string
+): Promise<void> {
+  if (!destinationOrganizationId) {
+    if (type === "police_department" || type === "station") {
+      throw new Error("يجب تحديد الجهة التابع لها القسم أو المخفر");
+    }
+    return;
+  }
+
+  if (sourceOrganizationId === destinationOrganizationId) {
+    throw new Error("لا يمكن أن تكون الجهة المستلمة هي الجهة نفسها");
+  }
+
+  const destination = await getOrganizationById(destinationOrganizationId);
+  if (!destination) {
+    throw new Error("الجهة المستلمة غير موجودة أو غير مفعّلة");
+  }
+}
+
 export async function listAllOrganizations(): Promise<Organization[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("organizations")
@@ -179,6 +208,7 @@ export async function listAllOrganizations(): Promise<Organization[]> {
 export async function updateOrganization(input: {
   id: string;
   parentOrganizationId?: string | null;
+  telegramDestinationOrganizationId?: string | null;
   code: string;
   name: string;
   type: Organization["type"];
@@ -188,6 +218,11 @@ export async function updateOrganization(input: {
     input.parentOrganizationId ?? null,
     input.type
   );
+  await validateTelegramDestination(
+    input.telegramDestinationOrganizationId ?? null,
+    input.type,
+    input.id
+  );
   if (input.id === (await getPrimaryOrganization()).id && !input.isActive) {
     throw new Error("لا يمكن تعطيل المركز الرئيسي");
   }
@@ -195,6 +230,8 @@ export async function updateOrganization(input: {
     .from("organizations")
     .update({
       parentOrganizationId: input.parentOrganizationId ?? null,
+      telegramDestinationOrganizationId:
+        input.telegramDestinationOrganizationId ?? null,
       code: input.code.trim().toUpperCase(),
       name: input.name.trim(),
       type: input.type,
@@ -206,6 +243,35 @@ export async function updateOrganization(input: {
     .single();
   throwIfError(error, "Failed to update organization");
   return mapOrganization(data as Record<string, unknown>);
+}
+
+export async function getConfiguredTelegramDestination(
+  userId: number
+): Promise<Organization | null> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+
+  if (membership.role === "reader" || membership.role === "auditor") {
+    const existingOrganization = await getOrganizationById(
+      membership.organizationId
+    );
+    if (existingOrganization?.telegramDestinationOrganizationId) {
+      throw new Error("لا تملك صلاحية إرسال البرقيات من هذه الجهة");
+    }
+  }
+
+  const organization = await getOrganizationById(membership.organizationId);
+  if (!organization?.telegramDestinationOrganizationId) return null;
+
+  const destination = await getOrganizationById(
+    organization.telegramDestinationOrganizationId
+  );
+  if (!destination) {
+    throw new Error("الجهة المستلمة المحددة غير متاحة حاليًا");
+  }
+  return destination;
 }
 
 const SYRIAN_GOVERNORATES = [

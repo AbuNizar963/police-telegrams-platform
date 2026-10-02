@@ -12,6 +12,7 @@
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:supabase": "supabase test db",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

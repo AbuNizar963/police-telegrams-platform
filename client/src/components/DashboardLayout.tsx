@@ -170,7 +170,7 @@ function DashboardLayoutContent({
     <>
       <div className="relative" ref={sidebarRef}>
         <Sidebar
-          collapsible="icon"
+          collapsible="offcanvas"
           className="border-r-0"
           disableTransition={isResizing}
         >
@@ -259,6 +259,14 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
+        {!isMobile && (
+          <div className="sticky top-0 z-40 flex h-12 items-center border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+            <SidebarTrigger
+              className="h-9 w-9 rounded-lg bg-background"
+              aria-label="فتح القائمة الجانبية"
+            />
+          </div>
+        )}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">

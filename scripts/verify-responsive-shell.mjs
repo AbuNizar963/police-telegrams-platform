@@ -37,8 +37,8 @@ assert(
 );
 
 assert(
-  homePage.includes('<BrandMark size="md" className="hidden md:flex" />'),
-  "The page-level brand mark must be hidden below the desktop breakpoint."
+  !homePage.includes("BrandMark"),
+  "The dashboard page must not render a second brand mark beside the sidebar brand."
 );
 
 assert(

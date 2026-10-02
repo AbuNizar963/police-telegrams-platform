@@ -13,14 +13,16 @@ function assert(condition, message) {
   }
 }
 
-const [indexHtml, dashboardLayout, homePage, headerActions] = await Promise.all(
-  [
-    "client/index.html",
-    "client/src/components/DashboardLayout.tsx",
-    "client/src/pages/Home.tsx",
-    "client/src/components/HeaderActions.tsx",
-  ].map(readProjectFile)
-);
+const [indexHtml, dashboardLayout, homePage, headerActions, sidebarLayout] =
+  await Promise.all(
+    [
+      "client/index.html",
+      "client/src/components/DashboardLayout.tsx",
+      "client/src/pages/Home.tsx",
+      "client/src/components/HeaderActions.tsx",
+      "client/src/components/ui/sidebar.tsx",
+    ].map(readProjectFile)
+  );
 
 const viewportMatch = indexHtml.match(
   /<meta\s+name="viewport"\s+content="([^"]+)"\s*\/>/i
@@ -46,6 +48,19 @@ assert(
     "const showSidebarBrand = isMobile || !isCollapsed;"
   ) && dashboardLayout.includes("{showSidebarBrand ? ("),
   "The sidebar brand must be visible on mobile and only when the desktop sidebar is expanded."
+);
+
+assert(
+  dashboardLayout.includes('collapsible="offcanvas"') &&
+    dashboardLayout.includes("fixed inset-0 z-20") &&
+    dashboardLayout.includes("setOpen(false)"),
+  "The desktop sidebar must overlay the page and close through its backdrop."
+);
+
+assert(
+  sidebarLayout.includes('collapsible === "offcanvas"') &&
+    sidebarLayout.includes('"w-0"'),
+  "An offcanvas sidebar must not reserve layout width for the page content."
 );
 
 assert(

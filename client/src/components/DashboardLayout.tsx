@@ -206,7 +206,7 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const isMobile = useIsMobile();
   const showSidebarBrand = isMobile || !isCollapsed;
@@ -251,11 +251,19 @@ function DashboardLayoutContent({
 
   return (
     <>
+      {!isMobile && !isCollapsed ? (
+        <button
+          type="button"
+          aria-label="إغلاق القائمة الجانبية"
+          className="fixed inset-0 z-20 bg-slate-950/35 backdrop-blur-[1px] transition-opacity"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           side="right"
           collapsible="offcanvas"
-          className="border-l-0"
+          className="z-30 border-l-0"
           disableTransition={isResizing}
         >
           <SidebarHeader className="border-b border-sidebar-border bg-sidebar/95 px-3 py-4">

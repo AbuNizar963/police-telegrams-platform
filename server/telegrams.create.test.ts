@@ -165,4 +165,38 @@ describe("telegrams.create", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocked.updateTelegramStatus).not.toHaveBeenCalled();
   });
+
+  it("audits attachment cleanup when telegram persistence fails", async () => {
+    mocked.createTelegram.mockRejectedValueOnce(
+      new Error("database unavailable")
+    );
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "بلاغ مع مرفق",
+        recipient: "غرفة العمليات",
+        body: "يجب تسجيل المرفق اليتيم عند فشل الحفظ",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        attachmentManifest: JSON.stringify([
+          {
+            fileKey: "telegrams/42/report.png",
+            fileName: "report.png",
+            contentType: "image/png",
+            size: 16,
+          },
+        ]),
+      })
+    ).rejects.toThrow("database unavailable");
+
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "attachment.orphaned",
+        entityType: "telegram_attachment",
+        metadata: expect.stringContaining("telegrams/42/report.png"),
+      })
+    );
+  });
 });

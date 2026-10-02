@@ -209,6 +209,44 @@ function validateAttachmentManifest(
   return JSON.stringify(normalized);
 }
 
+async function recordOrphanedAttachmentManifest(
+  manifest: string | undefined,
+  actorUserId: number,
+  actorName: string,
+  reason: string
+) {
+  if (!manifest) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(manifest);
+  } catch {
+    return;
+  }
+  const fileKeys = Array.isArray(parsed)
+    ? parsed.flatMap(item =>
+        item && typeof item === "object" && "fileKey" in item
+          ? [String((item as { fileKey: unknown }).fileKey)]
+          : []
+      )
+    : [];
+  if (!fileKeys.length) return;
+  try {
+    await writeAuditLog({
+      actorUserId,
+      actorName,
+      action: "attachment.orphaned",
+      entityType: "telegram_attachment",
+      metadata: JSON.stringify({
+        reason,
+        cleanupRequired: true,
+        fileKeys,
+      }),
+    });
+  } catch (error) {
+    console.error("[Attachments] Failed to record orphaned files", error);
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -640,14 +678,27 @@ export const appRouter = router({
             creatorFingerprint: ctx.user.openId,
           });
         } catch (error) {
-          if (!input.idempotencyKey || !isDuplicateEntryError(error))
+          if (!input.idempotencyKey || !isDuplicateEntryError(error)) {
+            await recordOrphanedAttachmentManifest(
+              attachmentManifest,
+              ctx.user.id,
+              creatorName,
+              "telegram_persistence_failed"
+            );
             throw error;
+          }
           const existing = await getTelegramByIdempotencyKey(
             input.idempotencyKey
           );
           if (!existing || existing.createdByUserId !== ctx.user.id)
             throw error;
-          telegram = existing;
+          await recordOrphanedAttachmentManifest(
+            attachmentManifest,
+            ctx.user.id,
+            creatorName,
+            "duplicate_submission_after_upload"
+          );
+          return existing;
         }
         if (!telegram) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await writeAuditLog({

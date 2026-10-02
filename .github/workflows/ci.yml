@@ -41,6 +41,9 @@ jobs:
       - name: Check formatting
         run: pnpm lint
 
+      - name: Verify responsive application shell
+        run: pnpm check:responsive-shell
+
       - name: Type check
         run: pnpm check
 

@@ -103,6 +103,10 @@ export default function HeaderActions() {
     setPushEnabled(true);
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <div
       dir="rtl"

@@ -444,7 +444,7 @@ export default function Home() {
     >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          <BrandMark size="md" />
+          <BrandMark size="md" className="hidden md:flex" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">

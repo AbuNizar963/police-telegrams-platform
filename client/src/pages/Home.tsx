@@ -424,6 +424,8 @@ export default function Home() {
     pending: 0,
     inProgress: 0,
     resolved: 0,
+    incoming: 0,
+    outgoing: 0,
   };
   const numberSystem = ((
     settings.data as { numberSystem?: NumberSystem } | undefined
@@ -455,7 +457,7 @@ export default function Home() {
             </h1>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
             <Clock3 className="h-3.5 w-3.5" />
             {formatConfiguredDate(new Date(), settings.data)}
@@ -471,7 +473,7 @@ export default function Home() {
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg"
+              className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
               onClick={() => setReportOpen(true)}
               aria-haspopup="dialog"
             >
@@ -481,7 +483,7 @@ export default function Home() {
           <Button
             type="button"
             variant="outline"
-            className="h-10 rounded-lg"
+            className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
             onClick={() => setDisplayCustomizeOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={displayCustomizeOpen}
@@ -492,7 +494,7 @@ export default function Home() {
           <Button
             type="button"
             variant="outline"
-            className="h-10 rounded-lg"
+            className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
             onClick={() => setFiltersOpen(value => !value)}
             aria-expanded={filtersOpen}
           >
@@ -516,7 +518,7 @@ export default function Home() {
           </Button>
           <Button
             onClick={() => setComposerOpen(true)}
-            className="h-10 rounded-lg bg-[#10233f] px-4 text-white hover:bg-[#18375f]"
+            className="h-9 shrink-0 whitespace-nowrap rounded-lg bg-[#10233f] px-3 text-xs text-white hover:bg-[#18375f]"
           >
             <Plus className="ml-2 h-4 w-4" />
             برقية جديدة
@@ -577,11 +579,11 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="برقيات سرية"
-          value={data.secret}
-          detail="مقيدة الصلاحية"
-          icon={LockKeyhole}
-          tone="bg-violet-500/10 text-violet-600"
+          label="البرقيات الواردة"
+          value={data.incoming}
+          detail="إلى جهتك الحالية"
+          icon={Inbox}
+          tone="bg-emerald-500/10 text-emerald-600"
         />
         <Kpi
           numberSystem={numberSystem}
@@ -626,34 +628,26 @@ export default function Home() {
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 border-b bg-muted/10 px-4 py-3 sm:px-5">
+          <div className="flex flex-nowrap gap-2 overflow-x-auto border-b bg-muted/10 px-4 py-3 sm:px-5">
             <TelegramViewButton
               active={telegramView === "all"}
               icon={ListFilter}
               label="كل البرقيات"
-              count={allRows.length}
+              count={data.total}
               onClick={() => setTelegramView("all")}
             />
             <TelegramViewButton
               active={telegramView === "outgoing"}
               icon={Send}
               label="البرقيات الصادرة"
-              count={
-                allRows.filter(
-                  row => row.organizationId === row.currentOrganizationId
-                ).length
-              }
+              count={data.outgoing}
               onClick={() => setTelegramView("outgoing")}
             />
             <TelegramViewButton
               active={telegramView === "incoming"}
               icon={Inbox}
               label="البرقيات الواردة"
-              count={
-                allRows.filter(
-                  row => row.organizationId !== row.currentOrganizationId
-                ).length
-              }
+              count={data.incoming}
               onClick={() => setTelegramView("incoming")}
             />
           </div>
@@ -1197,7 +1191,7 @@ function TelegramViewButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${active ? "border-[#10233f] bg-[#10233f] text-white shadow-sm" : "bg-background text-muted-foreground hover:border-[#b4945a] hover:text-foreground"}`}
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${active ? "border-[#10233f] bg-[#10233f] text-white shadow-sm" : "bg-background text-muted-foreground hover:border-[#b4945a] hover:text-foreground"}`}
     >
       <Icon className="h-4 w-4" />
       <span>{label}</span>

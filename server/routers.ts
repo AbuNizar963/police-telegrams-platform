@@ -296,9 +296,7 @@ export const appRouter = router({
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       const canViewAll = ctx.user.role === "admin";
-      const organizationId = canViewAll
-        ? null
-        : await getUserOrganizationId(ctx.user.id);
+      const organizationId = await getUserOrganizationId(ctx.user.id);
 
       return getDashboardStats(ctx.user.id, canViewAll, organizationId);
     }),

@@ -774,33 +774,53 @@ export async function getDashboardStats(
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
 
-  const [total, urgent, secret, normal, pending, inProgress, resolved, today] =
-    await Promise.all([
-      countTelegrams(userId, canViewAll, organizationId),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("priority", "urgent")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("classification", "secret")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("classification", "normal")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("status", "pending")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("status", "in_progress")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q.eq("status", "resolved")
-      ),
-      countTelegrams(userId, canViewAll, organizationId, q =>
-        q
-          .gte("createdAt", start.toISOString())
-          .lt("createdAt", end.toISOString())
-      ),
-    ]);
+  const [
+    total,
+    urgent,
+    secret,
+    normal,
+    pending,
+    inProgress,
+    resolved,
+    today,
+    incoming,
+    outgoing,
+  ] = await Promise.all([
+    countTelegrams(userId, canViewAll, organizationId),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("priority", "urgent")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("classification", "secret")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("classification", "normal")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("status", "pending")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("status", "in_progress")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.eq("status", "resolved")
+    ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString())
+    ),
+    organizationId
+      ? countTelegrams(userId, canViewAll, organizationId, q =>
+          q
+            .eq("currentOrganizationId", organizationId)
+            .neq("organizationId", organizationId)
+        )
+      : Promise.resolve(0),
+    organizationId
+      ? countTelegrams(userId, canViewAll, organizationId, q =>
+          q.eq("organizationId", organizationId)
+        )
+      : Promise.resolve(0),
+  ]);
 
   return {
     total,
@@ -811,6 +831,8 @@ export async function getDashboardStats(
     inProgress,
     resolved,
     today,
+    incoming,
+    outgoing,
   };
 }
 

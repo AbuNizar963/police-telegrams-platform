@@ -38,7 +38,7 @@ export function storageStableUrl(key: string): string {
 
 export function canAccessStorageKey(
   relKey: string,
-  user: Pick<User, "id" | "role">,
+  user: Pick<User, "id" | "role">
 ): boolean {
   const key = normalizeKey(relKey);
   const segments = key.split("/");
@@ -48,10 +48,7 @@ export function canAccessStorageKey(
     segments[0] !== "telegrams" ||
     !segments[2] ||
     segments.some(
-      segment =>
-        segment === "." ||
-        segment === ".." ||
-        segment.includes("\\"),
+      segment => segment === "." || segment === ".." || segment.includes("\\")
     )
   ) {
     return false;
@@ -63,7 +60,10 @@ export function canAccessStorageKey(
   return Number.isInteger(ownerId) && ownerId === user.id;
 }
 
-export function storageKeyFromStoredUrl(value: string, bucket: string): string | null {
+export function storageKeyFromStoredUrl(
+  value: string,
+  bucket: string
+): string | null {
   const trimmed = value.trim();
 
   if (trimmed.startsWith("/api/storage/")) {
@@ -100,7 +100,7 @@ export class StorageAccessDeniedError extends Error {
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream",
+  contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
   const normalizedKey = normalizeKey(relKey);
   const segments = normalizedKey.split("/");
@@ -114,9 +114,7 @@ export async function storagePut(
   }
 
   const safeFileName = sanitizeFileName(segments[2]);
-  const key = appendHashSuffix(
-    `telegrams/${segments[1]}/${safeFileName}`,
-  );
+  const key = appendHashSuffix(`telegrams/${segments[1]}/${safeFileName}`);
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
   await getStorageProvider().upload(key, body, {
@@ -127,9 +125,26 @@ export async function storagePut(
   return { key, url: storageStableUrl(key) };
 }
 
+export async function storageDelete(key: string): Promise<void> {
+  const normalizedKey = normalizeKey(key);
+  if (
+    !normalizedKey ||
+    normalizedKey
+      .split("/")
+      .some(segment => segment === "." || segment === "..")
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+  const provider = getStorageProvider();
+  if (!provider.remove) {
+    throw new Error("Storage provider does not support cleanup");
+  }
+  await provider.remove(normalizedKey);
+}
+
 export async function storageCreateSignedUrl(
   relKey: string,
-  expiresInSeconds = 60 * 60,
+  expiresInSeconds = 60 * 60
 ): Promise<string> {
   const key = normalizeKey(relKey);
 
@@ -145,7 +160,7 @@ export async function storageCreateSignedUrl(
 
 export async function storageGetSignedUrl(
   relKey: string,
-  user: Pick<User, "id" | "role">,
+  user: Pick<User, "id" | "role">
 ): Promise<string> {
   const key = normalizeKey(relKey);
 
@@ -159,7 +174,7 @@ export async function storageGetSignedUrl(
 export async function storagePutDepartmentLogo(
   fileName: string,
   data: Buffer | Uint8Array | string,
-  contentType: "image/png" | "image/jpeg",
+  contentType: "image/png" | "image/jpeg"
 ): Promise<{ key: string; url: string }> {
   const safeFileName = sanitizeFileName(fileName);
   const extension = contentType === "image/jpeg" ? ".jpg" : ".png";

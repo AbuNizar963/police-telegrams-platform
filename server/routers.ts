@@ -30,8 +30,10 @@ import {
   getMaxSerialNumber,
   getOrCreateSettings,
   getTelegramById,
+  getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
+  listTelegramAttachments,
   listTelegrams,
   recordTelegramAction,
   recordTelegramVersion,
@@ -52,6 +54,8 @@ import {
 } from "./organization";
 import {
   StorageAccessDeniedError,
+  storageCreateSignedUrl,
+  storageDelete,
   storageGetSignedUrl,
   storagePut,
   storagePutDepartmentLogo,
@@ -94,19 +98,20 @@ export const appRouter = router({
         z.object({
           username: z.string().trim().min(3).max(120),
           password: z.string().min(1).max(256),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const normalizedUsername = input.username.trim();
 
         let user = await authenticateLocalUser(
           normalizedUsername,
-          input.password,
+          input.password
         );
 
         if (
           !user &&
-          normalizedUsername.toLowerCase() === ENV.ownerUsername.trim().toLowerCase() &&
+          normalizedUsername.toLowerCase() ===
+            ENV.ownerUsername.trim().toLowerCase() &&
           (ENV.ownerPasswordHash || ENV.ownerInitialPassword)
         ) {
           // The initial secret is only used to bootstrap a missing owner account.
@@ -116,7 +121,7 @@ export const appRouter = router({
             (await hashPassword(ENV.ownerInitialPassword));
           const ownerPasswordMatches = await verifyPassword(
             input.password,
-            bootstrapHash,
+            bootstrapHash
           );
 
           if (ownerPasswordMatches) {
@@ -129,11 +134,13 @@ export const appRouter = router({
             } catch {
               // A concurrent login may have created the owner first. Re-read and
               // authenticate against the persisted credential rather than replacing it.
-              const existing = await getUserByUsername(ENV.ownerUsername.trim());
+              const existing = await getUserByUsername(
+                ENV.ownerUsername.trim()
+              );
               if (existing?.passwordHash) {
                 user = await authenticateLocalUser(
                   normalizedUsername,
-                  input.password,
+                  input.password
                 );
               } else if (!existing) {
                 throw new TRPCError({
@@ -164,7 +171,7 @@ export const appRouter = router({
 
   organizations: router({
     mine: protectedProcedure.query(({ ctx }) =>
-      listOrganizationsForUser(ctx.user.id),
+      listOrganizationsForUser(ctx.user.id)
     ),
 
     context: protectedProcedure.query(async ({ ctx }) => {
@@ -179,17 +186,22 @@ export const appRouter = router({
     }),
 
     routingTargets: protectedProcedure.query(({ ctx }) =>
-      listRoutingTargets(ctx.user.id),
+      listRoutingTargets(ctx.user.id)
     ),
 
     create: adminProcedure
       .input(
         z.object({
           parentOrganizationId: z.string().uuid().nullable().optional(),
-          code: z.string().trim().min(2).max(64).regex(/^[A-Z0-9_-]+$/i),
+          code: z
+            .string()
+            .trim()
+            .min(2)
+            .max(64)
+            .regex(/^[A-Z0-9_-]+$/i),
           name: z.string().trim().min(2).max(255),
           type: z.enum(["central", "command", "department", "station", "unit"]),
-        }),
+        })
       )
       .mutation(({ input }) => createOrganization(input)),
 
@@ -206,7 +218,7 @@ export const appRouter = router({
             "reader",
             "auditor",
           ]),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         if (
@@ -235,7 +247,7 @@ export const appRouter = router({
   }),
 
   reports: router({
-    telegrams: adminProcedure
+    telegrams: protectedProcedure
       .input(
         z.object({
           search: z.string().max(120).optional(),
@@ -247,10 +259,32 @@ export const appRouter = router({
           to: z.string().datetime().optional(),
           page: z.number().int().min(1).default(1),
           pageSize: z.number().int().min(1).max(100).default(50),
-        }),
+        })
       )
-      .query(async ({ input }) => {
-        const report = await getTelegramReport(input);
+      .query(async ({ ctx, input }) => {
+        const canViewAll = ctx.user.role === "admin";
+        const membership = await getUserOrganizationMembership(ctx.user.id);
+        const allowedRoles = [
+          "system_admin",
+          "organization_admin",
+          "reviewer",
+          "reader",
+          "auditor",
+        ];
+        if (
+          !canViewAll &&
+          (!membership || !allowedRoles.includes(membership.role))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا تملك صلاحية إصدار التقارير",
+          });
+        }
+        const report = await getTelegramReport(
+          input,
+          canViewAll,
+          canViewAll ? null : (membership?.organizationId ?? null)
+        );
         return {
           ...report,
           generatedAt: new Date().toISOString(),
@@ -261,7 +295,7 @@ export const appRouter = router({
 
   settings: router({
     get: protectedProcedure.query(({ ctx }) =>
-      getOrCreateSettings(ctx.user.id),
+      getOrCreateSettings(ctx.user.id)
     ),
 
     uploadLogo: adminProcedure
@@ -270,7 +304,7 @@ export const appRouter = router({
           fileName: z.string().trim().min(1).max(180),
           contentType: z.enum(["image/jpeg", "image/png"]),
           base64: z.string().min(1).max(7_000_000),
-        }),
+        })
       )
       .mutation(async ({ input }) => {
         const bytes = Buffer.from(input.base64, "base64");
@@ -284,7 +318,7 @@ export const appRouter = router({
         return storagePutDepartmentLogo(
           input.fileName,
           bytes,
-          input.contentType,
+          input.contentType
         );
       }),
 
@@ -297,13 +331,23 @@ export const appRouter = router({
           unitName: z.string().trim().max(255).default("وحدة العمليات"),
           unitChiefRank: z.string().trim().max(120).default("العقيد"),
           unitChiefName: z.string().trim().max(255).default("رئيس الوحدة"),
-          serialPrefix: z.string().trim().min(1).max(24).regex(/^[A-Z0-9-]+$/),
+          serialPrefix: z
+            .string()
+            .trim()
+            .min(1)
+            .max(24)
+            .regex(/^[A-Z0-9-]+$/),
           serialStart: z.number().int().min(1).max(999999999),
           timezone: z.string().trim().min(3).max(64).default("Asia/Riyadh"),
-          dateFormat: z.string().trim().min(4).max(32).default("dd/MM/yyyy HH:mm:ss"),
+          dateFormat: z
+            .string()
+            .trim()
+            .min(4)
+            .max(32)
+            .default("dd/MM/yyyy HH:mm:ss"),
           numberSystem: z.enum(["latin", "arabic", "hindi"]).default("latin"),
           logoUrl: z.string().url().max(2000).nullable().optional(),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
@@ -354,17 +398,26 @@ export const appRouter = router({
             "audio/webm",
           ]),
           base64: z.string().min(1).max(14_000_000),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const telegram = await getTelegramById(input.telegramId);
         if (!telegram) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "البرقية غير موجودة" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
         }
         if (ctx.user.role !== "admin") {
           const organizationId = await getUserOrganizationId(ctx.user.id);
-          if (telegram.organizationId !== organizationId && telegram.currentOrganizationId !== organizationId) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية إرفاق ملف بهذه البرقية" });
+          if (
+            telegram.organizationId !== organizationId &&
+            telegram.currentOrganizationId !== organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية إرفاق ملف بهذه البرقية",
+            });
           }
         }
         const bytes = Buffer.from(input.base64, "base64");
@@ -379,18 +432,30 @@ export const appRouter = router({
         const uploaded = await storagePut(
           `telegrams/${ctx.user.id}/${input.fileName}`,
           bytes,
-          input.contentType,
+          input.contentType
         );
 
-        await createTelegramAttachment({
-          telegramId: input.telegramId,
-          storageKey: uploaded.key,
-          originalName: input.fileName,
-          mimeType: input.contentType,
-          sizeBytes: bytes.byteLength,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-          uploadedByUserId: ctx.user.id,
-        });
+        try {
+          await createTelegramAttachment({
+            telegramId: input.telegramId,
+            storageKey: uploaded.key,
+            originalName: input.fileName,
+            mimeType: input.contentType,
+            sizeBytes: bytes.byteLength,
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+            uploadedByUserId: ctx.user.id,
+          });
+        } catch (error) {
+          try {
+            await storageDelete(uploaded.key);
+          } catch (cleanupError) {
+            console.error(
+              "[Storage] Orphan attachment cleanup failed",
+              cleanupError
+            );
+          }
+          throw error;
+        }
 
         await writeAuditLog({
           actorUserId: ctx.user.id,
@@ -412,6 +477,80 @@ export const appRouter = router({
           size: bytes.byteLength,
         };
       }),
+    attachments: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        if (ctx.user.role !== "admin") {
+          const organizationId = await getUserOrganizationId(ctx.user.id);
+          if (
+            telegram.organizationId !== organizationId &&
+            telegram.currentOrganizationId !== organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية قراءة مرفقات هذه البرقية",
+            });
+          }
+        }
+        return listTelegramAttachments(input.telegramId);
+      }),
+    downloadAttachment: protectedProcedure
+      .input(z.object({ attachmentId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const attachment = await getTelegramAttachmentById(input.attachmentId);
+        if (!attachment) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "المرفق غير موجود",
+          });
+        }
+        const telegram = await getTelegramById(attachment.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية المرتبطة بالمرفق غير موجودة",
+          });
+        }
+        if (ctx.user.role !== "admin") {
+          const organizationId = await getUserOrganizationId(ctx.user.id);
+          if (
+            telegram.organizationId !== organizationId &&
+            telegram.currentOrganizationId !== organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية تنزيل هذا المرفق",
+            });
+          }
+        }
+        const url = await storageCreateSignedUrl(
+          attachment.storageKey,
+          10 * 60
+        );
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "attachment.download",
+          entityType: "telegram_attachment",
+          entityId: String(attachment.id),
+          metadata: JSON.stringify({
+            telegramId: attachment.telegramId,
+            sha256: attachment.sha256,
+          }),
+        });
+        return {
+          url,
+          fileName: attachment.originalName,
+          mimeType: attachment.mimeType,
+        };
+      }),
 
     list: protectedProcedure
       .input(
@@ -425,7 +564,7 @@ export const appRouter = router({
             page: z.number().int().min(1).max(100000).default(1),
             pageSize: z.number().int().min(1).max(100).default(50),
           })
-          .optional(),
+          .optional()
       )
       .query(async ({ ctx, input }) => {
         const canViewAll = ctx.user.role === "admin";
@@ -443,7 +582,7 @@ export const appRouter = router({
           input?.category,
           input?.status,
           input?.page,
-          input?.pageSize,
+          input?.pageSize
         );
       }),
 
@@ -490,7 +629,7 @@ export const appRouter = router({
           attachmentManifest: z.string().max(10000).nullable().optional(),
           gpsLatitude: z.string().max(40).nullable().optional(),
           gpsLongitude: z.string().max(40).nullable().optional(),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const { id, ...values } = input;
@@ -579,7 +718,7 @@ export const appRouter = router({
           id: z.number().int().positive(),
           toOrganizationId: z.string().uuid(),
           note: z.string().trim().max(2000).nullable().optional(),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const route = await routeTelegram({
@@ -610,7 +749,7 @@ export const appRouter = router({
           id: z.number().int().positive(),
           toStatus: statusSchema,
           reason: z.string().trim().max(2000).nullable().optional(),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         const existing = await getTelegramById(input.id);
@@ -645,7 +784,10 @@ export const appRouter = router({
         } catch (error) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: error instanceof Error ? error.message : "تعذر تغيير حالة البرقية",
+            message:
+              error instanceof Error
+                ? error.message
+                : "تعذر تغيير حالة البرقية",
             cause: error,
           });
         }
@@ -664,11 +806,13 @@ export const appRouter = router({
           attachmentManifest: z.string().max(10000).optional(),
           gpsLatitude: z.string().max(40).optional(),
           gpsLongitude: z.string().max(40).optional(),
-        }),
+        })
       )
       .mutation(async ({ ctx, input }) => {
         if (input.idempotencyKey) {
-          const existing = await getTelegramByIdempotencyKey(input.idempotencyKey);
+          const existing = await getTelegramByIdempotencyKey(
+            input.idempotencyKey
+          );
           if (existing) return existing;
         }
 
@@ -681,7 +825,7 @@ export const appRouter = router({
           day: "2-digit",
         }).formatToParts(new Date());
         const dateValues = Object.fromEntries(
-          dateParts.map(part => [part.type, part.value]),
+          dateParts.map(part => [part.type, part.value])
         );
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;

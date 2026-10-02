@@ -11,16 +11,17 @@ export interface StorageProvider {
   upload(
     key: string,
     body: Buffer,
-    options: { contentType: string; cacheControl: string },
+    options: { contentType: string; cacheControl: string }
   ): Promise<void>;
   createSignedUrl(key: string, expiresInSeconds: number): Promise<string>;
+  remove?(key: string): Promise<void>;
 }
 
 class SupabaseStorageProvider implements StorageProvider {
   async upload(
     key: string,
     body: Buffer,
-    options: { contentType: string; cacheControl: string },
+    options: { contentType: string; cacheControl: string }
   ): Promise<void> {
     const { error } = await getSupabaseAdmin()
       .storage.from(ENV.supabaseStorageBucket)
@@ -37,7 +38,7 @@ class SupabaseStorageProvider implements StorageProvider {
 
   async createSignedUrl(
     key: string,
-    expiresInSeconds: number,
+    expiresInSeconds: number
   ): Promise<string> {
     const { data, error } = await getSupabaseAdmin()
       .storage.from(ENV.supabaseStorageBucket)
@@ -45,11 +46,18 @@ class SupabaseStorageProvider implements StorageProvider {
 
     if (error || !data?.signedUrl) {
       throw new Error(
-        `Storage signed URL failed: ${error?.message ?? "empty URL"}`,
+        `Storage signed URL failed: ${error?.message ?? "empty URL"}`
       );
     }
 
     return data.signedUrl;
+  }
+
+  async remove(key: string): Promise<void> {
+    const { error } = await getSupabaseAdmin()
+      .storage.from(ENV.supabaseStorageBucket)
+      .remove([key]);
+    if (error) throw new Error(`Storage cleanup failed: ${error.message}`);
   }
 }
 

@@ -27,8 +27,7 @@ function mapUser(row: Record<string, unknown>): User {
   const { password_hash, ...rest } = row;
   return {
     ...(rest as unknown as User),
-    passwordHash:
-      typeof password_hash === "string" ? password_hash : null,
+    passwordHash: typeof password_hash === "string" ? password_hash : null,
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
     lastSignedIn: asDate(row.lastSignedIn),
@@ -48,7 +47,7 @@ export type DepartmentSettingsView = DepartmentSettings & {
 };
 
 async function mapSettingsView(
-  row: Record<string, unknown>,
+  row: Record<string, unknown>
 ): Promise<DepartmentSettingsView> {
   const settings = mapSettings(row);
   const logoKey =
@@ -66,7 +65,7 @@ async function mapSettingsView(
 
   const resolvedKey = storageKeyFromStoredUrl(
     logoKey,
-    ENV.supabaseStorageBucket,
+    ENV.supabaseStorageBucket
   );
   if (resolvedKey?.startsWith("department/logos/")) {
     return {
@@ -97,7 +96,10 @@ function mapTelegram(row: Record<string, unknown>): Telegram {
   };
 }
 
-function throwIfError(error: { message: string } | null, context: string): void {
+function throwIfError(
+  error: { message: string } | null,
+  context: string
+): void {
   if (error) throw new Error(`${context}: ${error.message}`);
 }
 
@@ -113,7 +115,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.organizationId = user.organizationId;
   }
 
-  for (const field of ["name", "email", "loginMethod", "badgeNumber"] as const) {
+  for (const field of [
+    "name",
+    "email",
+    "loginMethod",
+    "badgeNumber",
+  ] as const) {
     if (user[field] !== undefined) values[field] = user[field] ?? null;
   }
 
@@ -206,7 +213,7 @@ export async function getUserById(id: number): Promise<User | undefined> {
 }
 
 export async function getUserByUsername(
-  username: string,
+  username: string
 ): Promise<(User & { passwordHash: string | null }) | undefined> {
   const normalized = username.trim().toLowerCase();
   const { data, error } = await getSupabaseAdmin()
@@ -233,7 +240,9 @@ export async function updateUserLastSignedIn(id: number): Promise<void> {
   throwIfError(error, "Failed to update user sign-in time");
 }
 
-export async function getUserByAuthUserId(authUserId: string): Promise<User | undefined> {
+export async function getUserByAuthUserId(
+  authUserId: string
+): Promise<User | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("users")
     .select("*")
@@ -252,7 +261,7 @@ export async function getUserOrganizationId(userId: number): Promise<string> {
 }
 
 export async function getOrCreateSettings(
-  userId: number,
+  userId: number
 ): Promise<DepartmentSettingsView> {
   const client = getSupabaseAdmin();
   const existing = await client
@@ -288,7 +297,7 @@ export async function getMaxSerialNumber(): Promise<number> {
 
 export async function updateDepartmentSettings(
   id: number,
-  values: Record<string, unknown>,
+  values: Record<string, unknown>
 ): Promise<DepartmentSettings> {
   const { data, error } = await getSupabaseAdmin()
     .from("department_settings")
@@ -301,7 +310,9 @@ export async function updateDepartmentSettings(
 }
 
 export async function allocateSerialNumber(): Promise<number> {
-  const { data, error } = await getSupabaseAdmin().rpc("allocate_serial_number");
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "allocate_serial_number"
+  );
   throwIfError(error, "Serial allocation failed");
   const serial = Number(data);
   if (!Number.isInteger(serial) || serial < 1) {
@@ -317,7 +328,12 @@ export async function listTelegrams(
   search?: string,
   classification?: "secret" | "normal",
   priority?: "slow" | "normal" | "urgent",
-  category?: "criminal" | "administrative" | "traffic" | "security" | "tactical",
+  category?:
+    | "criminal"
+    | "administrative"
+    | "traffic"
+    | "security"
+    | "tactical",
   status?:
     | "draft"
     | "submitted"
@@ -332,7 +348,7 @@ export async function listTelegrams(
     | "completed"
     | "archived",
   page = 1,
-  pageSize = 50,
+  pageSize = 50
 ): Promise<Telegram[]> {
   const safePage = Math.max(1, Math.floor(page));
   const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
@@ -347,7 +363,7 @@ export async function listTelegrams(
       throw new Error("Organization scope is required to list telegrams");
     }
     query = query.or(
-      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`
     );
   }
   if (classification) query = query.eq("classification", classification);
@@ -356,7 +372,10 @@ export async function listTelegrams(
   if (status) query = query.eq("status", status);
 
   if (search?.trim()) {
-    const safe = search.trim().replace(/[,%()]/g, " ").slice(0, 120);
+    const safe = search
+      .trim()
+      .replace(/[,%()]/g, " ")
+      .slice(0, 120);
     const filters = [
       `subject.ilike.%${safe}%`,
       `recipient.ilike.%${safe}%`,
@@ -372,17 +391,26 @@ export async function listTelegrams(
   return (data ?? []).map(row => mapTelegram(row as Record<string, unknown>));
 }
 
-export async function getTelegramReport(input: {
-  search?: string;
-  classification?: "secret" | "normal";
-  priority?: "slow" | "normal" | "urgent";
-  category?: "criminal" | "administrative" | "traffic" | "security" | "tactical";
-  status?: string;
-  from?: string;
-  to?: string;
-  page: number;
-  pageSize: number;
-}): Promise<{ rows: Telegram[]; total: number }> {
+export async function getTelegramReport(
+  input: {
+    search?: string;
+    classification?: "secret" | "normal";
+    priority?: "slow" | "normal" | "urgent";
+    category?:
+      | "criminal"
+      | "administrative"
+      | "traffic"
+      | "security"
+      | "tactical";
+    status?: string;
+    from?: string;
+    to?: string;
+    page: number;
+    pageSize: number;
+  },
+  canViewAll: boolean,
+  organizationId: string | null
+): Promise<{ rows: Telegram[]; total: number }> {
   const page = Math.max(1, Math.floor(input.page));
   const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize)));
   let query = getSupabaseAdmin()
@@ -391,14 +419,27 @@ export async function getTelegramReport(input: {
     .order("createdAt", { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1);
 
-  if (input.classification) query = query.eq("classification", input.classification);
+  if (!canViewAll) {
+    if (!organizationId) {
+      throw new Error("Organization scope is required to generate a report");
+    }
+    query = query.or(
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`
+    );
+  }
+
+  if (input.classification)
+    query = query.eq("classification", input.classification);
   if (input.priority) query = query.eq("priority", input.priority);
   if (input.category) query = query.eq("category", input.category);
   if (input.status) query = query.eq("status", input.status);
   if (input.from) query = query.gte("createdAt", input.from);
   if (input.to) query = query.lt("createdAt", input.to);
   if (input.search?.trim()) {
-    const safe = input.search.trim().replace(/[,%()]/g, " ").slice(0, 120);
+    const safe = input.search
+      .trim()
+      .replace(/[,%()]/g, " ")
+      .slice(0, 120);
     const filters = [
       `subject.ilike.%${safe}%`,
       `recipient.ilike.%${safe}%`,
@@ -417,7 +458,9 @@ export async function getTelegramReport(input: {
   };
 }
 
-export async function getTelegramById(id: number): Promise<Telegram | undefined> {
+export async function getTelegramById(
+  id: number
+): Promise<Telegram | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
     .select("*")
@@ -428,7 +471,7 @@ export async function getTelegramById(id: number): Promise<Telegram | undefined>
 }
 
 export async function getTelegramByIdempotencyKey(
-  idempotencyKey: string,
+  idempotencyKey: string
 ): Promise<Telegram | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
@@ -470,13 +513,15 @@ export async function recordTelegramVersion(input: {
     .maybeSingle();
   throwIfError(latestError, "Failed to load telegram version");
 
-  const { error } = await getSupabaseAdmin().from("telegram_versions").insert({
-    telegramId: input.telegramId,
-    versionNumber: Number(latest?.versionNumber ?? 0) + 1,
-    changedByUserId: input.changedByUserId,
-    changeReason: input.changeReason.trim(),
-    snapshot: JSON.stringify(input.snapshot),
-  });
+  const { error } = await getSupabaseAdmin()
+    .from("telegram_versions")
+    .insert({
+      telegramId: input.telegramId,
+      versionNumber: Number(latest?.versionNumber ?? 0) + 1,
+      changedByUserId: input.changedByUserId,
+      changeReason: input.changeReason.trim(),
+      snapshot: JSON.stringify(input.snapshot),
+    });
   throwIfError(error, "Failed to record telegram version");
 }
 
@@ -489,15 +534,17 @@ export async function recordTelegramAction(input: {
   reason?: string | null;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("telegram_actions").insert({
-    telegramId: input.telegramId,
-    actorUserId: input.actorUserId,
-    action: input.action,
-    fromStatus: input.fromStatus ?? null,
-    toStatus: input.toStatus ?? null,
-    reason: input.reason?.trim() || null,
-    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
-  });
+  const { error } = await getSupabaseAdmin()
+    .from("telegram_actions")
+    .insert({
+      telegramId: input.telegramId,
+      actorUserId: input.actorUserId,
+      action: input.action,
+      fromStatus: input.fromStatus ?? null,
+      toStatus: input.toStatus ?? null,
+      reason: input.reason?.trim() || null,
+      metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+    });
   throwIfError(error, "Failed to record telegram action");
 }
 
@@ -510,17 +557,52 @@ export async function createTelegramAttachment(input: {
   sha256: string;
   uploadedByUserId: number;
 }): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("telegram_attachments").insert({
-    telegramId: input.telegramId,
-    storageKey: input.storageKey,
-    originalName: input.originalName,
-    mimeType: input.mimeType,
-    sizeBytes: input.sizeBytes,
-    sha256: input.sha256,
-    uploadedByUserId: input.uploadedByUserId,
-    scanStatus: "unavailable",
-  });
+  const { error } = await getSupabaseAdmin()
+    .from("telegram_attachments")
+    .insert({
+      telegramId: input.telegramId,
+      storageKey: input.storageKey,
+      originalName: input.originalName,
+      mimeType: input.mimeType,
+      sizeBytes: input.sizeBytes,
+      sha256: input.sha256,
+      uploadedByUserId: input.uploadedByUserId,
+      scanStatus: "unavailable",
+    });
   throwIfError(error, "Failed to record attachment metadata");
+}
+
+export async function getTelegramAttachmentById(id: number) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_attachments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  throwIfError(error, "Failed to load attachment metadata");
+  return data as {
+    id: number;
+    telegramId: number;
+    storageKey: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+    sha256: string;
+    uploadedByUserId: number;
+    scanStatus: string;
+    createdAt: string;
+  } | null;
+}
+
+export async function listTelegramAttachments(telegramId: number) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_attachments")
+    .select(
+      "id, telegramId, originalName, mimeType, sizeBytes, sha256, scanStatus, uploadedByUserId, createdAt"
+    )
+    .eq("telegramId", telegramId)
+    .order("createdAt", { ascending: false });
+  throwIfError(error, "Failed to list attachment metadata");
+  return data ?? [];
 }
 
 export async function transitionTelegram(input: {
@@ -560,7 +642,7 @@ export async function updateTelegram(
       | "archivedAt"
       | "closedAt"
     >
-  >,
+  >
 ): Promise<Telegram> {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
@@ -591,7 +673,7 @@ export async function deleteTelegram(id: number): Promise<Telegram> {
 }
 
 export async function writeAuditLog(
-  input: Omit<AuditLog, "id" | "createdAt">,
+  input: Omit<AuditLog, "id" | "createdAt">
 ): Promise<void> {
   const { error } = await getSupabaseAdmin().from("audit_logs").insert(input);
   throwIfError(error, "Failed to write audit log");
@@ -601,7 +683,7 @@ async function countTelegrams(
   _userId: number,
   canViewAll: boolean,
   organizationId: string | null,
-  apply: (query: any) => any = query => query,
+  apply: (query: any) => any = query => query
 ): Promise<number> {
   let query = getSupabaseAdmin()
     .from("telegrams")
@@ -611,7 +693,7 @@ async function countTelegrams(
       throw new Error("Organization scope is required to count telegrams");
     }
     query = query.or(
-      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`,
+      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`
     );
   }
   query = apply(query);
@@ -623,7 +705,7 @@ async function countTelegrams(
 export async function getDashboardStats(
   userId: number,
   canViewAll: boolean,
-  organizationId: string | null,
+  organizationId: string | null
 ) {
   const now = new Date();
   const start = new Date(now);
@@ -634,18 +716,41 @@ export async function getDashboardStats(
   const [total, urgent, secret, normal, pending, inProgress, resolved, today] =
     await Promise.all([
       countTelegrams(userId, canViewAll, organizationId),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("priority", "urgent")),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "secret")),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("classification", "normal")),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "pending")),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "in_progress")),
-      countTelegrams(userId, canViewAll, organizationId, q => q.eq("status", "resolved")),
       countTelegrams(userId, canViewAll, organizationId, q =>
-        q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString()),
+        q.eq("priority", "urgent")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q.eq("classification", "secret")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q.eq("classification", "normal")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q.eq("status", "pending")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q.eq("status", "in_progress")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q.eq("status", "resolved")
+      ),
+      countTelegrams(userId, canViewAll, organizationId, q =>
+        q
+          .gte("createdAt", start.toISOString())
+          .lt("createdAt", end.toISOString())
       ),
     ]);
 
-  return { total, urgent, secret, normal, pending, inProgress, resolved, today };
+  return {
+    total,
+    urgent,
+    secret,
+    normal,
+    pending,
+    inProgress,
+    resolved,
+    today,
+  };
 }
 
 export type UserProfileUpdate = {
@@ -660,7 +765,7 @@ export type UserProfileUpdate = {
 
 export async function updateUserProfile(
   id: number,
-  values: UserProfileUpdate,
+  values: UserProfileUpdate
 ): Promise<User> {
   const { data, error } = await getSupabaseAdmin()
     .from("users")
@@ -674,11 +779,14 @@ export async function updateUserProfile(
 
 export async function updateUserPassword(
   id: number,
-  passwordHash: string,
+  passwordHash: string
 ): Promise<void> {
   const { error } = await getSupabaseAdmin()
     .from("users")
-    .update({ password_hash: passwordHash, updatedAt: new Date().toISOString() })
+    .update({
+      password_hash: passwordHash,
+      updatedAt: new Date().toISOString(),
+    })
     .eq("id", id);
   throwIfError(error, "Failed to update user password");
 }

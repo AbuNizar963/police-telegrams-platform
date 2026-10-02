@@ -206,8 +206,7 @@ function DashboardLayoutContent({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
-      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
-      const newWidth = e.clientX - sidebarLeft;
+      const newWidth = window.innerWidth - e.clientX;
       if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
         setSidebarWidth(newWidth);
       }
@@ -236,8 +235,9 @@ function DashboardLayoutContent({
     <>
       <div className="relative" ref={sidebarRef}>
         <Sidebar
+          side="right"
           collapsible="icon"
-          className="border-r-0"
+          className="border-l-0"
           disableTransition={isResizing}
         >
           <SidebarHeader className="h-16 justify-center">
@@ -323,12 +323,11 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/20 ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
           }}
-          style={{ zIndex: 50 }}
         />
       </div>
 

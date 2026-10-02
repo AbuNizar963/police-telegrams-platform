@@ -30,7 +30,23 @@ select
 from (
   values
     ('TEST-ROUTE-GOV-A', 'Test Governorate A', 'governorate', 'LEGACY-PRIMARY'),
-    ('TEST-ROUTE-GOV-B', 'Test Governorate B', 'governorate', 'LEGACY-PRIMARY'),
+    ('TEST-ROUTE-GOV-B', 'Test Governorate B', 'governorate', 'LEGACY-PRIMARY')
+) as route_org(code, name, type, parent_code)
+join public.organizations as parent on parent.code = route_org.parent_code;
+
+insert into public.organizations (
+  code,
+  name,
+  type,
+  "parentOrganizationId"
+)
+select
+  route_org.code,
+  route_org.name,
+  route_org.type::public.organization_type,
+  parent.id
+from (
+  values
     ('TEST-ROUTE-UNIT-A', 'Test Unit A', 'department', 'TEST-ROUTE-GOV-A'),
     ('TEST-ROUTE-UNIT-B', 'Test Unit B', 'department', 'TEST-ROUTE-GOV-B')
 ) as route_org(code, name, type, parent_code)

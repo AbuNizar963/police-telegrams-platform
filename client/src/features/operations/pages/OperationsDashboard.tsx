@@ -1095,6 +1095,22 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
+  const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
+    onError: error => toast.error(error.message || "تعذر تنزيل المرفق"),
+  });
+  const handleAttachmentDownload = async (id: number) => {
+    try {
+      const result = await downloadAttachment.mutateAsync({ id });
+      const anchor = document.createElement("a");
+      anchor.href = result.url;
+      anchor.download = result.fileName;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.click();
+    } catch {
+      // The mutation displays the localized server error through onError.
+    }
+  };
   const capture = async () => {
     if (!paperRef.current) throw new Error("تعذر تجهيز الورقة");
     await document.fonts?.ready;
@@ -1320,6 +1336,17 @@ function TelegramDetail({
                     {Math.ceil(attachment.size / 1024)} KB ·{" "}
                     {attachment.scanStatus}
                   </span>
+                  <button
+                    type="button"
+                    className="print:hidden rounded-md border border-slate-200 px-2 py-1 text-[10px] font-semibold text-[#10233f] hover:bg-slate-100 disabled:opacity-50"
+                    disabled={
+                      downloadAttachment.isPending ||
+                      attachment.scanStatus === "blocked"
+                    }
+                    onClick={() => void handleAttachmentDownload(attachment.id)}
+                  >
+                    تنزيل
+                  </button>
                 </div>
               ))}
             </div>

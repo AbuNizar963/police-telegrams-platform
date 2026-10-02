@@ -15,6 +15,7 @@ import {
   createTelegramWithAttachments,
   getDashboardStats,
   getOrCreateSettings,
+  getTelegramAttachmentById,
   getTelegramById,
   getTelegramByIdempotencyKey,
   listTelegrams,
@@ -515,6 +516,67 @@ export const appRouter = router({
           metadata: JSON.stringify({ language: result.language }),
         });
         return { text: result.text, language: result.language };
+      }),
+    downloadAttachment: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const record = await getTelegramAttachmentById(input.id);
+        if (!record) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "المرفق غير موجود",
+          });
+        }
+        if (
+          ctx.user.role !== "admin" &&
+          record.telegramOwnerId !== ctx.user.id
+        ) {
+          await writeAuditLog({
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+            action: "attachment.download_denied",
+            entityType: "telegram_attachment",
+            entityId: String(input.id),
+            metadata: JSON.stringify({ reason: "telegram_scope" }),
+          });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا تملك صلاحية تنزيل هذا المرفق",
+          });
+        }
+        if (record.attachment.scanStatus === "blocked") {
+          await writeAuditLog({
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+            action: "attachment.download_blocked",
+            entityType: "telegram_attachment",
+            entityId: String(input.id),
+            metadata: JSON.stringify({ scanStatus: "blocked" }),
+          });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "تم حظر هذا المرفق من نظام الفحص الأمني",
+          });
+        }
+        const url = await storageGetSignedUrl(record.attachment.fileKey);
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "attachment.download",
+          entityType: "telegram_attachment",
+          entityId: String(input.id),
+          metadata: JSON.stringify({
+            telegramId: record.attachment.telegramId,
+            fileName: record.attachment.fileName,
+          }),
+        });
+        return {
+          url,
+          fileName: record.attachment.fileName,
+          contentType: record.attachment.contentType,
+          size: record.attachment.size,
+          expiresInSeconds: 300,
+        };
       }),
     list: protectedProcedure
       .input(

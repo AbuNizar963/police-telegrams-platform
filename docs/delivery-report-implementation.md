@@ -4,26 +4,27 @@
 
 ## ما تم تنفيذه في هذا الفرع
 
-| مجال التقرير                  | التنفيذ                                                                                                       | الدليل                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| منع التكرار عند إعادة الإرسال | مفتاح `idempotencyKey` اختياري وفريد في `telegrams`، مع lookup قبل الإنشاء ومعالجة تعارض القيد                | `drizzle/schema.ts`, `drizzle/0006_tired_jack_flag.sql`, `server/api/appRouter.ts`    |
-| دورة حياة البرقية             | إجراء خادمي `telegrams.updateStatus` يفرض الانتقالات المسموحة ويمنع تعديل البرقية المؤرشفة                    | `server/api/appRouter.ts`, `server/data/database.ts`                                  |
-| سجل الإجراءات                 | تسجيل انتقال الحالة مع الحالة السابقة واللاحقة والسبب                                                         | `audit_logs` و`telegram.status.*`                                                     |
-| المرفقات                      | التحقق الحالي من الامتداد المنطقي، المحتوى الثنائي، الحجم، الملكية، والمسار                                   | `server/api/appRouter.ts`, `server/attachments.security.test.ts`                      |
-| بيانات المرفقات الدائمة       | جدول `telegram_attachments` مع المسار والاسم والنوع والحجم والبصمة وحالة الفحص والرافع، مع حفظ ذري مع البرقية | `drizzle/schema.ts`, `drizzle/0007_real_kinsey_walden.sql`, `server/data/database.ts` |
-| الملفات اليتيمة               | تسجيل مسارات المرفقات التي رُفعت ثم فشل حفظ البرقية لمعالجتها دون حذف تلقائي                                  | `server/api/appRouter.ts`, `server/telegrams.create.test.ts`                          |
-| فحص التشغيل                   | نقطة `GET /api/health` لا تكشف أسرارًا                                                                        | `server/app.ts`                                                                       |
-| النشر                         | مدخل Vercel Serverless منفصل للـ API وعدم استخدام `express.static` داخل الوظيفة                               | `api/index.ts`                                                                        |
-| CI                            | TypeScript، الاختبارات، البناء، التنسيق، وتحقق عدم تغيّر migrations تلقائيًا                                  | `.github/workflows/ci.yml`                                                            |
-| Supabase                      | Migration تأسيسية للجهات والوحدات والعضويات ونسخ البرقيات والإجراءات والتسلسل وسياسات RLS                     | `supabase/migrations/20261002000000_delivery_workflow_foundation.sql`                 |
-| قبول قاعدة البيانات           | اختبارات pgTAP للكيانات الجديدة وRLS وimmutable triggers                                                      | `supabase/tests/delivery_workflow.sql`                                                |
-| التشغيل والاستعادة            | دليل للنسخ، استعادة معزولة، نسخ Storage، المراقبة، والاستجابة للحوادث                                         | `docs/operations-runbook.md`                                                          |
-| قابلية تبديل التخزين          | واجهة موحدة للمخزن مع فشل مغلق عند اختيار مزود غير معتمد؛ Forge/S3 هو المزود المفعل حاليًا                    | `server/storage.ts`, `server/storage.provider.test.ts`, `STORAGE_PROVIDER`            |
+| مجال التقرير                  | التنفيذ                                                                                                       | الدليل                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| منع التكرار عند إعادة الإرسال | مفتاح `idempotencyKey` اختياري وفريد في `telegrams`، مع lookup قبل الإنشاء ومعالجة تعارض القيد                | `drizzle/schema.ts`, `drizzle/0006_tired_jack_flag.sql`, `server/api/appRouter.ts`        |
+| دورة حياة البرقية             | إجراء خادمي `telegrams.updateStatus` يفرض الانتقالات المسموحة ويمنع تعديل البرقية المؤرشفة                    | `server/api/appRouter.ts`, `server/data/database.ts`                                      |
+| سجل الإجراءات                 | تسجيل انتقال الحالة مع الحالة السابقة واللاحقة والسبب                                                         | `audit_logs` و`telegram.status.*`                                                         |
+| المرفقات                      | التحقق الحالي من الامتداد المنطقي، المحتوى الثنائي، الحجم، الملكية، والمسار                                   | `server/api/appRouter.ts`, `server/attachments.security.test.ts`                          |
+| بيانات المرفقات الدائمة       | جدول `telegram_attachments` مع المسار والاسم والنوع والحجم والبصمة وحالة الفحص والرافع، مع حفظ ذري مع البرقية | `drizzle/schema.ts`, `drizzle/0007_real_kinsey_walden.sql`, `server/data/database.ts`     |
+| تنزيل المرفقات الآمن          | رابط تنزيل موقّع قصير العمر بعد فحص ملكية البرقية وحالة الفحص، مع سجل تدقيق للنجاح والرفض والحظر              | `server/api/appRouter.ts`, `client/src/features/operations/pages/OperationsDashboard.tsx` |
+| الملفات اليتيمة               | تسجيل مسارات المرفقات التي رُفعت ثم فشل حفظ البرقية لمعالجتها دون حذف تلقائي                                  | `server/api/appRouter.ts`, `server/telegrams.create.test.ts`                              |
+| فحص التشغيل                   | نقطة `GET /api/health` لا تكشف أسرارًا                                                                        | `server/app.ts`                                                                           |
+| النشر                         | مدخل Vercel Serverless منفصل للـ API وعدم استخدام `express.static` داخل الوظيفة                               | `api/index.ts`                                                                            |
+| CI                            | TypeScript، الاختبارات، البناء، التنسيق، وتحقق عدم تغيّر migrations تلقائيًا                                  | `.github/workflows/ci.yml`                                                                |
+| Supabase                      | Migration تأسيسية للجهات والوحدات والعضويات ونسخ البرقيات والإجراءات والتسلسل وسياسات RLS                     | `supabase/migrations/20261002000000_delivery_workflow_foundation.sql`                     |
+| قبول قاعدة البيانات           | اختبارات pgTAP للكيانات الجديدة وRLS وimmutable triggers                                                      | `supabase/tests/delivery_workflow.sql`                                                    |
+| التشغيل والاستعادة            | دليل للنسخ، استعادة معزولة، نسخ Storage، المراقبة، والاستجابة للحوادث                                         | `docs/operations-runbook.md`                                                              |
+| قابلية تبديل التخزين          | واجهة موحدة للمخزن مع فشل مغلق عند اختيار مزود غير معتمد؛ Forge/S3 هو المزود المفعل حاليًا                    | `server/storage.ts`, `server/storage.provider.test.ts`, `STORAGE_PROVIDER`                |
 
 ## نتائج التحقق الأخيرة
 
 - `pnpm check`: ناجح.
-- `pnpm test`: ناجح، 20 اختبارًا.
+- `pnpm test`: ناجح، 23 اختبارًا.
 - `pnpm build`: ناجح.
 - اختبار محلي لـ `/api/health`: يعيد `200`.
 - اختبار محلي لـ `/api/trpc/auth.me`: يعيد استجابة مصادق عليها بشكل صحيح عند غياب الجلسة (`null`) بدل خطأ خادم.
@@ -37,6 +38,7 @@
 4. لا توجد أسرار أو مفاتيح إنتاج في هذا الفرع. يجب وضعها في Vercel/GitHub Secrets أو Supabase Vault حسب البيئة.
 5. لا يحذف النظام الملفات اليتيمة تلقائيًا؛ يسجلها أولًا في `audit_logs` حتى يراجعها المسؤول وتُنفذ عملية تنظيف موثقة.
 6. التخزين المحلي أو Supabase Storage ليسا مزودين مفعلين بعد؛ وجود الواجهة لا يعني نقل بيانات حقيقية أو تشغيلًا داخل مركز بيانات الوزارة.
+7. لم يُنفذ `pnpm test:supabase` في هذه الجولة لأن Supabase CLI غير مثبت في بيئة التنفيذ الحالية؛ لذلك تبقى اختبارات RLS الفعلية بوابة إلزامية قبل الدمج.
 
 ## بوابة الدمج التالية
 

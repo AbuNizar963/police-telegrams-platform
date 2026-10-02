@@ -7,6 +7,7 @@ const mocked = vi.hoisted(() => ({
   createTelegramWithAttachments: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
+  getTelegramAttachmentById: vi.fn(),
   getOrCreateSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("./data/database", () => ({
   createTelegramWithAttachments: mocked.createTelegramWithAttachments,
   writeAuditLog: mocked.writeAuditLog,
   getDashboardStats: mocked.getDashboardStats,
+  getTelegramAttachmentById: mocked.getTelegramAttachmentById,
   getOrCreateSettings: mocked.getOrCreateSettings,
   getTelegramById: mocked.getTelegramById,
   listTelegrams: mocked.listTelegrams,
@@ -63,6 +65,7 @@ describe("telegram attachment security", () => {
     });
     mocked.storageGetSignedUrl.mockResolvedValue("https://storage.test/file");
     mocked.writeAuditLog.mockResolvedValue(undefined);
+    mocked.getTelegramAttachmentById.mockResolvedValue(undefined);
   });
 
   it("sanitizes path separators from uploaded filenames", async () => {
@@ -168,6 +171,87 @@ describe("telegram attachment security", () => {
     expect(result).toEqual({ text: "نص مستخرج" });
     expect(mocked.storageGetSignedUrl).toHaveBeenCalledWith(
       "telegrams/99/secret.png"
+    );
+  });
+
+  it("denies downloading an attachment from another officer's telegram", async () => {
+    mocked.getTelegramAttachmentById.mockResolvedValue({
+      telegramOwnerId: 99,
+      attachment: {
+        id: 8,
+        telegramId: 12,
+        fileKey: "telegrams/99/report.png",
+        fileName: "report.png",
+        contentType: "image/png",
+        size: 16,
+        scanStatus: "clean",
+      },
+    });
+    const caller = appRouter.createCaller(createContext("user"));
+
+    await expect(
+      caller.telegrams.downloadAttachment({ id: 8 })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(mocked.storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "attachment.download_denied" })
+    );
+  });
+
+  it("denies a blocked attachment even to its owner", async () => {
+    mocked.getTelegramAttachmentById.mockResolvedValue({
+      telegramOwnerId: 42,
+      attachment: {
+        id: 9,
+        telegramId: 12,
+        fileKey: "telegrams/42/blocked.pdf",
+        fileName: "blocked.pdf",
+        contentType: "application/pdf",
+        size: 16,
+        scanStatus: "blocked",
+      },
+    });
+    const caller = appRouter.createCaller(createContext("user"));
+
+    await expect(
+      caller.telegrams.downloadAttachment({ id: 9 })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(mocked.storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "attachment.download_blocked" })
+    );
+  });
+
+  it("returns a short-lived signed URL for an authorized clean attachment", async () => {
+    mocked.getTelegramAttachmentById.mockResolvedValue({
+      telegramOwnerId: 42,
+      attachment: {
+        id: 10,
+        telegramId: 12,
+        fileKey: "telegrams/42/report.png",
+        fileName: "report.png",
+        contentType: "image/png",
+        size: 16,
+        scanStatus: "clean",
+      },
+    });
+    const caller = appRouter.createCaller(createContext("user"));
+
+    await expect(
+      caller.telegrams.downloadAttachment({ id: 10 })
+    ).resolves.toEqual({
+      url: "https://storage.test/file",
+      fileName: "report.png",
+      contentType: "image/png",
+      size: 16,
+      expiresInSeconds: 300,
+    });
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "attachment.download" })
     );
   });
 });

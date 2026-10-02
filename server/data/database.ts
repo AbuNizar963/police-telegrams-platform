@@ -203,6 +203,21 @@ export async function listTelegramAttachments(telegramId: number) {
     .orderBy(desc(telegramAttachments.createdAt));
 }
 
+export async function getTelegramAttachmentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select({
+      attachment: telegramAttachments,
+      telegramOwnerId: telegrams.createdByUserId,
+    })
+    .from(telegramAttachments)
+    .innerJoin(telegrams, eq(telegramAttachments.telegramId, telegrams.id))
+    .where(eq(telegramAttachments.id, id))
+    .limit(1);
+  return rows[0];
+}
+
 export async function updateTelegramStatus(
   id: number,
   status: "pending" | "in_progress" | "resolved" | "archived",

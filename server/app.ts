@@ -14,7 +14,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
  * dependencies into the production API function.
  */
 export function createApp(
-  options: { productionStatic?: boolean } = {},
+  options: { productionStatic?: boolean } = {}
 ): Express {
   const app = express();
 
@@ -28,7 +28,11 @@ export function createApp(
     res.setHeader("X-Content-Type-Options", "nosniff");
 
     const token = req.params.token;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        token
+      )
+    ) {
       return res.status(404).json({ valid: false });
     }
 
@@ -53,14 +57,19 @@ export function createApp(
 
       return res.status(200).json({
         valid: true,
-        status: telegram.status === "archived" || telegram.archivedAt ? "archived" : "valid",
+        status:
+          telegram.status === "archived" || telegram.archivedAt
+            ? "archived"
+            : "valid",
         serialCode: telegram.serialCode,
         unitName: settings?.unitName ?? "الوحدة الشرطية",
         creatorName: telegram.creatorName,
       });
     } catch (error) {
       console.error("Telegram verification failed:", error);
-      return res.status(500).json({ valid: false, error: "تعذر التحقق حاليًا" });
+      return res
+        .status(500)
+        .json({ valid: false, error: "تعذر التحقق حاليًا" });
     }
   });
 
@@ -79,7 +88,7 @@ export function createApp(
     createExpressMiddleware({
       router: appRouter,
       createContext,
-    }),
+    })
   );
 
   if (options.productionStatic) {

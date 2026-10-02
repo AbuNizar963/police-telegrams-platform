@@ -8,27 +8,37 @@ describe("storage access control", () => {
 
   it("allows an officer to access only their own attachment path", () => {
     expect(
-      canAccessStorageKey("telegrams/42/report.pdf_abc123.pdf", officer),
+      canAccessStorageKey("telegrams/42/report.pdf_abc123.pdf", officer)
     ).toBe(true);
     expect(
-      canAccessStorageKey("telegrams/43/report.pdf_abc123.pdf", officer),
+      canAccessStorageKey("telegrams/43/report.pdf_abc123.pdf", officer)
     ).toBe(false);
   });
 
   it("allows administrators to access valid telegram attachment paths", () => {
     expect(
-      canAccessStorageKey("telegrams/43/report.pdf_abc123.pdf", admin),
+      canAccessStorageKey("telegrams/43/report.pdf_abc123.pdf", admin)
     ).toBe(true);
   });
 
   it("rejects malformed, traversal, and non-telegram storage paths", () => {
-    expect(canAccessStorageKey("department/logos/logo.png", officer)).toBe(false);
-    expect(canAccessStorageKey("telegrams/42/../other.pdf", officer)).toBe(false);
-    expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", officer)).toBe(false);
-    expect(canAccessStorageKey("telegrams/42/report.pdf/extra", officer)).toBe(false);
+    expect(canAccessStorageKey("department/logos/logo.png", officer)).toBe(
+      false
+    );
+    expect(canAccessStorageKey("telegrams/42/../other.pdf", officer)).toBe(
+      false
+    );
+    expect(
+      canAccessStorageKey("telegrams/not-a-user/report.pdf", officer)
+    ).toBe(false);
+    expect(canAccessStorageKey("telegrams/42/report.pdf/extra", officer)).toBe(
+      false
+    );
     expect(canAccessStorageKey("telegrams/42/", officer)).toBe(false);
     expect(canAccessStorageKey("telegrams/42/.", officer)).toBe(false);
     expect(canAccessStorageKey("telegrams/42/..", officer)).toBe(false);
-    expect(canAccessStorageKey("telegrams/42/folder\\\\file.pdf", officer)).toBe(false);
+    expect(
+      canAccessStorageKey("telegrams/42/folder\\\\file.pdf", officer)
+    ).toBe(false);
   });
 });

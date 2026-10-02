@@ -44,7 +44,7 @@ describe("telegrams.create", () => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
     mocked.getUserOrganizationId.mockResolvedValue(
-      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000001"
     );
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "POL",
@@ -73,22 +73,58 @@ describe("telegrams.create", () => {
     });
 
     expect(result?.serialNumber).toBe(1001);
-    expect(mocked.createTelegram).toHaveBeenCalledWith(expect.objectContaining({
-      createdByUserId: 42,
-      organizationId: "00000000-0000-0000-0000-000000000001",
-      currentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      creatorName: "النقيب أحمد",
-      creatorEmail: "ahmad@example.com",
-      creatorFingerprint: "00000000-0000-4000-8000-000000000042",
-      serialNumber: 1001,
-      serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
-      verificationToken: expect.stringMatching(/^[0-9a-f-]{36}$/i),
-    }));
-    expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
-      actorUserId: 42,
-      actorName: "النقيب أحمد",
-      action: "telegram.create",
-      entityType: "telegram",
-    }));
+    expect(mocked.createTelegram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdByUserId: 42,
+        organizationId: "00000000-0000-0000-0000-000000000001",
+        currentOrganizationId: "00000000-0000-0000-0000-000000000001",
+        creatorName: "النقيب أحمد",
+        creatorEmail: "ahmad@example.com",
+        creatorFingerprint: "00000000-0000-4000-8000-000000000042",
+        serialNumber: 1001,
+        serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
+        verificationToken: expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      })
+    );
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 42,
+        actorName: "النقيب أحمد",
+        action: "telegram.create",
+        entityType: "telegram",
+      })
+    );
+  });
+
+  it("returns the persisted telegram when a concurrent retry wins the idempotency race", async () => {
+    const caller = appRouter.createCaller(createContext());
+    const persistedTelegram = {
+      id: 88,
+      serialNumber: 1002,
+      serialCode: "POL-2026-10-02-01002",
+      status: "draft",
+    };
+    mocked.createTelegram.mockRejectedValueOnce(
+      new Error("duplicate key value violates unique constraint")
+    );
+    mocked.getTelegramByIdempotencyKey
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(persistedTelegram);
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تنبيه أمني",
+        recipient: "غرفة العمليات",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "urgent",
+        category: "security",
+        idempotencyKey: "create-telegram-race-0001",
+      })
+    ).resolves.toEqual(persistedTelegram);
+
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramAction).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
   });
 });

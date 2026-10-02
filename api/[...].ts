@@ -13,7 +13,9 @@ function getForwardedPath(req: Request): string {
     return "/api";
   }
 
-  const normalizedPath = pathValue.startsWith("/") ? pathValue : `/${pathValue}`;
+  const normalizedPath = pathValue.startsWith("/")
+    ? pathValue
+    : `/${pathValue}`;
   return normalizedPath.startsWith("/api/")
     ? normalizedPath
     : `/api${normalizedPath}`;

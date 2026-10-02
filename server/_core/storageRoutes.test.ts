@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getAuthenticatedUserFromRequest, storageCreateSignedUrl, storageGetSignedUrl } =
-  vi.hoisted(() => ({
-    getAuthenticatedUserFromRequest: vi.fn(),
-    storageCreateSignedUrl: vi.fn(),
-    storageGetSignedUrl: vi.fn(),
-  }));
+const {
+  getAuthenticatedUserFromRequest,
+  storageCreateSignedUrl,
+  storageGetSignedUrl,
+} = vi.hoisted(() => ({
+  getAuthenticatedUserFromRequest: vi.fn(),
+  storageCreateSignedUrl: vi.fn(),
+  storageGetSignedUrl: vi.fn(),
+}));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
 vi.mock("../storage", async () => {
-  const actual = await vi.importActual<typeof import("../storage")>("../storage");
+  const actual =
+    await vi.importActual<typeof import("../storage")>("../storage");
   return {
     ...actual,
     storageCreateSignedUrl,
@@ -63,7 +67,9 @@ describe("storage key authorization", () => {
     const user = { id: 7, role: "user" as const };
     expect(canAccessStorageKey("other/7/report.pdf", user)).toBe(false);
     expect(canAccessStorageKey("telegrams/7/../private.pdf", user)).toBe(false);
-    expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", user)).toBe(false);
+    expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", user)).toBe(
+      false
+    );
   });
 });
 
@@ -83,10 +89,7 @@ describe("storage route", () => {
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
     const { handler, res } = createRouteHarness();
 
-    await handler(
-      { params: { 0: "department/logos/123" } },
-      res,
-    );
+    await handler({ params: { 0: "department/logos/123" } }, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.redirect).not.toHaveBeenCalled();
@@ -101,8 +104,14 @@ describe("storage route", () => {
 
     expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
-    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, max-age=300");
-    expect(res.redirect).toHaveBeenCalledWith(307, "https://storage.example/logo");
+    expect(res.set).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, max-age=300"
+    );
+    expect(res.redirect).toHaveBeenCalledWith(
+      307,
+      "https://storage.example/logo"
+    );
   });
 
   it("rejects malformed department-logo keys before touching storage", async () => {
@@ -126,6 +135,9 @@ describe("storage route", () => {
 
     expect(storageGetSignedUrl).toHaveBeenCalledWith(key, user);
     expect(storageCreateSignedUrl).not.toHaveBeenCalled();
-    expect(res.redirect).toHaveBeenCalledWith(307, "https://storage.example/file");
+    expect(res.redirect).toHaveBeenCalledWith(
+      307,
+      "https://storage.example/file"
+    );
   });
 });

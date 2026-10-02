@@ -1,7 +1,5 @@
 import { trpc } from "@/lib/trpc";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1780,6 +1778,21 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر إحالة البرقية"),
   });
+  const incomingRoutes = trpc.telegrams.incomingRoutes.useQuery({
+    telegramId: telegram.id,
+  });
+  const receiveRoute = trpc.telegrams.receiveRoute.useMutation({
+    onSuccess: async () => {
+      toast.success("تم تسجيل استلام الإحالة في السجل المعتمد");
+      await Promise.all([
+        utils.telegrams.incomingRoutes.invalidate({ telegramId: telegram.id }),
+        utils.telegrams.get.invalidate({ id: telegram.id }),
+        utils.telegrams.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
+    },
+    onError: error => toast.error(error.message || "تعذر تسجيل استلام الإحالة"),
+  });
   const uploadAttachment = trpc.telegrams.uploadAttachment.useMutation({
     onSuccess: async () => {
       toast.success("تم رفع المرفق وتسجيل بصمته في الخادم");
@@ -2199,6 +2212,7 @@ function TelegramDetail({
   }, [telegram, settings]);
 
   const capture = async () => {
+    const { default: html2canvas } = await import("html2canvas");
     await document.fonts.ready;
 
     const exportWrapper = createExportPaper();
@@ -2537,6 +2551,7 @@ function TelegramDetail({
 
   const makePdf = async () => {
     const sourceCanvas = await capture();
+    const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF({
       orientation: "p",
       unit: "mm",
@@ -2613,6 +2628,46 @@ function TelegramDetail({
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
       />
+      {incomingRoutes.data && incomingRoutes.data.length > 0 && (
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 print:hidden">
+          <p className="text-xs font-bold">سجل استلام الإحالات</p>
+          <div className="mt-2 grid gap-2">
+            {incomingRoutes.data.map(route => (
+              <div
+                key={route.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 text-xs"
+              >
+                <div>
+                  <p className="font-semibold">
+                    {route.status === "received"
+                      ? "تم استلام الإحالة"
+                      : "إحالة بانتظار الاستلام"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    {route.status === "received" && route.receivedAt
+                      ? `وقت الاستلام: ${new Date(route.receivedAt).toLocaleString("ar-SY")}`
+                      : "يمكن للوحدة المستلمة تأكيد التسلم من هنا"}
+                  </p>
+                </div>
+                {route.status === "sent" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={receiveRoute.isPending}
+                    onClick={() => {
+                      if (window.confirm("تأكيد استلام هذه الإحالة؟")) {
+                        receiveRoute.mutate({ routeId: route.id });
+                      }
+                    }}
+                  >
+                    تأكيد الاستلام
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {attachments.data && attachments.data.length > 0 && (
         <div className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
           <div className="flex items-center justify-between">

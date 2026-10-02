@@ -91,7 +91,7 @@ describe("organization repository", () => {
         organizationId: "00000000-0000-0000-0000-000000000001",
         userId: 7,
         role: "reviewer",
-      }),
+      })
     ).resolves.toMatchObject({ role: "reviewer", userId: 7 });
 
     expect(mocks.upsert).toHaveBeenCalledWith(
@@ -101,7 +101,7 @@ describe("organization repository", () => {
         role: "reviewer",
         isActive: true,
       },
-      { onConflict: "organizationId,userId" },
+      { onConflict: "organizationId,userId" }
     );
   });
 
@@ -128,7 +128,7 @@ describe("organization repository", () => {
         toOrganizationId: "00000000-0000-0000-0000-000000000002",
         forwardedByUserId: 7,
         note: "إحالة إلى القيادة",
-      }),
+      })
     ).resolves.toMatchObject({
       id: 9,
       telegramId: 100,

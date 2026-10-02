@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -85,19 +85,46 @@
   --radius-md: calc(var(--radius) - 0.2rem);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.35rem);
-  --font-sans: 'Cairo', 'IBM Plex Sans Arabic', sans-serif;
+  --font-sans: "Cairo", "IBM Plex Sans Arabic", sans-serif;
 }
 
 @layer base {
-  * { @apply border-border; }
-  html { direction: rtl; }
-  body { @apply bg-background text-foreground antialiased; font-family: 'Cairo', 'IBM Plex Sans Arabic', sans-serif; }
-  button, input, textarea { font: inherit; }
-  button { cursor: pointer; }
-  ::selection { background: #d8c38e; color: #10233f; }
+  * {
+    @apply border-border;
+  }
+  html {
+    direction: rtl;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Cairo", "IBM Plex Sans Arabic", sans-serif;
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  ::selection {
+    background: #d8c38e;
+    color: #10233f;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  button, a, input, textarea { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
-  button:active { transform: scale(0.98); }
+  button,
+  a,
+  input,
+  textarea {
+    transition:
+      transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+  button:active {
+    transform: scale(0.98);
+  }
 }

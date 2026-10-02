@@ -1,4 +1,8 @@
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import {
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from "node:crypto";
 import type { Request, Response } from "express";
 import { parse } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
@@ -10,7 +14,7 @@ function deriveKey(
   password: string,
   salt: Buffer,
   keyLength: number,
-  options: { N: number; r: number; p: number },
+  options: { N: number; r: number; p: number }
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     scryptCallback(password, salt, keyLength, options, (error, derivedKey) => {
@@ -26,7 +30,7 @@ export const SESSION_COOKIE = "police_telegrams_session";
 
 function serializeSessionCookie(
   value: string,
-  options: { maxAge: number; expires?: Date },
+  options: { maxAge: number; expires?: Date }
 ): string {
   const parts = [
     SESSION_COOKIE + "=" + encodeURIComponent(value),
@@ -62,7 +66,7 @@ export function publicUser(user: User): PublicUser {
 
 export async function setAuthenticatedSession(
   res: Response,
-  user: Pick<User, "id" | "role" | "authUserId">,
+  user: Pick<User, "id" | "role" | "authUserId">
 ): Promise<void> {
   const token = await new SignJWT({
     role: user.role,
@@ -76,14 +80,14 @@ export async function setAuthenticatedSession(
 
   res.setHeader(
     "Set-Cookie",
-    serializeSessionCookie(token, { maxAge: SESSION_MAX_AGE }),
+    serializeSessionCookie(token, { maxAge: SESSION_MAX_AGE })
   );
 }
 
 export function clearAuthenticatedSession(res: Response): void {
   res.setHeader(
     "Set-Cookie",
-    serializeSessionCookie("", { maxAge: 0, expires: new Date(0) }),
+    serializeSessionCookie("", { maxAge: 0, expires: new Date(0) })
   );
 }
 
@@ -107,7 +111,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(
   password: string,
-  encodedHash: string,
+  encodedHash: string
 ): Promise<boolean> {
   const [algorithm, n, r, p, saltText, hashText] = encodedHash.split("$");
   if (algorithm !== "scrypt" || !n || !r || !p || !saltText || !hashText) {
@@ -123,13 +127,12 @@ export async function verifyPassword(
   })) as Buffer;
 
   return (
-    derived.length === expected.length &&
-    timingSafeEqual(derived, expected)
+    derived.length === expected.length && timingSafeEqual(derived, expected)
   );
 }
 
 export async function getAuthenticatedUserFromRequest(
-  req: Request,
+  req: Request
 ): Promise<PublicUser | null> {
   const token = parse(req.headers.cookie ?? "")[SESSION_COOKIE];
   if (!token) return null;
@@ -143,7 +146,11 @@ export async function getAuthenticatedUserFromRequest(
 
     const user = await db.getUserById(userId);
     if (!user || user.loginMethod === "disabled") return null;
-    if (typeof payload.authUserId !== "string" || payload.authUserId !== user.authUserId) return null;
+    if (
+      typeof payload.authUserId !== "string" ||
+      payload.authUserId !== user.authUserId
+    )
+      return null;
     return publicUser(user);
   } catch {
     return null;
@@ -152,7 +159,7 @@ export async function getAuthenticatedUserFromRequest(
 
 export async function authenticateLocalUser(
   username: string,
-  password: string,
+  password: string
 ): Promise<PublicUser | null> {
   const user = await db.getUserByUsername(username);
   if (!user?.passwordHash || user.loginMethod === "disabled") return null;

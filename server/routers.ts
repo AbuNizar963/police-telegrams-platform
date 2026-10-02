@@ -52,9 +52,11 @@ import {
   createOrganization,
   getUserOrganizationMembership,
   listAllOrganizations,
+  listIncomingTelegramRoutes,
   listOrganizationsForUser,
   listPendingRouteApprovals,
   listRoutingTargets,
+  receiveTelegramRoute,
   routeTelegram,
   seedSyrianGovernorates,
   updateOrganization,
@@ -643,6 +645,34 @@ export const appRouter = router({
           mimeType: attachment.mimeType,
         };
       }),
+    incomingRoutes: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        if (ctx.user.role !== "admin") {
+          const organizationId = await getUserOrganizationId(ctx.user.id);
+          if (
+            telegram.organizationId !== organizationId &&
+            telegram.currentOrganizationId !== organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية عرض سجل استلام هذه البرقية",
+            });
+          }
+        }
+        return listIncomingTelegramRoutes({
+          telegramId: input.telegramId,
+          userId: ctx.user.id,
+          canViewAll: ctx.user.role === "admin",
+        });
+      }),
 
     list: protectedProcedure
       .input(
@@ -829,10 +859,14 @@ export const appRouter = router({
           metadata: JSON.stringify({
             routeId: route.id,
             toOrganizationId: route.toOrganizationId,
+            approvalStatus: route.approvalStatus,
           }),
         });
 
-        const routedTelegram = await getTelegramById(input.id);
+        const routedTelegram =
+          route.approvalStatus === "pending"
+            ? null
+            : await getTelegramById(input.id);
         if (routedTelegram) {
           try {
             await notifyOrganizationTelegramCreated({
@@ -870,12 +904,64 @@ export const appRouter = router({
             message: "لا تملك صلاحية اعتماد إحالات البرقيات",
           });
         }
-        return approveTelegramRoute({
+        const route = await approveTelegramRoute({
           routeId: input.routeId,
           approverUserId: ctx.user.id,
           approved: input.approved,
           reason: input.reason,
         });
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: input.approved
+            ? "telegram.route.approve"
+            : "telegram.route.reject",
+          entityType: "telegram_route",
+          entityId: String(route.id),
+          metadata: JSON.stringify({
+            telegramId: route.telegramId,
+            toOrganizationId: route.toOrganizationId,
+            reason: input.reason ?? null,
+          }),
+        });
+        if (route.approvalStatus === "approved") {
+          const routedTelegram = await getTelegramById(route.telegramId);
+          if (routedTelegram) {
+            try {
+              await notifyOrganizationTelegramCreated({
+                organizationId: route.toOrganizationId,
+                serialCode: routedTelegram.serialCode,
+                subject: routedTelegram.subject,
+                recipient: routedTelegram.recipient,
+                priority: routedTelegram.priority,
+                telegramId: routedTelegram.id,
+              });
+            } catch (error) {
+              console.warn(
+                "[Notification] Approved route push dispatch failed",
+                error
+              );
+            }
+          }
+        }
+        return route;
+      }),
+    receiveRoute: protectedProcedure
+      .input(z.object({ routeId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const route = await receiveTelegramRoute({
+          routeId: input.routeId,
+          receiverUserId: ctx.user.id,
+        });
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "telegram.route.receive",
+          entityType: "telegram_route",
+          entityId: String(route.id),
+          metadata: JSON.stringify({ telegramId: route.telegramId }),
+        });
+        return route;
       }),
 
     transition: protectedProcedure
@@ -972,22 +1058,33 @@ export const appRouter = router({
             ? creatorIpHeader.split(",")[0].trim()
             : null;
 
-        const telegram = await createTelegram({
-          ...input,
-          serialNumber,
-          serialCode,
-          idempotencyKey: input.idempotencyKey ?? null,
-          status: "draft",
-          verificationToken: randomUUID(),
-          createdByUserId: ctx.user.id,
-          organizationId,
-          currentOrganizationId: organizationId,
-          creatorName,
-          creatorEmail: ctx.user.email ?? null,
-          creatorBadgeId: ctx.user.badgeNumber ?? null,
-          creatorIp,
-          creatorFingerprint: ctx.user.authUserId,
-        });
+        let telegram: Awaited<ReturnType<typeof createTelegram>>;
+        try {
+          telegram = await createTelegram({
+            ...input,
+            serialNumber,
+            serialCode,
+            idempotencyKey: input.idempotencyKey ?? null,
+            status: "draft",
+            verificationToken: randomUUID(),
+            createdByUserId: ctx.user.id,
+            organizationId,
+            currentOrganizationId: organizationId,
+            creatorName,
+            creatorEmail: ctx.user.email ?? null,
+            creatorBadgeId: ctx.user.badgeNumber ?? null,
+            creatorIp,
+            creatorFingerprint: ctx.user.authUserId,
+          });
+        } catch (error) {
+          if (input.idempotencyKey) {
+            const existing = await getTelegramByIdempotencyKey(
+              input.idempotencyKey
+            );
+            if (existing) return existing;
+          }
+          throw error;
+        }
 
         await writeAuditLog({
           actorUserId: ctx.user.id,

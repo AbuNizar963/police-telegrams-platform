@@ -29,7 +29,7 @@ export function useAuth(options?: UseAuthOptions) {
       error: meQuery.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     }),
-    [meQuery.data, meQuery.error, meQuery.isLoading],
+    [meQuery.data, meQuery.error, meQuery.isLoading]
   );
 
   useEffect(() => {
@@ -37,12 +37,7 @@ export function useAuth(options?: UseAuthOptions) {
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
     if (redirectPath) window.location.href = redirectPath;
-  }, [
-    redirectOnUnauthenticated,
-    redirectPath,
-    meQuery.isLoading,
-    state.user,
-  ]);
+  }, [redirectOnUnauthenticated, redirectPath, meQuery.isLoading, state.user]);
 
   return {
     ...state,

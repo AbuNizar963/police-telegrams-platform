@@ -88,6 +88,7 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loading, user } = useAuth();
   const utils = trpc.useUtils();
   const loginMutation = trpc.auth.login.useMutation({
@@ -184,6 +185,8 @@ export default function DashboardLayout({
           "--sidebar-width": `${sidebarWidth}px`,
         } as CSSProperties
       }
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
@@ -250,7 +253,7 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           side="right"
-          collapsible="icon"
+          collapsible="offcanvas"
           className="border-l-0"
           disableTransition={isResizing}
         >
@@ -347,6 +350,14 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
+        {!isMobile && (
+          <div className="sticky top-0 z-40 flex h-12 items-center border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+            <SidebarTrigger
+              className="h-9 w-9 rounded-lg bg-background"
+              aria-label="فتح القائمة الجانبية"
+            />
+          </div>
+        )}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">

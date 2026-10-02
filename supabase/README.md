@@ -1,10 +1,12 @@
 # Supabase integration
 
-This directory contains the first PostgreSQL migration, RLS policies, private Storage bucket rules, and local seed data for the police telegram platform.
+This directory contains the PostgreSQL migrations, RLS policies, private Storage bucket rules, and local seed data for the police telegram platform.
 
 ## Important status
 
 The application now supports Supabase Auth as its primary authentication provider when the Supabase environment variables are configured. Without those variables, the existing Manus authentication remains available as a compatibility fallback. The current application data layer still uses the MySQL-compatible adapter until the PostgreSQL migration is activated.
+
+The additive `20261002000000_delivery_workflow_foundation.sql` migration adds organizations, units, memberships, organization-scoped telegram access, immutable telegram versions/actions, and numbering sequence primitives required by the delivery report. It is a staged PostgreSQL foundation; it must be applied and tested in a Supabase development project before production.
 
 ## Local workflow
 

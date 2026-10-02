@@ -147,11 +147,36 @@ export async function getTelegramById(id: number) {
   return rows[0];
 }
 
+export async function getTelegramByIdempotencyKey(idempotencyKey: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(telegrams)
+    .where(eq(telegrams.idempotencyKey, idempotencyKey))
+    .limit(1);
+  return rows[0];
+}
+
 export async function createTelegram(input: InsertTelegram) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   const result = await db.insert(telegrams).values(input);
   return getTelegramById(Number(result[0].insertId));
+}
+
+export async function updateTelegramStatus(
+  id: number,
+  status: "pending" | "in_progress" | "resolved" | "archived",
+  archivedAt?: Date | null
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db
+    .update(telegrams)
+    .set({ status, archivedAt: archivedAt ?? null })
+    .where(eq(telegrams.id, id));
+  return getTelegramById(id);
 }
 
 export async function writeAuditLog(input: typeof auditLogs.$inferInsert) {

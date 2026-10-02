@@ -9,7 +9,9 @@ const mocked = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
   getOrCreateSettings: vi.fn(),
   getTelegramById: vi.fn(),
+  getTelegramByIdempotencyKey: vi.fn(),
   listTelegrams: vi.fn(),
+  updateTelegramStatus: vi.fn(),
 }));
 
 vi.mock("./data/database", () => mocked);
@@ -42,6 +44,7 @@ describe("telegrams.create", () => {
       ...input,
     }));
     mocked.writeAuditLog.mockResolvedValue(undefined);
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -77,5 +80,89 @@ describe("telegrams.create", () => {
         entityType: "telegram",
       })
     );
+  });
+
+  it("returns the existing telegram for a repeated idempotency key", async () => {
+    const caller = appRouter.createCaller(createContext());
+    const input = {
+      idempotencyKey: "telegram-retry-key-42",
+      subject: "تنبيه مكرر",
+      recipient: "غرفة العمليات",
+      body: "يجب ألا ينشئ هذا الطلب سجلين",
+      classification: "normal" as const,
+      priority: "normal" as const,
+      category: "administrative" as const,
+    };
+    const first = await caller.telegrams.create(input);
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(first);
+    const second = await caller.telegrams.create(input);
+
+    expect(second).toEqual(first);
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows administrators to move a telegram through the supported lifecycle", async () => {
+    const adminContext = createContext();
+    adminContext.user = { ...adminContext.user, role: "admin" };
+    const existing = {
+      id: 7,
+      status: "pending" as const,
+      createdByUserId: 42,
+    };
+    mocked.getTelegramById.mockResolvedValue(existing);
+    mocked.updateTelegramStatus.mockResolvedValue({
+      ...existing,
+      status: "in_progress",
+    });
+    const caller = appRouter.createCaller(adminContext);
+
+    const result = await caller.telegrams.updateStatus({
+      id: 7,
+      status: "in_progress",
+      reason: "تمت إحالة البرقية إلى القسم المختص",
+    });
+
+    expect(result?.status).toBe("in_progress");
+    expect(mocked.updateTelegramStatus).toHaveBeenCalledWith(
+      7,
+      "in_progress",
+      null
+    );
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "telegram.status.in_progress",
+        entityId: "7",
+      })
+    );
+  });
+
+  it("rejects lifecycle changes from non-administrators", async () => {
+    mocked.getTelegramById.mockResolvedValue({
+      id: 7,
+      status: "pending" as const,
+      createdByUserId: 42,
+    });
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.updateStatus({ id: 7, status: "in_progress" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocked.updateTelegramStatus).not.toHaveBeenCalled();
+  });
+
+  it("rejects a backward lifecycle transition", async () => {
+    const adminContext = createContext();
+    adminContext.user = { ...adminContext.user, role: "admin" };
+    mocked.getTelegramById.mockResolvedValue({
+      id: 7,
+      status: "resolved" as const,
+      createdByUserId: 42,
+    });
+    const caller = appRouter.createCaller(adminContext);
+
+    await expect(
+      caller.telegrams.updateStatus({ id: 7, status: "in_progress" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocked.updateTelegramStatus).not.toHaveBeenCalled();
   });
 });

@@ -690,6 +690,7 @@ function TelegramComposer({
   pending: boolean;
   close: () => void;
   submit: (values: {
+    idempotencyKey: string;
     subject: string;
     recipient: string;
     body: string;
@@ -705,6 +706,12 @@ function TelegramComposer({
     useState<Classification>("normal");
   const [priority, setPriority] = useState<Priority>("normal");
   const [category, setCategory] = useState<Category>("administrative");
+  const [idempotencyKey] = useState(() => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+    return `telegram-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  });
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -810,6 +817,7 @@ function TelegramComposer({
     )
       return toast.error("أكمل الموضوع والجهة ونص البرقية");
     submit({
+      idempotencyKey,
       subject: subject.trim(),
       recipient: recipient.trim(),
       body: body.trim(),

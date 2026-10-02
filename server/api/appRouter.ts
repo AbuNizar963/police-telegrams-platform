@@ -15,7 +15,9 @@ import {
   getDashboardStats,
   getOrCreateSettings,
   getTelegramById,
+  getTelegramByIdempotencyKey,
   listTelegrams,
+  updateTelegramStatus,
   writeAuditLog,
 } from "../data/database";
 import { storagePut } from "../storage";
@@ -25,6 +27,32 @@ import { transcribeAudio } from "../_core/voiceTranscription";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
+const telegramStatusSchema = z.enum([
+  "pending",
+  "in_progress",
+  "resolved",
+  "archived",
+]);
+
+function isDuplicateEntryError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (("code" in error &&
+      (error as { code?: unknown }).code === "ER_DUP_ENTRY") ||
+      ("errno" in error && (error as { errno?: unknown }).errno === 1062))
+  );
+}
+
+const allowedStatusTransitions: Record<
+  "pending" | "in_progress" | "resolved" | "archived",
+  Array<"pending" | "in_progress" | "resolved" | "archived">
+> = {
+  pending: ["in_progress", "archived"],
+  in_progress: ["resolved", "archived"],
+  resolved: ["archived"],
+  archived: [],
+};
 
 function sanitizeAttachmentFileName(fileName: string) {
   const sanitized = fileName
@@ -492,6 +520,47 @@ export const appRouter = router({
           });
         return telegram;
       }),
+    updateStatus: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          status: telegramStatusSchema,
+          reason: z.string().trim().min(3).max(500).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getTelegramById(input.id);
+        if (!existing)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        if (existing.status === input.status) return existing;
+        if (!allowedStatusTransitions[existing.status].includes(input.status)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "انتقال حالة البرقية غير مسموح",
+          });
+        }
+        const updated = await updateTelegramStatus(
+          input.id,
+          input.status,
+          input.status === "archived" ? new Date() : null
+        );
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+          action: `telegram.status.${input.status}`,
+          entityType: "telegram",
+          entityId: String(input.id),
+          metadata: JSON.stringify({
+            from: existing.status,
+            to: input.status,
+            reason: input.reason ?? null,
+          }),
+        });
+        return updated;
+      }),
     create: protectedProcedure
       .input(
         z.object({
@@ -507,12 +576,30 @@ export const appRouter = router({
             "security",
             "tactical",
           ]),
+          idempotencyKey: z.string().trim().min(16).max(64).optional(),
           attachmentManifest: z.string().max(10000).optional(),
           gpsLatitude: z.string().max(40).optional(),
           gpsLongitude: z.string().max(40).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (input.idempotencyKey) {
+          const existing = await getTelegramByIdempotencyKey(
+            input.idempotencyKey
+          );
+          if (existing) {
+            if (
+              existing.createdByUserId !== ctx.user.id &&
+              ctx.user.role !== "admin"
+            ) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "مفتاح الحفظ مرتبط ببرقية لا تملك صلاحية الوصول إليها",
+              });
+            }
+            return existing;
+          }
+        }
         const attachmentManifest = validateAttachmentManifest(
           input.attachmentManifest,
           ctx.user.id,
@@ -538,18 +625,31 @@ export const appRouter = router({
           typeof creatorIpHeader === "string"
             ? creatorIpHeader.split(",")[0].trim()
             : null;
-        const telegram = await createTelegram({
-          ...input,
-          attachmentManifest,
-          serialNumber,
-          serialCode,
-          createdByUserId: ctx.user.id,
-          creatorName,
-          creatorEmail: ctx.user.email ?? null,
-          creatorBadgeId: ctx.user.badgeNumber ?? null,
-          creatorIp,
-          creatorFingerprint: ctx.user.openId,
-        });
+        let telegram;
+        try {
+          telegram = await createTelegram({
+            ...input,
+            attachmentManifest,
+            serialNumber,
+            serialCode,
+            createdByUserId: ctx.user.id,
+            creatorName,
+            creatorEmail: ctx.user.email ?? null,
+            creatorBadgeId: ctx.user.badgeNumber ?? null,
+            creatorIp,
+            creatorFingerprint: ctx.user.openId,
+          });
+        } catch (error) {
+          if (!input.idempotencyKey || !isDuplicateEntryError(error))
+            throw error;
+          const existing = await getTelegramByIdempotencyKey(
+            input.idempotencyKey
+          );
+          if (!existing || existing.createdByUserId !== ctx.user.id)
+            throw error;
+          telegram = existing;
+        }
+        if (!telegram) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: creatorName,

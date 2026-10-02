@@ -1,4 +1,12 @@
-import { index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  index,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 /** Core user table backing the Manus OAuth flow. */
 export const users = mysqlTable("users", {
@@ -16,17 +24,36 @@ export const users = mysqlTable("users", {
 
 export const departmentSettings = mysqlTable("department_settings", {
   id: int("id").autoincrement().primaryKey(),
-  configKey: varchar("configKey", { length: 32 }).default("primary").notNull().unique(),
-  departmentName: varchar("departmentName", { length: 255 }).default("إدارة الشرطة").notNull(),
-  unitName: varchar("unitName", { length: 255 }).default("وحدة العمليات").notNull(),
-  unitChiefRank: varchar("unitChiefRank", { length: 120 }).default("العقيد").notNull(),
-  unitChiefName: varchar("unitChiefName", { length: 255 }).default("رئيس الوحدة").notNull(),
-  serialPrefix: varchar("serialPrefix", { length: 24 }).default("POL").notNull(),
+  configKey: varchar("configKey", { length: 32 })
+    .default("primary")
+    .notNull()
+    .unique(),
+  departmentName: varchar("departmentName", { length: 255 })
+    .default("إدارة الشرطة")
+    .notNull(),
+  unitName: varchar("unitName", { length: 255 })
+    .default("وحدة العمليات")
+    .notNull(),
+  unitChiefRank: varchar("unitChiefRank", { length: 120 })
+    .default("العقيد")
+    .notNull(),
+  unitChiefName: varchar("unitChiefName", { length: 255 })
+    .default("رئيس الوحدة")
+    .notNull(),
+  serialPrefix: varchar("serialPrefix", { length: 24 })
+    .default("POL")
+    .notNull(),
   serialStart: int("serialStart").default(1).notNull(),
   nextSerial: int("nextSerial").default(1).notNull(),
-  timezone: varchar("timezone", { length: 64 }).default("Asia/Riyadh").notNull(),
-  dateFormat: varchar("dateFormat", { length: 32 }).default("dd/MM/yyyy HH:mm:ss").notNull(),
-  numberSystem: mysqlEnum("numberSystem", ["latin", "arabic", "hindi"]).default("latin").notNull(),
+  timezone: varchar("timezone", { length: 64 })
+    .default("Asia/Riyadh")
+    .notNull(),
+  dateFormat: varchar("dateFormat", { length: 32 })
+    .default("dd/MM/yyyy HH:mm:ss")
+    .notNull(),
+  numberSystem: mysqlEnum("numberSystem", ["latin", "arabic", "hindi"])
+    .default("latin")
+    .notNull(),
   logoUrl: text("logoUrl"),
   updatedByUserId: int("updatedByUserId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -41,6 +68,7 @@ export const telegrams = mysqlTable(
     serialCode: varchar("serialCode", { length: 48 }).notNull().unique(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 64 }).unique(),
     createdByUserId: int("createdByUserId").notNull(),
     creatorName: varchar("creatorName", { length: 255 }).notNull(),
     creatorEmail: varchar("creatorEmail", { length: 320 }),
@@ -50,10 +78,29 @@ export const telegrams = mysqlTable(
     subject: varchar("subject", { length: 255 }).notNull(),
     recipient: varchar("recipient", { length: 255 }).notNull(),
     body: text("body").notNull(),
-    classification: mysqlEnum("classification", ["secret", "normal"]).default("normal").notNull(),
-    priority: mysqlEnum("priority", ["slow", "normal", "urgent"]).default("normal").notNull(),
-    category: mysqlEnum("category", ["criminal", "administrative", "traffic", "security", "tactical"]).default("administrative").notNull(),
-    status: mysqlEnum("status", ["pending", "in_progress", "resolved", "archived"]).default("pending").notNull(),
+    classification: mysqlEnum("classification", ["secret", "normal"])
+      .default("normal")
+      .notNull(),
+    priority: mysqlEnum("priority", ["slow", "normal", "urgent"])
+      .default("normal")
+      .notNull(),
+    category: mysqlEnum("category", [
+      "criminal",
+      "administrative",
+      "traffic",
+      "security",
+      "tactical",
+    ])
+      .default("administrative")
+      .notNull(),
+    status: mysqlEnum("status", [
+      "pending",
+      "in_progress",
+      "resolved",
+      "archived",
+    ])
+      .default("pending")
+      .notNull(),
     attachmentManifest: text("attachmentManifest"),
     gpsLatitude: varchar("gpsLatitude", { length: 40 }),
     gpsLongitude: varchar("gpsLongitude", { length: 40 }),
@@ -62,8 +109,10 @@ export const telegrams = mysqlTable(
   table => ({
     creatorIdx: index("telegrams_creator_idx").on(table.createdByUserId),
     createdAtIdx: index("telegrams_created_at_idx").on(table.createdAt),
-    classificationIdx: index("telegrams_classification_idx").on(table.classification),
-  }),
+    classificationIdx: index("telegrams_classification_idx").on(
+      table.classification
+    ),
+  })
 );
 
 export const auditLogs = mysqlTable(
@@ -81,7 +130,7 @@ export const auditLogs = mysqlTable(
   table => ({
     actorIdx: index("audit_actor_idx").on(table.actorUserId),
     createdAtIdx: index("audit_created_at_idx").on(table.createdAt),
-  }),
+  })
 );
 
 export type User = typeof users.$inferSelect;

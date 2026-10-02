@@ -815,25 +815,51 @@ export default function Home() {
                 />
                 <QuickAction
                   icon={MapPinned}
-                  label="المواقع المسجلة"
-                  detail="البرقيات ذات الإحداثيات"
+                  label="خريطة البلاغات والمواقع"
+                  detail="عرض المواقع المسجلة والتحقق منها"
                   onClick={() =>
-                    toast.info("تظهر الإحداثيات المسجلة داخل تفاصيل البرقية")
+                    window.dispatchEvent(
+                      new CustomEvent("open-operations-workspace", {
+                        detail: { tab: "locations" },
+                      })
+                    )
                   }
                 />
                 <QuickAction
                   icon={Users}
-                  label="الوحدات المرتبطة"
-                  detail="الوحدات المتاحة للإحالة"
+                  label="الوحدات الميدانية"
+                  detail="حالة الوحدات والجهات القابلة للإحالة"
                   onClick={() =>
-                    toast.info("اختر البرقية ثم استخدم لوحة الإحالة المركزية")
+                    window.dispatchEvent(
+                      new CustomEvent("open-operations-workspace", {
+                        detail: { tab: "units" },
+                      })
+                    )
+                  }
+                />
+                <QuickAction
+                  icon={Activity}
+                  label="إدارة الموارد"
+                  detail="توزيع الحمل التشغيلي على الجهات"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("open-operations-workspace", {
+                        detail: { tab: "resources" },
+                      })
+                    )
                   }
                 />
                 <QuickAction
                   icon={Archive}
-                  label="الأرشيف"
-                  detail="السجلات المغلقة"
-                  onClick={() => setStatus("archived")}
+                  label="الأرشيف والسجلات المغلقة"
+                  detail="بحث آمن في السجلات المحفوظة"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("open-operations-workspace", {
+                        detail: { tab: "archive" },
+                      })
+                    )
+                  }
                 />
               </div>
             </CardContent>

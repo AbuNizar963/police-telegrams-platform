@@ -20,16 +20,44 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Shield } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  LayoutDashboard,
+  LogOut,
+  MapPinned,
+  PanelLeft,
+  Shield,
+  Users,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
+  { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
+  {
+    key: "locations",
+    icon: MapPinned,
+    label: "خريطة البلاغات والمواقع",
+    tab: "locations",
+  },
+  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
+  {
+    key: "resources",
+    icon: Activity,
+    label: "إدارة الموارد",
+    tab: "resources",
+  },
+  {
+    key: "archive",
+    icon: Archive,
+    label: "الأرشيف والسجلات المغلقة",
+    tab: "archive",
+  },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -61,7 +89,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -127,9 +155,7 @@ export default function DashboardLayout({
           <Button
             type="submit"
             size="lg"
-            disabled={
-              loginMutation.isPending || !username.trim() || !password
-            }
+            disabled={loginMutation.isPending || !username.trim() || !password}
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
             {loginMutation.isPending ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول"}
@@ -240,10 +266,20 @@ function DashboardLayoutContent({
               {menuItems.map(item => {
                 const isActive = location === item.path;
                 return (
-                  <SidebarMenuItem key={item.path}>
+                  <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => setLocation(item.path)}
+                      onClick={() => {
+                        if (item.tab) {
+                          window.dispatchEvent(
+                            new CustomEvent("open-operations-workspace", {
+                              detail: { tab: item.tab },
+                            })
+                          );
+                        } else if (item.path) {
+                          setLocation(item.path);
+                        }
+                      }}
                       tooltip={item.label}
                       className={`h-10 transition-all font-normal`}
                     >
@@ -314,9 +350,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">
-          {children}
-        </main>
+        <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
     </>
   );

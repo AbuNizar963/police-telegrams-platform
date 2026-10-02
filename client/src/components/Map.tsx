@@ -19,7 +19,7 @@ function loadMapScript(): Promise<void> {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
   if (!apiKey) {
     return Promise.reject(
-      new Error("VITE_GOOGLE_MAPS_API_KEY is required to load Google Maps"),
+      new Error("VITE_GOOGLE_MAPS_API_KEY is required to load Google Maps")
     );
   }
 
@@ -40,10 +40,17 @@ function loadMapScript(): Promise<void> {
   return loaderPromise;
 }
 
+export interface MapMarker {
+  id: string;
+  position: google.maps.LatLngLiteral;
+  title: string;
+}
+
 interface MapViewProps {
   className?: string;
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
+  markers?: MapMarker[];
   onMapReady?: (map: google.maps.Map) => void;
 }
 
@@ -51,6 +58,7 @@ export function MapView({
   className,
   initialCenter = { lat: 33.5138, lng: 36.2765 },
   initialZoom = 12,
+  markers = [],
   onMapReady,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -67,6 +75,14 @@ export function MapView({
       fullscreenControl: true,
       zoomControl: true,
       streetViewControl: true,
+    });
+
+    markers.forEach(marker => {
+      new window.google!.maps.Marker({
+        map: map.current!,
+        position: marker.position,
+        title: marker.title,
+      });
     });
 
     onMapReady?.(map.current);

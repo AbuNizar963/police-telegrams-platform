@@ -43,9 +43,9 @@ assert(
 
 assert(
   dashboardLayout.includes(
-    '{!isCollapsed ? (\n                <BrandMark size="sm" showLabel className="min-w-0" />'
-  ),
-  "The sidebar brand must be hidden when the desktop sidebar is collapsed."
+    "const showSidebarBrand = isMobile || !isCollapsed;"
+  ) && dashboardLayout.includes("{showSidebarBrand ? ("),
+  "The sidebar brand must be visible on mobile and only when the desktop sidebar is expanded."
 );
 
 assert(

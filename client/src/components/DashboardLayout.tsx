@@ -52,6 +52,7 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loading, user, usesSupabase } = useAuth();
 
   useEffect(() => {
@@ -100,6 +101,8 @@ export default function DashboardLayout({
           "--sidebar-width": `${sidebarWidth}px`,
         } as CSSProperties
       }
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
@@ -171,22 +174,23 @@ function DashboardLayoutContent({
           className="border-r-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
+          <SidebarHeader className="relative h-16 justify-center px-2">
+            <div className="flex w-full items-center gap-3 pr-1">
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-opacity duration-150 group-data-[collapsible=icon]:invisible group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:flex-none">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm">
+                  <Shield className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <span className="truncate font-semibold tracking-tight">
+                  نظام الشرطة
+                </span>
+              </div>
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={isCollapsed ? "فتح القائمة" : "إغلاق القائمة"}
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    نظام الشرطة
-                  </span>
-                </div>
-              ) : null}
             </div>
           </SidebarHeader>
 

@@ -21,13 +21,11 @@ import {
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
-  Activity,
   Archive,
   LayoutDashboard,
   LogOut,
-  MapPinned,
   PanelLeft,
-  Users,
+  Workflow,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -40,17 +38,10 @@ import { BrandMark } from "./BrandMark";
 const menuItems = [
   { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
   {
-    key: "locations",
-    icon: MapPinned,
-    label: "خريطة البلاغات والمواقع",
+    key: "operations",
+    icon: Workflow,
+    label: "مركز العمليات",
     tab: "locations",
-  },
-  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
-  {
-    key: "resources",
-    icon: Activity,
-    label: "إدارة الموارد",
-    tab: "resources",
   },
   {
     key: "archive",

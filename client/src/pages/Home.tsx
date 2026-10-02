@@ -22,10 +22,11 @@ import {
   FileImage,
   FileText,
   ImagePlus,
+  Inbox,
   Filter,
+  ListFilter,
   LocateFixed,
   LockKeyhole,
-  MapPinned,
   Menu,
   Mic,
   Plus,
@@ -33,7 +34,7 @@ import {
   Radio,
   Search,
   Save,
-  Settings2,
+  Send,
   Share2,
   Shield,
   Siren,
@@ -41,7 +42,6 @@ import {
   Square,
   Upload,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -278,6 +278,9 @@ export default function Home() {
   const [priority, setPriority] = useState<"all" | Priority>("all");
   const [status, setStatus] = useState<"all" | Status>("all");
   const [category, setCategory] = useState<"all" | Category>("all");
+  const [telegramView, setTelegramView] = useState<
+    "all" | "outgoing" | "incoming"
+  >("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -377,7 +380,7 @@ export default function Home() {
       status: status === "all" ? undefined : status,
       category: category === "all" ? undefined : category,
       page,
-      pageSize: 50,
+      pageSize: 100,
     }),
     [search, severity, priority, status, category, page]
   );
@@ -421,7 +424,12 @@ export default function Home() {
   const numberSystem = ((
     settings.data as { numberSystem?: NumberSystem } | undefined
   )?.numberSystem ?? "latin") as NumberSystem;
-  const rows = list.data ?? [];
+  const allRows = list.data ?? [];
+  const rows = allRows.filter(row => {
+    if (telegramView === "all") return true;
+    const isOutgoing = row.organizationId === row.currentOrganizationId;
+    return telegramView === "outgoing" ? isOutgoing : !isOutgoing;
+  });
 
   return (
     <div dir="rtl" className="min-h-[calc(100vh-3rem)] space-y-4 pb-10">
@@ -613,6 +621,37 @@ export default function Home() {
               />
             </div>
           </div>
+          <div className="flex flex-wrap gap-2 border-b bg-muted/10 px-4 py-3 sm:px-5">
+            <TelegramViewButton
+              active={telegramView === "all"}
+              icon={ListFilter}
+              label="كل البرقيات"
+              count={allRows.length}
+              onClick={() => setTelegramView("all")}
+            />
+            <TelegramViewButton
+              active={telegramView === "outgoing"}
+              icon={Send}
+              label="البرقيات الصادرة"
+              count={
+                allRows.filter(
+                  row => row.organizationId === row.currentOrganizationId
+                ).length
+              }
+              onClick={() => setTelegramView("outgoing")}
+            />
+            <TelegramViewButton
+              active={telegramView === "incoming"}
+              icon={Inbox}
+              label="البرقيات الواردة"
+              count={
+                allRows.filter(
+                  row => row.organizationId !== row.currentOrganizationId
+                ).length
+              }
+              onClick={() => setTelegramView("incoming")}
+            />
+          </div>
           {filtersOpen && (
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
@@ -719,6 +758,17 @@ export default function Home() {
                 className={`group ${desktopGridClass} px-4 py-4`}
               >
                 <div className="flex items-center gap-2">
+                  {row.organizationId === row.currentOrganizationId ? (
+                    <Send
+                      className="h-3.5 w-3.5 text-blue-600"
+                      aria-label="صادرة"
+                    />
+                  ) : (
+                    <Inbox
+                      className="h-3.5 w-3.5 text-emerald-600"
+                      aria-label="واردة"
+                    />
+                  )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
                     {localizeDigits(row.serialCode, numberSystem)}
                   </span>
@@ -772,7 +822,7 @@ export default function Home() {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={rows.length < 50 || list.isFetching}
+                disabled={allRows.length < 100 || list.isFetching}
                 onClick={() => setPage(current => current + 1)}
               >
                 التالي
@@ -784,80 +834,47 @@ export default function Home() {
         <aside className="space-y-4">
           <Card className="border-border/70 shadow-sm">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Command className="h-4 w-4 text-[#9b7c3d]" />
-                  <h3 className="font-bold">مركز الإجراءات</h3>
-                </div>
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <Command className="h-4 w-4 text-[#9b7c3d]" />
+                <h3 className="font-bold">ملخص الاتجاهات</h3>
               </div>
-              <div className="mt-4 space-y-2">
-                {me.data?.role === "admin" && (
-                  <QuickAction
-                    icon={Users}
-                    label="إدارة حسابات الشرطيين"
-                    detail="إنشاء حسابات الدخول ومراجعة المسجلين"
-                    onClick={() =>
-                      window.dispatchEvent(
-                        new CustomEvent("open-owner-user-management")
-                      )
-                    }
-                  />
-                )}
-                <QuickAction
-                  icon={Plus}
-                  label="إنشاء برقية"
-                  detail="فتح نموذج موثق"
-                  onClick={() => setComposerOpen(true)}
-                />
-                <QuickAction
-                  icon={MapPinned}
-                  label="خريطة البلاغات والمواقع"
-                  detail="عرض المواقع المسجلة والتحقق منها"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("open-operations-workspace", {
-                        detail: { tab: "locations" },
-                      })
-                    )
-                  }
-                />
-                <QuickAction
-                  icon={Users}
-                  label="الوحدات الميدانية"
-                  detail="حالة الوحدات والجهات القابلة للإحالة"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("open-operations-workspace", {
-                        detail: { tab: "units" },
-                      })
-                    )
-                  }
-                />
-                <QuickAction
-                  icon={Activity}
-                  label="إدارة الموارد"
-                  detail="توزيع الحمل التشغيلي على الجهات"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("open-operations-workspace", {
-                        detail: { tab: "resources" },
-                      })
-                    )
-                  }
-                />
-                <QuickAction
-                  icon={Archive}
-                  label="الأرشيف والسجلات المغلقة"
-                  detail="بحث آمن في السجلات المحفوظة"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("open-operations-workspace", {
-                        detail: { tab: "archive" },
-                      })
-                    )
-                  }
-                />
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                استخدم التبويبات أعلى السجل للتنقل بين كل البرقيات والصادرة
+                والواردة.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTelegramView("outgoing")}
+                  className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-right text-xs text-blue-800 transition hover:border-blue-400 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
+                >
+                  <Send className="mb-2 h-4 w-4" />
+                  <span className="block font-bold">الصادرة</span>
+                  <span className="mt-1 block opacity-70">
+                    {
+                      allRows.filter(
+                        row => row.organizationId === row.currentOrganizationId
+                      ).length
+                    }{" "}
+                    ظاهرة
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTelegramView("incoming")}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-right text-xs text-emerald-800 transition hover:border-emerald-400 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
+                >
+                  <Inbox className="mb-2 h-4 w-4" />
+                  <span className="block font-bold">الواردة</span>
+                  <span className="mt-1 block opacity-70">
+                    {
+                      allRows.filter(
+                        row => row.organizationId !== row.currentOrganizationId
+                      ).length
+                    }{" "}
+                    ظاهرة
+                  </span>
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -1203,32 +1220,33 @@ function TelegramReportModal({
   );
 }
 
-function QuickAction({
+function TelegramViewButton({
+  active,
   icon: Icon,
   label,
-  detail,
+  count,
   onClick,
 }: {
-  icon: typeof Plus;
+  active: boolean;
+  icon: typeof ListFilter;
   label: string;
-  detail: string;
+  count: number;
   onClick: () => void;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-right transition-colors hover:border-[#b4945a] hover:bg-[#fffaf0] dark:hover:bg-[#2d281b]"
+      aria-pressed={active}
+      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${active ? "border-[#10233f] bg-[#10233f] text-white shadow-sm" : "bg-background text-muted-foreground hover:border-[#b4945a] hover:text-foreground"}`}
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10233f] text-[#d8c38e]">
-        <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4" />
+      <span>{label}</span>
+      <span
+        className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15" : "bg-muted"}`}
+      >
+        {count}
       </span>
-      <span className="min-w-0">
-        <span className="block text-xs font-bold">{label}</span>
-        <span className="mt-0.5 block text-[10px] text-muted-foreground">
-          {detail}
-        </span>
-      </span>
-      <ChevronLeft className="mr-auto h-3.5 w-3.5 text-muted-foreground" />
     </button>
   );
 }
@@ -1477,6 +1495,7 @@ function TelegramComposer({
       title="إنشاء برقية تشغيلية"
       subtitle="سيتم تثبيت هويتك الرقمية تلقائيًا من الحساب الموثق."
       close={close}
+      fullScreenOnMobile
     >
       <div className="grid gap-4">
         {!online && (
@@ -1574,7 +1593,7 @@ function TelegramComposer({
             autoCapitalize="off"
             onChange={event => setBody(event.target.value)}
             placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..."
-            className="min-h-36 rounded-lg leading-7"
+            className="min-h-[30vh] rounded-lg leading-7 sm:min-h-36"
           />
         </label>
 
@@ -3186,17 +3205,21 @@ function Modal({
   subtitle,
   close,
   children,
+  fullScreenOnMobile = false,
 }: {
   title: string;
   subtitle: string;
   close: () => void;
   children: React.ReactNode;
+  fullScreenOnMobile?: boolean;
 }) {
   return (
-    <div className="telegram-print-modal fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+    <div
+      className={`telegram-print-modal fixed inset-0 z-50 flex justify-center bg-slate-950/60 p-0 backdrop-blur-sm ${fullScreenOnMobile ? "items-start sm:items-center" : "items-end sm:items-center sm:p-6"}`}
+    >
       <div
         dir="rtl"
-        className="max-h-[94vh] w-full overflow-y-auto rounded-t-[1.5rem] bg-background p-5 shadow-2xl sm:max-w-2xl sm:rounded-2xl sm:p-7"
+        className={`w-full overflow-y-auto bg-background p-5 shadow-2xl sm:max-h-[94vh] sm:max-w-2xl sm:rounded-2xl sm:p-7 ${fullScreenOnMobile ? "h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[94vh] rounded-t-[1.5rem]"}`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>

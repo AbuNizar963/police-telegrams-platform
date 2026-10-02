@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import {
-  CheckCircle2,
-  CircleHelp,
-  LoaderCircle,
-  ShieldCheck,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, CircleHelp, LoaderCircle, XCircle } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 
 type VerificationResult = {
   valid: boolean;
@@ -67,11 +62,11 @@ export default function VerifyTelegram() {
     <main
       dir="rtl"
       lang="ar"
-      className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8"
+      className="flex min-h-screen items-center justify-center bg-background px-4 py-8"
     >
-      <section className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+      <section className="surface-elevated w-full max-w-lg overflow-hidden rounded-[1.5rem] border bg-card shadow-xl">
         <header className="flex items-center gap-3 bg-[#10233f] px-6 py-5 text-white">
-          <ShieldCheck className="h-8 w-8 text-[#d8c38e]" aria-hidden="true" />
+          <BrandMark size="sm" imageClassName="brightness-110" />
           <div>
             <p className="text-sm text-slate-300">منظومة البرقيات الرسمية</p>
             <h1 className="text-xl font-bold">التحقق من صحة البرقية</h1>

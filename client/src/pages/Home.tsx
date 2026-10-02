@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
+import { BrandMark } from "@/components/BrandMark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -426,9 +427,7 @@ export default function Home() {
     <div dir="rtl" className="min-h-[calc(100vh-3rem)] space-y-4 pb-10">
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm">
-            <Radio className="h-5 w-5" />
-          </div>
+          <BrandMark size="md" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">

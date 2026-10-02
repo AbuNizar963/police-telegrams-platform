@@ -8,8 +8,8 @@ export async function showLocalTelegramNotification(input: {
 
   const options: NotificationOptions = {
     body: `${input.serialCode} — ${input.subject}`,
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     tag: `telegram-${input.telegramId}`,
     dir: "rtl",
     lang: "ar",

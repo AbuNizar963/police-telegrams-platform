@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { BrandMark } from "@/components/BrandMark";
 
 export default function Profile() {
   const [, navigate] = useLocation();
@@ -109,6 +110,7 @@ export default function Profile() {
       className="mx-auto w-full max-w-5xl space-y-6 p-4 pb-12 sm:p-6"
     >
       <div className="flex items-center gap-3">
+        <BrandMark size="sm" />
         <Button
           type="button"
           variant="ghost"

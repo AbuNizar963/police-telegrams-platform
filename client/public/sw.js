@@ -1,5 +1,5 @@
 const CACHE_NAME = "police-telegrams-shell-v2";
-const SHELL = ["/", "/manifest.json"];
+const SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -37,8 +37,8 @@ self.addEventListener("push", event => {
   event.waitUntil(
     self.registration.showNotification(payload.title || "تنبيه برقيات الشرطة", {
       body: payload.body || "لديك إشعار جديد في مركز البرقيات",
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       dir: "rtl",
       lang: "ar",
       tag: payload.tag || "police-telegram",

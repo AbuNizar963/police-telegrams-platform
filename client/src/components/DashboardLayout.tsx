@@ -27,7 +27,6 @@ import {
   LogOut,
   MapPinned,
   PanelLeft,
-  Shield,
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -36,6 +35,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
+import { BrandMark } from "./BrandMark";
 
 const menuItems = [
   { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
@@ -96,16 +96,14 @@ export default function DashboardLayout({
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
         <form
-          className="flex w-full max-w-md flex-col gap-6 rounded-2xl border bg-card p-8 shadow-lg"
+          className="surface-elevated flex w-full max-w-md flex-col gap-6 rounded-[1.5rem] border bg-card/95 p-6 shadow-lg backdrop-blur sm:p-8"
           onSubmit={event => {
             event.preventDefault();
             loginMutation.mutate({ username, password });
           }}
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#10233f] text-[#d8c38e] shadow-lg">
-              <Shield className="h-8 w-8" />
-            </div>
+            <BrandMark size="lg" />
             <h1 className="text-2xl font-semibold tracking-tight text-center">
               تسجيل الدخول إلى النظام
             </h1>
@@ -251,13 +249,12 @@ function DashboardLayoutContent({
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
-              {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    نظام البرقيات
-                  </span>
-                </div>
-              ) : null}
+              <BrandMark
+                size="sm"
+                showLabel={!isCollapsed}
+                compactLabel={isCollapsed}
+                className="min-w-0"
+              />
             </div>
           </SidebarHeader>
 
@@ -340,17 +337,14 @@ function DashboardLayoutContent({
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
+              <BrandMark size="sm" showLabel compactLabel />
+              <span className="sr-only">
+                {activeMenuItem?.label ?? "القائمة"}
+              </span>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="min-w-0 flex-1 p-3 sm:p-4 lg:p-6">{children}</main>
       </SidebarInset>
     </>
   );

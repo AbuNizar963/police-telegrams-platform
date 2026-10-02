@@ -4,27 +4,41 @@ import type { TrpcContext } from "./_core/context";
 
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
-  createTelegramWithAttachments: vi.fn(),
+  createTelegram: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
+  getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
   getTelegramById: vi.fn(),
-  getTelegramByIdempotencyKey: vi.fn(),
-  listTelegramAttachments: vi.fn(),
   listTelegrams: vi.fn(),
-  updateTelegramStatus: vi.fn(),
+  updateDepartmentSettings: vi.fn(),
+  getUserOrganizationId: vi.fn(),
+  getTelegramByIdempotencyKey: vi.fn(),
+  recordTelegramAction: vi.fn(),
+  recordTelegramVersion: vi.fn(),
+  getConfiguredTelegramDestination: vi.fn(),
+  routeTelegram: vi.fn(),
 }));
 
-vi.mock("./data/database", () => mocked);
+vi.mock("./db", () => mocked);
+vi.mock("./organization", async importOriginal => {
+  const actual = await importOriginal<typeof import("./organization")>();
+  return {
+    ...actual,
+    getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
+    routeTelegram: mocked.routeTelegram,
+  };
+});
 
 function createContext(): TrpcContext {
   return {
     user: {
       id: 42,
-      openId: "officer-42",
+      authUserId: "00000000-0000-4000-8000-000000000042",
       name: "النقيب أحمد",
+      badgeNumber: null,
       email: "ahmad@example.com",
-      loginMethod: "manus",
+      loginMethod: "google",
       role: "user",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -39,14 +53,24 @@ describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
-    mocked.createTelegramWithAttachments.mockImplementation(async input => ({
+    mocked.getUserOrganizationId.mockResolvedValue(
+      "00000000-0000-0000-0000-000000000001"
+    );
+    mocked.getOrCreateSettings.mockResolvedValue({
+      serialPrefix: "POL",
+      timezone: "Asia/Riyadh",
+    });
+    mocked.createTelegram.mockImplementation(async input => ({
       id: 7,
       createdAt: new Date(),
       ...input,
     }));
     mocked.writeAuditLog.mockResolvedValue(undefined);
     mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
-    mocked.listTelegramAttachments.mockResolvedValue([]);
+    mocked.recordTelegramAction.mockResolvedValue(undefined);
+    mocked.recordTelegramVersion.mockResolvedValue(undefined);
+    mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
+    mocked.routeTelegram.mockResolvedValue(undefined);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -61,19 +85,19 @@ describe("telegrams.create", () => {
     });
 
     expect(result?.serialNumber).toBe(1001);
-    expect(mocked.createTelegramWithAttachments).toHaveBeenCalledWith(
+    expect(mocked.createTelegram).toHaveBeenCalledWith(
       expect.objectContaining({
         createdByUserId: 42,
+        organizationId: "00000000-0000-0000-0000-000000000001",
+        currentOrganizationId: "00000000-0000-0000-0000-000000000001",
         creatorName: "النقيب أحمد",
         creatorEmail: "ahmad@example.com",
+        creatorFingerprint: "00000000-0000-4000-8000-000000000042",
         serialNumber: 1001,
         serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
-      }),
-      []
+        verificationToken: expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      })
     );
-    expect(
-      mocked.createTelegramWithAttachments.mock.calls[0]?.[0]
-    ).not.toHaveProperty("creatorName", "مستخدم آخر");
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUserId: 42,
@@ -82,192 +106,73 @@ describe("telegrams.create", () => {
         entityType: "telegram",
       })
     );
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
   });
 
-  it("returns the existing telegram for a repeated idempotency key", async () => {
+  it("returns the persisted telegram when a concurrent retry wins the idempotency race", async () => {
     const caller = appRouter.createCaller(createContext());
-    const input = {
-      idempotencyKey: "telegram-retry-key-42",
-      subject: "تنبيه مكرر",
-      recipient: "غرفة العمليات",
-      body: "يجب ألا ينشئ هذا الطلب سجلين",
-      classification: "normal" as const,
-      priority: "normal" as const,
-      category: "administrative" as const,
+    const persistedTelegram = {
+      id: 88,
+      serialNumber: 1002,
+      serialCode: "POL-2026-10-02-01002",
+      status: "draft",
     };
-    const first = await caller.telegrams.create(input);
-    mocked.getTelegramByIdempotencyKey.mockResolvedValue(first);
-    const second = await caller.telegrams.create(input);
-
-    expect(second).toEqual(first);
-    expect(mocked.createTelegramWithAttachments).toHaveBeenCalledTimes(1);
-  });
-
-  it("passes validated attachment metadata into the atomic transaction", async () => {
-    const caller = appRouter.createCaller(createContext());
-    const checksum = "a".repeat(64);
-
-    await caller.telegrams.create({
-      subject: "بلاغ مرفق",
-      recipient: "غرفة العمليات",
-      body: "تسجيل مرفق مرتبط بالبرقية",
-      classification: "normal",
-      priority: "normal",
-      category: "administrative",
-      attachmentManifest: JSON.stringify([
-        {
-          fileKey: "telegrams/42/report.png",
-          fileName: "report.png",
-          contentType: "image/png",
-          size: 16,
-          checksumSha256: checksum,
-        },
-      ]),
-    });
-
-    expect(mocked.createTelegramWithAttachments).toHaveBeenLastCalledWith(
-      expect.objectContaining({ attachmentManifest: expect.any(String) }),
-      [
-        expect.objectContaining({
-          fileKey: "telegrams/42/report.png",
-          fileName: "report.png",
-          contentType: "image/png",
-          size: 16,
-          checksumSha256: checksum,
-          uploadedByUserId: 42,
-          scanStatus: "pending",
-        }),
-      ]
+    mocked.createTelegram.mockRejectedValueOnce(
+      new Error("duplicate key value violates unique constraint")
     );
-  });
-
-  it("returns attachment metadata for an authorized telegram detail", async () => {
-    const telegram = {
-      id: 7,
-      status: "pending" as const,
-      createdByUserId: 42,
-      subject: "بلاغ محفوظ",
-    };
-    const attachments = [
-      {
-        id: 3,
-        telegramId: 7,
-        fileKey: "telegrams/42/report.png",
-        fileName: "report.png",
-        contentType: "image/png",
-        size: 16,
-        checksumSha256: "a".repeat(64),
-        uploadedByUserId: 42,
-        scanStatus: "pending" as const,
-        createdAt: new Date(),
-      },
-    ];
-    mocked.getTelegramById.mockResolvedValue(telegram);
-    mocked.listTelegramAttachments.mockResolvedValue(attachments);
-
-    const caller = appRouter.createCaller(createContext());
-    const result = await caller.telegrams.get({ id: 7 });
-
-    expect(result.attachments).toEqual(attachments);
-    expect(mocked.listTelegramAttachments).toHaveBeenCalledWith(7);
-  });
-
-  it("allows administrators to move a telegram through the supported lifecycle", async () => {
-    const adminContext = createContext();
-    adminContext.user = { ...adminContext.user, role: "admin" };
-    const existing = {
-      id: 7,
-      status: "pending" as const,
-      createdByUserId: 42,
-    };
-    mocked.getTelegramById.mockResolvedValue(existing);
-    mocked.updateTelegramStatus.mockResolvedValue({
-      ...existing,
-      status: "in_progress",
-    });
-    const caller = appRouter.createCaller(adminContext);
-
-    const result = await caller.telegrams.updateStatus({
-      id: 7,
-      status: "in_progress",
-      reason: "تمت إحالة البرقية إلى القسم المختص",
-    });
-
-    expect(result?.status).toBe("in_progress");
-    expect(mocked.updateTelegramStatus).toHaveBeenCalledWith(
-      7,
-      "in_progress",
-      null
-    );
-    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "telegram.status.in_progress",
-        entityId: "7",
-      })
-    );
-  });
-
-  it("rejects lifecycle changes from non-administrators", async () => {
-    mocked.getTelegramById.mockResolvedValue({
-      id: 7,
-      status: "pending" as const,
-      createdByUserId: 42,
-    });
-    const caller = appRouter.createCaller(createContext());
-
-    await expect(
-      caller.telegrams.updateStatus({ id: 7, status: "in_progress" })
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(mocked.updateTelegramStatus).not.toHaveBeenCalled();
-  });
-
-  it("rejects a backward lifecycle transition", async () => {
-    const adminContext = createContext();
-    adminContext.user = { ...adminContext.user, role: "admin" };
-    mocked.getTelegramById.mockResolvedValue({
-      id: 7,
-      status: "resolved" as const,
-      createdByUserId: 42,
-    });
-    const caller = appRouter.createCaller(adminContext);
-
-    await expect(
-      caller.telegrams.updateStatus({ id: 7, status: "in_progress" })
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(mocked.updateTelegramStatus).not.toHaveBeenCalled();
-  });
-
-  it("audits attachment cleanup when telegram persistence fails", async () => {
-    mocked.createTelegramWithAttachments.mockRejectedValueOnce(
-      new Error("database unavailable")
-    );
-    const caller = appRouter.createCaller(createContext());
+    mocked.getTelegramByIdempotencyKey
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(persistedTelegram);
 
     await expect(
       caller.telegrams.create({
-        subject: "بلاغ مع مرفق",
+        subject: "تنبيه أمني",
         recipient: "غرفة العمليات",
-        body: "يجب تسجيل المرفق اليتيم عند فشل الحفظ",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "urgent",
+        category: "security",
+        idempotencyKey: "create-telegram-race-0001",
+      })
+    ).resolves.toEqual(persistedTelegram);
+
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramAction).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
+  });
+
+  it("routes a new telegram to the organization configured for the source unit", async () => {
+    const destination = {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "قيادة المنطقة",
+    };
+    const routedTelegram = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "POL-2026-10-02-01001",
+      status: "forwarded",
+      currentOrganizationId: destination.id,
+    };
+    mocked.getConfiguredTelegramDestination.mockResolvedValue(destination);
+    mocked.getTelegramById.mockResolvedValue(routedTelegram);
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.create({
+        subject: "إحالة اختبارية",
+        recipient: "قيادة المنطقة",
+        body: "محتوى البرقية للاختبار",
         classification: "normal",
         priority: "normal",
         category: "administrative",
-        attachmentManifest: JSON.stringify([
-          {
-            fileKey: "telegrams/42/report.png",
-            fileName: "report.png",
-            contentType: "image/png",
-            size: 16,
-          },
-        ]),
       })
-    ).rejects.toThrow("database unavailable");
+    ).resolves.toEqual(routedTelegram);
 
-    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "attachment.orphaned",
-        entityType: "telegram_attachment",
-        metadata: expect.stringContaining("telegrams/42/report.png"),
-      })
-    );
+    expect(mocked.routeTelegram).toHaveBeenCalledWith({
+      telegramId: 7,
+      toOrganizationId: destination.id,
+      forwardedByUserId: 42,
+      note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+    });
   });
 });

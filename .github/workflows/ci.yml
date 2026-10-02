@@ -1,40 +1,48 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
-      - "feat/**"
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.4.1
+          run_install: false
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Reject legacy platform dependencies
+        run: |
+          if git grep -niE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID|MANUS_|__MANUS__|manus' -- ':!pnpm-lock.yaml' ':!.github/workflows/ci.yml'; then
+            echo "Legacy platform dependency detected"
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: pnpm lint
+
+      - name: Verify responsive application shell
+        run: pnpm check:responsive-shell
 
       - name: Type check
         run: pnpm check
@@ -42,24 +50,22 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Build production bundle
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase services
+        run: supabase start -x studio,edge-runtime,logflare,vector
+
+      - name: Apply migrations to local database
+        run: supabase db reset
+
+      - name: Run database tests
+        run: supabase test db
+
+      - name: Production build
         run: pnpm build
 
-      - name: Verify formatting
-        run: >-
-          pnpm exec prettier --check
-          .github/workflows/ci.yml
-          docs/delivery-report-implementation.md
-          api/index.ts
-          server/app.ts
-          server/api/appRouter.ts
-          server/data/database.ts
-          server/telegrams.create.test.ts
-          client/src/features/operations/pages/OperationsDashboard.tsx
-          drizzle/schema.ts
-
-      - name: Verify working tree and migration generation
-        run: |
-          pnpm drizzle-kit generate
-          git diff --exit-code -- drizzle
-          git diff --check
+      - name: Vercel configuration validation
+        run: node -e "const fs=require('node:fs'); const c=JSON.parse(fs.readFileSync('vercel.json','utf8')); if(c.framework!=='vite'||c.outputDirectory!=='dist/public'||!fs.existsSync('api/[...].ts')) process.exit(1); const apiRules=(c.rewrites||[]).filter(r=>r.source==='/api'||r.source==='/api/:path*'); if(apiRules.length!==2) process.exit(1); console.log('Vercel configuration is valid');"

@@ -1,16 +1,22 @@
+const splitCsv = (value: string | undefined): string[] =>
+  (value ?? "")
+    .split(",")
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   supabaseUrl: process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "",
-  supabasePublishableKey:
-    process.env.SUPABASE_PUBLISHABLE_KEY ??
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    "",
+  supabaseSecretKey: process.env.SUPABASE_SECRET_KEY ?? "",
+  supabaseStorageBucket:
+    process.env.SUPABASE_STORAGE_BUCKET ?? "telegram-files",
+  adminEmails: splitCsv(process.env.ADMIN_EMAILS),
+  authSessionSecret: process.env.AUTH_SESSION_SECRET ?? "",
+  ownerUsername: process.env.OWNER_USERNAME ?? "AbuNizar",
+  ownerPasswordHash: process.env.OWNER_PASSWORD_HASH ?? "",
+  ownerInitialPassword: process.env.OWNER_INITIAL_PASSWORD ?? "",
+  ownerNotificationWebhookUrl: process.env.OWNER_NOTIFICATION_WEBHOOK_URL ?? "",
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
   isProduction: process.env.NODE_ENV === "production",
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  storageProvider: process.env.STORAGE_PROVIDER ?? "forge",
 };

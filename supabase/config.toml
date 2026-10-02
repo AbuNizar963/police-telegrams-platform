@@ -10,9 +10,7 @@ enable_email_autoconfirm = false
 
 [storage]
 enabled = true
-
-[storage.file_size_limit]
-value = "25MiB"
+file_size_limit = "25MiB"
 
 [api]
 enabled = true

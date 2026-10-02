@@ -1,33 +1,26 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as
-  | string
-  | undefined;
+let client: SupabaseClient | null = null;
 
-export const supabase: SupabaseClient | null =
-  url && publishableKey
-    ? createClient(url, publishableKey, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-      })
-    : null;
+export function getSupabaseBrowserClient(): SupabaseClient {
+  if (client) return client;
 
-let accessToken: string | null = null;
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-export function getSupabaseAccessToken() {
-  return accessToken;
-}
+  if (!url || !publishableKey) {
+    throw new Error(
+      "Supabase client configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."
+    );
+  }
 
-export function setSupabaseAccessToken(token: string | null) {
-  accessToken = token;
-}
-
-if (supabase) {
-  supabase.auth.onAuthStateChange((_event, session) => {
-    setSupabaseAccessToken(session?.access_token ?? null);
+  client = createClient(url, publishableKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
   });
+
+  return client;
 }

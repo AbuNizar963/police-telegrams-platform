@@ -19,24 +19,60 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
-import { SupabaseLoginForm } from "@/components/SupabaseLoginForm";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
+  Archive,
+  Activity,
   LayoutDashboard,
   LogOut,
-  Moon,
+  MapPinned,
   PanelLeft,
-  Shield,
-  Sun,
+  Plus,
+  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
-import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "./ui/input";
+import { trpc } from "@/lib/trpc";
+import { BrandMark } from "./BrandMark";
 
-const menuItems = [{ icon: LayoutDashboard, label: "لوحة القيادة", path: "/" }];
+const menuItems = [
+  { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
+  {
+    key: "create-telegram",
+    icon: Plus,
+    label: "إنشاء برقية",
+    action: "open-telegram-composer",
+  },
+  {
+    key: "accounts",
+    icon: Users,
+    label: "إدارة حسابات الشرطيين",
+    action: "open-owner-user-management",
+    adminOnly: true,
+  },
+  {
+    key: "locations",
+    icon: MapPinned,
+    label: "خريطة البلاغات والمواقع",
+    tab: "locations",
+  },
+  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
+  {
+    key: "resources",
+    icon: Activity,
+    label: "إدارة الموارد",
+    tab: "resources",
+  },
+  {
+    key: "archive",
+    icon: Archive,
+    label: "الأرشيف والسجلات المغلقة",
+    tab: "archive",
+  },
+];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -53,7 +89,15 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { loading, user, usesSupabase } = useAuth();
+  const { loading, user } = useAuth();
+  const utils = trpc.useUtils();
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+    },
+  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -65,31 +109,71 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#10233f] text-[#d8c38e] shadow-lg">
-              <Shield className="h-8 w-8" />
-            </div>
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <form
+          className="surface-elevated flex w-full max-w-md flex-col gap-6 rounded-[1.5rem] border bg-card/95 p-6 shadow-lg backdrop-blur sm:p-8"
+          onSubmit={event => {
+            event.preventDefault();
+            loginMutation.mutate({ username, password });
+          }}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <BrandMark size="lg" />
             <h1 className="text-2xl font-semibold tracking-tight text-center">
               تسجيل الدخول إلى النظام
             </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              استخدم حسابك المعتمد حتى يظهر اسمك تلقائياً كمنشئ لكل برقية.
+            <p className="text-sm text-muted-foreground text-center">
+              أدخل اسم المستخدم وكلمة المرور الخاصة بالحساب المعتمد.
             </p>
           </div>
-          {usesSupabase ? (
-            <SupabaseLoginForm />
-          ) : (
-            <Button
-              onClick={() => startLogin()}
-              size="lg"
-              className="w-full shadow-lg hover:shadow-xl transition-all"
-            >
-              تسجيل الدخول الآمن
-            </Button>
-          )}
-        </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="login-username" className="text-sm font-medium">
+                اسم المستخدم
+              </label>
+              <Input
+                id="login-username"
+                value={username}
+                onChange={event => setUsername(event.target.value)}
+                autoComplete="username"
+                autoFocus
+                dir="ltr"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="login-password" className="text-sm font-medium">
+                كلمة المرور
+              </label>
+              <Input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                autoComplete="current-password"
+                dir="ltr"
+                required
+              />
+            </div>
+          </div>
+
+          {loginMutation.error ? (
+            <p role="alert" className="text-sm text-destructive text-center">
+              {loginMutation.error.message}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            disabled={loginMutation.isPending || !username.trim() || !password}
+            className="w-full shadow-lg hover:shadow-xl transition-all"
+          >
+            {loginMutation.isPending ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول"}
+          </Button>
+        </form>
       </div>
     );
   }
@@ -121,7 +205,6 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -140,8 +223,7 @@ function DashboardLayoutContent({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
-      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
-      const newWidth = e.clientX - sidebarLeft;
+      const newWidth = window.innerWidth - e.clientX;
       if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
         setSidebarWidth(newWidth);
       }
@@ -170,50 +252,60 @@ function DashboardLayoutContent({
     <>
       <div className="relative" ref={sidebarRef}>
         <Sidebar
+          side="right"
           collapsible="offcanvas"
-          className="border-r-0"
+          className="border-l-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="relative h-16 justify-center px-2">
-            <div className="flex w-full items-center gap-3 pr-1">
-              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-opacity duration-150 group-data-[collapsible=icon]:invisible group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:flex-none">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm">
-                  <Shield className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <span className="truncate font-semibold tracking-tight">
-                  نظام الشرطة
-                </span>
-              </div>
+          <SidebarHeader className="h-16 justify-center">
+            <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={isCollapsed ? "فتح القائمة" : "إغلاق القائمة"}
+                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                aria-label="Toggle navigation"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
+              {!isCollapsed ? (
+                <BrandMark size="sm" showLabel className="min-w-0" />
+              ) : null}
             </div>
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems
+                .filter(item => !item.adminOnly || user?.role === "admin")
+                .map(item => {
+                  const isActive = location === item.path;
+                  return (
+                    <SidebarMenuItem key={item.key}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => {
+                          if (item.action) {
+                            window.dispatchEvent(new CustomEvent(item.action));
+                          } else if (item.tab) {
+                            window.dispatchEvent(
+                              new CustomEvent("open-operations-workspace", {
+                                detail: { tab: item.tab },
+                              })
+                            );
+                          } else if (item.path) {
+                            setLocation(item.path);
+                          }
+                        }}
+                        tooltip={item.label}
+                        className="h-10 font-normal transition-all"
+                      >
+                        <item.icon
+                          className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarContent>
 
@@ -249,12 +341,11 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/20 ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
           }}
-          style={{ zIndex: 50 }}
         />
       </div>
 
@@ -271,35 +362,14 @@ function DashboardLayoutContent({
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
+              <BrandMark size="sm" showLabel compactLabel />
+              <span className="sr-only">
+                {activeMenuItem?.label ?? "القائمة"}
+              </span>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">
-          <div className="mb-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">
-              {theme === "dark" ? "وضع غرفة العمليات" : "الوضع النهاري"}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleTheme}
-              aria-label="تبديل المظهر"
-              className="h-9 w-9 rounded-xl bg-background"
-            >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+        <main className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12">
           {children}
         </main>
       </SidebarInset>

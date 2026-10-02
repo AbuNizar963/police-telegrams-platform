@@ -355,7 +355,7 @@ export async function listTelegrams(
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("*")
-    .order("createdAt", { ascending: false })
+    .order("serialNumber", { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
   if (!canViewAll) {

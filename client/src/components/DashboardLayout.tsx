@@ -22,10 +22,13 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Archive,
+  Activity,
   LayoutDashboard,
   LogOut,
+  MapPinned,
   PanelLeft,
-  Workflow,
+  Plus,
+  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -38,10 +41,30 @@ import { BrandMark } from "./BrandMark";
 const menuItems = [
   { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
   {
-    key: "operations",
-    icon: Workflow,
-    label: "مركز العمليات",
+    key: "create-telegram",
+    icon: Plus,
+    label: "إنشاء برقية",
+    action: "open-telegram-composer",
+  },
+  {
+    key: "accounts",
+    icon: Users,
+    label: "إدارة حسابات الشرطيين",
+    action: "open-owner-user-management",
+    adminOnly: true,
+  },
+  {
+    key: "locations",
+    icon: MapPinned,
+    label: "خريطة البلاغات والمواقع",
     tab: "locations",
+  },
+  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
+  {
+    key: "resources",
+    icon: Activity,
+    label: "إدارة الموارد",
+    tab: "resources",
   },
   {
     key: "archive",
@@ -251,34 +274,38 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.key}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => {
-                        if (item.tab) {
-                          window.dispatchEvent(
-                            new CustomEvent("open-operations-workspace", {
-                              detail: { tab: item.tab },
-                            })
-                          );
-                        } else if (item.path) {
-                          setLocation(item.path);
-                        }
-                      }}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems
+                .filter(item => !item.adminOnly || user?.role === "admin")
+                .map(item => {
+                  const isActive = location === item.path;
+                  return (
+                    <SidebarMenuItem key={item.key}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => {
+                          if (item.action) {
+                            window.dispatchEvent(new CustomEvent(item.action));
+                          } else if (item.tab) {
+                            window.dispatchEvent(
+                              new CustomEvent("open-operations-workspace", {
+                                detail: { tab: item.tab },
+                              })
+                            );
+                          } else if (item.path) {
+                            setLocation(item.path);
+                          }
+                        }}
+                        tooltip={item.label}
+                        className="h-10 font-normal transition-all"
+                      >
+                        <item.icon
+                          className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarContent>
 

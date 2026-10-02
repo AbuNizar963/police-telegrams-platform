@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
-  Command,
   FileDown,
   FileImage,
   FileText,
@@ -317,6 +316,11 @@ export default function Home() {
     if (Number.isInteger(telegramId) && telegramId > 0) {
       setSelectedId(telegramId);
     }
+
+    const openComposer = () => setComposerOpen(true);
+    window.addEventListener("open-telegram-composer", openComposer);
+    return () =>
+      window.removeEventListener("open-telegram-composer", openComposer);
   }, []);
 
   const updateDisplayColumns = (column: DisplayColumn, visible: boolean) => {
@@ -602,13 +606,14 @@ export default function Home() {
           <div className="flex flex-col gap-4 border-b p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">سجل البرقيات</h2>
+                <h2 className="text-lg font-bold">سجل البرقيات الكامل</h2>
                 <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
                   {formatCount(rows.length, numberSystem)} نتيجة
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                مرجع موحّد للبرقيات مع ختم الهوية الرقمية وسجل زمني كامل.
+                جميع السجلات مرتبة تنازليًا حسب الرقم التسلسلي مع ختم الهوية
+                الرقمية وسجل تدقيق كامل.
               </p>
             </div>
             <div className="relative w-full lg:w-72">
@@ -832,52 +837,6 @@ export default function Home() {
         </section>
 
         <aside className="space-y-4">
-          <Card className="border-border/70 shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2">
-                <Command className="h-4 w-4 text-[#9b7c3d]" />
-                <h3 className="font-bold">ملخص الاتجاهات</h3>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                استخدم التبويبات أعلى السجل للتنقل بين كل البرقيات والصادرة
-                والواردة.
-              </p>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTelegramView("outgoing")}
-                  className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-right text-xs text-blue-800 transition hover:border-blue-400 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
-                >
-                  <Send className="mb-2 h-4 w-4" />
-                  <span className="block font-bold">الصادرة</span>
-                  <span className="mt-1 block opacity-70">
-                    {
-                      allRows.filter(
-                        row => row.organizationId === row.currentOrganizationId
-                      ).length
-                    }{" "}
-                    ظاهرة
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTelegramView("incoming")}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-right text-xs text-emerald-800 transition hover:border-emerald-400 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
-                >
-                  <Inbox className="mb-2 h-4 w-4" />
-                  <span className="block font-bold">الواردة</span>
-                  <span className="mt-1 block opacity-70">
-                    {
-                      allRows.filter(
-                        row => row.organizationId !== row.currentOrganizationId
-                      ).length
-                    }{" "}
-                    ظاهرة
-                  </span>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
           <Card className="border-border/70 bg-[#10233f] text-white shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 text-[#d8c38e]">

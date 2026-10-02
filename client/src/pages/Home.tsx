@@ -27,8 +27,8 @@ import {
   LocateFixed,
   LockKeyhole,
   Menu,
+  MessageSquarePlus,
   Mic,
-  Plus,
   Printer,
   Radio,
   Search,
@@ -438,7 +438,10 @@ export default function Home() {
   });
 
   return (
-    <div dir="rtl" className="min-h-[calc(100vh-3rem)] space-y-4 pb-10">
+    <div
+      dir="rtl"
+      className="mx-auto min-h-[calc(100vh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
+    >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <BrandMark size="md" />
@@ -515,13 +518,6 @@ export default function Home() {
                 }
               </span>
             )}
-          </Button>
-          <Button
-            onClick={() => setComposerOpen(true)}
-            className="h-9 shrink-0 whitespace-nowrap rounded-lg bg-[#10233f] px-3 text-xs text-white hover:bg-[#18375f]"
-          >
-            <Plus className="ml-2 h-4 w-4" />
-            برقية جديدة
           </Button>
         </div>
       </div>
@@ -852,6 +848,17 @@ export default function Home() {
           </Card>
         </aside>
       </div>
+
+      <Button
+        type="button"
+        onClick={() => setComposerOpen(true)}
+        aria-label="إنشاء برقية جديدة"
+        title="إنشاء برقية جديدة"
+        className="group fixed bottom-5 left-5 z-40 h-14 w-14 rounded-full bg-[#10233f] p-0 text-white shadow-[0_14px_30px_rgba(16,35,63,0.28)] transition-all hover:-translate-y-1 hover:bg-[#18375f] hover:shadow-[0_18px_36px_rgba(16,35,63,0.36)] focus-visible:ring-2 focus-visible:ring-[#b4945a] focus-visible:ring-offset-2 sm:bottom-7 sm:left-7"
+      >
+        <MessageSquarePlus className="h-6 w-6 transition-transform group-hover:scale-110" />
+        <span className="sr-only">برقية جديدة</span>
+      </Button>
 
       {displayCustomizeOpen && (
         <DisplayCustomizationModal
@@ -1449,6 +1456,7 @@ function TelegramComposer({
       subtitle="سيتم تثبيت هويتك الرقمية تلقائيًا من الحساب الموثق."
       close={close}
       fullScreenOnMobile
+      wide
     >
       <div className="grid gap-4">
         {!online && (
@@ -3159,12 +3167,14 @@ function Modal({
   close,
   children,
   fullScreenOnMobile = false,
+  wide = false,
 }: {
   title: string;
   subtitle: string;
   close: () => void;
   children: React.ReactNode;
   fullScreenOnMobile?: boolean;
+  wide?: boolean;
 }) {
   return (
     <div
@@ -3172,7 +3182,7 @@ function Modal({
     >
       <div
         dir="rtl"
-        className={`w-full overflow-y-auto bg-background p-5 shadow-2xl sm:max-h-[94vh] sm:max-w-2xl sm:rounded-2xl sm:p-7 ${fullScreenOnMobile ? "h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[94vh] rounded-t-[1.5rem]"}`}
+        className={`w-full overflow-y-auto bg-background p-5 shadow-2xl sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[94vh] rounded-t-[1.5rem]"}`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>

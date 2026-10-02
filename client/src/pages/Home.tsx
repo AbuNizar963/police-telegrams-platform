@@ -54,6 +54,7 @@ import {
   correctArabicSpeechText,
   removeRepeatedSpeech,
 } from "@/lib/arabicSpeech";
+import { showLocalTelegramNotification } from "@/lib/notifications";
 import qrcode from "@/lib/qrcode-generator";
 import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
 
@@ -307,6 +308,15 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    const telegramId = Number(
+      new URLSearchParams(window.location.search).get("telegram")
+    );
+    if (Number.isInteger(telegramId) && telegramId > 0) {
+      setSelectedId(telegramId);
+    }
+  }, []);
+
   const updateDisplayColumns = (column: DisplayColumn, visible: boolean) => {
     setDisplayColumns(current => {
       const next = { ...current, [column]: visible };
@@ -387,8 +397,13 @@ export default function Home() {
   );
   const utils = trpc.useUtils();
   const create = trpc.telegrams.create.useMutation({
-    onSuccess: () => {
+    onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
+      void showLocalTelegramNotification({
+        serialCode: telegram.serialCode,
+        subject: telegram.subject,
+        telegramId: telegram.id,
+      });
       setComposerOpen(false);
       utils.telegrams.list.invalidate();
       utils.dashboard.stats.invalidate();

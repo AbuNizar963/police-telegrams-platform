@@ -14,7 +14,9 @@ export const ENV = {
   ownerUsername: process.env.OWNER_USERNAME ?? "AbuNizar",
   ownerPasswordHash: process.env.OWNER_PASSWORD_HASH ?? "",
   ownerInitialPassword: process.env.OWNER_INITIAL_PASSWORD ?? "",
-  ownerNotificationWebhookUrl:
-    process.env.OWNER_NOTIFICATION_WEBHOOK_URL ?? "",
+  ownerNotificationWebhookUrl: process.env.OWNER_NOTIFICATION_WEBHOOK_URL ?? "",
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
   isProduction: process.env.NODE_ENV === "production",
 };

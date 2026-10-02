@@ -43,6 +43,8 @@ import {
   createLocalOwnerUser,
   getUserByUsername,
   getUserOrganizationId,
+  deletePushSubscription,
+  upsertPushSubscription,
 } from "./db";
 import {
   addOrganizationMembership,
@@ -60,6 +62,10 @@ import {
   storagePut,
   storagePutDepartmentLogo,
 } from "./storage";
+import {
+  getWebPushPublicKey,
+  notifyOrganizationTelegramCreated,
+} from "./_core/notification";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -244,6 +250,42 @@ export const appRouter = router({
 
       return getDashboardStats(ctx.user.id, canViewAll, organizationId);
     }),
+  }),
+
+  notifications: router({
+    config: protectedProcedure.query(() => ({
+      enabled: Boolean(getWebPushPublicKey()),
+      publicKey: getWebPushPublicKey(),
+    })),
+    subscribe: protectedProcedure
+      .input(
+        z.object({
+          endpoint: z.string().url().max(2048),
+          keys: z.object({
+            p256dh: z.string().min(16).max(256),
+            auth: z.string().min(8).max(256),
+          }),
+          userAgent: z.string().max(512).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        await upsertPushSubscription({
+          userId: ctx.user.id,
+          organizationId,
+          endpoint: input.endpoint,
+          p256dh: input.keys.p256dh,
+          auth: input.keys.auth,
+          userAgent: input.userAgent,
+        });
+        return { subscribed: true };
+      }),
+    unsubscribe: protectedProcedure
+      .input(z.object({ endpoint: z.string().url().max(2048) }))
+      .mutation(async ({ ctx, input }) => {
+        await deletePushSubscription(ctx.user.id, input.endpoint);
+        return { subscribed: false };
+      }),
   }),
 
   reports: router({
@@ -740,6 +782,21 @@ export const appRouter = router({
           }),
         });
 
+        const routedTelegram = await getTelegramById(input.id);
+        if (routedTelegram) {
+          try {
+            await notifyOrganizationTelegramCreated({
+              organizationId: route.toOrganizationId,
+              serialCode: routedTelegram.serialCode,
+              subject: routedTelegram.subject,
+              recipient: routedTelegram.recipient,
+              priority: routedTelegram.priority,
+              telegramId: routedTelegram.id,
+            });
+          } catch (error) {
+            console.warn("[Notification] Telegram routing push failed", error);
+          }
+        }
         return route;
       }),
 
@@ -887,6 +944,19 @@ export const appRouter = router({
             status: telegram.status,
           },
         });
+
+        try {
+          await notifyOrganizationTelegramCreated({
+            organizationId: telegram.currentOrganizationId,
+            serialCode: telegram.serialCode,
+            subject: telegram.subject,
+            recipient: telegram.recipient,
+            priority: telegram.priority,
+            telegramId: telegram.id,
+          });
+        } catch (error) {
+          console.warn("[Notification] Telegram push dispatch failed", error);
+        }
 
         return telegram;
       }),

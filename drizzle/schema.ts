@@ -14,8 +14,15 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["user", "admin"]);
-export const classification = pgEnum("telegram_classification", ["secret", "normal"]);
-export const priority = pgEnum("telegram_priority", ["slow", "normal", "urgent"]);
+export const classification = pgEnum("telegram_classification", [
+  "secret",
+  "normal",
+]);
+export const priority = pgEnum("telegram_priority", [
+  "slow",
+  "normal",
+  "urgent",
+]);
 export const category = pgEnum("telegram_category", [
   "criminal",
   "administrative",
@@ -37,7 +44,11 @@ export const telegramStatus = pgEnum("telegram_status", [
   "completed",
   "archived",
 ]);
-export const numberSystem = pgEnum("number_system", ["latin", "arabic", "hindi"]);
+export const numberSystem = pgEnum("number_system", [
+  "latin",
+  "arabic",
+  "hindi",
+]);
 export const organizationType = pgEnum("organization_type", [
   "central",
   "command",
@@ -71,13 +82,17 @@ export const organizations = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     type: organizationType("type").default("department").notNull(),
     isActive: boolean("isActive").default(true).notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
     index("organizations_parent_idx").on(table.parentOrganizationId),
     index("organizations_active_idx").on(table.isActive),
-  ],
+  ]
 );
 
 export const users = pgTable(
@@ -100,35 +115,62 @@ export const users = pgTable(
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
     role: userRole("role").default("user").notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-    lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
-    },
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastSignedIn: timestamp("lastSignedIn", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
   table => [
     index("users_organization_idx").on(table.organizationId),
     uniqueIndex("users_username_lower_unique_idx")
       .on(sql`lower(${table.username})`)
       .where(sql`${table.username} is not null`),
-  ],
+  ]
 );
 
 export const departmentSettings = pgTable("department_settings", {
   id: serial("id").primaryKey(),
-  configKey: varchar("configKey", { length: 32 }).default("primary").notNull().unique(),
-  departmentName: varchar("departmentName", { length: 255 }).default("إدارة الشرطة").notNull(),
-  unitName: varchar("unitName", { length: 255 }).default("وحدة العمليات").notNull(),
-  unitChiefRank: varchar("unitChiefRank", { length: 120 }).default("العقيد").notNull(),
-  unitChiefName: varchar("unitChiefName", { length: 255 }).default("رئيس الوحدة").notNull(),
-  serialPrefix: varchar("serialPrefix", { length: 24 }).default("POL").notNull(),
+  configKey: varchar("configKey", { length: 32 })
+    .default("primary")
+    .notNull()
+    .unique(),
+  departmentName: varchar("departmentName", { length: 255 })
+    .default("إدارة الشرطة")
+    .notNull(),
+  unitName: varchar("unitName", { length: 255 })
+    .default("وحدة العمليات")
+    .notNull(),
+  unitChiefRank: varchar("unitChiefRank", { length: 120 })
+    .default("العقيد")
+    .notNull(),
+  unitChiefName: varchar("unitChiefName", { length: 255 })
+    .default("رئيس الوحدة")
+    .notNull(),
+  serialPrefix: varchar("serialPrefix", { length: 24 })
+    .default("POL")
+    .notNull(),
   serialStart: integer("serialStart").default(1).notNull(),
   nextSerial: integer("nextSerial").default(1).notNull(),
-  timezone: varchar("timezone", { length: 64 }).default("Asia/Damascus").notNull(),
-  dateFormat: varchar("dateFormat", { length: 32 }).default("dd/MM/yyyy HH:mm:ss").notNull(),
+  timezone: varchar("timezone", { length: 64 })
+    .default("Asia/Damascus")
+    .notNull(),
+  dateFormat: varchar("dateFormat", { length: 32 })
+    .default("dd/MM/yyyy HH:mm:ss")
+    .notNull(),
   numberSystem: numberSystem("numberSystem").default("latin").notNull(),
   logoUrl: text("logoUrl"),
   updatedByUserId: integer("updatedByUserId"),
-  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const organizationMemberships = pgTable(
@@ -143,13 +185,20 @@ export const organizationMemberships = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: organizationMemberRole("role").default("dispatcher").notNull(),
     isActive: boolean("isActive").default(true).notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
     index("organization_memberships_user_idx").on(table.userId),
-    index("organization_memberships_org_role_idx").on(table.organizationId, table.role),
-  ],
+    index("organization_memberships_org_role_idx").on(
+      table.organizationId,
+      table.role
+    ),
+  ]
 );
 
 export const telegrams = pgTable(
@@ -160,8 +209,12 @@ export const telegrams = pgTable(
     serialCode: varchar("serialCode", { length: 48 }).notNull().unique(),
     idempotencyKey: varchar("idempotencyKey", { length: 120 }),
     verificationToken: uuid("verificationToken").notNull().unique(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     createdByUserId: integer("createdByUserId").notNull(),
     organizationId: uuid("organizationId")
       .notNull()
@@ -177,7 +230,9 @@ export const telegrams = pgTable(
     subject: varchar("subject", { length: 255 }).notNull(),
     recipient: varchar("recipient", { length: 255 }).notNull(),
     body: text("body").notNull(),
-    classification: classification("classification").default("normal").notNull(),
+    classification: classification("classification")
+      .default("normal")
+      .notNull(),
     priority: priority("priority").default("normal").notNull(),
     category: category("category").default("administrative").notNull(),
     status: telegramStatus("status").default("pending").notNull(),
@@ -195,7 +250,7 @@ export const telegrams = pgTable(
     index("telegrams_created_at_idx").on(table.createdAt),
     index("telegrams_classification_idx").on(table.classification),
     uniqueIndex("telegrams_idempotency_key_idx").on(table.idempotencyKey),
-  ],
+  ]
 );
 
 export const telegramVersions = pgTable(
@@ -211,12 +266,20 @@ export const telegramVersions = pgTable(
       .references(() => users.id, { onDelete: "restrict" }),
     changeReason: text("changeReason").notNull(),
     snapshot: text("snapshot").notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
-    uniqueIndex("telegram_versions_number_idx").on(table.telegramId, table.versionNumber),
-    index("telegram_versions_telegram_idx").on(table.telegramId, table.createdAt),
-  ],
+    uniqueIndex("telegram_versions_number_idx").on(
+      table.telegramId,
+      table.versionNumber
+    ),
+    index("telegram_versions_telegram_idx").on(
+      table.telegramId,
+      table.createdAt
+    ),
+  ]
 );
 
 export const telegramAttachments = pgTable(
@@ -234,13 +297,20 @@ export const telegramAttachments = pgTable(
     uploadedByUserId: integer("uploadedByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    scanStatus: varchar("scanStatus", { length: 32 }).default("pending").notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    scanStatus: varchar("scanStatus", { length: 32 })
+      .default("pending")
+      .notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
-    index("telegram_attachments_telegram_idx").on(table.telegramId, table.createdAt),
+    index("telegram_attachments_telegram_idx").on(
+      table.telegramId,
+      table.createdAt
+    ),
     index("telegram_attachments_scan_idx").on(table.scanStatus),
-  ],
+  ]
 );
 
 export const telegramActions = pgTable(
@@ -258,12 +328,17 @@ export const telegramActions = pgTable(
     toStatus: telegramStatus("toStatus"),
     reason: text("reason"),
     metadata: text("metadata"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
-    index("telegram_actions_telegram_idx").on(table.telegramId, table.createdAt),
+    index("telegram_actions_telegram_idx").on(
+      table.telegramId,
+      table.createdAt
+    ),
     index("telegram_actions_actor_idx").on(table.actorUserId, table.createdAt),
-  ],
+  ]
 );
 
 export const telegramRoutes = pgTable(
@@ -284,16 +359,61 @@ export const telegramRoutes = pgTable(
       .references(() => users.id, { onDelete: "restrict" }),
     status: telegramRouteStatus("status").default("sent").notNull(),
     note: text("note"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     receivedAt: timestamp("receivedAt", { withTimezone: true }),
     completedAt: timestamp("completedAt", { withTimezone: true }),
   },
   table => [
     index("telegram_routes_telegram_idx").on(table.telegramId, table.createdAt),
-    index("telegram_routes_destination_idx").on(table.toOrganizationId, table.status),
-    index("telegram_routes_source_idx").on(table.fromOrganizationId, table.createdAt),
+    index("telegram_routes_destination_idx").on(
+      table.toOrganizationId,
+      table.status
+    ),
+    index("telegram_routes_source_idx").on(
+      table.fromOrganizationId,
+      table.createdAt
+    ),
     index("telegram_routes_forwarder_idx").on(table.forwardedByUserId),
-  ],
+  ]
+);
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("userAgent"),
+    lastUsedAt: timestamp("lastUsedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  table => [
+    index("push_subscriptions_org_idx").on(
+      table.organizationId,
+      table.lastUsedAt
+    ),
+    index("push_subscriptions_user_idx").on(table.userId, table.lastUsedAt),
+    uniqueIndex("push_subscriptions_user_endpoint_idx").on(
+      table.userId,
+      table.endpoint
+    ),
+  ]
 );
 
 export const auditLogs = pgTable(
@@ -306,20 +426,25 @@ export const auditLogs = pgTable(
     entityType: varchar("entityType", { length: 80 }).notNull(),
     entityId: varchar("entityId", { length: 80 }),
     metadata: text("metadata"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   table => [
     index("audit_actor_idx").on(table.actorUserId),
     index("audit_created_at_idx").on(table.createdAt),
-  ],
+  ]
 );
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = typeof organizations.$inferInsert;
-export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
-export type OrganizationMemberRole = (typeof organizationMemberRole.enumValues)[number];
+export type OrganizationMembership =
+  typeof organizationMemberships.$inferSelect;
+export type OrganizationMemberRole =
+  (typeof organizationMemberRole.enumValues)[number];
 export type TelegramRoute = typeof telegramRoutes.$inferSelect;
 export type InsertTelegramRoute = typeof telegramRoutes.$inferInsert;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Telegram = typeof telegrams.$inferSelect;

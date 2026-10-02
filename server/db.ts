@@ -605,6 +605,67 @@ export async function listTelegramAttachments(telegramId: number) {
   return data ?? [];
 }
 
+export type PushSubscriptionRecord = {
+  id: number;
+  userId: number;
+  organizationId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent: string | null;
+};
+
+export async function upsertPushSubscription(input: {
+  userId: number;
+  organizationId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string | null;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await getSupabaseAdmin()
+    .from("push_subscriptions")
+    .upsert(
+      {
+        userId: input.userId,
+        organizationId: input.organizationId,
+        endpoint: input.endpoint,
+        p256dh: input.p256dh,
+        auth: input.auth,
+        userAgent: input.userAgent ?? null,
+        lastUsedAt: now,
+        updatedAt: now,
+      },
+      { onConflict: "endpoint" }
+    );
+  throwIfError(error, "Failed to save push subscription");
+}
+
+export async function deletePushSubscription(
+  userId: number,
+  endpoint: string
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("push_subscriptions")
+    .delete()
+    .eq("userId", userId)
+    .eq("endpoint", endpoint);
+  throwIfError(error, "Failed to remove push subscription");
+}
+
+export async function listPushSubscriptions(
+  organizationId: string
+): Promise<PushSubscriptionRecord[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("push_subscriptions")
+    .select("id, userId, organizationId, endpoint, p256dh, auth, userAgent")
+    .eq("organizationId", organizationId)
+    .order("lastUsedAt", { ascending: false });
+  throwIfError(error, "Failed to list push subscriptions");
+  return (data ?? []) as PushSubscriptionRecord[];
+}
+
 export async function transitionTelegram(input: {
   telegramId: number;
   actorUserId: number;

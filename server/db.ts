@@ -556,6 +556,9 @@ export async function updateTelegram(
       | "attachmentManifest"
       | "gpsLatitude"
       | "gpsLongitude"
+      | "workflowReason"
+      | "archivedAt"
+      | "closedAt"
     >
   >,
 ): Promise<Telegram> {
@@ -570,9 +573,16 @@ export async function updateTelegram(
 }
 
 export async function deleteTelegram(id: number): Promise<Telegram> {
+  const archivedAt = new Date().toISOString();
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
-    .delete()
+    .update({
+      status: "archived",
+      archivedAt,
+      closedAt: archivedAt,
+      workflowReason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
+      updatedAt: archivedAt,
+    })
     .eq("id", id)
     .select("*")
     .single();

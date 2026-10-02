@@ -16,6 +16,7 @@ const mocked = vi.hoisted(() => ({
   writeAuditLog: vi.fn(),
   createLocalOwnerUser: vi.fn(),
   getUserByUsername: vi.fn(),
+  recordTelegramAction: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -89,6 +90,7 @@ describe("telegram administration permissions", () => {
     }));
     mocked.deleteTelegram.mockResolvedValue(telegram);
     mocked.writeAuditLog.mockResolvedValue(undefined);
+    mocked.recordTelegramAction.mockResolvedValue(undefined);
   });
 
   it("rejects update requests from ordinary officers before database access", async () => {
@@ -136,7 +138,7 @@ describe("telegram administration permissions", () => {
     expect(mocked.deleteTelegram).toHaveBeenCalledWith(7);
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       actorUserId: 1,
-      action: "telegram.delete",
+      action: "telegram.archive",
       entityId: "7",
       metadata: expect.stringContaining('"createdByUserId":42'),
     }));

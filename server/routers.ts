@@ -539,7 +539,7 @@ export const appRouter = router({
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
-          action: "telegram.delete",
+          action: "telegram.archive",
           entityType: "telegram",
           entityId: String(existing.id),
           metadata: JSON.stringify({
@@ -550,6 +550,14 @@ export const appRouter = router({
         });
 
         await deleteTelegram(existing.id);
+        await recordTelegramAction({
+          telegramId: existing.id,
+          actorUserId: ctx.user.id,
+          action: "telegram.archive",
+          fromStatus: existing.status,
+          toStatus: "archived",
+          reason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
+        });
         return { success: true as const, id: existing.id };
       }),
 
@@ -678,6 +686,7 @@ export const appRouter = router({
           serialNumber,
           serialCode,
           idempotencyKey: input.idempotencyKey ?? null,
+          status: "draft",
           verificationToken: randomUUID(),
           createdByUserId: ctx.user.id,
           organizationId,

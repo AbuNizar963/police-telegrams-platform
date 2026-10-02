@@ -89,6 +89,7 @@ export default function Home() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [displayColumns, setDisplayColumns] = useState<Record<DisplayColumn, boolean>>(DEFAULT_DISPLAY_COLUMNS);
 
   useEffect(() => {
@@ -150,6 +151,7 @@ export default function Home() {
   useEffect(() => { setPage(1); }, [search, severity, priority, status, category]);
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
+  const organizationContext = trpc.organizations.context.useQuery();
   const stats = trpc.dashboard.stats.useQuery();
   const routingTargets = trpc.organizations.routingTargets.useQuery();
   const list = trpc.telegrams.list.useQuery(input);
@@ -165,6 +167,7 @@ export default function Home() {
       <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e] shadow-sm"><Radio className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">TELEGRAM OPERATIONS</span><span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />النظام متصل</span></div><h1 className="mt-1 text-2xl font-bold tracking-tight">مركز البرقيات</h1></div></div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex"><Clock3 className="h-3.5 w-3.5" />{formatConfiguredDate(new Date(), settings.data)}</div>
+        {me.data?.role === "admin" && <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setReportOpen(true)} aria-haspopup="dialog">تقرير البرقيات</Button>}
         <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setDisplayCustomizeOpen(true)} aria-haspopup="dialog" aria-expanded={displayCustomizeOpen}><SlidersHorizontal className="ml-2 h-4 w-4" />تخصيص العرض</Button>
         <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={() => setFiltersOpen(value => !value)} aria-expanded={filtersOpen}><Filter className="ml-2 h-4 w-4" />الفلاتر{(severity !== "all" || priority !== "all" || status !== "all" || category !== "all") && <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10233f] px-1.5 text-[10px] text-white">{[severity !== "all", priority !== "all", status !== "all", category !== "all"].filter(Boolean).length}</span>}</Button>
         <Button onClick={() => setComposerOpen(true)} className="h-10 rounded-lg bg-[#10233f] px-4 text-white hover:bg-[#18375f]"><Plus className="ml-2 h-4 w-4" />برقية جديدة</Button>
@@ -184,16 +187,18 @@ export default function Home() {
         <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground"><span>صفحة {formatCount(page, numberSystem)}</span><div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={page === 1 || list.isFetching} onClick={() => setPage(current => Math.max(1, current - 1))}>السابق</Button><Button type="button" variant="outline" size="sm" disabled={rows.length < 50 || list.isFetching} onClick={() => setPage(current => current + 1)}>التالي</Button></div></div>
       </section>
 
-      <aside className="space-y-4"><Card className="border-border/70 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Command className="h-4 w-4 text-[#9b7c3d]" /><h3 className="font-bold">مركز الإجراءات</h3></div><Settings2 className="h-4 w-4 text-muted-foreground" /></div><div className="mt-4 space-y-2">{me.data?.role === "admin" && <QuickAction icon={Users} label="إدارة حسابات الشرطيين" detail="إنشاء حسابات الدخول ومراجعة المسجلين" onClick={() => window.dispatchEvent(new CustomEvent("open-owner-user-management"))} />}<QuickAction icon={Plus} label="إنشاء برقية" detail="فتح نموذج موثق" onClick={() => setComposerOpen(true)} /><QuickAction icon={MapPinned} label="خريطة البلاغات" detail="المواقع المسجلة" onClick={() => toast.info("سيتم تفعيل خريطة العمليات في المرحلة القادمة") } /><QuickAction icon={Users} label="الوحدات الميدانية" detail="إدارة الموارد" onClick={() => toast.info("وحدة الموارد الميدانية قيد الإعداد") } /><QuickAction icon={Archive} label="الأرشيف" detail="السجلات المغلقة" onClick={() => setStatus("archived")} /></div></CardContent></Card><Card className="border-border/70 bg-[#10233f] text-white shadow-sm"><CardContent className="p-5"><div className="flex items-center gap-2 text-[#d8c38e]"><Shield className="h-4 w-4" /><span className="text-xs font-semibold tracking-wide">سلامة السجل</span></div><p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p><p className="mt-2 text-xs leading-6 text-slate-300">كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الحذف الإداري متاح للمالك فقط ويُسجل في سجل التدقيق.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />حماية تشغيلية نشطة</div></CardContent></Card></aside>
+      <aside className="space-y-4"><Card className="border-border/70 shadow-sm"><CardContent className="p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Command className="h-4 w-4 text-[#9b7c3d]" /><h3 className="font-bold">مركز الإجراءات</h3></div><Settings2 className="h-4 w-4 text-muted-foreground" /></div><div className="mt-4 space-y-2">{me.data?.role === "admin" && <QuickAction icon={Users} label="إدارة حسابات الشرطيين" detail="إنشاء حسابات الدخول ومراجعة المسجلين" onClick={() => window.dispatchEvent(new CustomEvent("open-owner-user-management"))} />}<QuickAction icon={Plus} label="إنشاء برقية" detail="فتح نموذج موثق" onClick={() => setComposerOpen(true)} /><QuickAction icon={MapPinned} label="المواقع المسجلة" detail="البرقيات ذات الإحداثيات" onClick={() => toast.info("تظهر الإحداثيات المسجلة داخل تفاصيل البرقية") } /><QuickAction icon={Users} label="الوحدات المرتبطة" detail="الوحدات المتاحة للإحالة" onClick={() => toast.info("اختر البرقية ثم استخدم لوحة الإحالة المركزية") } /><QuickAction icon={Archive} label="الأرشيف" detail="السجلات المغلقة" onClick={() => setStatus("archived")} /></div></CardContent></Card><Card className="border-border/70 bg-[#10233f] text-white shadow-sm"><CardContent className="p-5"><div className="flex items-center gap-2 text-[#d8c38e]"><Shield className="h-4 w-4" /><span className="text-xs font-semibold tracking-wide">سلامة السجل</span></div><p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p><p className="mt-2 text-xs leading-6 text-slate-300">كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الأرشفة الإدارية متاحة للمالك فقط ويُسجل في سجل التدقيق.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />حماية تشغيلية نشطة</div></CardContent></Card></aside>
     </div>
 
     {displayCustomizeOpen && <DisplayCustomizationModal columns={displayColumns} onChange={updateDisplayColumns} onReset={resetDisplayColumns} close={() => setDisplayCustomizeOpen(false)} />}
+    {reportOpen && <TelegramReportModal settings={settings.data} close={() => setReportOpen(false)} />}
     {composerOpen && <TelegramComposer pending={create.isPending} close={() => setComposerOpen(false)} submit={values => create.mutate(values)} />}
     {selectedId !== null && detail.data && (
       <TelegramDetail
         telegram={detail.data}
         settings={settings.data}
         isAdmin={me.data?.role === "admin"}
+        canOperate={me.data?.role === "admin" || ["system_admin", "organization_admin", "reviewer", "dispatcher"].includes(organizationContext.data?.role ?? "")}
         routingTargets={routingTargets.data ?? []}
         close={() => setSelectedId(null)}
       />
@@ -239,6 +244,40 @@ function DisplayCustomizationModal({
   </Modal>;
 }
 
+function TelegramReportModal({
+  settings,
+  close,
+}: {
+  settings?: { timezone?: string; dateFormat?: string; numberSystem?: NumberSystem };
+  close: () => void;
+}) {
+  const report = trpc.reports.telegrams.useQuery({ page: 1, pageSize: 100 });
+  const rows = report.data?.rows ?? [];
+  const safeCsvCell = (value: unknown) => {
+    const text = String(value ?? "").replace(/"/g, '""');
+    const guarded = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${guarded}"`;
+  };
+  const downloadCsv = () => {
+    const header = ["رقم البرقية", "الموضوع", "الجهة", "الحالة", "السرية", "الأولوية", "تاريخ الإنشاء"];
+    const lines = [header, ...rows.map(row => [row.serialCode, row.subject, row.recipient, statusLabels[row.status], classificationLabels[row.classification], priorityLabels[row.priority], formatConfiguredDate(row.createdAt, settings)])].map(line => line.map(safeCsvCell).join(","));
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `telegram-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return <Modal title="تقرير البرقيات" subtitle={report.data ? `أُنشئ في ${formatConfiguredDate(report.data.generatedAt, settings)}` : "مصدر البيانات الرسمي"} close={close}>
+    <div className="space-y-4">
+      {report.isError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">تعذر تحميل التقرير المركزي.</div>}
+      <div className="grid grid-cols-2 gap-3"><div className="rounded-xl border bg-muted/20 p-3"><p className="text-[11px] text-muted-foreground">إجمالي النتائج</p><p className="mt-1 text-xl font-bold">{formatCount(report.data?.total ?? 0, settings?.numberSystem ?? "latin")}</p></div><div className="rounded-xl border bg-muted/20 p-3"><p className="text-[11px] text-muted-foreground">المعروض</p><p className="mt-1 text-xl font-bold">{formatCount(rows.length, settings?.numberSystem ?? "latin")}</p></div></div>
+      <div className="max-h-[50vh] overflow-auto rounded-xl border"><table className="w-full text-right text-xs"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">الرقم</th><th className="p-3">الموضوع</th><th className="p-3">الجهة</th><th className="p-3">الحالة</th><th className="p-3">الوقت</th></tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-t"><td className="p-3 font-mono">{row.serialCode}</td><td className="p-3 font-semibold">{row.subject}</td><td className="p-3">{row.recipient}</td><td className="p-3">{statusLabels[row.status]}</td><td className="p-3 whitespace-nowrap">{formatConfiguredDate(row.createdAt, settings)}</td></tr>)}</tbody></table>{!report.isLoading && rows.length === 0 && <p className="p-8 text-center text-xs text-muted-foreground">لا توجد نتائج.</p>}</div>
+      <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={() => window.print()}>طباعة التقرير</Button><Button type="button" onClick={downloadCsv} disabled={rows.length === 0} className="bg-[#10233f] text-white hover:bg-[#18375f]">تصدير CSV آمن</Button></div>
+    </div>
+  </Modal>;
+}
+
 function QuickAction({ icon: Icon, label, detail, onClick }: { icon: typeof Plus; label: string; detail: string; onClick: () => void }) { return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-right transition-colors hover:border-[#b4945a] hover:bg-[#fffaf0] dark:hover:bg-[#2d281b]"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10233f] text-[#d8c38e]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-xs font-bold">{label}</span><span className="mt-0.5 block text-[10px] text-muted-foreground">{detail}</span></span><ChevronLeft className="mr-auto h-3.5 w-3.5 text-muted-foreground" /></button>; }
 
 function TelegramComposer({
@@ -267,6 +306,17 @@ function TelegramComposer({
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
   const [imageInputOpen, setImageInputOpen] = useState(false);
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const speechShouldContinueRef = useRef(false);
@@ -440,6 +490,10 @@ function TelegramComposer({
   );
 
   const save = () => {
+    if (!online) {
+      toast.error("لا يوجد اتصال؛ لم تُحفظ البرقية مركزيًا. أعد المحاولة عند عودة الاتصال.");
+      return;
+    }
     if (
       subject.trim().length < 2 ||
       recipient.trim().length < 2 ||
@@ -466,6 +520,7 @@ function TelegramComposer({
       close={close}
     >
       <div className="grid gap-4">
+        {!online && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs leading-6 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">أنت غير متصل حاليًا. هذه البيانات ليست محفوظة مركزيًا ولن تظهر على جهاز آخر حتى ينجح الحفظ.</div>}
         <label className="grid gap-1.5 text-xs font-bold">
           الموضوع
           <Input
@@ -655,7 +710,7 @@ function TelegramComposer({
         </Button>
         <Button
           onClick={save}
-          disabled={pending || processingInput || recording}
+          disabled={pending || processingInput || recording || !online}
           className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
         >
           {pending ? "جارٍ التسجيل..." : "تسجيل البرقية"}
@@ -669,6 +724,7 @@ function TelegramDetail({
   telegram,
   settings,
   isAdmin,
+  canOperate,
   routingTargets,
   close,
 }: {
@@ -699,6 +755,7 @@ function TelegramDetail({
     logoUrl: string | null;
   };
   isAdmin: boolean;
+  canOperate: boolean;
   routingTargets: Array<{ id: string; code: string; name: string }>;
   close: () => void;
 }) {
@@ -753,6 +810,24 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر إحالة البرقية"),
   });
+  const uploadAttachment = trpc.telegrams.uploadAttachment.useMutation({
+    onSuccess: () => toast.success("تم رفع المرفق وتسجيل بصمته في الخادم"),
+    onError: error => toast.error(error.message || "تعذر رفع المرفق"),
+  });
+  const handleAttachment = (file?: File) => {
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf", "audio/mpeg", "audio/wav", "audio/webm"];
+    if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) {
+      toast.error("نوع المرفق غير مسموح أو يتجاوز 10 ميغابايت");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      uploadAttachment.mutate({ telegramId: telegram.id, fileName: file.name, contentType: file.type as "image/jpeg" | "image/png" | "image/webp" | "application/pdf" | "audio/mpeg" | "audio/wav" | "audio/webm", base64: value.split(",")[1] ?? value });
+    };
+    reader.readAsDataURL(file);
+  };
   const requestTransition = (toStatus: Status) => {
     const needsReason = toStatus === "returned" || toStatus === "rejected";
     const reason = needsReason ? window.prompt("أدخل سبب الإرجاع أو الرفض:")?.trim() : null;
@@ -1469,7 +1544,7 @@ function TelegramDetail({
       lang="ar"
       aria-label="معاينة البرقية بحجم الورقة"
     />
-    <div className="mt-5 flex flex-wrap gap-2 print:hidden"><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button>{telegram.status === "draft" && <Button onClick={() => requestTransition("submitted")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إرسال للمراجعة</Button>}{telegram.status === "submitted" && <Button onClick={() => requestTransition("in_review")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">بدء المراجعة</Button>}{telegram.status === "pending" && <Button onClick={() => requestTransition("in_progress")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">بدء الإجراء</Button>}{(telegram.status === "in_progress" || telegram.status === "approved" || telegram.status === "forwarded") && <Button onClick={() => requestTransition(telegram.status === "in_progress" ? "completed" : "completed")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إكمال المعالجة</Button>}{telegram.status === "in_review" && <><Button onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none">اعتماد</Button><Button onClick={() => requestTransition("returned")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إرجاع بسبب</Button><Button onClick={() => requestTransition("rejected")} disabled={transition.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">رفض</Button></>}{telegram.status === "resolved" || telegram.status === "completed" ? <Button onClick={() => requestTransition("archived")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">أرشفة</Button> : null}<Button onClick={() => { if (window.confirm(`هل أنت متأكد من أرشفة البرقية ${telegram.serialCode}؟ سيبقى سجلها محفوظًا.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الأرشفة..." : "أرشفة البرقية"}</Button></>}</div>{routingTargets.length > 0 && ["approved", "in_progress", "forwarded"].includes(telegram.status) && <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden"><p className="text-xs font-bold text-[#7a5c1e]">إحالة مركزية بين الوحدات الشرطية</p><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"><select value={routeTarget} onChange={event => setRouteTarget(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-xs"><option value="">اختر الوحدة المستلمة</option>{routingTargets.map(target => <option key={target.id} value={target.id}>{target.name} ({target.code})</option>)}</select><Input value={routeNote} onChange={event => setRouteNote(event.target.value)} placeholder="ملاحظة الإحالة (اختياري)" className="h-10 rounded-lg text-xs" /><Button type="button" disabled={!routeTarget || routeTelegram.isPending} onClick={() => routeTelegram.mutate({ id: telegram.id, toOrganizationId: routeTarget, note: routeNote.trim() || null })} className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]">{routeTelegram.isPending ? "جارٍ الإحالة..." : "إحالة البرقية"}</Button></div><p className="mt-2 text-[11px] text-muted-foreground">لا تظهر إلا الوحدات المرتبطة تنظيميًا، ويُحفظ المسار كاملًا في سجل التدقيق.</p></div>}{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
+    <div className="mt-5 flex flex-wrap gap-2 print:hidden"><label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">{uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}<input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm" disabled={uploadAttachment.isPending} onChange={event => { handleAttachment(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label><Button onClick={printTelegram} className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"><Printer className="ml-2 h-4 w-4" />طباعة</Button><Button onClick={() => exportPdf(false)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileDown className="ml-2 h-4 w-4" />{exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}</Button><Button onClick={downloadImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><FileImage className="ml-2 h-4 w-4" />{exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}</Button><Button onClick={() => exportPdf(true)} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}</Button><Button onClick={shareImage} disabled={!!exporting} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Share2 className="ml-2 h-4 w-4" />{exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}</Button><Button onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><LocateFixed className="ml-2 h-4 w-4" />الموقع</Button>{isAdmin && <><Button onClick={() => setEditOpen(true)} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none"><Save className="ml-2 h-4 w-4" />تعديل البرقية</Button>{telegram.status === "draft" && <Button onClick={() => requestTransition("submitted")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إرسال للمراجعة</Button>}{telegram.status === "submitted" && <Button onClick={() => requestTransition("in_review")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">بدء المراجعة</Button>}{telegram.status === "pending" && <Button onClick={() => requestTransition("in_progress")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">بدء الإجراء</Button>}{(telegram.status === "in_progress" || telegram.status === "approved" || telegram.status === "forwarded") && <Button onClick={() => requestTransition(telegram.status === "in_progress" ? "completed" : "completed")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إكمال المعالجة</Button>}{telegram.status === "in_review" && <><Button onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none">اعتماد</Button><Button onClick={() => requestTransition("returned")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">إرجاع بسبب</Button><Button onClick={() => requestTransition("rejected")} disabled={transition.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">رفض</Button></>}{telegram.status === "resolved" || telegram.status === "completed" ? <Button onClick={() => requestTransition("archived")} disabled={transition.isPending} variant="outline" className="h-10 flex-1 rounded-lg sm:flex-none">أرشفة</Button> : null}<Button onClick={() => { if (window.confirm(`هل أنت متأكد من أرشفة البرقية ${telegram.serialCode}؟ سيبقى سجلها محفوظًا.`)) deleteTelegram.mutate({ id: telegram.id }); }} disabled={deleteTelegram.isPending} variant="destructive" className="h-10 flex-1 rounded-lg sm:flex-none">{deleteTelegram.isPending ? "جارٍ الأرشفة..." : "أرشفة البرقية"}</Button></>}</div>{canOperate && !isAdmin && <div className="mt-4 flex flex-wrap gap-2 print:hidden">{telegram.status === "draft" && <Button onClick={() => requestTransition("submitted")} disabled={transition.isPending} variant="outline" className="h-10 rounded-lg">إرسال للمراجعة</Button>}{telegram.status === "submitted" && <Button onClick={() => requestTransition("in_review")} disabled={transition.isPending} variant="outline" className="h-10 rounded-lg">بدء المراجعة</Button>}{telegram.status === "in_review" && <><Button onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-10 rounded-lg bg-emerald-600 text-white">اعتماد</Button><Button onClick={() => requestTransition("returned")} disabled={transition.isPending} variant="outline" className="h-10 rounded-lg">إرجاع بسبب</Button><Button onClick={() => requestTransition("rejected")} disabled={transition.isPending} variant="destructive" className="h-10 rounded-lg">رفض</Button></>}{(telegram.status === "approved" || telegram.status === "in_progress" || telegram.status === "forwarded") && <Button onClick={() => requestTransition("completed")} disabled={transition.isPending} variant="outline" className="h-10 rounded-lg">إكمال المعالجة</Button>}</div>}{routingTargets.length > 0 && ["approved", "in_progress", "forwarded"].includes(telegram.status) && <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden"><p className="text-xs font-bold text-[#7a5c1e]">إحالة مركزية بين الوحدات الشرطية</p><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"><select value={routeTarget} onChange={event => setRouteTarget(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-xs"><option value="">اختر الوحدة المستلمة</option>{routingTargets.map(target => <option key={target.id} value={target.id}>{target.name} ({target.code})</option>)}</select><Input value={routeNote} onChange={event => setRouteNote(event.target.value)} placeholder="ملاحظة الإحالة (اختياري)" className="h-10 rounded-lg text-xs" /><Button type="button" disabled={!routeTarget || routeTelegram.isPending} onClick={() => routeTelegram.mutate({ id: telegram.id, toOrganizationId: routeTarget, note: routeNote.trim() || null })} className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]">{routeTelegram.isPending ? "جارٍ الإحالة..." : "إحالة البرقية"}</Button></div><p className="mt-2 text-[11px] text-muted-foreground">لا تظهر إلا الوحدات المرتبطة تنظيميًا، ويُحفظ المسار كاملًا في سجل التدقيق.</p></div>}{isAdmin && editOpen && <TelegramEditModal telegram={telegram} pending={updateTelegram.isPending} close={() => setEditOpen(false)} submit={values => updateTelegram.mutate({ id: telegram.id, ...values })} />}<p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground print:hidden"><Shield className="h-3.5 w-3.5" />تُحفظ هوية المنشئ الأصلية في سجل البرقية، وتُسجل عمليات الإدارة في سجل التدقيق.</p></Modal>;
 }
 function TelegramEditModal({
   telegram,

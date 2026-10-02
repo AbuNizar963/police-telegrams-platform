@@ -45,6 +45,7 @@ import {
 import {
   addOrganizationMembership,
   createOrganization,
+  getUserOrganizationMembership,
   listOrganizationsForUser,
   listRoutingTargets,
   routeTelegram,
@@ -165,6 +166,17 @@ export const appRouter = router({
     mine: protectedProcedure.query(({ ctx }) =>
       listOrganizationsForUser(ctx.user.id),
     ),
+
+    context: protectedProcedure.query(async ({ ctx }) => {
+      const membership = await getUserOrganizationMembership(ctx.user.id);
+      return membership
+        ? {
+            organizationId: membership.organizationId,
+            role: membership.role,
+            isActive: membership.isActive,
+          }
+        : null;
+    }),
 
     routingTargets: protectedProcedure.query(({ ctx }) =>
       listRoutingTargets(ctx.user.id),

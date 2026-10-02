@@ -38,6 +38,9 @@ jobs:
             exit 1
           fi
 
+      - name: Check formatting
+        run: pnpm lint
+
       - name: Type check
         run: pnpm check
 

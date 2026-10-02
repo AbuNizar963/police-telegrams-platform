@@ -10,7 +10,7 @@ export function getSupabaseBrowserClient(): SupabaseClient {
 
   if (!url || !publishableKey) {
     throw new Error(
-      "Supabase client configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+      "Supabase client configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY."
     );
   }
 

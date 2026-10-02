@@ -56,19 +56,16 @@ describe("Supabase storage provider", () => {
       getStorageProvider().upload("telegrams/7/file.pdf", Buffer.from("x"), {
         contentType: "application/pdf",
         cacheControl: "3600",
-      }),
+      })
     ).rejects.toThrow("Storage upload failed: bucket unavailable");
   });
 
   it("returns the signed URL for the requested key and expiration", async () => {
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
     ).resolves.toBe("https://storage.example/signed-object");
 
-    expect(createSignedUrl).toHaveBeenCalledWith(
-      "telegrams/7/file.pdf",
-      600,
-    );
+    expect(createSignedUrl).toHaveBeenCalledWith("telegrams/7/file.pdf", 600);
   });
 
   it("surfaces signed URL errors and empty provider responses", async () => {
@@ -78,7 +75,7 @@ describe("Supabase storage provider", () => {
     });
 
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
     ).rejects.toThrow("Storage signed URL failed: permission denied");
 
     createSignedUrl.mockResolvedValueOnce({
@@ -87,7 +84,7 @@ describe("Supabase storage provider", () => {
     });
 
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
     ).rejects.toThrow("Storage signed URL failed: empty URL");
   });
 });

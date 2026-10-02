@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import { CheckCircle2, CircleHelp, LoaderCircle, ShieldCheck, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleHelp,
+  LoaderCircle,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 
 type VerificationResult = {
   valid: boolean;
@@ -28,10 +34,13 @@ export default function VerifyTelegram() {
       }
 
       try {
-        const response = await fetch(`/api/verify/${encodeURIComponent(token)}`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/verify/${encodeURIComponent(token)}`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }
+        );
         const payload = (await response.json()) as VerificationResult;
         if (!cancelled) setResult(payload);
       } catch {
@@ -55,7 +64,11 @@ export default function VerifyTelegram() {
   const verified = result?.valid === true;
 
   return (
-    <main dir="rtl" lang="ar" className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
+    <main
+      dir="rtl"
+      lang="ar"
+      className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8"
+    >
       <section className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
         <header className="flex items-center gap-3 bg-[#10233f] px-6 py-5 text-white">
           <ShieldCheck className="h-8 w-8 text-[#d8c38e]" aria-hidden="true" />
@@ -68,15 +81,26 @@ export default function VerifyTelegram() {
         <div className="space-y-5 px-6 py-8 text-center">
           {loading ? (
             <>
-              <LoaderCircle className="mx-auto h-12 w-12 animate-spin text-slate-500" aria-hidden="true" />
-              <p className="font-semibold text-slate-700">جارٍ التحقق من الوثيقة...</p>
+              <LoaderCircle
+                className="mx-auto h-12 w-12 animate-spin text-slate-500"
+                aria-hidden="true"
+              />
+              <p className="font-semibold text-slate-700">
+                جارٍ التحقق من الوثيقة...
+              </p>
             </>
           ) : verified ? (
             <>
               {result.status === "archived" ? (
-                <CircleHelp className="mx-auto h-14 w-14 text-amber-600" aria-hidden="true" />
+                <CircleHelp
+                  className="mx-auto h-14 w-14 text-amber-600"
+                  aria-hidden="true"
+                />
               ) : (
-                <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" aria-hidden="true" />
+                <CheckCircle2
+                  className="mx-auto h-14 w-14 text-emerald-600"
+                  aria-hidden="true"
+                />
               )}
 
               <h2 className="text-xl font-bold text-slate-900">
@@ -85,32 +109,47 @@ export default function VerifyTelegram() {
                   : "تم التحقق من صحة البرقية"}
               </h2>
               <p className="text-sm leading-7 text-slate-600">
-                الرمز مرتبط بسجل موجود في منظومة البرقيات. هذه الصفحة تؤكد صحة المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.
+                الرمز مرتبط بسجل موجود في منظومة البرقيات. هذه الصفحة تؤكد صحة
+                المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.
               </p>
 
               <dl className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-right">
                 <div>
                   <dt className="text-xs text-slate-500">اسم الوحدة الشرطية</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{result.unitName || "—"}</dd>
+                  <dd className="mt-1 font-semibold text-slate-900">
+                    {result.unitName || "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-slate-500">رقم البرقية</dt>
-                  <dd className="mt-1 font-semibold text-slate-900" dir="ltr">{result.serialCode || "—"}</dd>
+                  <dd className="mt-1 font-semibold text-slate-900" dir="ltr">
+                    {result.serialCode || "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-slate-500">اسم الشرطي المنشئ</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">{result.creatorName || "—"}</dd>
+                  <dd className="mt-1 font-semibold text-slate-900">
+                    {result.creatorName || "—"}
+                  </dd>
                 </div>
               </dl>
 
-              <p className="text-xs text-slate-500">للاطلاع على التفاصيل، يرجى الرجوع إلى الجهة المخولة.</p>
+              <p className="text-xs text-slate-500">
+                للاطلاع على التفاصيل، يرجى الرجوع إلى الجهة المخولة.
+              </p>
             </>
           ) : (
             <>
-              <XCircle className="mx-auto h-14 w-14 text-red-600" aria-hidden="true" />
-              <h2 className="text-xl font-bold text-slate-900">تعذر إثبات صحة البرقية</h2>
+              <XCircle
+                className="mx-auto h-14 w-14 text-red-600"
+                aria-hidden="true"
+              />
+              <h2 className="text-xl font-bold text-slate-900">
+                تعذر إثبات صحة البرقية
+              </h2>
               <p className="text-sm leading-7 text-slate-600">
-                {result?.error ?? "الرابط غير صالح أو أن الوثيقة غير موجودة في المنظومة. يرجى مراجعة الجهة المصدرة."}
+                {result?.error ??
+                  "الرابط غير صالح أو أن الوثيقة غير موجودة في المنظومة. يرجى مراجعة الجهة المصدرة."}
               </p>
             </>
           )}

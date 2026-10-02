@@ -78,17 +78,17 @@ const correctionPatterns = Object.entries(wordCorrections).map(
   ([incorrect, correct]) => ({
     pattern: new RegExp(
       `(^|[^ء-يA-Za-z0-9])${incorrect}(?=$|[^ء-يA-Za-z0-9])`,
-      "g",
+      "g"
     ),
     replacement: `$1${correct}`,
-  }),
+  })
 );
 
 export function correctArabicSpeechText(value: string): string {
   return correctionPatterns.reduce(
     (text, correction) =>
       text.replace(correction.pattern, correction.replacement),
-    value,
+    value
   );
 }
 
@@ -136,9 +136,11 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
 
   while (index < words.length) {
     const remaining = words.slice(index);
-    const match = remaining.join(" ").match(
-      /^(الساعة\s+\d{1,2}(?::\d{2})?\s+من\s+تاريخ\s+)(\d{1,2}(?:[/.\-]\d{1,2}){0,2})(?=\s|$)/,
-    );
+    const match = remaining
+      .join(" ")
+      .match(
+        /^(الساعة\s+\d{1,2}(?::\d{2})?\s+من\s+تاريخ\s+)(\d{1,2}(?:[/.\-]\d{1,2}){0,2})(?=\s|$)/
+      );
 
     if (!match) {
       result.push(words[index]);
@@ -164,9 +166,7 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
       const candidateDate = words[nextIndex + phraseWords.length];
       if (
         !candidateDate ||
-        !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(
-          comparableWord(candidateDate),
-        )
+        !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(comparableWord(candidateDate))
       ) {
         break;
       }
@@ -177,8 +177,7 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
         candidateParts
           .slice(0, bestParts)
           .every(
-            (part, partIndex) =>
-              part === bestDate.split(/[/.\-]/)[partIndex],
+            (part, partIndex) => part === bestDate.split(/[/.\-]/)[partIndex]
           );
 
       if (!isProgression) break;

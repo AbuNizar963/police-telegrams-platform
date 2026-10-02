@@ -28,7 +28,7 @@ describe("auth.logout", () => {
     await expect(caller.auth.logout()).resolves.toEqual({ success: true });
     expect(context.res.setHeader).toHaveBeenCalledWith(
       "Set-Cookie",
-      expect.stringContaining("Max-Age=0"),
+      expect.stringContaining("Max-Age=0")
     );
   });
 });

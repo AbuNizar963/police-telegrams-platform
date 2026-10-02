@@ -48,9 +48,8 @@ export const adminProcedure = t.procedure.use(
         user: ctx.user,
       },
     });
-  }),
+  })
 );
-
 
 export const organizationAdminProcedure = t.procedure.use(
   t.middleware(async opts => {
@@ -81,5 +80,5 @@ export const organizationAdminProcedure = t.procedure.use(
         organizationMembership: membership,
       },
     });
-  }),
+  })
 );

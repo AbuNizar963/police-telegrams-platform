@@ -7,7 +7,7 @@ type TesseractApi = {
   createWorker(
     languages: string,
     oem?: number,
-    options?: Record<string, unknown>,
+    options?: Record<string, unknown>
   ): Promise<TesseractWorker>;
 };
 
@@ -60,7 +60,7 @@ function loadTesseract(): Promise<TesseractApi> {
   if (!tesseractLoadPromise) {
     tesseractLoadPromise = new Promise<TesseractApi>((resolve, reject) => {
       const existing = document.querySelector<HTMLScriptElement>(
-        'script[data-local-ocr="tesseract"]',
+        'script[data-local-ocr="tesseract"]'
       );
 
       const script =
@@ -95,7 +95,7 @@ function loadTesseract(): Promise<TesseractApi> {
           window.clearTimeout(timeout);
           reject(new Error("تعذر الاتصال بمحرك OCR المجاني"));
         },
-        { once: true },
+        { once: true }
       );
 
       if (window.Tesseract) {
@@ -110,7 +110,7 @@ function loadTesseract(): Promise<TesseractApi> {
 async function getOcrWorker(): Promise<TesseractWorker> {
   if (!ocrWorkerPromise) {
     ocrWorkerPromise = loadTesseract().then(tesseract =>
-      tesseract.createWorker("ara+eng", 1),
+      tesseract.createWorker("ara+eng", 1)
     );
   }
 
@@ -142,7 +142,7 @@ export function createArabicSpeechRecognition(): SpeechRecognition {
 
   if (!Recognition) {
     throw new Error(
-      "التعرف الصوتي غير متاح في هذا المتصفح. استخدم Chrome على الهاتف أو الكمبيوتر.",
+      "التعرف الصوتي غير متاح في هذا المتصفح. استخدم Chrome على الهاتف أو الكمبيوتر."
     );
   }
 

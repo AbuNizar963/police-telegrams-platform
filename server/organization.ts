@@ -342,6 +342,51 @@ export async function approveTelegramRoute(input: {
   return mapRoute(data as Record<string, unknown>);
 }
 
+export async function receiveTelegramRoute(input: {
+  routeId: number;
+  receiverUserId: number;
+}): Promise<TelegramRoute> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "receive_telegram_route",
+    {
+      p_route_id: input.routeId,
+      p_receiver_user_id: input.receiverUserId,
+    }
+  );
+  throwIfError(error, "Failed to receive telegram route");
+  return mapRoute(data as Record<string, unknown>);
+}
+
+export async function listIncomingTelegramRoutes(input: {
+  telegramId: number;
+  userId: number;
+  canViewAll?: boolean;
+}): Promise<TelegramRoute[]> {
+  const membership = input.canViewAll
+    ? null
+    : await getUserOrganizationMembership(input.userId);
+
+  if (!input.canViewAll && !membership) {
+    return [];
+  }
+
+  let query = getSupabaseAdmin()
+    .from("telegram_routes")
+    .select("*")
+    .eq("telegramId", input.telegramId)
+    .in("status", ["sent", "received"])
+    .in("approvalStatus", ["not_required", "approved"])
+    .order("createdAt", { ascending: false });
+
+  if (!input.canViewAll && membership) {
+    query = query.eq("toOrganizationId", membership.organizationId);
+  }
+
+  const { data, error } = await query;
+  throwIfError(error, "Failed to list incoming telegram routes");
+  return (data ?? []).map(row => mapRoute(row as Record<string, unknown>));
+}
+
 export async function listPendingRouteApprovals(
   userId: number,
   canViewAll = false

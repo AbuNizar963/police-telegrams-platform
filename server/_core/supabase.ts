@@ -8,7 +8,7 @@ export function getSupabaseAdmin(): SupabaseClient {
 
   if (!ENV.supabaseUrl || !ENV.supabaseSecretKey) {
     throw new Error(
-      "Supabase server configuration is missing. Set SUPABASE_URL and SUPABASE_SECRET_KEY.",
+      "Supabase server configuration is missing. Set SUPABASE_URL and SUPABASE_SECRET_KEY."
     );
   }
 

@@ -28,7 +28,7 @@ describe("profile router", () => {
   it("returns the authenticated user's profile", async () => {
     const context = contextFor();
     await expect(
-      appRouter.createCaller(context).profile.get(),
+      appRouter.createCaller(context).profile.get()
     ).resolves.toEqual(context.user);
   });
 
@@ -41,7 +41,7 @@ describe("profile router", () => {
         rank: null,
         unit: null,
         bio: null,
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
@@ -54,7 +54,7 @@ describe("profile router", () => {
         rank: null,
         unit: null,
         bio: null,
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
@@ -63,7 +63,7 @@ describe("profile router", () => {
       caller().profile.changePassword({
         currentPassword: "",
         newPassword: "A-secure-password-123",
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
@@ -72,7 +72,7 @@ describe("profile router", () => {
       caller().profile.changePassword({
         currentPassword: "current-password",
         newPassword: "short",
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

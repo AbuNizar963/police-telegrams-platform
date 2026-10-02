@@ -25,9 +25,10 @@ function contextFor(role: "admin" | "user"): TrpcContext {
   return {
     user: {
       id: role === "admin" ? 1 : 42,
-      authUserId: role === "admin"
-        ? "00000000-0000-4000-8000-000000000001"
-        : "00000000-0000-4000-8000-000000000042",
+      authUserId:
+        role === "admin"
+          ? "00000000-0000-4000-8000-000000000001"
+          : "00000000-0000-4000-8000-000000000042",
       name: role === "admin" ? "مدير النظام" : "موظف",
       badgeNumber: null,
       email: role === "admin" ? "admin@example.com" : "officer@example.com",
@@ -118,16 +119,21 @@ describe("telegram administration permissions", () => {
     const result = await caller.telegrams.update(updateInput);
 
     expect(result.subject).toBe("موضوع معدل");
-    expect(mocked.updateTelegram).toHaveBeenCalledWith(7, expect.objectContaining({
-      subject: "موضوع معدل",
-      priority: "urgent",
-    }));
-    expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
-      actorUserId: 1,
-      action: "telegram.update",
-      entityId: "7",
-      metadata: expect.stringContaining('"serialNumber":1001'),
-    }));
+    expect(mocked.updateTelegram).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        subject: "موضوع معدل",
+        priority: "urgent",
+      })
+    );
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 1,
+        action: "telegram.update",
+        entityId: "7",
+        metadata: expect.stringContaining('"serialNumber":1001'),
+      })
+    );
   });
 
   it("allows administrators to delete a telegram and records its original identity", async () => {
@@ -136,11 +142,13 @@ describe("telegram administration permissions", () => {
 
     expect(result).toEqual({ success: true, id: 7 });
     expect(mocked.deleteTelegram).toHaveBeenCalledWith(7);
-    expect(mocked.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({
-      actorUserId: 1,
-      action: "telegram.archive",
-      entityId: "7",
-      metadata: expect.stringContaining('"createdByUserId":42'),
-    }));
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 1,
+        action: "telegram.archive",
+        entityId: "7",
+        metadata: expect.stringContaining('"createdByUserId":42'),
+      })
+    );
   });
 });

@@ -9,6 +9,7 @@ Configure these in the local environment and in the deployment provider's server
 ```bash
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+STORAGE_PROVIDER=forge
 VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
 ```
@@ -26,6 +27,8 @@ Set `OWNER_OPEN_ID` to the Supabase Auth user UUID that should receive the initi
 3. In **Authentication → URL Configuration**, set the production site URL to the Vercel site and add `https://YOUR-VERCEL-DOMAIN.vercel.app/` plus local and preview origins if they are used.
 4. The application sends Google users back to the current site root with `redirectTo: window.location.origin + "/"`; that exact origin must be allow-listed in Supabase.
 5. Apply the SQL migration in `supabase/migrations` only after reviewing the target Supabase database and its RLS policies.
+
+`STORAGE_PROVIDER=forge` selects the currently enabled private Forge/S3 adapter. The application exposes a provider-neutral storage boundary, but a Supabase Storage or local ministry adapter must be implemented, reviewed, and tested before selecting another value. An unsupported value fails closed instead of silently storing files insecurely.
 
 ## Login behavior
 

@@ -73,6 +73,10 @@ function escapeHtml(value: string) {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");
+const PRINT_PAGE_WIDTH_PX = 794;
+const PRINT_PAGE_HEIGHT_PX = 1123;
+const PRINT_PAGE_WIDTH_MM = 210;
+const PRINT_PAGE_HEIGHT_MM = 297;
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
 const priorityLabels = {
   slow: "بطيء",
@@ -1893,8 +1897,8 @@ function TelegramDetail({
           position: relative;
           isolation: isolate;
           box-sizing: border-box;
-          width: 794px;
-          min-height: 1123px;
+          width: ${PRINT_PAGE_WIDTH_PX}px;
+          min-height: ${PRINT_PAGE_HEIGHT_PX}px;
           padding: 19px;
           margin: 0;
           background: #fff;
@@ -2080,7 +2084,7 @@ function TelegramDetail({
         @media print {
           @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; padding: 0; background: #fff; }
-          .telegram-export-page { width: 210mm; min-height: 297mm; }
+          .telegram-export-page { width: ${PRINT_PAGE_WIDTH_MM}mm; min-height: ${PRINT_PAGE_HEIGHT_MM}mm; }
         }
       </style>
       <article class="telegram-export-page" dir="rtl" lang="ar">
@@ -2149,14 +2153,14 @@ function TelegramDetail({
       const availableWidth = host.clientWidth;
       if (!availableWidth) return;
 
-      const scale = Math.min(1, availableWidth / 794);
+      const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
       const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
       exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
       paper.style.position = "absolute";
       paper.style.top = "0";
       paper.style.left = "50%";
-      paper.style.marginLeft = "-397px";
+      paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
       paper.style.transformOrigin = "top center";
       paper.style.transform = `scale(${scale})`;
       host.style.height = `${scaledHeight}px`;
@@ -2187,8 +2191,7 @@ function TelegramDetail({
 
     const mount = document.createElement("div");
     mount.setAttribute("aria-hidden", "true");
-    mount.style.cssText =
-      "position:fixed;left:-10000px;top:0;width:794px;z-index:-1;pointer-events:none;";
+    mount.style.cssText = `position:fixed;left:-10000px;top:0;width:${PRINT_PAGE_WIDTH_PX}px;z-index:-1;pointer-events:none;`;
     mount.appendChild(exportWrapper);
     document.body.appendChild(mount);
 
@@ -2257,7 +2260,7 @@ function TelegramDetail({
       const measuredHeight = Math.max(
         paper.scrollHeight,
         paper.getBoundingClientRect().height,
-        1123
+        PRINT_PAGE_HEIGHT_PX
       );
 
       // html2canvas parses the source document's styles before cloning. Remove
@@ -2280,9 +2283,9 @@ function TelegramDetail({
 
       return await html2canvas(paper, {
         scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
-        width: 794,
+        width: PRINT_PAGE_WIDTH_PX,
         height: Math.ceil(measuredHeight),
-        windowWidth: 794,
+        windowWidth: PRINT_PAGE_WIDTH_PX,
         windowHeight: Math.ceil(measuredHeight),
         backgroundColor: "#ffffff",
         useCORS: true,
@@ -2343,8 +2346,8 @@ function TelegramDetail({
     printRoot.style.position = "fixed";
     printRoot.style.inset = "0";
     printRoot.style.zIndex = "-1";
-    printRoot.style.width = "210mm";
-    printRoot.style.minHeight = "297mm";
+    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
     printRoot.style.background = "#fff";
 
     printStyle.id = "telegram-print-style";
@@ -2365,16 +2368,16 @@ function TelegramDetail({
           inset: auto !important;
           z-index: auto !important;
           display: block !important;
-          width: 210mm !important;
-          min-height: 297mm !important;
+          width: ${PRINT_PAGE_WIDTH_MM}mm !important;
+          min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #fff !important;
         }
 
         #telegram-print-root .telegram-export-page {
-          width: 210mm !important;
-          min-height: 297mm !important;
+          width: ${PRINT_PAGE_WIDTH_MM}mm !important;
+          min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 !important;
         }
 
@@ -2558,8 +2561,8 @@ function TelegramDetail({
     // Match the same A4 page box used by browser printing: 210 × 297 mm,
     // with the paper's internal 14mm padding already included in the captured pixels.
     const margin = 0;
-    const pageWidth = 210;
-    const pageHeight = 297;
+    const pageWidth = PRINT_PAGE_WIDTH_MM;
+    const pageHeight = PRINT_PAGE_HEIGHT_MM;
     const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
     const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
     let sourceY = 0;
@@ -2596,8 +2599,8 @@ function TelegramDetail({
       if (pageIndex > 0) pdf.addPage();
       const sliceHeightMm = sliceHeight / sourcePixelsPerMm;
       pdf.addImage(
-        pageCanvas.toDataURL("image/jpeg", 0.96),
-        "JPEG",
+        pageCanvas.toDataURL("image/png"),
+        "PNG",
         margin,
         margin,
         pageWidth,

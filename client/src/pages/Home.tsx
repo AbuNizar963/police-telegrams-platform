@@ -137,6 +137,16 @@ const statusLabels = {
   completed: "مكتملة نهائيًا",
   archived: "مؤرشفة",
 } as const;
+const organizationTypeLabels: Record<string, string> = {
+  central: "القيادة المركزية",
+  governorate: "قيادة المحافظة",
+  region: "قيادة المنطقة",
+  police_department: "مديرية الشرطة",
+  station: "المخفر",
+  command: "القيادة",
+  department: "القسم",
+  unit: "الوحدة",
+};
 const statusStyles = {
   draft: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
   submitted: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
@@ -897,6 +907,7 @@ export default function Home() {
       {composerOpen && (
         <TelegramComposer
           pending={create.isPending}
+          routingTargets={routingTargets.data ?? []}
           close={() => setComposerOpen(false)}
           submit={values => create.mutate(values)}
         />
@@ -1233,14 +1244,23 @@ function TelegramViewButton({
 
 function TelegramComposer({
   pending,
+  routingTargets,
   close,
   submit,
 }: {
   pending: boolean;
+  routingTargets: Array<{
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    isConfiguredDestination?: boolean;
+  }>;
   close: () => void;
   submit: (values: {
     subject: string;
     recipient: string;
+    recipientOrganizationId?: string;
     body: string;
     classification: Classification;
     priority: Priority;
@@ -1249,6 +1269,7 @@ function TelegramComposer({
 }) {
   const [subject, setSubject] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [recipientOrganizationId, setRecipientOrganizationId] = useState("");
   const [body, setBody] = useState("");
   const [classification, setClassification] =
     useState<Classification>("normal");
@@ -1270,6 +1291,15 @@ function TelegramComposer({
       window.removeEventListener("offline", update);
     };
   }, []);
+
+  useEffect(() => {
+    const configuredTarget = routingTargets.find(
+      target => target.isConfiguredDestination
+    );
+    if (configuredTarget && !recipientOrganizationId) {
+      setRecipient(configuredTarget.name);
+    }
+  }, [recipientOrganizationId, routingTargets]);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const speechShouldContinueRef = useRef(false);
@@ -1463,6 +1493,7 @@ function TelegramComposer({
     submit({
       subject: subject.trim(),
       recipient: recipient.trim(),
+      ...(recipientOrganizationId ? { recipientOrganizationId } : {}),
       body: body.trim(),
       classification,
       priority,
@@ -1500,12 +1531,34 @@ function TelegramComposer({
 
         <label className="grid gap-1.5 text-xs font-bold">
           الجهة الموجهة إليها
-          <Input
-            value={recipient}
-            onChange={event => setRecipient(event.target.value)}
-            placeholder="القطاع أو المسؤول المعني"
-            className="h-11 rounded-lg"
-          />
+          <select
+            value={recipientOrganizationId}
+            onChange={event => {
+              const targetId = event.target.value;
+              const target = routingTargets.find(item => item.id === targetId);
+              setRecipientOrganizationId(targetId);
+              setRecipient(
+                target?.name ??
+                  routingTargets.find(item => item.isConfiguredDestination)
+                    ?.name ??
+                  ""
+              );
+            }}
+            className="h-11 rounded-lg border bg-background px-3 text-sm"
+          >
+            <option value="">
+              {routingTargets.some(target => target.isConfiguredDestination)
+                ? "التوجيه الافتراضي حسب إعداد الجهة"
+                : "اختر القيادة أو المديرية أو الجهة المستقبلة"}
+            </option>
+            {routingTargets.map(target => (
+              <option key={target.id} value={target.id}>
+                {organizationTypeLabels[target.type] ?? "جهة شرطية"} —{" "}
+                {target.name}
+                {target.isConfiguredDestination ? " (افتراضي)" : ""}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="grid gap-1.5 text-xs font-bold">

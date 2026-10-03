@@ -1024,6 +1024,7 @@ export const appRouter = router({
         z.object({
           subject: z.string().trim().min(2).max(255),
           recipient: z.string().trim().min(2).max(255),
+          recipientOrganizationId: z.string().uuid().optional(),
           body: z.string().trim().min(3).max(20000),
           classification: classificationSchema,
           priority: prioritySchema,
@@ -1056,20 +1057,35 @@ export const appRouter = router({
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const organizationId = await getUserOrganizationId(ctx.user.id);
-        const configuredDestination = await getConfiguredTelegramDestination(
-          ctx.user.id
-        );
+        const selectedDestination = input.recipientOrganizationId
+          ? (await listRoutingTargets(ctx.user.id)).find(
+              target => target.id === input.recipientOrganizationId
+            )
+          : null;
+        if (input.recipientOrganizationId && !selectedDestination) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "الجهة المختارة غير متاحة ضمن مسار العمل المسموح",
+          });
+        }
+        const configuredDestination = selectedDestination
+          ? selectedDestination
+          : await getConfiguredTelegramDestination(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
           typeof creatorIpHeader === "string"
             ? creatorIpHeader.split(",")[0].trim()
             : null;
+        const {
+          recipientOrganizationId: _recipientOrganizationId,
+          ...telegramInput
+        } = input;
 
         let telegram: Awaited<ReturnType<typeof createTelegram>>;
         try {
           telegram = await createTelegram({
-            ...input,
+            ...telegramInput,
             serialNumber,
             serialCode,
             idempotencyKey: input.idempotencyKey ?? null,
@@ -1099,7 +1115,9 @@ export const appRouter = router({
             telegramId: telegram.id,
             toOrganizationId: configuredDestination.id,
             forwardedByUserId: ctx.user.id,
-            note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+            note: input.recipientOrganizationId
+              ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
+              : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
           });
           const routedTelegram = await getTelegramById(telegram.id);
           if (routedTelegram) telegram = routedTelegram;

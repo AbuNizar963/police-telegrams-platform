@@ -340,7 +340,7 @@ export async function addOrganizationMembership(input: {
 
 export async function listRoutingTargets(
   userId: number
-): Promise<Organization[]> {
+): Promise<Array<Organization & { isConfiguredDestination: boolean }>> {
   const membership = await getUserOrganizationMembership(userId);
   if (!membership) {
     throw new Error("User is not assigned to an active organization");
@@ -355,13 +355,31 @@ export async function listRoutingTargets(
     .from("organizations")
     .select("*")
     .eq("isActive", true)
-    .neq("id", current.id)
-    .order("type", { ascending: true })
     .order("name", { ascending: true });
   throwIfError(error, "Failed to load routing targets");
-  return (data ?? []).map(row =>
+
+  const organizations = (data ?? []).map(row =>
     mapOrganization(row as Record<string, unknown>)
   );
+  return organizations
+    .filter(
+      organization =>
+        organization.id !== current.id &&
+        (organization.parentOrganizationId === current.id ||
+          current.parentOrganizationId === organization.id ||
+          organization.id === current.telegramDestinationOrganizationId)
+    )
+    .sort((left, right) =>
+      `${left.type}-${left.name}`.localeCompare(
+        `${right.type}-${right.name}`,
+        "ar"
+      )
+    )
+    .map(organization => ({
+      ...organization,
+      isConfiguredDestination:
+        organization.id === current.telegramDestinationOrganizationId,
+    }));
 }
 
 export async function routeTelegram(input: {

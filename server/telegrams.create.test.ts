@@ -17,6 +17,7 @@ const mocked = vi.hoisted(() => ({
   recordTelegramAction: vi.fn(),
   recordTelegramVersion: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
+  listRoutingTargets: vi.fn(),
   routeTelegram: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("./organization", async importOriginal => {
   return {
     ...actual,
     getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
+    listRoutingTargets: mocked.listRoutingTargets,
     routeTelegram: mocked.routeTelegram,
   };
 });
@@ -70,6 +72,7 @@ describe("telegrams.create", () => {
     mocked.recordTelegramAction.mockResolvedValue(undefined);
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
+    mocked.listRoutingTargets.mockResolvedValue([]);
     mocked.routeTelegram.mockResolvedValue(undefined);
   });
 
@@ -173,6 +176,42 @@ describe("telegrams.create", () => {
       toOrganizationId: destination.id,
       forwardedByUserId: 42,
       note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+    });
+  });
+
+  it("routes to the explicitly selected allowed organization", async () => {
+    const destination = {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "قيادة المنطقة",
+      isConfiguredDestination: false,
+    };
+    const routedTelegram = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "POL-2026-10-02-01001",
+      status: "forwarded",
+      currentOrganizationId: destination.id,
+    };
+    mocked.listRoutingTargets.mockResolvedValue([destination]);
+    mocked.getTelegramById.mockResolvedValue(routedTelegram);
+
+    const caller = appRouter.createCaller(createContext());
+    await caller.telegrams.create({
+      subject: "إحالة يدوية",
+      recipient: destination.name,
+      recipientOrganizationId: destination.id,
+      body: "محتوى البرقية للاختبار",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+    });
+
+    expect(mocked.getConfiguredTelegramDestination).not.toHaveBeenCalled();
+    expect(mocked.routeTelegram).toHaveBeenCalledWith({
+      telegramId: 7,
+      toOrganizationId: destination.id,
+      forwardedByUserId: 42,
+      note: "إحالة إلى الجهة المختارة عند إنشاء البرقية",
     });
   });
 });

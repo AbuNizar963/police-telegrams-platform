@@ -77,6 +77,9 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
+const EXPORT_PAGE_WIDTH_PX = 2480;
+const EXPORT_PAGE_HEIGHT_PX = 3508;
+const EXPORT_SCALE = EXPORT_PAGE_WIDTH_PX / PRINT_PAGE_WIDTH_PX;
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
 const priorityLabels = {
   slow: "بطيء",
@@ -2220,6 +2223,29 @@ function TelegramDetail({
         )
       );
       await document.fonts.ready;
+      let cairoFontFaces = "";
+      const cairoStylesheet = Array.from(
+        document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')
+      ).find(link =>
+        link.href.includes("fonts.googleapis.com/css2?family=Cairo")
+      );
+      if (cairoStylesheet) {
+        try {
+          const response = await fetch(cairoStylesheet.href, {
+            mode: "cors",
+            credentials: "omit",
+            cache: "force-cache",
+          });
+          if (response.ok) {
+            const css = await response.text();
+            cairoFontFaces = Array.from(css.matchAll(/@font-face\s*\{[^}]+\}/g))
+              .map(match => match[0])
+              .join("\n");
+          }
+        } catch {
+          // The already-loaded browser font remains the fallback path.
+        }
+      }
       // These are the same physical dimensions applied by printTelegram.
       // Keep them inline here because html2canvas renders screen media and does
       // not activate the print media query by itself.
@@ -2304,8 +2330,8 @@ function TelegramDetail({
         }));
       removedStyles.forEach(({ stylesheet }) => stylesheet.remove());
 
-      return await html2canvas(paper, {
-        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
+      const capturedCanvas = await html2canvas(paper, {
+        scale: EXPORT_SCALE,
         width: PRINT_PAGE_WIDTH_PX,
         height: Math.ceil(measuredHeight),
         windowWidth: PRINT_PAGE_WIDTH_PX,
@@ -2332,7 +2358,7 @@ function TelegramDetail({
           const exportStyles = exportWrapper.querySelector("style");
           if (exportStyles) {
             const isolatedStyles = clonedDocument.createElement("style");
-            isolatedStyles.textContent = exportStyles.textContent ?? "";
+            isolatedStyles.textContent = `${cairoFontFaces}\n${exportStyles.textContent ?? ""}`;
             clonedDocument.head.appendChild(isolatedStyles);
           }
 
@@ -2343,6 +2369,28 @@ function TelegramDetail({
           clonedDocument.body.style.backgroundColor = "#ffffff";
         },
       });
+      if (measuredHeight <= PRINT_PAGE_HEIGHT_PX) {
+        const a4Canvas = document.createElement("canvas");
+        a4Canvas.width = EXPORT_PAGE_WIDTH_PX;
+        a4Canvas.height = EXPORT_PAGE_HEIGHT_PX;
+        const a4Context = a4Canvas.getContext("2d");
+        if (!a4Context) {
+          throw new Error("تعذر تجهيز مقاس A4 للتصدير");
+        }
+        a4Context.fillStyle = "#ffffff";
+        a4Context.fillRect(0, 0, a4Canvas.width, a4Canvas.height);
+        a4Context.imageSmoothingEnabled = true;
+        a4Context.imageSmoothingQuality = "high";
+        a4Context.drawImage(
+          capturedCanvas,
+          0,
+          0,
+          a4Canvas.width,
+          a4Canvas.height
+        );
+        return a4Canvas;
+      }
+      return capturedCanvas;
     } finally {
       removedStyles.forEach(({ stylesheet, parent, nextSibling }) => {
         if (parent) {

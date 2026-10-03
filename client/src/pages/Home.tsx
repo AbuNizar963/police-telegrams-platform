@@ -1,7 +1,5 @@
 import { trpc } from "@/lib/trpc";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
-import { BrandMark } from "@/components/BrandMark";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,7 +43,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useIsMobile } from "@/hooks/useMobile";
 import {
   createArabicSpeechRecognition,
   extractArabicTextFromImage,
@@ -274,9 +271,6 @@ function Kpi({
 }
 
 export default function Home() {
-  const { state: sidebarState } = useSidebar();
-  const isMobile = useIsMobile();
-  const showStandaloneBrand = !isMobile && sidebarState === "collapsed";
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState<"all" | Classification>("all");
   const [priority, setPriority] = useState<"all" | Priority>("all");
@@ -447,11 +441,8 @@ export default function Home() {
       dir="rtl"
       className="mx-auto min-h-[calc(100vh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
     >
-      <div
-        className={`flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between ${showStandaloneBrand ? "lg:pr-16" : ""}`}
-      >
+      <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          {showStandaloneBrand ? <BrandMark size="md" /> : null}
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">
@@ -462,7 +453,7 @@ export default function Home() {
                 النظام متصل
               </span>
             </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+            <h1 className="mt-1 text-2xl font-bold tracking-tight md:hidden">
               مركز البرقيات
             </h1>
           </div>

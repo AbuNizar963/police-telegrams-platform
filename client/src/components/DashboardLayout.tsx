@@ -365,16 +365,24 @@ function DashboardLayoutContent({
       <SidebarInset>
         {!isMobile ? (
           <div
-            dir="ltr"
-            className="flex h-14 shrink-0 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+            dir="rtl"
+            className="flex h-16 shrink-0 items-center justify-start border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
           >
-            {isCollapsed ? (
+            <div className="flex items-center gap-3">
               <SidebarTrigger
-                className="h-10 w-10 rounded-xl border bg-background shadow-sm hover:bg-accent"
-                aria-label="فتح القائمة الجانبية"
-                title="فتح القائمة"
+                className="h-10 w-10 shrink-0 rounded-xl border bg-background shadow-sm hover:bg-accent"
+                aria-label={
+                  isCollapsed
+                    ? "فتح القائمة الجانبية"
+                    : "إغلاق القائمة الجانبية"
+                }
+                title={isCollapsed ? "فتح القائمة" : "إغلاق القائمة"}
               />
-            ) : null}
+              <BrandMark size="sm" />
+              <h1 className="text-lg font-bold tracking-tight text-foreground">
+                مركز البرقيات
+              </h1>
+            </div>
           </div>
         ) : null}
         {isMobile && (

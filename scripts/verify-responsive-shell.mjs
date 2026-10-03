@@ -39,13 +39,9 @@ assert(
 );
 
 assert(
-  homePage.includes('showStandaloneBrand ? <BrandMark size="md" /> : null'),
-  "The dashboard page must render the standalone brand only when the desktop sidebar is collapsed."
-);
-
-assert(
-  homePage.includes('showStandaloneBrand ? "lg:pr-16" : ""'),
-  "The collapsed desktop header must reserve space beside the standalone brand."
+  dashboardLayout.includes('<BrandMark size="sm" />') &&
+    dashboardLayout.includes("مركز البرقيات"),
+  "The desktop top bar must contain the brand and telegram center title."
 );
 
 assert(
@@ -64,10 +60,12 @@ assert(
 
 assert(
   dashboardLayout.includes(
-    "flex h-14 shrink-0 items-center justify-end border-b"
+    "flex h-16 shrink-0 items-center justify-start border-b"
   ) &&
-    dashboardLayout.includes('dir="ltr"') &&
-    dashboardLayout.includes("{isCollapsed ? (\n              <SidebarTrigger"),
+    dashboardLayout.includes('dir="rtl"') &&
+    dashboardLayout.includes(
+      '<SidebarTrigger\n                className="h-10 w-10 shrink-0'
+    ),
   "The desktop sidebar must expose its open button in a dedicated top bar."
 );
 

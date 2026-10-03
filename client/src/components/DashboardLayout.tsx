@@ -362,16 +362,15 @@ function DashboardLayoutContent({
         />
       </div>
 
+      {!isMobile && isCollapsed ? (
+        <SidebarTrigger
+          className="fixed right-4 top-4 z-40 h-10 w-10 rounded-xl border bg-background/95 shadow-md backdrop-blur hover:bg-accent"
+          aria-label="فتح القائمة الجانبية"
+          title="فتح القائمة"
+        />
+      ) : null}
+
       <SidebarInset>
-        {!isMobile && (
-          <div className="sticky top-0 z-40 flex h-14 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
-            <SidebarTrigger
-              className="h-10 w-10 rounded-xl border bg-background shadow-sm"
-              aria-label="فتح القائمة الجانبية"
-              title="فتح القائمة"
-            />
-          </div>
-        )}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">

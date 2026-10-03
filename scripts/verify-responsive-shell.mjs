@@ -58,6 +58,12 @@ assert(
 );
 
 assert(
+  dashboardLayout.includes("fixed right-4 top-4 z-40 h-10 w-10 rounded-xl") &&
+    dashboardLayout.includes("!isMobile && isCollapsed"),
+  "The desktop sidebar must expose a fixed open button while collapsed."
+);
+
+assert(
   sidebarLayout.includes('collapsible === "offcanvas"') &&
     sidebarLayout.includes('"w-0"'),
   "An offcanvas sidebar must not reserve layout width for the page content."

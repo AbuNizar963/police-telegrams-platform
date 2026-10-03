@@ -906,6 +906,7 @@ export async function updateUserPassword(
     .from("users")
     .update({
       password_hash: passwordHash,
+      mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id);

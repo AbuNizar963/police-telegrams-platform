@@ -4,7 +4,7 @@ import type {
   OrganizationMemberRole,
   TelegramRoute,
 } from "../drizzle/schema";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
@@ -173,12 +173,22 @@ function transliterateOrganizationName(name: string): string {
   return transliterated.slice(0, 110) || "police_unit";
 }
 
+function organizationAccountPrefix(type: Organization["type"]): string {
+  const prefixes: Partial<Record<Organization["type"], string>> = {
+    command: "hq",
+    police_department: "pd",
+    station: "st",
+    unit: "unit",
+  };
+  return prefixes[type] ?? "unit";
+}
+
 async function createOrganizationAccount(input: {
   organization: Organization;
   createdByUserId?: number;
 }): Promise<{ username: string; password: string; userId: number }> {
   const client = getSupabaseAdmin();
-  const base = transliterateOrganizationName(input.organization.name);
+  const base = `${organizationAccountPrefix(input.organization.type)}_${transliterateOrganizationName(input.organization.code)}`;
   let username = base;
   for (let suffix = 2; ; suffix += 1) {
     const existing = await client
@@ -190,6 +200,7 @@ async function createOrganizationAccount(input: {
     if (!existing.data) break;
     username = `${base.slice(0, 120 - String(suffix).length - 1)}_${suffix}`;
   }
+  const temporaryPassword = randomBytes(12).toString("base64url");
   const now = new Date().toISOString();
   const { data, error } = await client
     .from("users")
@@ -197,7 +208,8 @@ async function createOrganizationAccount(input: {
       authUserId: randomUUID(),
       organizationId: input.organization.id,
       username,
-      password_hash: await hashPassword(username),
+      password_hash: await hashPassword(temporaryPassword),
+      mustChangePassword: true,
       name: input.organization.name,
       unit: input.organization.name,
       email: null,
@@ -212,11 +224,16 @@ async function createOrganizationAccount(input: {
   if (error || !data) {
     throw new Error("تعذر إنشاء الحساب الافتراضي للجهة");
   }
-  await addOrganizationMembership({
-    organizationId: input.organization.id,
-    userId: data.id,
-    role: "organization_admin",
-  });
+  try {
+    await addOrganizationMembership({
+      organizationId: input.organization.id,
+      userId: data.id,
+      role: "organization_admin",
+    });
+  } catch (error) {
+    await client.from("users").delete().eq("id", data.id);
+    throw error;
+  }
   if (input.createdByUserId) {
     await writeAuditLog({
       actorUserId: input.createdByUserId,
@@ -230,7 +247,7 @@ async function createOrganizationAccount(input: {
       }),
     });
   }
-  return { username, password: username, userId: data.id };
+  return { username, password: temporaryPassword, userId: data.id };
 }
 
 export async function createOrganization(input: {

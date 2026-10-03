@@ -55,10 +55,11 @@ export default function Profile() {
     onError: e => toast.error(e.message || "تعذر حفظ الملف الشخصي"),
   });
   const changePassword = trpc.profile.changePassword.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      await Promise.all([utils.profile.get.invalidate(), refresh()]);
       toast.success("تم تغيير كلمة المرور بنجاح");
     },
     onError: e => toast.error(e.message || "تعذر تغيير كلمة المرور"),
@@ -109,6 +110,12 @@ export default function Profile() {
       dir="rtl"
       className="mx-auto w-full max-w-5xl space-y-6 p-4 pb-12 sm:p-6"
     >
+      {profile.mustChangePassword && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-7 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+          هذه كلمة مرور مؤقتة للحساب الرئيسي للجهة. يجب تغييرها قبل متابعة
+          العمل.
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <BrandMark size="sm" />
         <Button

@@ -123,6 +123,7 @@ export const users = pgTable(
     avatarKey: text("avatarKey"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
+    mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
     role: userRole("role").default("user").notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()

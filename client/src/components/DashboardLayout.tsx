@@ -91,6 +91,7 @@ export default function DashboardLayout({
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loading, user } = useAuth();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
@@ -103,6 +104,10 @@ export default function DashboardLayout({
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (user?.mustChangePassword) setLocation("/profile");
+  }, [setLocation, user?.mustChangePassword]);
 
   if (loading) {
     return <DashboardLayoutSkeleton />;

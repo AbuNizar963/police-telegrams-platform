@@ -193,6 +193,7 @@ export const userManagementRouter = router({
       };
       if (input.password) {
         values.password_hash = await hashPassword(input.password);
+        values.mustChangePassword = true;
         // Revoke existing sessions after an administrator resets the password.
         values.authUserId = randomUUID();
       }
@@ -260,6 +261,7 @@ export const userManagementRouter = router({
         .from("users")
         .update({
           password_hash: await hashPassword(input.password),
+          mustChangePassword: true,
           loginMethod: "password",
           updatedAt: new Date().toISOString(),
         })

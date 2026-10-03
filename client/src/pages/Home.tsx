@@ -2038,16 +2038,6 @@ function TelegramDetail({
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        /* Keep capture-only normalization separate from the print layout. */
-        .telegram-export-page.telegram-export-capture {
-          word-wrap: normal;
-          overflow-wrap: normal;
-          letter-spacing: normal;
-          word-spacing: normal;
-        }
-        .telegram-export-page.telegram-export-capture .page-watermark {
-          display: none;
-        }
         .telegram-export-page * { box-sizing: border-box; }
         .telegram-export-page .page-watermark {
           position: absolute;
@@ -2326,7 +2316,6 @@ function TelegramDetail({
     if (!paper) {
       throw new Error("تعذر تجهيز قالب البرقية للتصدير");
     }
-    paper.classList.add("telegram-export-capture");
 
     const printRoot = document.createElement("div");
     printRoot.id = "telegram-print-root";
@@ -2449,8 +2438,10 @@ function TelegramDetail({
         height: Math.ceil(measuredHeight),
         windowWidth: PRINT_PAGE_WIDTH_PX,
         windowHeight: Math.ceil(measuredHeight),
-        // Keep the Canvas renderer for reliable image/PDF output. Native
-        // foreignObject capture can produce a blank canvas in some browsers.
+        // Render the same browser HTML used by printing. This preserves the
+        // browser's native Arabic shaping, spaces, RTL bidi ordering, and line
+        // breaks instead of reconstructing Arabic glyphs on Canvas.
+        foreignObjectRendering: true,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: false,
@@ -2507,7 +2498,6 @@ function TelegramDetail({
       }
       return capturedCanvas;
     } finally {
-      paper.classList.remove("telegram-export-capture");
       removedStyles.forEach(({ stylesheet, parent, nextSibling }) => {
         if (parent) {
           parent.insertBefore(

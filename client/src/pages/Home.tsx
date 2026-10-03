@@ -2122,15 +2122,16 @@ function TelegramDetail({
         .telegram-export-page .official-header {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
-          align-items: center;
+          align-items: start;
           gap: 2px;
           padding: 0 0 22px;
           border-bottom: 3px solid #b49a55;
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
-        .telegram-export-page .header-government { text-align: right; }
-        .telegram-export-page .header-metadata { text-align: left; }
+        /* Both blocks begin at the same inner edge beside the logo. */
+        .telegram-export-page .header-government { text-align: left; }
+        .telegram-export-page .header-metadata { text-align: right; }
         .telegram-export-page .header-government p,
         .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: center; }
         .telegram-export-page .official-header { font-weight: 700; }

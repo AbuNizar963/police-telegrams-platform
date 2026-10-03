@@ -2129,11 +2129,12 @@ function TelegramDetail({
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
-        /* Both blocks begin at the same inner edge beside the logo. */
-        .telegram-export-page .header-government { text-align: left; }
-        .telegram-export-page .header-metadata { text-align: right; }
+        /* Mirror the two blocks from the page edges, not from the logo. */
+        .telegram-export-page .header-government { text-align: right; }
+        .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: center; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
+        .telegram-export-page .header-government p { transform-origin: right center; }
         .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }

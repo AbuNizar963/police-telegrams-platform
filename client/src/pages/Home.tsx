@@ -2189,10 +2189,22 @@ function TelegramDetail({
       throw new Error("تعذر تجهيز قالب البرقية للتصدير");
     }
 
+    const printRoot = document.createElement("div");
+    printRoot.id = "telegram-print-root";
+    printRoot.setAttribute("dir", "rtl");
+    printRoot.setAttribute("aria-hidden", "true");
+    printRoot.style.position = "fixed";
+    printRoot.style.inset = "0";
+    printRoot.style.zIndex = "-1";
+    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
+    printRoot.style.background = "#fff";
+    printRoot.appendChild(exportWrapper);
+
     const mount = document.createElement("div");
     mount.setAttribute("aria-hidden", "true");
     mount.style.cssText = `position:fixed;left:-10000px;top:0;width:${PRINT_PAGE_WIDTH_MM}mm;z-index:-1;pointer-events:none;`;
-    mount.appendChild(exportWrapper);
+    mount.appendChild(printRoot);
     document.body.appendChild(mount);
 
     let removedStyles: Array<{
@@ -2346,23 +2358,7 @@ function TelegramDetail({
     }
   };
 
-  const printTelegram = async () => {
-    const exportWrapper = createExportPaper();
-    const printRoot = document.createElement("div");
-    const printStyle = document.createElement("style");
-
-    printRoot.id = "telegram-print-root";
-    printRoot.setAttribute("dir", "rtl");
-    printRoot.setAttribute("aria-hidden", "true");
-    printRoot.style.position = "fixed";
-    printRoot.style.inset = "0";
-    printRoot.style.zIndex = "-1";
-    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
-    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
-    printRoot.style.background = "#fff";
-
-    printStyle.id = "telegram-print-style";
-    printStyle.textContent = `
+  const getPrintStyles = () => `
       @media print {
         html, body {
           margin: 0 !important;
@@ -2397,7 +2393,25 @@ function TelegramDetail({
           margin: 0;
         }
       }
-    `;
+`;
+
+  const printTelegram = async () => {
+    const exportWrapper = createExportPaper();
+    const printRoot = document.createElement("div");
+    const printStyle = document.createElement("style");
+
+    printRoot.id = "telegram-print-root";
+    printRoot.setAttribute("dir", "rtl");
+    printRoot.setAttribute("aria-hidden", "true");
+    printRoot.style.position = "fixed";
+    printRoot.style.inset = "0";
+    printRoot.style.zIndex = "-1";
+    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
+    printRoot.style.background = "#fff";
+
+    printStyle.id = "telegram-print-style";
+    printStyle.textContent = getPrintStyles();
 
     printRoot.appendChild(exportWrapper);
     document.head.appendChild(printStyle);

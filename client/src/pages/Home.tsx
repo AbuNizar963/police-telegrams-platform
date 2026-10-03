@@ -80,6 +80,7 @@ const PRINT_PAGE_HEIGHT_MM = 297;
 const EXPORT_PAGE_WIDTH_PX = 2480;
 const EXPORT_PAGE_HEIGHT_PX = 3508;
 const EXPORT_SCALE = EXPORT_PAGE_WIDTH_PX / PRINT_PAGE_WIDTH_PX;
+const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {
     font-family: "Cairo";
@@ -319,6 +320,7 @@ function Kpi({
 }
 
 export default function Home() {
+  const [liveNow, setLiveNow] = useState(() => new Date());
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState<"all" | Classification>("all");
   const [priority, setPriority] = useState<"all" | Priority>("all");
@@ -336,6 +338,11 @@ export default function Home() {
   const [displayColumns, setDisplayColumns] = useState<
     Record<DisplayColumn, boolean>
   >(DEFAULT_DISPLAY_COLUMNS);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setLiveNow(new Date()), 1000);
+    return () => window.clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     try {
@@ -441,9 +448,17 @@ export default function Home() {
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
-  const stats = trpc.dashboard.stats.useQuery();
+  const stats = trpc.dashboard.stats.useQuery(undefined, {
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  });
   const routingTargets = trpc.organizations.routingTargets.useQuery();
-  const list = trpc.telegrams.list.useQuery(input);
+  const list = trpc.telegrams.list.useQuery(input, {
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  });
   const detail = trpc.telegrams.get.useQuery(
     { id: selectedId ?? 0 },
     { enabled: selectedId !== null }
@@ -493,7 +508,22 @@ export default function Home() {
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
             <Clock3 className="h-3.5 w-3.5" />
-            {formatConfiguredDate(new Date(), settings.data)}
+            <time dateTime={liveNow.toISOString()} aria-live="polite">
+              {formatConfiguredDate(liveNow, settings.data)}
+            </time>
+          </div>
+          <div
+            className="hidden items-center gap-1.5 rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-3 py-2 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300 sm:flex"
+            title="تتحدث الإحصاءات والسجل تلقائيًا كل 15 ثانية"
+            aria-label="التحديث المباشر مفعّل"
+          >
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            مباشر
+            {stats.isFetching && (
+              <span className="mr-1 text-[10px] font-normal opacity-75">
+                جارٍ التحديث
+              </span>
+            )}
           </div>
           {(me.data?.role === "admin" ||
             [

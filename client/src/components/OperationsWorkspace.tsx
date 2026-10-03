@@ -27,17 +27,29 @@ const tabLabels: Record<WorkspaceTab, string> = {
   archive: "الأرشيف والسجلات المغلقة",
 };
 
+const LIVE_REFRESH_INTERVAL_MS = 15_000;
+
 export default function OperationsWorkspace() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<WorkspaceTab>("locations");
   const [search, setSearch] = useState("");
   const allTelegrams = trpc.telegrams.list.useQuery(
     { page: 1, pageSize: 100 },
-    { enabled: open, refetchOnWindowFocus: false }
+    {
+      enabled: open,
+      refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    }
   );
   const archivedTelegrams = trpc.telegrams.list.useQuery(
     { page: 1, pageSize: 100, status: "archived" },
-    { enabled: open && tab === "archive", refetchOnWindowFocus: false }
+    {
+      enabled: open && tab === "archive",
+      refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    }
   );
   const routingTargets = trpc.organizations.routingTargets.useQuery(undefined, {
     enabled: open && (tab === "units" || tab === "resources"),

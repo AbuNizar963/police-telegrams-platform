@@ -2016,8 +2016,11 @@ function TelegramDetail({
         }
         .telegram-export-page .watermark-logo {
           display: block;
-          width: 100%;
-          height: 100%;
+          width: auto;
+          height: auto;
+          max-width: 100%;
+          max-height: 100%;
+          aspect-ratio: auto;
           object-fit: contain;
         }
         .telegram-export-page .watermark-seal {
@@ -2063,6 +2066,7 @@ function TelegramDetail({
           display: block;
           width: 160px;
           height: 160px;
+          aspect-ratio: 1 / 1;
           margin: 0 auto;
           object-fit: contain;
         }
@@ -2692,6 +2696,25 @@ function TelegramDetail({
       format: "a4",
       compress: true,
     });
+    // capture() returns the same high-resolution A4 canvas used by the image
+    // export. Embed it once when it is a complete A4 sheet so PDF output cannot
+    // introduce a second resampling step or alter the printed proportions.
+    if (
+      sourceCanvas.width === EXPORT_PAGE_WIDTH_PX &&
+      sourceCanvas.height === EXPORT_PAGE_HEIGHT_PX
+    ) {
+      pdf.addImage(
+        sourceCanvas.toDataURL("image/png"),
+        "PNG",
+        0,
+        0,
+        PRINT_PAGE_WIDTH_MM,
+        PRINT_PAGE_HEIGHT_MM,
+        undefined,
+        "FAST"
+      );
+      return pdf;
+    }
     // Match the same A4 page box used by browser printing: 210 × 297 mm,
     // with the paper's internal 14mm padding already included in the captured pixels.
     const margin = 0;

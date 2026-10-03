@@ -4,7 +4,10 @@ import type {
   OrganizationMemberRole,
   TelegramRoute,
 } from "../drizzle/schema";
+import { randomUUID } from "node:crypto";
+import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
+import { writeAuditLog } from "./db";
 
 function throwIfError(
   error: { message: string } | null,
@@ -112,13 +115,135 @@ export async function listOrganizationsForUser(
     );
 }
 
+const ACCOUNT_ORGANIZATION_TYPES = new Set<Organization["type"]>([
+  "command",
+  "police_department",
+  "station",
+  "unit",
+]);
+
+const ARABIC_TRANSLITERATION: Record<string, string> = {
+  ا: "a",
+  أ: "a",
+  إ: "i",
+  آ: "aa",
+  ء: "a",
+  ب: "b",
+  ت: "t",
+  ث: "th",
+  ج: "j",
+  ح: "h",
+  خ: "kh",
+  د: "d",
+  ذ: "dh",
+  ر: "r",
+  ز: "z",
+  س: "s",
+  ش: "sh",
+  ص: "s",
+  ض: "d",
+  ط: "t",
+  ظ: "z",
+  ع: "a",
+  غ: "gh",
+  ف: "f",
+  ق: "q",
+  ك: "k",
+  ل: "l",
+  م: "m",
+  ن: "n",
+  ه: "h",
+  و: "w",
+  ي: "y",
+  ى: "a",
+  ة: "h",
+  ئ: "y",
+  ؤ: "w",
+};
+
+function transliterateOrganizationName(name: string): string {
+  const transliterated = name
+    .split("")
+    .map(character => ARABIC_TRANSLITERATION[character] ?? character)
+    .join("")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+  return transliterated.slice(0, 110) || "police_unit";
+}
+
+async function createOrganizationAccount(input: {
+  organization: Organization;
+  createdByUserId?: number;
+}): Promise<{ username: string; password: string; userId: number }> {
+  const client = getSupabaseAdmin();
+  const base = transliterateOrganizationName(input.organization.name);
+  let username = base;
+  for (let suffix = 2; ; suffix += 1) {
+    const existing = await client
+      .from("users")
+      .select("id")
+      .ilike("username", username)
+      .maybeSingle();
+    throwIfError(existing.error, "Failed to check organization account");
+    if (!existing.data) break;
+    username = `${base.slice(0, 120 - String(suffix).length - 1)}_${suffix}`;
+  }
+  const now = new Date().toISOString();
+  const { data, error } = await client
+    .from("users")
+    .insert({
+      authUserId: randomUUID(),
+      organizationId: input.organization.id,
+      username,
+      password_hash: await hashPassword(username),
+      name: input.organization.name,
+      unit: input.organization.name,
+      email: null,
+      loginMethod: "password",
+      role: "user",
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: now,
+    })
+    .select("id")
+    .single();
+  if (error || !data) {
+    throw new Error("تعذر إنشاء الحساب الافتراضي للجهة");
+  }
+  await addOrganizationMembership({
+    organizationId: input.organization.id,
+    userId: data.id,
+    role: "organization_admin",
+  });
+  if (input.createdByUserId) {
+    await writeAuditLog({
+      actorUserId: input.createdByUserId,
+      actorName: "مالك النظام",
+      action: "organization.account.create",
+      entityType: "organization",
+      entityId: input.organization.id,
+      metadata: JSON.stringify({
+        username,
+        organizationName: input.organization.name,
+      }),
+    });
+  }
+  return { username, password: username, userId: data.id };
+}
+
 export async function createOrganization(input: {
   parentOrganizationId?: string | null;
   telegramDestinationOrganizationId?: string | null;
   code: string;
   name: string;
   type: Organization["type"];
-}): Promise<Organization> {
+  createdByUserId?: number;
+}): Promise<{
+  organization: Organization;
+  account: { username: string; password: string; userId: number } | null;
+}> {
   await validateOrganizationParent(
     input.parentOrganizationId ?? null,
     input.type
@@ -141,7 +266,23 @@ export async function createOrganization(input: {
     .single();
 
   throwIfError(error, "Failed to create organization");
-  return mapOrganization(data as Record<string, unknown>);
+  const organization = mapOrganization(data as Record<string, unknown>);
+  let account = null;
+  if (ACCOUNT_ORGANIZATION_TYPES.has(organization.type)) {
+    try {
+      account = await createOrganizationAccount({
+        organization,
+        createdByUserId: input.createdByUserId,
+      });
+    } catch (accountError) {
+      await getSupabaseAdmin()
+        .from("organizations")
+        .delete()
+        .eq("id", organization.id);
+      throw accountError;
+    }
+  }
+  return { organization, account };
 }
 
 async function validateOrganizationParent(

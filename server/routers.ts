@@ -236,7 +236,9 @@ export const appRouter = router({
           ]),
         })
       )
-      .mutation(({ input }) => createOrganization(input)),
+      .mutation(({ ctx, input }) =>
+        createOrganization({ ...input, createdByUserId: ctx.user.id })
+      ),
 
     update: adminProcedure
       .input(

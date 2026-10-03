@@ -20,6 +20,11 @@ type OrganizationType = keyof typeof typeLabels;
 export default function OwnerOrganizationManagement() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [createdAccount, setCreatedAccount] = useState<{
+    organizationName: string;
+    username: string;
+    password: string;
+  } | null>(null);
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -47,8 +52,17 @@ export default function OwnerOrganizationManagement() {
     onError: error => toast.error(error.message || "تعذر تسجيل قرار الإحالة"),
   });
   const create = trpc.organizations.create.useMutation({
-    onSuccess: async () => {
-      toast.success("تمت إضافة الجهة إلى الهيكل الشرطي");
+    onSuccess: async result => {
+      if (result.account) {
+        setCreatedAccount({
+          organizationName: result.organization.name,
+          username: result.account.username,
+          password: result.account.password,
+        });
+        toast.success("تمت إضافة الجهة وإنشاء حسابها الافتراضي");
+      } else {
+        toast.success("تمت إضافة الجهة إلى الهيكل الشرطي");
+      }
       resetForm();
       await utils.organizations.all.invalidate();
     },
@@ -143,6 +157,31 @@ export default function OwnerOrganizationManagement() {
         </header>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+          {createdAccount && (
+            <div className="lg:col-span-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold">تم إنشاء حساب الجهة</p>
+                  <p className="mt-1 text-xs">
+                    {createdAccount.organizationName} — يُنصح بتغيير كلمة المرور
+                    بعد أول دخول.
+                  </p>
+                  <dl className="mt-3 grid gap-1 font-mono text-xs sm:grid-cols-2">
+                    <div>اسم المستخدم: {createdAccount.username}</div>
+                    <div>كلمة المرور: {createdAccount.password}</div>
+                  </dl>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCreatedAccount(null)}
+                >
+                  إخفاء
+                </Button>
+              </div>
+            </div>
+          )}
           <form onSubmit={submit} className="space-y-3 rounded-xl border p-4">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-[#9b7c3d]" />
@@ -255,6 +294,12 @@ export default function OwnerOrganizationManagement() {
               يمنع الخادم اختيار جهة أب غير متوافقة مع المستوى التنظيمي، ولا
               يمكن تجاوز قيادة المحافظة في الإحالات العابرة للمناطق.
             </div>
+            {!editingId && (
+              <div className="rounded-lg bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
+                عند إنشاء قيادة أو قسم أو مخفر أو وحدة، يُنشأ لها حساب تلقائيًا
+                باسم وكلمة مرور باللغة الإنجليزية مشتقين من اسم الجهة.
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 type="submit"

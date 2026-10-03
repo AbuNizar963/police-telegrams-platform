@@ -2120,33 +2120,33 @@ function TelegramDetail({
         }
         .telegram-export-page .official-header {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
           align-items: center;
-          gap: 6px;
+          gap: 2px;
           padding: 0 0 22px;
-          border-bottom: 3px solid #b42318;
+          border-bottom: 3px solid #b49a55;
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 16pt; font-weight: 700; line-height: 1.4; white-space: normal; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: center; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 16pt; font-weight: 700; white-space: normal; }
-        .telegram-export-page .government-subtitle { font-size: 16pt; font-weight: 700; white-space: normal; }
-        .telegram-export-page .header-metadata { font-size: 16pt; font-weight: 700; line-height: 1.4; white-space: normal; }
+        .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;
-          width: 140px;
-          height: 140px;
+          width: 120px;
+          height: 120px;
           margin: 0 auto;
           object-fit: contain;
         }
          .telegram-export-page .official-seal {
-          width: 128px;
-          height: 128px;
+          width: 110px;
+          height: 110px;
           margin: 0 auto;
           border: 2px solid #b49a55;
           border-radius: 50%;

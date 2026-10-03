@@ -5,6 +5,7 @@ import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
 import { getSupabaseAdmin } from "./_core/supabase";
+import { registerTelegramExportRoutes } from "./telegramExport";
 
 /**
  * Creates the HTTP application shared by the local server and Vercel.
@@ -22,6 +23,7 @@ export function createApp(
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageRoutes(app);
+  registerTelegramExportRoutes(app);
 
   app.get("/api/verify/:token", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");

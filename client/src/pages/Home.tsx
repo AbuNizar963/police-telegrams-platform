@@ -77,9 +77,6 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
-const EXPORT_PAGE_WIDTH_PX = 2480;
-const EXPORT_PAGE_HEIGHT_PX = 3508;
-const EXPORT_SCALE = EXPORT_PAGE_WIDTH_PX / PRINT_PAGE_WIDTH_PX;
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {
@@ -2305,209 +2302,33 @@ function TelegramDetail({
     };
   }, [telegram, settings]);
 
-  const capture = async () => {
-    const { default: html2canvas } = await import("html2canvas-pro");
+  const renderOfficialDocument = async (format: "pdf" | "png") => {
     await document.fonts.ready;
+    const wrapper = createExportPaper();
+    const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
+    if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
-    const exportWrapper = createExportPaper();
-    const paper = exportWrapper.querySelector<HTMLElement>(
-      ".telegram-export-page"
-    );
-    if (!paper) {
-      throw new Error("تعذر تجهيز قالب البرقية للتصدير");
+    const html = `<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="${window.location.origin}/" />
+  </head>
+  <body>${wrapper.innerHTML}</body>
+</html>`;
+    const response = await fetch("/api/telegram-render", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format, html }),
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(payload?.error || "تعذر إنشاء الوثيقة الرسمية");
     }
-
-    const printRoot = document.createElement("div");
-    printRoot.id = "telegram-print-root";
-    printRoot.setAttribute("dir", "rtl");
-    printRoot.setAttribute("aria-hidden", "true");
-    printRoot.style.position = "fixed";
-    printRoot.style.inset = "0";
-    printRoot.style.zIndex = "-1";
-    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
-    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
-    printRoot.style.background = "#fff";
-    printRoot.appendChild(exportWrapper);
-
-    const mount = document.createElement("div");
-    mount.setAttribute("aria-hidden", "true");
-    mount.style.cssText = `position:fixed;left:-10000px;top:0;width:${PRINT_PAGE_WIDTH_MM}mm;z-index:-1;pointer-events:none;`;
-    mount.appendChild(printRoot);
-    document.body.appendChild(mount);
-
-    let removedStyles: Array<{
-      stylesheet: HTMLStyleElement | HTMLLinkElement;
-      parent: ParentNode | null;
-      nextSibling: ChildNode | null;
-    }> = [];
-
-    try {
-      await Promise.all(
-        [400, 500, 600, 700].map(weight =>
-          document.fonts.load(`${weight} 19px "Cairo"`)
-        )
-      );
-      await document.fonts.ready;
-      // These are the same physical dimensions applied by printTelegram.
-      // Keep them inline here because html2canvas renders screen media and does
-      // not activate the print media query by itself.
-      paper.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
-      paper.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
-      paper.style.margin = "0";
-      const images = Array.from(
-        paper.querySelectorAll<HTMLImageElement>("img")
-      );
-      await Promise.all(
-        images.map(async image => {
-          try {
-            const source = image.currentSrc || image.src;
-            if (!source) {
-              image.remove();
-              return;
-            }
-
-            // Inline images before canvas capture. A successfully decoded remote
-            // image can still taint the canvas when its host does not grant CORS.
-            if (!source.startsWith("data:")) {
-              const imageUrl = new URL(source, document.baseURI);
-              const response = await fetch(imageUrl.href, {
-                mode: "cors",
-                credentials:
-                  imageUrl.origin === window.location.origin
-                    ? "same-origin"
-                    : "omit",
-                cache: "force-cache",
-              });
-              if (!response.ok) {
-                throw new Error(`Image request failed: ${response.status}`);
-              }
-
-              const blob = await response.blob();
-              if (!blob.type.startsWith("image/")) {
-                throw new Error("Image response has an invalid content type");
-              }
-
-              const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result));
-                reader.onerror = () =>
-                  reject(new Error("Unable to read image"));
-                reader.readAsDataURL(blob);
-              });
-
-              image.removeAttribute("srcset");
-              image.removeAttribute("crossorigin");
-              image.src = dataUrl;
-            }
-
-            await image.decode();
-          } catch {
-            // Keep export usable if an optional logo cannot be fetched safely.
-            image.remove();
-          }
-        })
-      );
-
-      const measuredHeight = Math.max(
-        paper.scrollHeight,
-        paper.getBoundingClientRect().height,
-        PRINT_PAGE_HEIGHT_PX
-      );
-
-      // html2canvas parses the source document's styles before cloning. Remove
-      // application styles temporarily so unsupported oklch()/color-mix()
-      // declarations cannot abort the export. The self-contained hexadecimal
-      // stylesheet inside the off-screen paper remains available.
-      const exportStyles = exportWrapper.querySelector("style");
-      removedStyles = Array.from(
-        document.querySelectorAll<HTMLStyleElement | HTMLLinkElement>(
-          'style, link[rel="stylesheet"]'
-        )
-      )
-        .filter(stylesheet => stylesheet !== exportStyles)
-        .map(stylesheet => ({
-          stylesheet,
-          parent: stylesheet.parentNode,
-          nextSibling: stylesheet.nextSibling,
-        }));
-      removedStyles.forEach(({ stylesheet }) => stylesheet.remove());
-
-      const capturedCanvas = await html2canvas(paper, {
-        scale: EXPORT_SCALE,
-        width: PRINT_PAGE_WIDTH_PX,
-        height: Math.ceil(measuredHeight),
-        windowWidth: PRINT_PAGE_WIDTH_PX,
-        windowHeight: Math.ceil(measuredHeight),
-        // Keep the stable canvas path for image generation. The browser print
-        // flow below is the authoritative path for an exact official PDF.
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        onclone: clonedDocument => {
-          // html2canvas cannot parse modern oklch() colors emitted by the app's
-          // Tailwind theme. The export sheet is self-contained, so isolate the
-          // cloned document from application styles and retain only its print CSS.
-          // Remove application styles from the entire cloned document, not
-          // only <head>. Some bundlers inject style elements into <body>, and
-          // html2canvas parses those rules even when the export sheet itself
-          // uses only browser-safe colors. This is the source of the
-          // "unsupported color function oklch" failure on image/PDF export.
-          clonedDocument
-            .querySelectorAll('style, link[rel="stylesheet"]')
-            .forEach(stylesheet => stylesheet.remove());
-
-          // Export CSS is deliberately self-contained and uses hexadecimal
-          // colors, so restore only those rules after removing app styles.
-          const exportStyles = exportWrapper.querySelector("style");
-          if (exportStyles) {
-            const isolatedStyles = clonedDocument.createElement("style");
-            isolatedStyles.textContent = exportStyles.textContent ?? "";
-            clonedDocument.head.appendChild(isolatedStyles);
-          }
-
-          // Avoid inherited theme colors on the cloned root/body.
-          clonedDocument.documentElement.style.colorScheme = "light";
-          clonedDocument.documentElement.style.backgroundColor = "#ffffff";
-          clonedDocument.body.style.color = "#172033";
-          clonedDocument.body.style.backgroundColor = "#ffffff";
-        },
-      });
-      if (measuredHeight <= PRINT_PAGE_HEIGHT_PX) {
-        const a4Canvas = document.createElement("canvas");
-        a4Canvas.width = EXPORT_PAGE_WIDTH_PX;
-        a4Canvas.height = EXPORT_PAGE_HEIGHT_PX;
-        const a4Context = a4Canvas.getContext("2d");
-        if (!a4Context) {
-          throw new Error("تعذر تجهيز مقاس A4 للتصدير");
-        }
-        a4Context.fillStyle = "#ffffff";
-        a4Context.fillRect(0, 0, a4Canvas.width, a4Canvas.height);
-        a4Context.imageSmoothingEnabled = true;
-        a4Context.imageSmoothingQuality = "high";
-        a4Context.drawImage(
-          capturedCanvas,
-          0,
-          0,
-          a4Canvas.width,
-          a4Canvas.height
-        );
-        return a4Canvas;
-      }
-      return capturedCanvas;
-    } finally {
-      removedStyles.forEach(({ stylesheet, parent, nextSibling }) => {
-        if (parent) {
-          parent.insertBefore(
-            stylesheet,
-            nextSibling && nextSibling.parentNode === parent
-              ? nextSibling
-              : null
-          );
-        }
-      });
-      mount.remove();
-    }
+    return response.blob();
   };
 
   const getPrintStyles = () => `
@@ -2613,23 +2434,7 @@ function TelegramDetail({
     }
   };
 
-  const imageBlob = async (): Promise<Blob> => {
-    const canvas = await capture();
-
-    return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        blob => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("تعذر إنشاء الصورة"));
-          }
-        },
-        "image/png",
-        1
-      );
-    });
-  };
+  const imageBlob = async (): Promise<Blob> => renderOfficialDocument("png");
 
   const downloadImage = async () => {
     setExporting("image");
@@ -2694,17 +2499,7 @@ function TelegramDetail({
     setExporting(share ? "share" : "pdf");
 
     try {
-      if (!share) {
-        // A browser print-to-PDF is the only client-side path that uses the
-        // exact same Chromium print engine and CSS as the official printout.
-        await printTelegram();
-        toast.info(
-          "من نافذة الطباعة اختر: حفظ كـ PDF للحصول على نسخة مطابقة للطباعة"
-        );
-        return;
-      }
-      const pdf = await makePdf();
-      const blob = pdf.output("blob");
+      const blob = await renderOfficialDocument("pdf");
       const file = new File([blob], `${telegram.serialCode}.pdf`, {
         type: "application/pdf",
       });
@@ -2717,11 +2512,16 @@ function TelegramDetail({
         });
         toast.success("تم فتح خيارات مشاركة البرقية");
       } else {
-        pdf.save(`${telegram.serialCode}.pdf`);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         toast.success(
           share
-            ? "تم تنزيل ملف PDF للمشاركة"
-            : "تم تنزيل البرقية بصيغة PDF عالية الدقة"
+            ? "المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل ملف PDF"
+            : "تم تنزيل البرقية بصيغة PDF مطابقة للطباعة"
         );
       }
     } catch (error) {
@@ -2735,72 +2535,6 @@ function TelegramDetail({
     }
   };
 
-  const makePdf = async () => {
-    const sourceCanvas = await capture();
-    const { jsPDF } = await import("jspdf");
-    const pdf = new jsPDF({
-      orientation: "p",
-      unit: "mm",
-      format: "a4",
-      compress: true,
-    });
-    // Match the same A4 page box used by browser printing: 210 × 297 mm,
-    // with the paper's internal 14mm padding already included in the captured pixels.
-    const margin = 0;
-    const pageWidth = PRINT_PAGE_WIDTH_MM;
-    const pageHeight = PRINT_PAGE_HEIGHT_MM;
-    const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
-    const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
-    let sourceY = 0;
-    let pageIndex = 0;
-
-    while (sourceY < sourceCanvas.height) {
-      const sliceHeight = Math.min(
-        pagePixelHeight,
-        sourceCanvas.height - sourceY
-      );
-      const pageCanvas = document.createElement("canvas");
-      pageCanvas.width = sourceCanvas.width;
-      pageCanvas.height = sliceHeight;
-
-      const pageContext = pageCanvas.getContext("2d");
-      if (!pageContext) {
-        throw new Error("تعذر تجهيز صفحات PDF");
-      }
-
-      pageContext.fillStyle = "#ffffff";
-      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      pageContext.drawImage(
-        sourceCanvas,
-        0,
-        sourceY,
-        sourceCanvas.width,
-        sliceHeight,
-        0,
-        0,
-        pageCanvas.width,
-        sliceHeight
-      );
-
-      if (pageIndex > 0) pdf.addPage();
-      const sliceHeightMm = sliceHeight / sourcePixelsPerMm;
-      pdf.addImage(
-        pageCanvas.toDataURL("image/png"),
-        "PNG",
-        margin,
-        margin,
-        pageWidth,
-        sliceHeightMm,
-        undefined,
-        "FAST"
-      );
-
-      sourceY += sliceHeight;
-      pageIndex += 1;
-    }
-
-    return pdf;
-  };
   return (
     <Modal
       title={telegram.subject}

@@ -2308,6 +2308,49 @@ function TelegramDetail({
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
+    // The saved logo URL is protected by the app's authenticated storage
+    // route. Chromium runs without the browser session, so inline each image
+    // while the authenticated page can still fetch it.
+    const imageCache = new Map<string, string>();
+    await Promise.all(
+      Array.from(wrapper.querySelectorAll<HTMLImageElement>("img")).map(
+        async image => {
+          const source = image.currentSrc || image.src;
+          if (!source || source.startsWith("data:")) return;
+          try {
+            let dataUrl = imageCache.get(source);
+            if (!dataUrl) {
+              const response = await fetch(source, {
+                credentials: "same-origin",
+              });
+              if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
+              const blob = await response.blob();
+              if (!blob.type.startsWith("image/")) {
+                throw new Error("مصدر الشعار ليس صورة صالحة");
+              }
+              dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () => reject(new Error("تعذر قراءة الشعار"));
+                reader.readAsDataURL(blob);
+              });
+              imageCache.set(source, dataUrl);
+            }
+            image.removeAttribute("crossorigin");
+            image.removeAttribute("srcset");
+            image.src = dataUrl;
+            await image.decode();
+          } catch {
+            // Never send a broken image to Chromium. Replace it with the same
+            // vector fallback used when no logo is configured.
+            image.outerHTML = image.classList.contains("watermark-logo")
+              ? `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`
+              : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+          }
+        }
+      )
+    );
+
     const html = `<!doctype html>
 <html lang="ar" dir="rtl">
   <head>

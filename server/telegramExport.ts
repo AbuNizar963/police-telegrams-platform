@@ -7,12 +7,14 @@ const MAX_HTML_BYTES = 2_500_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 
 function isSafeExportHtml(html: string): boolean {
+  const unsafeDataUri = /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,])/i;
   return (
     html.length > 0 &&
     Buffer.byteLength(html, "utf8") <= MAX_HTML_BYTES &&
     !/<\s*script\b/i.test(html) &&
     !/<\s*(iframe|object|embed)\b/i.test(html) &&
-    !/\b(?:javascript|data):/i.test(html)
+    !/\b(?:javascript|vbscript):/i.test(html) &&
+    !unsafeDataUri.test(html)
   );
 }
 

@@ -2438,10 +2438,8 @@ function TelegramDetail({
         height: Math.ceil(measuredHeight),
         windowWidth: PRINT_PAGE_WIDTH_PX,
         windowHeight: Math.ceil(measuredHeight),
-        // Render the same browser HTML used by printing. This preserves the
-        // browser's native Arabic shaping, spaces, RTL bidi ordering, and line
-        // breaks instead of reconstructing Arabic glyphs on Canvas.
-        foreignObjectRendering: true,
+        // Keep the stable canvas path for image generation. The browser print
+        // flow below is the authoritative path for an exact official PDF.
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: false,
@@ -2696,6 +2694,15 @@ function TelegramDetail({
     setExporting(share ? "share" : "pdf");
 
     try {
+      if (!share) {
+        // A browser print-to-PDF is the only client-side path that uses the
+        // exact same Chromium print engine and CSS as the official printout.
+        await printTelegram();
+        toast.info(
+          "من نافذة الطباعة اختر: حفظ كـ PDF للحصول على نسخة مطابقة للطباعة"
+        );
+        return;
+      }
       const pdf = await makePdf();
       const blob = pdf.output("blob");
       const file = new File([blob], `${telegram.serialCode}.pdf`, {
@@ -2913,7 +2920,7 @@ function TelegramDetail({
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
             <FileDown className="ml-2 h-4 w-4" />
-            {exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}
+            {exporting === "pdf" ? "جارٍ فتح الطباعة..." : "PDF مطابق للطباعة"}
           </Button>
           <Button
             onClick={downloadImage}

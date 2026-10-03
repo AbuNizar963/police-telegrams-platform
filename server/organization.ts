@@ -192,7 +192,11 @@ async function createOrganizationAccount(input: {
   createdByUserId?: number;
 }): Promise<{ username: string; password: string; userId: number }> {
   const client = getSupabaseAdmin();
-  const base = `${organizationAccountPrefix(input.organization.type)}_${transliterateOrganizationName(input.organization.code)}`;
+  const prefix = organizationAccountPrefix(input.organization.type);
+  const codeSlug = transliterateOrganizationName(
+    input.organization.code
+  ).replace(new RegExp(`^${prefix}_`, "i"), "");
+  const base = `${prefix}_${codeSlug}`;
   let username = base;
   for (let suffix = 2; ; suffix += 1) {
     const existing = await client

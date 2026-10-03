@@ -2328,12 +2328,37 @@ function TelegramDetail({
               if (!blob.type.startsWith("image/")) {
                 throw new Error("مصدر الشعار ليس صورة صالحة");
               }
-              dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result));
-                reader.onerror = () => reject(new Error("تعذر قراءة الشعار"));
-                reader.readAsDataURL(blob);
-              });
+              const imageUrl = URL.createObjectURL(blob);
+              try {
+                const preview = new Image();
+                preview.decoding = "async";
+                preview.src = imageUrl;
+                await preview.decode();
+                const maxDimension = 800;
+                const scale = Math.min(
+                  1,
+                  maxDimension /
+                    Math.max(preview.naturalWidth, preview.naturalHeight)
+                );
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(
+                  1,
+                  Math.round(preview.naturalWidth * scale)
+                );
+                canvas.height = Math.max(
+                  1,
+                  Math.round(preview.naturalHeight * scale)
+                );
+                const context = canvas.getContext("2d");
+                if (!context) throw new Error("تعذر تجهيز صورة الشعار");
+                context.drawImage(preview, 0, 0, canvas.width, canvas.height);
+                dataUrl = canvas.toDataURL("image/webp", 0.86);
+                if (!dataUrl.startsWith("data:image/webp")) {
+                  dataUrl = canvas.toDataURL("image/png");
+                }
+              } finally {
+                URL.revokeObjectURL(imageUrl);
+              }
               imageCache.set(source, dataUrl);
             }
             image.removeAttribute("crossorigin");

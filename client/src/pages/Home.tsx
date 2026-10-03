@@ -2191,7 +2191,7 @@ function TelegramDetail({
 
     const mount = document.createElement("div");
     mount.setAttribute("aria-hidden", "true");
-    mount.style.cssText = `position:fixed;left:-10000px;top:0;width:${PRINT_PAGE_WIDTH_PX}px;z-index:-1;pointer-events:none;`;
+    mount.style.cssText = `position:fixed;left:-10000px;top:0;width:${PRINT_PAGE_WIDTH_MM}mm;z-index:-1;pointer-events:none;`;
     mount.appendChild(exportWrapper);
     document.body.appendChild(mount);
 
@@ -2202,7 +2202,18 @@ function TelegramDetail({
     }> = [];
 
     try {
-      await document.fonts.load('700 18px "Cairo"');
+      await Promise.all(
+        [400, 500, 600, 700].map(weight =>
+          document.fonts.load(`${weight} 19px "Cairo"`)
+        )
+      );
+      await document.fonts.ready;
+      // These are the same physical dimensions applied by printTelegram.
+      // Keep them inline here because html2canvas renders screen media and does
+      // not activate the print media query by itself.
+      paper.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+      paper.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
+      paper.style.margin = "0";
       const images = Array.from(
         paper.querySelectorAll<HTMLImageElement>("img")
       );

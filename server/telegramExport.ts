@@ -48,7 +48,25 @@ async function renderTelegramDocument(html: string, format: "pdf" | "png") {
     });
 
     await page.emulateMedia({ media: "print" });
-    await page.setContent(html, { waitUntil: "load" });
+    await page.setContent(
+      html.replace(
+        "</head>",
+        `<style>
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            background: #fff !important;
+          }
+          .telegram-export-page {
+            display: block !important;
+            margin: 0 !important;
+          }
+        </style></head>`
+      ),
+      { waitUntil: "load" }
+    );
     await page.evaluate(async () => {
       await document.fonts.ready;
       const images = Array.from(document.images);

@@ -63,9 +63,11 @@ assert(
 );
 
 assert(
-  dashboardLayout.includes("fixed right-4 top-4 z-40 h-10 w-10 rounded-xl") &&
-    dashboardLayout.includes("!isMobile && isCollapsed"),
-  "The desktop sidebar must expose a fixed open button while collapsed."
+  dashboardLayout.includes(
+    "flex h-14 shrink-0 items-center justify-end border-b"
+  ) &&
+    dashboardLayout.includes("{isCollapsed ? (\n              <SidebarTrigger"),
+  "The desktop sidebar must expose its open button in a dedicated top bar."
 );
 
 assert(

@@ -44,6 +44,11 @@ assert(
 );
 
 assert(
+  homePage.includes('showStandaloneBrand ? "lg:pr-16" : ""'),
+  "The collapsed desktop header must reserve space beside the standalone brand."
+);
+
+assert(
   dashboardLayout.includes(
     "const showSidebarBrand = isMobile || !isCollapsed;"
   ) && dashboardLayout.includes("{showSidebarBrand ? ("),

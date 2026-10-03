@@ -16,18 +16,27 @@ const typeLabels = {
   unit: "وحدة",
 } as const;
 type OrganizationType = keyof typeof typeLabels;
+const accountManagedTypes = new Set<OrganizationType>([
+  "governorate",
+  "region",
+  "command",
+  "police_department",
+  "station",
+  "unit",
+]);
 
 export default function OwnerOrganizationManagement() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<
+    string | null
+  >(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [createdAccount, setCreatedAccount] = useState<{
     organizationName: string;
     username: string;
     password: string;
   } | null>(null);
-  const [syncedAccounts, setSyncedAccounts] = useState<
-    Array<{ organizationName: string; username: string; password: string }>
-  >([]);
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -40,9 +49,15 @@ export default function OwnerOrganizationManagement() {
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
-  const accounts = trpc.organizations.accounts.useQuery(undefined, {
-    enabled: open,
-  });
+  const accounts = trpc.organizations.accounts.useQuery(
+    {
+      organizationId:
+        selectedOrganizationId ?? "00000000-0000-0000-0000-000000000000",
+    },
+    {
+      enabled: open && Boolean(selectedOrganizationId),
+    }
+  );
   const pendingApprovals = trpc.organizations.pendingApprovals.useQuery(
     undefined,
     {
@@ -79,7 +94,7 @@ export default function OwnerOrganizationManagement() {
   const update = trpc.organizations.update.useMutation({
     onSuccess: async result => {
       toast.success(
-        result.account.passwordChanged
+        result.account?.passwordChanged
           ? "تم تحديث الجهة وبيانات الدخول؛ كلمة المرور الجديدة مؤقتة"
           : "تم تحديث الجهة واسم المستخدم"
       );
@@ -98,23 +113,13 @@ export default function OwnerOrganizationManagement() {
     },
     onError: error => toast.error(error.message || "تعذر تجهيز المحافظات"),
   });
-  const ensureAccounts = trpc.organizations.ensureAccounts.useMutation({
+  const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
-      setSyncedAccounts(
-        result.created.map(account => ({
-          organizationName: account.organizationName,
-          username: account.username,
-          password: account.password,
-        }))
-      );
-      toast.success(
-        result.created.length
-          ? `تم إنشاء ${result.created.length} حساب جهة جديد`
-          : "جميع الجهات المطلوبة لديها حسابات"
-      );
+      setCreatedAccount(result);
+      toast.success("تم إنشاء حساب الجهة المفتوحة");
       await accounts.refetch();
     },
-    onError: error => toast.error(error.message || "تعذر مزامنة حسابات الجهات"),
+    onError: error => toast.error(error.message || "تعذر إنشاء حساب الجهة"),
   });
 
   useEffect(() => {
@@ -123,6 +128,10 @@ export default function OwnerOrganizationManagement() {
     return () =>
       window.removeEventListener("open-owner-organization-management", show);
   }, []);
+  useEffect(() => {
+    if (!editingId || !selectedOrganizationId || !accounts.data?.length) return;
+    setAccountUsername(accounts.data[0]?.username ?? "");
+  }, [accounts.data, editingId, selectedOrganizationId]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -164,6 +173,85 @@ export default function OwnerOrganizationManagement() {
       });
     else create.mutate(input);
   };
+
+  const selectedOrganization = (organizations.data ?? []).find(
+    item => item.id === selectedOrganizationId
+  );
+  const directChildren = (organizations.data ?? []).filter(
+    item => item.parentOrganizationId === selectedOrganizationId
+  );
+  const toggleOrganization = (id: string) => {
+    setExpandedIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setSelectedOrganizationId(id);
+  };
+  const renderOrganizationTree = (
+    parentId: string | null,
+    depth = 0
+  ): React.ReactNode =>
+    (organizations.data ?? [])
+      .filter(item => (item.parentOrganizationId ?? null) === parentId)
+      .map(item => {
+        const hasChildren = (organizations.data ?? []).some(
+          child => child.parentOrganizationId === item.id
+        );
+        const expanded = expandedIds.has(item.id);
+        const selected = selectedOrganizationId === item.id;
+        return (
+          <div key={item.id}>
+            <div
+              className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${selected ? "border-primary bg-primary/5" : ""}`}
+              style={{ marginRight: `${depth * 18}px` }}
+            >
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-right"
+                onClick={() => toggleOrganization(item.id)}
+                aria-expanded={hasChildren ? expanded : undefined}
+              >
+                <span className="w-5 text-center text-xs text-muted-foreground">
+                  {hasChildren ? (expanded ? "−" : "+") : "•"}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">
+                    {item.name}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {typeLabels[item.type as OrganizationType] ?? item.type} ·{" "}
+                    {item.code}
+                  </span>
+                </span>
+              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedOrganizationId(item.id);
+                  setEditingId(item.id);
+                  setAccountUsername("");
+                  setAccountPassword("");
+                  setForm({
+                    code: item.code,
+                    name: item.name,
+                    type: item.type as OrganizationType,
+                    parentOrganizationId: item.parentOrganizationId ?? "",
+                    telegramDestinationOrganizationId:
+                      item.telegramDestinationOrganizationId ?? "",
+                  });
+                }}
+              >
+                تعديل
+              </Button>
+            </div>
+            {expanded && renderOrganizationTree(item.id, depth + 1)}
+          </div>
+        );
+      });
 
   if (!open) return null;
   return (
@@ -224,29 +312,6 @@ export default function OwnerOrganizationManagement() {
               </div>
             </div>
           )}
-          {syncedAccounts.length > 0 && (
-            <div className="lg:col-span-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
-              <p className="font-bold">
-                الحسابات التي تم إنشاؤها للجهات الموجودة
-              </p>
-              <p className="mt-1 text-xs">
-                تظهر كلمات المرور المؤقتة مرة واحدة للمالك؛ احفظها وسلّمها
-                لمسؤولي الجهات.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {syncedAccounts.map(account => (
-                  <div
-                    key={account.username}
-                    className="rounded-lg border border-emerald-200 p-2 font-mono text-xs dark:border-emerald-800"
-                  >
-                    <div>{account.organizationName}</div>
-                    <div>username: {account.username}</div>
-                    <div>temporary password: {account.password}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <form onSubmit={submit} className="space-y-3 rounded-xl border p-4">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-[#9b7c3d]" />
@@ -281,7 +346,7 @@ export default function OwnerOrganizationManagement() {
                 placeholder="قيادة شرطة محافظة دمشق"
               />
             </label>
-            {editingId && (
+            {editingId && accountManagedTypes.has(form.type) && (
               <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
                 <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
                   بيانات حساب الجهة
@@ -437,17 +502,6 @@ export default function OwnerOrganizationManagement() {
               >
                 <Database className="ml-1 h-3.5 w-3.5" /> تجهيز محافظات سوريا
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => ensureAccounts.mutate()}
-                disabled={ensureAccounts.isPending}
-              >
-                {ensureAccounts.isPending
-                  ? "جارٍ إنشاء الحسابات..."
-                  : "إنشاء حسابات الجهات الناقصة"}
-              </Button>
             </div>
             {organizations.isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -455,68 +509,132 @@ export default function OwnerOrganizationManagement() {
               </p>
             )}
             <div className="max-h-[560px] space-y-2 overflow-y-auto">
-              {(organizations.data ?? []).map(item => {
-                const parent = organizations.data?.find(
-                  candidate => candidate.id === item.parentOrganizationId
-                );
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {item.name}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {typeLabels[item.type as OrganizationType] ?? item.type}{" "}
-                        · {item.code}
-                        {parent ? ` · الأب: ${parent.name}` : ""}
-                      </p>
-                      {(() => {
-                        const account = accounts.data?.find(
-                          candidate => candidate.organizationId === item.id
-                        );
-                        return account ? (
-                          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
-                            حساب الجهة: {account.username}
-                            {account.mustChangePassword ? " · كلمة مؤقتة" : ""}
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-                            لا يوجد حساب جهة
-                          </p>
-                        );
-                      })()}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingId(item.id);
-                        setAccountUsername(
-                          accounts.data?.find(
-                            account => account.organizationId === item.id
-                          )?.username ?? ""
-                        );
-                        setAccountPassword("");
-                        setForm({
-                          code: item.code,
-                          name: item.name,
-                          type: item.type as OrganizationType,
-                          parentOrganizationId: item.parentOrganizationId ?? "",
-                          telegramDestinationOrganizationId:
-                            item.telegramDestinationOrganizationId ?? "",
-                        });
-                      }}
-                    >
-                      تعديل
-                    </Button>
-                  </div>
-                );
-              })}
+              {renderOrganizationTree(null)}
             </div>
+            {selectedOrganization && (
+              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      الجهة المفتوحة
+                    </p>
+                    <h4 className="text-lg font-bold">
+                      {selectedOrganization.name}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {
+                        typeLabels[
+                          selectedOrganization.type as OrganizationType
+                        ]
+                      }{" "}
+                      · {selectedOrganization.code}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      resetForm();
+                      setForm(current => ({
+                        ...current,
+                        type:
+                          selectedOrganization.type === "governorate"
+                            ? "region"
+                            : selectedOrganization.type === "region"
+                              ? "police_department"
+                              : selectedOrganization.type ===
+                                  "police_department"
+                                ? "station"
+                                : "unit",
+                        parentOrganizationId: selectedOrganization.id,
+                      }));
+                    }}
+                  >
+                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة داخلها
+                  </Button>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border bg-background p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      الأبناء المباشرون
+                    </p>
+                    <p className="mt-1 text-2xl font-bold">
+                      {directChildren.length}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-background p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      حسابات هذه الجهة فقط
+                    </p>
+                    {accounts.isLoading ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        جارٍ التحميل...
+                      </p>
+                    ) : accounts.data?.length ? (
+                      accounts.data.map(account => (
+                        <p
+                          key={account.userId}
+                          className="mt-1 font-mono text-xs"
+                        >
+                          {account.username}
+                          {account.mustChangePassword ? " · كلمة مؤقتة" : ""}
+                        </p>
+                      ))
+                    ) : (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-amber-700">
+                          لا يوجد حساب مباشر
+                        </p>
+                        {accountManagedTypes.has(
+                          selectedOrganization.type as OrganizationType
+                        ) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={provisionAccount.isPending}
+                            onClick={() =>
+                              provisionAccount.mutate({
+                                organizationId: selectedOrganization.id,
+                              })
+                            }
+                          >
+                            {provisionAccount.isPending
+                              ? "جارٍ الإنشاء..."
+                              : "إنشاء حساب هذه الجهة"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {directChildren.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                      الأبناء المباشرون
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {directChildren.map(child => (
+                        <button
+                          type="button"
+                          key={child.id}
+                          className="rounded-lg border bg-background p-3 text-right hover:border-primary"
+                          onClick={() => toggleOrganization(child.id)}
+                        >
+                          <span className="block text-sm font-semibold">
+                            {child.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {typeLabels[child.type as OrganizationType]} · فتح
+                            الإدارة
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-5 border-t pt-4">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="text-sm font-bold">

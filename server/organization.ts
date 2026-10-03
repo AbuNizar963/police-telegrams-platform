@@ -262,13 +262,15 @@ export type OrganizationAccountSummary = {
   mustChangePassword: boolean;
 };
 
-export async function listOrganizationAccountSummaries(): Promise<
-  OrganizationAccountSummary[]
-> {
-  const { data, error } = await getSupabaseAdmin()
+export async function listOrganizationAccountSummaries(
+  organizationId?: string
+): Promise<OrganizationAccountSummary[]> {
+  let query = getSupabaseAdmin()
     .from("users")
     .select("id, organizationId, username, loginMethod, mustChangePassword")
     .order("id", { ascending: true });
+  if (organizationId) query = query.eq("organizationId", organizationId);
+  const { data, error } = await query;
   throwIfError(error, "Failed to list organization accounts");
   return (data ?? []).map(row => ({
     organizationId: String(row.organizationId),
@@ -317,6 +319,28 @@ export async function ensureOrganizationAccounts(input: {
     });
   }
   return { created };
+}
+
+export async function provisionOrganizationAccount(input: {
+  organizationId: string;
+  actorUserId: number;
+}): Promise<{ organizationName: string; username: string; password: string }> {
+  const organization = await getOrganizationById(input.organizationId);
+  if (!organization) throw new Error("الجهة غير موجودة");
+  const existing = await listOrganizationAccountSummaries(organization.id);
+  if (existing.length > 0) throw new Error("يوجد حساب لهذه الجهة بالفعل");
+  if (!ACCOUNT_ORGANIZATION_TYPES.has(organization.type)) {
+    throw new Error("هذا المستوى التنظيمي لا يملك حساب جهة مباشرًا");
+  }
+  const account = await createOrganizationAccount({
+    organization,
+    createdByUserId: input.actorUserId,
+  });
+  return {
+    organizationName: organization.name,
+    username: account.username,
+    password: account.password,
+  };
 }
 
 export async function createOrganization(input: {

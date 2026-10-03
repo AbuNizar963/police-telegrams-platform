@@ -55,6 +55,7 @@ import {
   getUserOrganizationMembership,
   listAllOrganizations,
   listOrganizationAccountSummaries,
+  provisionOrganizationAccount,
   listIncomingTelegramRoutes,
   listOrganizationsForUser,
   listPendingRouteApprovals,
@@ -207,7 +208,11 @@ export const appRouter = router({
     ),
 
     all: adminProcedure.query(() => listAllOrganizations()),
-    accounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
+    accounts: adminProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .query(({ input }) =>
+        listOrganizationAccountSummaries(input.organizationId)
+      ),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
       listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
     ),
@@ -260,9 +265,9 @@ export const appRouter = router({
           accountUsername: z
             .string()
             .trim()
-            .min(3)
             .max(120)
-            .regex(/^[a-zA-Z0-9._-]+$/),
+            .regex(/^[a-zA-Z0-9._-]*$/)
+            .default(""),
           accountPassword: z
             .string()
             .min(12)
@@ -286,11 +291,13 @@ export const appRouter = router({
         const { accountUsername, accountPassword, ...organizationInput } =
           input;
         const organization = await updateOrganization(organizationInput);
-        const account = await updateOrganizationAccount({
-          organizationId: organization.id,
-          username: accountUsername,
-          password: accountPassword || undefined,
-        });
+        const account = accountUsername
+          ? await updateOrganizationAccount({
+              organizationId: organization.id,
+              username: accountUsername,
+              password: accountPassword || undefined,
+            })
+          : null;
         return { organization, account };
       }),
 
@@ -300,6 +307,14 @@ export const appRouter = router({
     ensureAccounts: adminProcedure.mutation(({ ctx }) =>
       ensureOrganizationAccounts({ actorUserId: ctx.user.id })
     ),
+    provisionAccount: adminProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .mutation(({ ctx, input }) =>
+        provisionOrganizationAccount({
+          organizationId: input.organizationId,
+          actorUserId: ctx.user.id,
+        })
+      ),
 
     assignMember: organizationAdminProcedure
       .input(

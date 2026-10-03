@@ -77,6 +77,7 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
+const PRINT_MARGIN_MM = 14;
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {
@@ -229,6 +230,41 @@ function formatConfiguredDate(
       ? `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
       : `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
   return localizeDigits(text, settings?.numberSystem ?? "latin");
+}
+
+function formatConfiguredTimeFirst(
+  value: Date | string | number,
+  settings?: {
+    timezone?: string;
+    dateFormat?: string;
+    numberSystem?: NumberSystem;
+  }
+) {
+  const date = new Date(value);
+  const timezone = settings?.timezone ?? "Asia/Riyadh";
+  const numberSystem = settings?.numberSystem ?? "latin";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(date)
+      .map(part => [part.type, part.value])
+  );
+  const formattedDate =
+    settings?.dateFormat === "yyyy-MM-dd HH:mm:ss"
+      ? `${parts.year}-${parts.month}-${parts.day}`
+      : `${parts.day}/${parts.month}/${parts.year}`;
+  return localizeDigits(
+    `${parts.hour}:${parts.minute}:${parts.second} - ${formattedDate}`,
+    numberSystem
+  );
 }
 
 function SeverityBadge({ value }: { value: Classification }) {
@@ -1968,6 +2004,10 @@ function TelegramDetail({
     const departmentName = settings?.departmentName ?? "قسم العمليات";
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const headerCreatedAt = formatConfiguredTimeFirst(
+      telegram.createdAt,
+      settings
+    );
     const location =
       telegram.gpsLatitude != null && telegram.gpsLongitude != null
         ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
@@ -2024,7 +2064,7 @@ function TelegramDetail({
           box-sizing: border-box;
           width: ${PRINT_PAGE_WIDTH_PX}px;
           min-height: ${PRINT_PAGE_HEIGHT_PX}px;
-          padding: 19px;
+          padding: ${PRINT_MARGIN_MM}mm;
           margin: 0;
           background: #fff;
           color: #172033;
@@ -2091,11 +2131,11 @@ function TelegramDetail({
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 12px; font-weight: 700; line-height: 2; white-space: nowrap; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 18pt; font-weight: 700; line-height: 1.5; white-space: normal; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 12px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .government-subtitle { font-size: 12px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 11px; font-weight: 700; line-height: 2.15; white-space: nowrap; }
+        .telegram-export-page .government-name { font-size: 18pt; font-weight: 700; white-space: normal; }
+        .telegram-export-page .government-subtitle { font-size: 18pt; font-weight: 700; white-space: normal; }
+        .telegram-export-page .header-metadata { font-size: 18pt; font-weight: 700; line-height: 1.5; white-space: normal; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;
@@ -2224,7 +2264,7 @@ function TelegramDetail({
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
-            <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>
+            <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(headerCreatedAt)}</p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
             <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>

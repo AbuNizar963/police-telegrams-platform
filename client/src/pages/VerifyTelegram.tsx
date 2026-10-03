@@ -6,11 +6,26 @@ import { BrandMark } from "@/components/BrandMark";
 type VerificationResult = {
   valid: boolean;
   status?: "valid" | "archived";
-  serialCode?: string;
+  serialNumber?: number;
+  createdAt?: string;
   unitName?: string;
   creatorName?: string;
   error?: string;
 };
+
+function formatTelegramDate(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ar-SY", {
+    timeZone: "Asia/Damascus",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
 
 export default function VerifyTelegram() {
   const [, params] = useRoute<{ token: string }>("/verify/:token");
@@ -118,7 +133,13 @@ export default function VerifyTelegram() {
                 <div>
                   <dt className="text-xs text-slate-500">رقم البرقية</dt>
                   <dd className="mt-1 font-semibold text-slate-900" dir="ltr">
-                    {result.serialCode || "—"}
+                    {result.serialNumber ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">تاريخ البرقية</dt>
+                  <dd className="mt-1 font-semibold text-slate-900">
+                    {formatTelegramDate(result.createdAt)}
                   </dd>
                 </div>
                 <div>

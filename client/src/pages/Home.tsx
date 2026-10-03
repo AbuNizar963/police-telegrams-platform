@@ -1821,11 +1821,22 @@ function TelegramDetail({
     onError: error => toast.error(error.message || "تعذر تعديل البرقية"),
   });
   const deleteTelegram = trpc.telegrams.delete.useMutation({
-    onSuccess: async () => {
-      toast.success("تم حذف البرقية نهائيًا");
+    onSuccess: async result => {
+      toast.success(
+        result.deletedAttachmentCount > 0
+          ? `تم حذف البرقية ${result.serialCode} نهائيًا مع ${result.deletedAttachmentCount} مرفق`
+          : `تم حذف البرقية ${result.serialCode} نهائيًا`
+      );
+      if (result.pendingStorageCleanup > 0) {
+        toast.warning(
+          "تم حذف البرقية، لكن تعذر تنظيف بعض ملفات المرفقات من مساحة التخزين"
+        );
+      }
       await Promise.all([
         utils.telegrams.list.invalidate(),
+        utils.telegrams.get.invalidate({ id: telegram.id }),
         utils.dashboard.stats.invalidate(),
+        utils.reports.telegrams.invalidate(),
       ]);
       close();
     },
@@ -3037,7 +3048,7 @@ function TelegramDetail({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `هل أنت متأكد من حذف البرقية ${telegram.serialCode} نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.`
+                      `سيتم حذف البرقية ${telegram.serialCode} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
                     )
                   )
                     deleteTelegram.mutate({ id: telegram.id });
@@ -3047,7 +3058,9 @@ function TelegramDetail({
                 className="h-10 flex-1 rounded-lg sm:flex-none"
               >
                 <Trash2 className="ml-2 h-4 w-4" />
-                {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
+                {deleteTelegram.isPending
+                  ? "جارٍ الحذف النهائي..."
+                  : "حذف نهائي"}
               </Button>
             </>
           )}

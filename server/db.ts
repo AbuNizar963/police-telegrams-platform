@@ -715,22 +715,60 @@ export async function updateTelegram(
   return mapTelegram(data as Record<string, unknown>);
 }
 
-export async function deleteTelegram(id: number): Promise<Telegram> {
-  const archivedAt = new Date().toISOString();
-  const { data, error } = await getSupabaseAdmin()
+export type TelegramPurgeResult = {
+  telegram: Telegram;
+  attachmentStorageKeys: string[];
+};
+
+/**
+ * Permanently removes a telegram and every record that references it
+ * (workflow versions, attachment metadata, workflow actions and routing
+ * history). The referencing foreign keys are declared ON DELETE RESTRICT, so
+ * dependents are always removed before the telegram row itself: a partial
+ * failure can never leave an orphaned dependent record behind.
+ *
+ * Private storage objects are not owned by this layer; their keys are returned
+ * so the caller can clean them through the storage provider.
+ */
+export async function purgeTelegramPermanently(
+  id: number
+): Promise<TelegramPurgeResult | undefined> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: attachmentRows, error: attachmentError } = await supabase
+    .from("telegram_attachments")
+    .select("storageKey")
+    .eq("telegramId", id);
+  throwIfError(attachmentError, "Failed to load telegram attachments");
+
+  // Order matters: every referencing table is cleared before its parent row.
+  const dependentTables = [
+    "telegram_actions",
+    "telegram_versions",
+    "telegram_attachments",
+    "telegram_routes",
+  ] as const;
+
+  for (const table of dependentTables) {
+    const { error } = await supabase.from(table).delete().eq("telegramId", id);
+    throwIfError(error, `Failed to purge ${table}`);
+  }
+
+  const { data, error } = await supabase
     .from("telegrams")
-    .update({
-      status: "archived",
-      archivedAt,
-      closedAt: archivedAt,
-      workflowReason: "حذف إداري مع الحفاظ على السجل التاريخي",
-      updatedAt: archivedAt,
-    })
+    .delete()
     .eq("id", id)
     .select("*")
-    .single();
+    .maybeSingle();
   throwIfError(error, "Failed to delete telegram");
-  return mapTelegram(data as Record<string, unknown>);
+  if (!data) return undefined;
+
+  return {
+    telegram: mapTelegram(data as Record<string, unknown>),
+    attachmentStorageKeys: (attachmentRows ?? [])
+      .map(row => String((row as { storageKey?: unknown }).storageKey ?? ""))
+      .filter(key => key.length > 0),
+  };
 }
 
 export async function writeAuditLog(

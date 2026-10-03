@@ -25,7 +25,6 @@ import {
   createTelegram,
   createTelegramAttachment,
   updateTelegram,
-  deleteTelegram,
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
@@ -35,6 +34,7 @@ import {
   getTelegramReport,
   listTelegramAttachments,
   listTelegrams,
+  purgeTelegramPermanently,
   recordTelegramAction,
   recordTelegramVersion,
   transitionTelegram,
@@ -814,29 +814,61 @@ export const appRouter = router({
           });
         }
 
+        const purged = await purgeTelegramPermanently(existing.id);
+        if (!purged) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+
+        const failedStorageKeys: string[] = [];
+        for (const storageKey of purged.attachmentStorageKeys) {
+          try {
+            await storageDelete(storageKey);
+          } catch (error) {
+            failedStorageKeys.push(storageKey);
+            console.warn(
+              "[Telegram] Attachment object cleanup failed",
+              storageKey,
+              error
+            );
+          }
+        }
+
+        // The telegram and its history are physically removed; this audit entry
+        // stays as the immutable record that the deletion happened.
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: "telegram.delete",
           entityType: "telegram",
-          entityId: String(existing.id),
+          entityId: String(purged.telegram.id),
           metadata: JSON.stringify({
-            serialNumber: existing.serialNumber,
+            mode: "permanent",
+            serialNumber: purged.telegram.serialNumber,
+            serialCode: purged.telegram.serialCode,
+            subject: existing.subject,
+            recipient: existing.recipient,
+            statusAtDeletion: existing.status,
             createdByUserId: existing.createdByUserId,
             creatorName: existing.creatorName,
+            creatorBadgeId: existing.creatorBadgeId ?? null,
+            deletedAttachmentCount: purged.attachmentStorageKeys.length,
+            pendingStorageCleanup: failedStorageKeys,
+            reason:
+              "حذف نهائي من حساب المالك أو المدير دون الاحتفاظ بسجل البرقية",
           }),
         });
 
-        await deleteTelegram(existing.id);
-        await recordTelegramAction({
-          telegramId: existing.id,
-          actorUserId: ctx.user.id,
-          action: "telegram.delete",
-          fromStatus: existing.status,
-          toStatus: "archived",
-          reason: "حذف إداري نهائي من حساب مالك أو مدير",
-        });
-        return { success: true as const, id: existing.id };
+        return {
+          success: true as const,
+          id: purged.telegram.id,
+          serialCode: purged.telegram.serialCode,
+          permanent: true as const,
+          deletedAttachmentCount: purged.attachmentStorageKeys.length,
+          pendingStorageCleanup: failedStorageKeys.length,
+        };
       }),
 
     route: protectedProcedure

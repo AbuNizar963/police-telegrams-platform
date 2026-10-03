@@ -2438,6 +2438,10 @@ function TelegramDetail({
         height: Math.ceil(measuredHeight),
         windowWidth: PRINT_PAGE_WIDTH_PX,
         windowHeight: Math.ceil(measuredHeight),
+        // Use the browser's native HTML/SVG renderer for export so Arabic
+        // shaping, word spacing, RTL layout, and line breaks match printing.
+        // This affects only image/PDF capture; the print flow is unchanged.
+        foreignObjectRendering: true,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: false,

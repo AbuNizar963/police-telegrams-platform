@@ -63,6 +63,7 @@ import {
   routeTelegram,
   seedSyrianGovernorates,
   updateOrganization,
+  updateOrganizationAccount,
 } from "./organization";
 import {
   StorageAccessDeniedError,
@@ -256,6 +257,18 @@ export const appRouter = router({
             .max(64)
             .regex(/^[A-Z0-9_-]+$/i),
           name: z.string().trim().min(2).max(255),
+          accountUsername: z
+            .string()
+            .trim()
+            .min(3)
+            .max(120)
+            .regex(/^[a-zA-Z0-9._-]+$/),
+          accountPassword: z
+            .string()
+            .min(12)
+            .max(256)
+            .optional()
+            .or(z.literal("")),
           type: z.enum([
             "central",
             "governorate",
@@ -269,7 +282,17 @@ export const appRouter = router({
           isActive: z.boolean(),
         })
       )
-      .mutation(({ input }) => updateOrganization(input)),
+      .mutation(async ({ input }) => {
+        const { accountUsername, accountPassword, ...organizationInput } =
+          input;
+        const organization = await updateOrganization(organizationInput);
+        const account = await updateOrganizationAccount({
+          organizationId: organization.id,
+          username: accountUsername,
+          password: accountPassword || undefined,
+        });
+        return { organization, account };
+      }),
 
     seedSyrianGovernorates: adminProcedure.mutation(() =>
       seedSyrianGovernorates()

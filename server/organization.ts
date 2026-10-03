@@ -472,6 +472,49 @@ export async function updateOrganization(input: {
   return mapOrganization(data as Record<string, unknown>);
 }
 
+export async function updateOrganizationAccount(input: {
+  organizationId: string;
+  username: string;
+  password?: string;
+}): Promise<{ username: string; passwordChanged: boolean }> {
+  const username = input.username.trim().toLowerCase();
+  const client = getSupabaseAdmin();
+  const duplicate = await client
+    .from("users")
+    .select("id")
+    .ilike("username", username)
+    .neq("organizationId", input.organizationId)
+    .maybeSingle();
+  throwIfError(duplicate.error, "Failed to check organization username");
+  if (duplicate.data) throw new Error("اسم المستخدم مستخدم بالفعل");
+
+  const existing = await client
+    .from("users")
+    .select("id")
+    .eq("organizationId", input.organizationId)
+    .eq("loginMethod", "password")
+    .maybeSingle();
+  throwIfError(existing.error, "Failed to load organization account");
+  if (!existing.data)
+    throw new Error("لا يوجد حساب لهذه الجهة؛ استخدم مزامنة الحسابات أولاً");
+
+  const values: Record<string, unknown> = {
+    username,
+    updatedAt: new Date().toISOString(),
+  };
+  if (input.password?.trim()) {
+    values.password_hash = await hashPassword(input.password);
+    values.mustChangePassword = true;
+    values.authUserId = randomUUID();
+  }
+  const { error } = await client
+    .from("users")
+    .update(values)
+    .eq("id", existing.data.id);
+  throwIfError(error, "Failed to update organization account");
+  return { username, passwordChanged: Boolean(input.password?.trim()) };
+}
+
 export async function getConfiguredTelegramDestination(
   userId: number
 ): Promise<Organization | null> {

@@ -35,6 +35,8 @@ export default function OwnerOrganizationManagement() {
     parentOrganizationId: "",
     telegramDestinationOrganizationId: "",
   });
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -75,10 +77,17 @@ export default function OwnerOrganizationManagement() {
     onError: error => toast.error(error.message || "تعذر إضافة الجهة"),
   });
   const update = trpc.organizations.update.useMutation({
-    onSuccess: async () => {
-      toast.success("تم تحديث الجهة");
+    onSuccess: async result => {
+      toast.success(
+        result.account.passwordChanged
+          ? "تم تحديث الجهة وبيانات الدخول؛ كلمة المرور الجديدة مؤقتة"
+          : "تم تحديث الجهة واسم المستخدم"
+      );
       resetForm();
-      await utils.organizations.all.invalidate();
+      await Promise.all([
+        utils.organizations.all.invalidate(),
+        utils.organizations.accounts.invalidate(),
+      ]);
     },
     onError: error => toast.error(error.message || "تعذر تحديث الجهة"),
   });
@@ -124,6 +133,8 @@ export default function OwnerOrganizationManagement() {
       parentOrganizationId: "",
       telegramDestinationOrganizationId: "",
     });
+    setAccountUsername("");
+    setAccountPassword("");
   };
   const parents = useMemo(
     () =>
@@ -143,7 +154,14 @@ export default function OwnerOrganizationManagement() {
       telegramDestinationOrganizationId:
         form.telegramDestinationOrganizationId || null,
     };
-    if (editingId) update.mutate({ ...input, id: editingId, isActive: true });
+    if (editingId)
+      update.mutate({
+        ...input,
+        id: editingId,
+        isActive: true,
+        accountUsername,
+        accountPassword,
+      });
     else create.mutate(input);
   };
 
@@ -263,6 +281,41 @@ export default function OwnerOrganizationManagement() {
                 placeholder="قيادة شرطة محافظة دمشق"
               />
             </label>
+            {editingId && (
+              <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                  بيانات حساب الجهة
+                </p>
+                <label className="grid gap-1 text-sm font-medium">
+                  اسم المستخدم
+                  <Input
+                    dir="ltr"
+                    value={accountUsername}
+                    onChange={event => setAccountUsername(event.target.value)}
+                    required
+                    minLength={3}
+                    maxLength={120}
+                    pattern="[a-zA-Z0-9._-]+"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  كلمة المرور الجديدة
+                  <Input
+                    dir="ltr"
+                    type="password"
+                    value={accountPassword}
+                    onChange={event => setAccountPassword(event.target.value)}
+                    minLength={12}
+                    maxLength={256}
+                    placeholder="اتركها فارغة دون تغيير"
+                  />
+                  <span className="text-xs font-normal text-muted-foreground">
+                    اتركها فارغة للإبقاء على كلمة المرور الحالية. عند تغييرها
+                    سيُطلب من الجهة تغييرها عند أول دخول.
+                  </span>
+                </label>
+              </div>
+            )}
             <label className="grid gap-1 text-sm font-medium">
               المستوى
               <select
@@ -442,6 +495,12 @@ export default function OwnerOrganizationManagement() {
                       size="sm"
                       onClick={() => {
                         setEditingId(item.id);
+                        setAccountUsername(
+                          accounts.data?.find(
+                            account => account.organizationId === item.id
+                          )?.username ?? ""
+                        );
+                        setAccountPassword("");
                         setForm({
                           code: item.code,
                           name: item.name,

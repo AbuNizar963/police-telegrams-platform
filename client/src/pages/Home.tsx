@@ -38,6 +38,7 @@ import {
   Siren,
   SlidersHorizontal,
   Square,
+  Trash2,
   Upload,
   UserRound,
   X,
@@ -1701,14 +1702,14 @@ function TelegramDetail({
   });
   const deleteTelegram = trpc.telegrams.delete.useMutation({
     onSuccess: async () => {
-      toast.success("تمت أرشفة البرقية");
+      toast.success("تم حذف البرقية نهائيًا");
       await Promise.all([
         utils.telegrams.list.invalidate(),
         utils.dashboard.stats.invalidate(),
       ]);
       close();
     },
-    onError: error => toast.error(error.message || "تعذر أرشفة البرقية"),
+    onError: error => toast.error(error.message || "تعذر حذف البرقية"),
   });
   const transition = trpc.telegrams.transition.useMutation({
     onSuccess: async () => {
@@ -2191,6 +2192,12 @@ function TelegramDetail({
     mount.appendChild(exportWrapper);
     document.body.appendChild(mount);
 
+    let removedStyles: Array<{
+      stylesheet: HTMLStyleElement | HTMLLinkElement;
+      parent: ParentNode | null;
+      nextSibling: ChildNode | null;
+    }> = [];
+
     try {
       await document.fonts.load('700 18px "Cairo"');
       const images = Array.from(
@@ -2252,6 +2259,25 @@ function TelegramDetail({
         paper.getBoundingClientRect().height,
         1123
       );
+
+      // html2canvas parses the source document's styles before cloning. Remove
+      // application styles temporarily so unsupported oklch()/color-mix()
+      // declarations cannot abort the export. The self-contained hexadecimal
+      // stylesheet inside the off-screen paper remains available.
+      const exportStyles = exportWrapper.querySelector("style");
+      removedStyles = Array.from(
+        document.querySelectorAll<HTMLStyleElement | HTMLLinkElement>(
+          'style, link[rel="stylesheet"]'
+        )
+      )
+        .filter(stylesheet => stylesheet !== exportStyles)
+        .map(stylesheet => ({
+          stylesheet,
+          parent: stylesheet.parentNode,
+          nextSibling: stylesheet.nextSibling,
+        }));
+      removedStyles.forEach(({ stylesheet }) => stylesheet.remove());
+
       return await html2canvas(paper, {
         scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
         width: 794,
@@ -2292,6 +2318,16 @@ function TelegramDetail({
         },
       });
     } finally {
+      removedStyles.forEach(({ stylesheet, parent, nextSibling }) => {
+        if (parent) {
+          parent.insertBefore(
+            stylesheet,
+            nextSibling && nextSibling.parentNode === parent
+              ? nextSibling
+              : null
+          );
+        }
+      });
       mount.remove();
     }
   };
@@ -2666,186 +2702,189 @@ function TelegramDetail({
           </div>
         </div>
       )}
-      <div className="mt-5 flex flex-wrap gap-2 print:hidden">
-        <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">
-          {uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}
-          <input
-            type="file"
-            className="hidden"
-            accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
-            disabled={uploadAttachment.isPending}
-            onChange={event => {
-              handleAttachment(event.target.files?.[0]);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-        <Button
-          onClick={printTelegram}
-          className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
-        >
-          <Printer className="ml-2 h-4 w-4" />
-          طباعة
-        </Button>
-        <Button
-          onClick={() => exportPdf(false)}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <FileDown className="ml-2 h-4 w-4" />
-          {exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}
-        </Button>
-        <Button
-          onClick={downloadImage}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <FileImage className="ml-2 h-4 w-4" />
-          {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
-        </Button>
-        <Button
-          onClick={() => exportPdf(true)}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <Share2 className="ml-2 h-4 w-4" />
-          {exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}
-        </Button>
-        <Button
-          onClick={shareImage}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <Share2 className="ml-2 h-4 w-4" />
-          {exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}
-        </Button>
-        <Button
-          onClick={() =>
-            toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
-          }
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <LocateFixed className="ml-2 h-4 w-4" />
-          الموقع
-        </Button>
-        {isAdmin && (
-          <>
-            <Button
-              onClick={() => setEditOpen(true)}
-              variant="outline"
-              className="h-10 flex-1 rounded-lg sm:flex-none"
-            >
-              <Save className="ml-2 h-4 w-4" />
-              تعديل البرقية
-            </Button>
-            {telegram.status === "draft" && (
+      <div className="mt-5 rounded-xl border bg-muted/20 p-2 print:hidden">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">
+            {uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}
+            <input
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
+              disabled={uploadAttachment.isPending}
+              onChange={event => {
+                handleAttachment(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <Button
+            onClick={printTelegram}
+            className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
+          >
+            <Printer className="ml-2 h-4 w-4" />
+            طباعة
+          </Button>
+          <Button
+            onClick={() => exportPdf(false)}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <FileDown className="ml-2 h-4 w-4" />
+            {exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}
+          </Button>
+          <Button
+            onClick={downloadImage}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <FileImage className="ml-2 h-4 w-4" />
+            {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
+          </Button>
+          <Button
+            onClick={() => exportPdf(true)}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <Share2 className="ml-2 h-4 w-4" />
+            {exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}
+          </Button>
+          <Button
+            onClick={shareImage}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <Share2 className="ml-2 h-4 w-4" />
+            {exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}
+          </Button>
+          <Button
+            onClick={() =>
+              toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
+            }
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <LocateFixed className="ml-2 h-4 w-4" />
+            الموقع
+          </Button>
+          {isAdmin && (
+            <>
               <Button
-                onClick={() => requestTransition("submitted")}
-                disabled={transition.isPending}
+                onClick={() => setEditOpen(true)}
                 variant="outline"
                 className="h-10 flex-1 rounded-lg sm:flex-none"
               >
-                إرسال للمراجعة
+                <Save className="ml-2 h-4 w-4" />
+                تعديل البرقية
               </Button>
-            )}
-            {telegram.status === "submitted" && (
-              <Button
-                onClick={() => requestTransition("in_review")}
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                بدء المراجعة
-              </Button>
-            )}
-            {telegram.status === "pending" && (
-              <Button
-                onClick={() => requestTransition("in_progress")}
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                بدء الإجراء
-              </Button>
-            )}
-            {(telegram.status === "in_progress" ||
-              telegram.status === "approved" ||
-              telegram.status === "forwarded") && (
-              <Button
-                onClick={() =>
-                  requestTransition(
-                    telegram.status === "in_progress"
-                      ? "completed"
-                      : "completed"
-                  )
-                }
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                إكمال المعالجة
-              </Button>
-            )}
-            {telegram.status === "in_review" && (
-              <>
+              {telegram.status === "draft" && (
                 <Button
-                  onClick={() => requestTransition("approved")}
-                  disabled={transition.isPending}
-                  className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none"
-                >
-                  اعتماد
-                </Button>
-                <Button
-                  onClick={() => requestTransition("returned")}
+                  onClick={() => requestTransition("submitted")}
                   disabled={transition.isPending}
                   variant="outline"
                   className="h-10 flex-1 rounded-lg sm:flex-none"
                 >
-                  إرجاع بسبب
+                  إرسال للمراجعة
                 </Button>
+              )}
+              {telegram.status === "submitted" && (
                 <Button
-                  onClick={() => requestTransition("rejected")}
+                  onClick={() => requestTransition("in_review")}
                   disabled={transition.isPending}
-                  variant="destructive"
+                  variant="outline"
                   className="h-10 flex-1 rounded-lg sm:flex-none"
                 >
-                  رفض
+                  بدء المراجعة
                 </Button>
-              </>
-            )}
-            {telegram.status === "resolved" ||
-            telegram.status === "completed" ? (
+              )}
+              {telegram.status === "pending" && (
+                <Button
+                  onClick={() => requestTransition("in_progress")}
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  بدء الإجراء
+                </Button>
+              )}
+              {(telegram.status === "in_progress" ||
+                telegram.status === "approved" ||
+                telegram.status === "forwarded") && (
+                <Button
+                  onClick={() =>
+                    requestTransition(
+                      telegram.status === "in_progress"
+                        ? "completed"
+                        : "completed"
+                    )
+                  }
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  إكمال المعالجة
+                </Button>
+              )}
+              {telegram.status === "in_review" && (
+                <>
+                  <Button
+                    onClick={() => requestTransition("approved")}
+                    disabled={transition.isPending}
+                    className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none"
+                  >
+                    اعتماد
+                  </Button>
+                  <Button
+                    onClick={() => requestTransition("returned")}
+                    disabled={transition.isPending}
+                    variant="outline"
+                    className="h-10 flex-1 rounded-lg sm:flex-none"
+                  >
+                    إرجاع بسبب
+                  </Button>
+                  <Button
+                    onClick={() => requestTransition("rejected")}
+                    disabled={transition.isPending}
+                    variant="destructive"
+                    className="h-10 flex-1 rounded-lg sm:flex-none"
+                  >
+                    رفض
+                  </Button>
+                </>
+              )}
+              {telegram.status === "resolved" ||
+              telegram.status === "completed" ? (
+                <Button
+                  onClick={() => requestTransition("archived")}
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  أرشفة
+                </Button>
+              ) : null}
               <Button
-                onClick={() => requestTransition("archived")}
-                disabled={transition.isPending}
-                variant="outline"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `هل أنت متأكد من حذف البرقية ${telegram.serialCode} نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.`
+                    )
+                  )
+                    deleteTelegram.mutate({ id: telegram.id });
+                }}
+                disabled={deleteTelegram.isPending}
+                variant="destructive"
                 className="h-10 flex-1 rounded-lg sm:flex-none"
               >
-                أرشفة
+                <Trash2 className="ml-2 h-4 w-4" />
+                {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
               </Button>
-            ) : null}
-            <Button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `هل أنت متأكد من أرشفة البرقية ${telegram.serialCode}؟ سيبقى سجلها محفوظًا.`
-                  )
-                )
-                  deleteTelegram.mutate({ id: telegram.id });
-              }}
-              disabled={deleteTelegram.isPending}
-              variant="destructive"
-              className="h-10 flex-1 rounded-lg sm:flex-none"
-            >
-              {deleteTelegram.isPending ? "جارٍ الأرشفة..." : "أرشفة البرقية"}
-            </Button>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
       {canOperate && !isAdmin && (
         <div className="mt-4 flex flex-wrap gap-2 print:hidden">

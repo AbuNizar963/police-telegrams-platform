@@ -817,7 +817,7 @@ export const appRouter = router({
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
-          action: "telegram.archive",
+          action: "telegram.delete",
           entityType: "telegram",
           entityId: String(existing.id),
           metadata: JSON.stringify({
@@ -831,10 +831,10 @@ export const appRouter = router({
         await recordTelegramAction({
           telegramId: existing.id,
           actorUserId: ctx.user.id,
-          action: "telegram.archive",
+          action: "telegram.delete",
           fromStatus: existing.status,
           toStatus: "archived",
-          reason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
+          reason: "حذف إداري نهائي من حساب مالك أو مدير",
         });
         return { success: true as const, id: existing.id };
       }),

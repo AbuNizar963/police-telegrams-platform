@@ -145,7 +145,7 @@ describe("telegram administration permissions", () => {
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUserId: 1,
-        action: "telegram.archive",
+        action: "telegram.delete",
         entityId: "7",
         metadata: expect.stringContaining('"createdByUserId":42'),
       })

@@ -80,6 +80,36 @@ const PRINT_PAGE_HEIGHT_MM = 297;
 const EXPORT_PAGE_WIDTH_PX = 2480;
 const EXPORT_PAGE_HEIGHT_PX = 3508;
 const EXPORT_SCALE = EXPORT_PAGE_WIDTH_PX / PRINT_PAGE_WIDTH_PX;
+const EXPORT_CAIRO_FONT_FACES = `
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/fonts/cairo-400.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 500;
+    font-display: block;
+    src: url("/fonts/cairo-500.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 600;
+    font-display: block;
+    src: url("/fonts/cairo-600.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url("/fonts/cairo-700.ttf") format("truetype");
+  }
+`;
 const classificationLabels = { secret: "سري", normal: "عادي" } as const;
 const priorityLabels = {
   slow: "بطيء",
@@ -1896,6 +1926,7 @@ function TelegramDetail({
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
+        ${EXPORT_CAIRO_FONT_FACES}
         .telegram-export-page {
           position: relative;
           isolation: isolate;
@@ -2223,24 +2254,6 @@ function TelegramDetail({
         )
       );
       await document.fonts.ready;
-      let cairoFontFaces = "";
-      const cairoFontUrl =
-        "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap";
-      try {
-        const response = await fetch(cairoFontUrl, {
-          mode: "cors",
-          credentials: "omit",
-          cache: "force-cache",
-        });
-        if (response.ok) {
-          const css = await response.text();
-          cairoFontFaces = Array.from(css.matchAll(/@font-face\s*\{[^}]+\}/g))
-            .map(match => match[0])
-            .join("\n");
-        }
-      } catch {
-        // The already-loaded browser font remains the fallback path.
-      }
       // These are the same physical dimensions applied by printTelegram.
       // Keep them inline here because html2canvas renders screen media and does
       // not activate the print media query by itself.
@@ -2353,7 +2366,7 @@ function TelegramDetail({
           const exportStyles = exportWrapper.querySelector("style");
           if (exportStyles) {
             const isolatedStyles = clonedDocument.createElement("style");
-            isolatedStyles.textContent = `${cairoFontFaces}\n${exportStyles.textContent ?? ""}`;
+            isolatedStyles.textContent = exportStyles.textContent ?? "";
             clonedDocument.head.appendChild(isolatedStyles);
           }
 

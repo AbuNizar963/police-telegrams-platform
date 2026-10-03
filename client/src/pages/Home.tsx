@@ -2224,27 +2224,22 @@ function TelegramDetail({
       );
       await document.fonts.ready;
       let cairoFontFaces = "";
-      const cairoStylesheet = Array.from(
-        document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')
-      ).find(link =>
-        link.href.includes("fonts.googleapis.com/css2?family=Cairo")
-      );
-      if (cairoStylesheet) {
-        try {
-          const response = await fetch(cairoStylesheet.href, {
-            mode: "cors",
-            credentials: "omit",
-            cache: "force-cache",
-          });
-          if (response.ok) {
-            const css = await response.text();
-            cairoFontFaces = Array.from(css.matchAll(/@font-face\s*\{[^}]+\}/g))
-              .map(match => match[0])
-              .join("\n");
-          }
-        } catch {
-          // The already-loaded browser font remains the fallback path.
+      const cairoFontUrl =
+        "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap";
+      try {
+        const response = await fetch(cairoFontUrl, {
+          mode: "cors",
+          credentials: "omit",
+          cache: "force-cache",
+        });
+        if (response.ok) {
+          const css = await response.text();
+          cairoFontFaces = Array.from(css.matchAll(/@font-face\s*\{[^}]+\}/g))
+            .map(match => match[0])
+            .join("\n");
         }
+      } catch {
+        // The already-loaded browser font remains the fallback path.
       }
       // These are the same physical dimensions applied by printTelegram.
       // Keep them inline here because html2canvas renders screen media and does

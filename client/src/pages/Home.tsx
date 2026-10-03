@@ -77,7 +77,8 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
-const PRINT_MARGIN_MM = 14;
+// Microsoft Word "Narrow" margins: 0.5in on every side.
+const PRINT_MARGIN_MM = 12.7;
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {

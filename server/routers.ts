@@ -1147,6 +1147,7 @@ export const appRouter = router({
             telegramId: telegram.id,
             toOrganizationId: configuredDestination.id,
             forwardedByUserId: ctx.user.id,
+            allowDraft: true,
             note: input.recipientOrganizationId
               ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
               : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",

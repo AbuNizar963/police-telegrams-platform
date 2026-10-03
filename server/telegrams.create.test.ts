@@ -175,6 +175,7 @@ describe("telegrams.create", () => {
       telegramId: 7,
       toOrganizationId: destination.id,
       forwardedByUserId: 42,
+      allowDraft: true,
       note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
     });
   });
@@ -211,6 +212,7 @@ describe("telegrams.create", () => {
       telegramId: 7,
       toOrganizationId: destination.id,
       forwardedByUserId: 42,
+      allowDraft: true,
       note: "إحالة إلى الجهة المختارة عند إنشاء البرقية",
     });
   });

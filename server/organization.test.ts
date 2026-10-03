@@ -141,6 +141,7 @@ describe("organization repository", () => {
       p_to_organization_id: "00000000-0000-0000-0000-000000000002",
       p_forwarded_by_user_id: 7,
       p_note: "إحالة إلى القيادة",
+      p_allow_draft: false,
     });
   });
 });

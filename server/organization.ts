@@ -387,6 +387,7 @@ export async function routeTelegram(input: {
   toOrganizationId: string;
   forwardedByUserId: number;
   note?: string | null;
+  allowDraft?: boolean;
 }): Promise<TelegramRoute> {
   const membership = await getUserOrganizationMembership(
     input.forwardedByUserId
@@ -401,6 +402,7 @@ export async function routeTelegram(input: {
     p_to_organization_id: input.toOrganizationId,
     p_forwarded_by_user_id: input.forwardedByUserId,
     p_note: input.note ?? null,
+    p_allow_draft: input.allowDraft ?? false,
   });
 
   throwIfError(error, "Failed to route telegram");

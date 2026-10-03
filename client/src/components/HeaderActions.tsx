@@ -110,7 +110,7 @@ export default function HeaderActions() {
   return (
     <div
       dir="rtl"
-      className="fixed left-4 top-3 z-[60] flex items-center gap-2 sm:left-6 sm:top-4"
+      className="flex items-center gap-2"
       aria-label="إجراءات الصفحة"
     >
       <DropdownMenu>

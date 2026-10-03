@@ -34,7 +34,10 @@ assert(
 );
 
 assert(
-  dashboardLayout.includes('<BrandMark size="sm" showLabel compactLabel />'),
+  dashboardLayout.includes('<BrandMark size="sm" />') &&
+    dashboardLayout.includes(
+      'className="h-10 w-10 rounded-xl border bg-background shadow-sm"'
+    ),
   "The mobile dashboard header must provide the primary brand mark."
 );
 
@@ -62,9 +65,10 @@ assert(
 
 assert(
   dashboardLayout.includes(
-    "flex h-16 shrink-0 items-center justify-start border-b"
+    "flex h-16 shrink-0 items-center justify-between border-b"
   ) &&
     dashboardLayout.includes('dir="rtl"') &&
+    dashboardLayout.includes("<HeaderActions />") &&
     dashboardLayout.includes(
       '<SidebarTrigger\n                className="h-10 w-10 shrink-0'
     ),

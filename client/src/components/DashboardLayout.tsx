@@ -37,6 +37,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
 import { BrandMark } from "./BrandMark";
+import HeaderActions from "./HeaderActions";
 
 const menuItems = [
   { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
@@ -366,7 +367,7 @@ function DashboardLayoutContent({
         {!isMobile ? (
           <div
             dir="rtl"
-            className="flex h-16 shrink-0 items-center justify-start border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+            className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
           >
             <div className="flex items-center gap-3">
               <SidebarTrigger
@@ -387,17 +388,20 @@ function DashboardLayoutContent({
                 النظام متصل
               </span>
             </div>
+            <HeaderActions />
           </div>
         ) : null}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <BrandMark size="sm" showLabel compactLabel />
+              <SidebarTrigger className="h-10 w-10 rounded-xl border bg-background shadow-sm" />
+              <BrandMark size="sm" />
+              <span className="text-sm font-bold">مركز البرقيات</span>
               <span className="sr-only">
                 {activeMenuItem?.label ?? "القائمة"}
               </span>
             </div>
+            <HeaderActions />
           </div>
         )}
         <main className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12">

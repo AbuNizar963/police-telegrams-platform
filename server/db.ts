@@ -723,7 +723,7 @@ export async function deleteTelegram(id: number): Promise<Telegram> {
       status: "archived",
       archivedAt,
       closedAt: archivedAt,
-      workflowReason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
+      workflowReason: "حذف إداري مع الحفاظ على السجل التاريخي",
       updatedAt: archivedAt,
     })
     .eq("id", id)

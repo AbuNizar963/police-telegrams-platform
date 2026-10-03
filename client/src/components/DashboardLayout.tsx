@@ -364,7 +364,10 @@ function DashboardLayoutContent({
 
       <SidebarInset>
         {!isMobile ? (
-          <div className="flex h-14 shrink-0 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+          <div
+            dir="ltr"
+            className="flex h-14 shrink-0 items-center justify-end border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+          >
             {isCollapsed ? (
               <SidebarTrigger
                 className="h-10 w-10 rounded-xl border bg-background shadow-sm hover:bg-accent"

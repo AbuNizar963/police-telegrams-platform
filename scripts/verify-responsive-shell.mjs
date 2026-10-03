@@ -66,6 +66,7 @@ assert(
   dashboardLayout.includes(
     "flex h-14 shrink-0 items-center justify-end border-b"
   ) &&
+    dashboardLayout.includes('dir="ltr"') &&
     dashboardLayout.includes("{isCollapsed ? (\n              <SidebarTrigger"),
   "The desktop sidebar must expose its open button in a dedicated top bar."
 );

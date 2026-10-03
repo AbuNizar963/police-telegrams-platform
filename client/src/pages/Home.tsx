@@ -2038,10 +2038,12 @@ function TelegramDetail({
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        /* Canvas capture needs an explicit Arabic word gap. Keep this class
-           capture-only so the browser print layout remains untouched. */
+        /* Keep capture-only normalization separate from the print layout. */
         .telegram-export-page.telegram-export-capture {
-          word-spacing: 0.22em;
+          word-wrap: normal;
+          overflow-wrap: normal;
+          letter-spacing: normal;
+          word-spacing: normal;
         }
         .telegram-export-page.telegram-export-capture .page-watermark {
           display: none;
@@ -2314,7 +2316,7 @@ function TelegramDetail({
   }, [telegram, settings]);
 
   const capture = async () => {
-    const { default: html2canvas } = await import("html2canvas");
+    const { default: html2canvas } = await import("html2canvas-pro");
     await document.fonts.ready;
 
     const exportWrapper = createExportPaper();

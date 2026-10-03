@@ -1947,8 +1947,11 @@ function TelegramDetail({
         }
         .telegram-export-page .watermark-logo {
           display: block;
-          width: 100%;
-          height: 100%;
+          width: auto;
+          height: auto;
+          max-width: 100%;
+          max-height: 100%;
+          aspect-ratio: auto;
           object-fit: contain;
         }
         .telegram-export-page .watermark-seal {
@@ -1994,6 +1997,7 @@ function TelegramDetail({
           display: block;
           width: 160px;
           height: 160px;
+          aspect-ratio: 1 / 1;
           margin: 0 auto;
           object-fit: contain;
         }
@@ -2270,17 +2274,12 @@ function TelegramDetail({
         })
       );
 
-      const measuredHeight = Math.max(
-        paper.scrollHeight,
-        paper.getBoundingClientRect().height,
-        1123
-      );
       return await html2canvas(paper, {
         scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
         width: 794,
-        height: Math.ceil(measuredHeight),
+        height: 1123,
         windowWidth: 794,
-        windowHeight: Math.ceil(measuredHeight),
+        windowHeight: 1123,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: false,
@@ -2306,6 +2305,27 @@ function TelegramDetail({
             isolatedStyles.textContent = exportStyles.textContent ?? "";
             clonedDocument.head.appendChild(isolatedStyles);
           }
+
+          // This geometry is scoped to the html2canvas clone only. The visible
+          // print template remains unchanged and keeps its original A4 rules.
+          const exportGeometry = clonedDocument.createElement("style");
+          exportGeometry.textContent = `
+            .telegram-export-page {
+              width: 794px !important;
+              height: 1123px !important;
+              min-height: 1123px !important;
+              overflow: hidden !important;
+            }
+            .telegram-export-page .watermark-logo,
+            .telegram-export-page .official-logo {
+              width: auto !important;
+              height: auto !important;
+              max-width: 100% !important;
+              max-height: 100% !important;
+              object-fit: contain !important;
+            }
+          `;
+          clonedDocument.head.appendChild(exportGeometry);
 
           // Avoid inherited theme colors on the cloned root/body.
           clonedDocument.documentElement.style.colorScheme = "light";
@@ -2542,60 +2562,18 @@ function TelegramDetail({
       format: "a4",
       compress: true,
     });
-    // Match the same A4 page box used by browser printing: 210 × 297 mm,
-    // with the paper's internal 14mm padding already included in the captured pixels.
-    const margin = 0;
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
-    const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
-    let sourceY = 0;
-    let pageIndex = 0;
-
-    while (sourceY < sourceCanvas.height) {
-      const sliceHeight = Math.min(
-        pagePixelHeight,
-        sourceCanvas.height - sourceY
-      );
-      const pageCanvas = document.createElement("canvas");
-      pageCanvas.width = sourceCanvas.width;
-      pageCanvas.height = sliceHeight;
-
-      const pageContext = pageCanvas.getContext("2d");
-      if (!pageContext) {
-        throw new Error("تعذر تجهيز صفحات PDF");
-      }
-
-      pageContext.fillStyle = "#ffffff";
-      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      pageContext.drawImage(
-        sourceCanvas,
-        0,
-        sourceY,
-        sourceCanvas.width,
-        sliceHeight,
-        0,
-        0,
-        pageCanvas.width,
-        sliceHeight
-      );
-
-      if (pageIndex > 0) pdf.addPage();
-      const sliceHeightMm = sliceHeight / sourcePixelsPerMm;
-      pdf.addImage(
-        pageCanvas.toDataURL("image/jpeg", 0.96),
-        "JPEG",
-        margin,
-        margin,
-        pageWidth,
-        sliceHeightMm,
-        undefined,
-        "FAST"
-      );
-
-      sourceY += sliceHeight;
-      pageIndex += 1;
-    }
+    // The capture is already the complete A4 print box. Place it once at the
+    // native page ratio instead of slicing and rescaling it across pages.
+    pdf.addImage(
+      sourceCanvas.toDataURL("image/png"),
+      "PNG",
+      0,
+      0,
+      210,
+      297,
+      undefined,
+      "FAST"
+    );
 
     return pdf;
   };

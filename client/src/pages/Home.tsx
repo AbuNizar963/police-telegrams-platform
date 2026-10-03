@@ -2038,6 +2038,14 @@ function TelegramDetail({
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
+        /* Canvas capture needs an explicit Arabic word gap. Keep this class
+           capture-only so the browser print layout remains untouched. */
+        .telegram-export-page.telegram-export-capture {
+          word-spacing: 0.22em;
+        }
+        .telegram-export-page.telegram-export-capture .page-watermark {
+          display: none;
+        }
         .telegram-export-page * { box-sizing: border-box; }
         .telegram-export-page .page-watermark {
           position: absolute;
@@ -2316,6 +2324,7 @@ function TelegramDetail({
     if (!paper) {
       throw new Error("تعذر تجهيز قالب البرقية للتصدير");
     }
+    paper.classList.add("telegram-export-capture");
 
     const printRoot = document.createElement("div");
     printRoot.id = "telegram-print-root";
@@ -2496,6 +2505,7 @@ function TelegramDetail({
       }
       return capturedCanvas;
     } finally {
+      paper.classList.remove("telegram-export-capture");
       removedStyles.forEach(({ stylesheet, parent, nextSibling }) => {
         if (parent) {
           parent.insertBefore(

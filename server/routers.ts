@@ -50,9 +50,11 @@ import {
   addOrganizationMembership,
   approveTelegramRoute,
   createOrganization,
+  ensureOrganizationAccounts,
   getConfiguredTelegramDestination,
   getUserOrganizationMembership,
   listAllOrganizations,
+  listOrganizationAccountSummaries,
   listIncomingTelegramRoutes,
   listOrganizationsForUser,
   listPendingRouteApprovals,
@@ -204,6 +206,7 @@ export const appRouter = router({
     ),
 
     all: adminProcedure.query(() => listAllOrganizations()),
+    accounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
       listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
     ),
@@ -270,6 +273,9 @@ export const appRouter = router({
 
     seedSyrianGovernorates: adminProcedure.mutation(() =>
       seedSyrianGovernorates()
+    ),
+    ensureAccounts: adminProcedure.mutation(({ ctx }) =>
+      ensureOrganizationAccounts({ actorUserId: ctx.user.id })
     ),
 
     assignMember: organizationAdminProcedure

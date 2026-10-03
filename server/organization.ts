@@ -116,6 +116,8 @@ export async function listOrganizationsForUser(
 }
 
 const ACCOUNT_ORGANIZATION_TYPES = new Set<Organization["type"]>([
+  "governorate",
+  "region",
   "command",
   "police_department",
   "station",
@@ -175,6 +177,8 @@ function transliterateOrganizationName(name: string): string {
 
 function organizationAccountPrefix(type: Organization["type"]): string {
   const prefixes: Partial<Record<Organization["type"], string>> = {
+    governorate: "gov",
+    region: "rg",
     command: "hq",
     police_department: "pd",
     station: "st",
@@ -248,6 +252,71 @@ async function createOrganizationAccount(input: {
     });
   }
   return { username, password: temporaryPassword, userId: data.id };
+}
+
+export type OrganizationAccountSummary = {
+  organizationId: string;
+  userId: number;
+  username: string;
+  loginMethod: string | null;
+  mustChangePassword: boolean;
+};
+
+export async function listOrganizationAccountSummaries(): Promise<
+  OrganizationAccountSummary[]
+> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .select("id, organizationId, username, loginMethod, mustChangePassword")
+    .order("id", { ascending: true });
+  throwIfError(error, "Failed to list organization accounts");
+  return (data ?? []).map(row => ({
+    organizationId: String(row.organizationId),
+    userId: Number(row.id),
+    username: String(row.username ?? ""),
+    loginMethod: row.loginMethod ? String(row.loginMethod) : null,
+    mustChangePassword: row.mustChangePassword === true,
+  }));
+}
+
+export async function ensureOrganizationAccounts(input: {
+  actorUserId: number;
+}): Promise<{
+  created: Array<{
+    organizationId: string;
+    organizationName: string;
+    username: string;
+    password: string;
+  }>;
+}> {
+  const organizations = await listAllOrganizations();
+  const summaries = await listOrganizationAccountSummaries();
+  const existing = new Set(summaries.map(account => account.organizationId));
+  const created: Array<{
+    organizationId: string;
+    organizationName: string;
+    username: string;
+    password: string;
+  }> = [];
+  for (const organization of organizations) {
+    if (
+      !ACCOUNT_ORGANIZATION_TYPES.has(organization.type) ||
+      existing.has(organization.id)
+    ) {
+      continue;
+    }
+    const account = await createOrganizationAccount({
+      organization,
+      createdByUserId: input.actorUserId,
+    });
+    created.push({
+      organizationId: organization.id,
+      organizationName: organization.name,
+      username: account.username,
+      password: account.password,
+    });
+  }
+  return { created };
 }
 
 export async function createOrganization(input: {

@@ -25,6 +25,9 @@ export default function OwnerOrganizationManagement() {
     username: string;
     password: string;
   } | null>(null);
+  const [syncedAccounts, setSyncedAccounts] = useState<
+    Array<{ organizationName: string; username: string; password: string }>
+  >([]);
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -33,6 +36,9 @@ export default function OwnerOrganizationManagement() {
     telegramDestinationOrganizationId: "",
   });
   const organizations = trpc.organizations.all.useQuery(undefined, {
+    enabled: open,
+  });
+  const accounts = trpc.organizations.accounts.useQuery(undefined, {
     enabled: open,
   });
   const pendingApprovals = trpc.organizations.pendingApprovals.useQuery(
@@ -82,6 +88,24 @@ export default function OwnerOrganizationManagement() {
       await utils.organizations.all.invalidate();
     },
     onError: error => toast.error(error.message || "تعذر تجهيز المحافظات"),
+  });
+  const ensureAccounts = trpc.organizations.ensureAccounts.useMutation({
+    onSuccess: async result => {
+      setSyncedAccounts(
+        result.created.map(account => ({
+          organizationName: account.organizationName,
+          username: account.username,
+          password: account.password,
+        }))
+      );
+      toast.success(
+        result.created.length
+          ? `تم إنشاء ${result.created.length} حساب جهة جديد`
+          : "جميع الجهات المطلوبة لديها حسابات"
+      );
+      await accounts.refetch();
+    },
+    onError: error => toast.error(error.message || "تعذر مزامنة حسابات الجهات"),
   });
 
   useEffect(() => {
@@ -179,6 +203,29 @@ export default function OwnerOrganizationManagement() {
                 >
                   إخفاء
                 </Button>
+              </div>
+            </div>
+          )}
+          {syncedAccounts.length > 0 && (
+            <div className="lg:col-span-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
+              <p className="font-bold">
+                الحسابات التي تم إنشاؤها للجهات الموجودة
+              </p>
+              <p className="mt-1 text-xs">
+                تظهر كلمات المرور المؤقتة مرة واحدة للمالك؛ احفظها وسلّمها
+                لمسؤولي الجهات.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {syncedAccounts.map(account => (
+                  <div
+                    key={account.username}
+                    className="rounded-lg border border-emerald-200 p-2 font-mono text-xs dark:border-emerald-800"
+                  >
+                    <div>{account.organizationName}</div>
+                    <div>username: {account.username}</div>
+                    <div>temporary password: {account.password}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -337,6 +384,17 @@ export default function OwnerOrganizationManagement() {
               >
                 <Database className="ml-1 h-3.5 w-3.5" /> تجهيز محافظات سوريا
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => ensureAccounts.mutate()}
+                disabled={ensureAccounts.isPending}
+              >
+                {ensureAccounts.isPending
+                  ? "جارٍ إنشاء الحسابات..."
+                  : "إنشاء حسابات الجهات الناقصة"}
+              </Button>
             </div>
             {organizations.isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -362,6 +420,21 @@ export default function OwnerOrganizationManagement() {
                         · {item.code}
                         {parent ? ` · الأب: ${parent.name}` : ""}
                       </p>
+                      {(() => {
+                        const account = accounts.data?.find(
+                          candidate => candidate.organizationId === item.id
+                        );
+                        return account ? (
+                          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
+                            حساب الجهة: {account.username}
+                            {account.mustChangePassword ? " · كلمة مؤقتة" : ""}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                            لا يوجد حساب جهة
+                          </p>
+                        );
+                      })()}
                     </div>
                     <Button
                       type="button"

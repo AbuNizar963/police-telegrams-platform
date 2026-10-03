@@ -442,22 +442,6 @@ export default function Home() {
       className="mx-auto min-h-[calc(100vh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
     >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">
-                TELEGRAM OPERATIONS
-              </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                النظام متصل
-              </span>
-            </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight md:hidden">
-              مركز البرقيات
-            </h1>
-          </div>
-        </div>
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
             <Clock3 className="h-3.5 w-3.5" />

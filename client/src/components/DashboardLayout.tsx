@@ -382,6 +382,10 @@ function DashboardLayoutContent({
               <h1 className="text-lg font-bold tracking-tight text-foreground">
                 مركز البرقيات
               </h1>
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                النظام متصل
+              </span>
             </div>
           </div>
         ) : null}

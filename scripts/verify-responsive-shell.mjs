@@ -40,8 +40,10 @@ assert(
 
 assert(
   dashboardLayout.includes('<BrandMark size="sm" />') &&
-    dashboardLayout.includes("مركز البرقيات"),
-  "The desktop top bar must contain the brand and telegram center title."
+    dashboardLayout.includes("مركز البرقيات") &&
+    dashboardLayout.includes("النظام متصل") &&
+    !homePage.includes("TELEGRAM OPERATIONS"),
+  "The top bar must contain the brand, title, and status while the legacy label is removed."
 );
 
 assert(

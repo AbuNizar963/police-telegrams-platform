@@ -233,7 +233,7 @@ function formatConfiguredDate(
   return localizeDigits(text, settings?.numberSystem ?? "latin");
 }
 
-function formatConfiguredTimeFirst(
+function formatConfiguredHeaderDateTime(
   value: Date | string | number,
   settings?: {
     timezone?: string;
@@ -258,12 +258,9 @@ function formatConfiguredTimeFirst(
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
-  const formattedDate =
-    settings?.dateFormat === "yyyy-MM-dd HH:mm:ss"
-      ? `${parts.year}-${parts.month}-${parts.day}`
-      : `${parts.day}/${parts.month}/${parts.year}`;
+  const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
   return localizeDigits(
-    `${parts.hour}:${parts.minute}:${parts.second} - ${formattedDate}`,
+    `${formattedDate} - ${parts.hour}:${parts.minute}:${parts.second}`,
     numberSystem
   );
 }
@@ -2005,7 +2002,7 @@ function TelegramDetail({
     const departmentName = settings?.departmentName ?? "قسم العمليات";
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
-    const headerCreatedAt = formatConfiguredTimeFirst(
+    const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,
       settings
     );
@@ -2082,8 +2079,8 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 75%;
-          height: 75%;
+          width: 93.75%;
+          height: 93.75%;
           max-width: none;
           max-height: none;
           transform: translate(-50%, -50%);
@@ -2135,6 +2132,7 @@ function TelegramDetail({
         .telegram-export-page .header-government p,
         .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
         .telegram-export-page .header-government p { transform-origin: right center; }
+        .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
@@ -2267,7 +2265,7 @@ function TelegramDetail({
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
-            <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(headerCreatedAt)}</p>
+            <p><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
             <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>

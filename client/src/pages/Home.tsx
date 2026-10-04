@@ -2079,8 +2079,8 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 117.2%;
-          height: 117.2%;
+          width: 93.75%;
+          height: 93.75%;
           max-width: none;
           max-height: none;
           transform: translate(-50%, -50%);
@@ -2130,13 +2130,13 @@ function TelegramDetail({
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 14pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
         .telegram-export-page .header-government p { transform-origin: right center; }
-        .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 14pt; letter-spacing: 0; white-space: nowrap; }
+        .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 14pt; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .government-subtitle { font-size: 14pt; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 14pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+        .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;

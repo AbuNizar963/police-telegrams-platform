@@ -58,7 +58,7 @@ export async function renderTelegramDocument(
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 210mm !important;
+            width: 100vw !important;
             min-height: 297mm !important;
             background: #fff !important;
           }
@@ -70,7 +70,7 @@ export async function renderTelegramDocument(
             width: 210mm !important;
             min-height: 297mm !important;
             display: block !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
           }
         </style></head>`
       ),

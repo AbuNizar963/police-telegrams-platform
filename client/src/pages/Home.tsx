@@ -2457,7 +2457,7 @@ function TelegramDetail({
           inset: auto !important;
           z-index: auto !important;
           display: block !important;
-          width: ${PRINT_PAGE_WIDTH_MM}mm !important;
+          width: 100vw !important;
           min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -2467,7 +2467,7 @@ function TelegramDetail({
         #telegram-print-root .telegram-export-page {
           width: ${PRINT_PAGE_WIDTH_MM}mm !important;
           min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
-          margin: 0 !important;
+          margin: 0 auto !important;
         }
 
         @page {

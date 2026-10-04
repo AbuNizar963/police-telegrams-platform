@@ -53,6 +53,7 @@ import {
   removeRepeatedSpeech,
 } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
+import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import qrcode from "@/lib/qrcode-generator";
 import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
 
@@ -500,7 +501,7 @@ export default function Home() {
     onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: telegram.serialCode,
+        serialCode: getTelegramDisplayNumber(telegram.serialCode),
         subject: telegram.subject,
         telegramId: telegram.id,
       });
@@ -858,7 +859,10 @@ export default function Home() {
                     />
                   )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
-                    {localizeDigits(row.serialCode, numberSystem)}
+                    {localizeDigits(
+                      getTelegramDisplayNumber(row.serialCode),
+                      numberSystem
+                    )}
                   </span>
                   <span className="md:hidden">
                     <StatusBadge value={row.status} />
@@ -1109,7 +1113,10 @@ function TelegramReportModal({
     const lines = [
       header,
       ...rows.map(row => [
-        row.serialCode,
+        localizeDigits(
+          getTelegramDisplayNumber(row.serialCode),
+          settings?.numberSystem ?? "latin"
+        ),
         row.subject,
         row.recipient,
         statusLabels[row.status],
@@ -1215,7 +1222,12 @@ function TelegramReportModal({
             <tbody>
               {rows.map(row => (
                 <tr key={row.id} className="border-t">
-                  <td className="p-3 font-mono">{row.serialCode}</td>
+                  <td className="p-3 font-mono">
+                    {localizeDigits(
+                      getTelegramDisplayNumber(row.serialCode),
+                      settings?.numberSystem ?? "latin"
+                    )}
+                  </td>
                   <td className="p-3 font-semibold">{row.subject}</td>
                   <td className="p-3">{row.recipient}</td>
                   <td className="p-3">{statusLabels[row.status]}</td>
@@ -1837,8 +1849,8 @@ function TelegramDetail({
     onSuccess: async result => {
       toast.success(
         result.deletedAttachmentCount > 0
-          ? `تم حذف البرقية ${result.serialCode} نهائيًا مع ${result.deletedAttachmentCount} مرفق`
-          : `تم حذف البرقية ${result.serialCode} نهائيًا`
+          ? `تم حذف البرقية ${getTelegramDisplayNumber(result.serialCode)} نهائيًا مع ${result.deletedAttachmentCount} مرفق`
+          : `تم حذف البرقية ${getTelegramDisplayNumber(result.serialCode)} نهائيًا`
       );
       if (result.pendingStorageCleanup > 0) {
         toast.warning(
@@ -1992,13 +2004,7 @@ function TelegramDetail({
       telegram.gpsLatitude != null && telegram.gpsLongitude != null
         ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
         : "غير محدد";
-    const serialDigits =
-      String(telegram.serialCode).split("-").pop() ??
-      String(telegram.serialCode);
-    const parsedSerial = Number.parseInt(serialDigits, 10);
-    const displaySerial = Number.isFinite(parsedSerial)
-      ? String(parsedSerial)
-      : String(telegram.serialCode);
+    const displaySerial = getTelegramDisplayNumber(telegram.serialCode);
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
@@ -2567,7 +2573,7 @@ function TelegramDetail({
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${telegram.serialCode}`,
+          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
           text: telegram.subject,
           files: [file],
         });
@@ -2605,7 +2611,7 @@ function TelegramDetail({
 
       if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${telegram.serialCode}`,
+          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
           text: telegram.subject,
           files: [file],
         });
@@ -2637,7 +2643,10 @@ function TelegramDetail({
   return (
     <Modal
       title={telegram.subject}
-      subtitle={telegram.serialCode}
+      subtitle={localizeDigits(
+        getTelegramDisplayNumber(telegram.serialCode),
+        settings?.numberSystem ?? "latin"
+      )}
       close={close}
     >
       <div
@@ -2892,7 +2901,7 @@ function TelegramDetail({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `سيتم حذف البرقية ${telegram.serialCode} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+                      `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
                     )
                   )
                     deleteTelegram.mutate({ id: telegram.id });
@@ -3449,7 +3458,8 @@ function DepartmentSettingsModal({
             className="h-11 rounded-lg font-mono uppercase"
           />
           <span className="text-[11px] font-normal text-muted-foreground">
-            ستظهر مثل: {serialPrefix || "POL"}-2026-09-22-00001
+            سيُحفظ الرقم الكامل داخليًا للتدقيق، ويظهر في الواجهة مثل: 1، بينما
+            يُعرض التاريخ في خانة مستقلة.
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">

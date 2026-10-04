@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { CheckCircle2, CircleHelp, LoaderCircle, XCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 
 type VerificationResult = {
   valid: boolean;
@@ -133,7 +134,9 @@ export default function VerifyTelegram() {
                 <div>
                   <dt className="text-xs text-slate-500">رقم البرقية</dt>
                   <dd className="mt-1 font-semibold text-slate-900" dir="ltr">
-                    {result.serialNumber ?? "—"}
+                    {getTelegramDisplayNumber(
+                      String(result.serialNumber ?? "")
+                    )}
                   </dd>
                 </div>
                 <div>

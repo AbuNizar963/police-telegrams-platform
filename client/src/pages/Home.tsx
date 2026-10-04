@@ -2458,16 +2458,24 @@ function TelegramDetail({
           z-index: auto !important;
           display: block !important;
           width: 100vw !important;
-          min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          min-height: 0 !important;
+          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #fff !important;
+          overflow: hidden !important;
         }
 
         #telegram-print-root .telegram-export-page {
           width: ${PRINT_PAGE_WIDTH_MM}mm !important;
+          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 auto !important;
+          overflow: hidden !important;
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
         }
 
         @page {

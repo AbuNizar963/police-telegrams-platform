@@ -59,7 +59,7 @@ export async function renderTelegramDocument(
             margin: 0 !important;
             padding: 0 !important;
             width: 100vw !important;
-            min-height: 297mm !important;
+            min-height: 0 !important;
             background: #fff !important;
           }
           @page {
@@ -68,9 +68,14 @@ export async function renderTelegramDocument(
           }
           .telegram-export-page {
             width: 210mm !important;
+            height: 297mm !important;
             min-height: 297mm !important;
+            max-height: 297mm !important;
             display: block !important;
             margin: 0 auto !important;
+            overflow: hidden !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         </style></head>`
       ),

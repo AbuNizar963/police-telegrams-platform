@@ -1,9 +1,9 @@
 import {
   Bell,
+  Info,
   LogOut,
   Moon,
   Settings,
-  ShieldCheck,
   Sun,
   UserRound,
   Users,
@@ -180,15 +180,6 @@ export default function HeaderActions() {
             <span>الملف الشخصي</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => {
-              window.location.href = "/profile#about";
-            }}
-            className="cursor-pointer justify-end gap-2"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            <span>حول النظام وميزاته</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
             onSelect={toggleTheme}
             className="cursor-pointer justify-end gap-2"
           >
@@ -212,14 +203,6 @@ export default function HeaderActions() {
                 ? "إيقاف إشعارات البرقيات"
                 : "تفعيل إشعارات البرقيات"}
             </span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => void logout()}
-            className="cursor-pointer justify-end gap-2 text-destructive focus:text-destructive"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>تسجيل الخروج</span>
           </DropdownMenuItem>
           {user?.role === "admin" && (
             <>
@@ -262,6 +245,24 @@ export default function HeaderActions() {
               </DropdownMenuItem>
             </>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              window.location.href = "/about";
+            }}
+            className="cursor-pointer justify-end gap-2"
+          >
+            <Info className="h-4 w-4" />
+            <span>حول النظام وميزاته</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => void logout()}
+            className="cursor-pointer justify-end gap-2 text-destructive focus:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>تسجيل الخروج</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
-  CheckCircle2,
   LockKeyhole,
   LogOut,
   Save,
@@ -48,13 +47,6 @@ export default function Profile() {
     setUnit(profile.unit ?? "");
     setBio(profile.bio ?? "");
   }, [profile]);
-
-  useEffect(() => {
-    if (window.location.hash !== "#about") return;
-    window.requestAnimationFrame(() => {
-      document.getElementById("about")?.scrollIntoView({ behavior: "smooth" });
-    });
-  }, []);
 
   const saveProfile = trpc.profile.update.useMutation({
     onSuccess: async () => {
@@ -146,60 +138,6 @@ export default function Profile() {
           </p>
         </div>
       </div>
-
-      <Card
-        id="about"
-        className="scroll-mt-6 overflow-hidden border-[#203b62] bg-[#10233f] text-white shadow-sm"
-      >
-        <CardHeader className="border-b border-white/10 bg-white/[0.03]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d8c38e]/15 text-[#d8c38e]">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-white">حول النظام</CardTitle>
-              <CardDescription className="text-slate-300">
-                ميزات النظام التي تحافظ على موثوقية البرقيات وسلامة التشغيل.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-3 sm:p-6">
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="flex items-center gap-2 text-[#d8c38e]">
-              <ShieldCheck className="h-4 w-4" />
-              <p className="text-sm font-semibold">سلامة السجل</p>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-white">
-              الهوية الرقمية مفعلة
-            </p>
-            <p className="mt-2 text-xs leading-6 text-slate-300">
-              كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الأرشفة
-              الإدارية متاحة للمالك فقط ويُسجل في سجل التدقيق.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="flex items-center gap-2 text-emerald-300">
-              <CheckCircle2 className="h-4 w-4" />
-              <p className="text-sm font-semibold">حماية تشغيلية نشطة</p>
-            </div>
-            <p className="mt-3 text-xs leading-6 text-slate-300">
-              صلاحيات واضحة ومسارات عمل موثقة مع تسجيل الإجراءات الحساسة في سجل
-              التدقيق.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="flex items-center gap-2 text-sky-300">
-              <LockKeyhole className="h-4 w-4" />
-              <p className="text-sm font-semibold">جلسة موثوقة</p>
-            </div>
-            <p className="mt-3 text-xs leading-6 text-slate-300">
-              يبقى تسجيل الدخول فعالًا لمدة 30 يومًا لكل مستخدم، وينتهي فورًا
-              عند اختيار تسجيل الخروج.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card className="overflow-hidden border-border/70 shadow-sm">
         <CardHeader className="bg-muted/30">

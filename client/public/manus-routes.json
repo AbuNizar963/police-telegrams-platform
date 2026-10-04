@@ -2,6 +2,7 @@
   "routes": [
     { "path": "/", "title": "مركز البرقيات" },
     { "path": "/profile", "title": "الملف الشخصي" },
+    { "path": "/about", "title": "حول النظام" },
     { "path": "/verify/:token", "title": "التحقق من البرقية" }
   ]
 }

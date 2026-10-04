@@ -11,6 +11,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
 import Profile from "./pages/Profile";
+import About from "./pages/About";
 
 function DashboardPage({ children }: { children: React.ReactNode }) {
   return (
@@ -30,6 +31,11 @@ function Router() {
       <Route path="/profile">
         <DashboardPage>
           <Profile />
+        </DashboardPage>
+      </Route>
+      <Route path="/about">
+        <DashboardPage>
+          <About />
         </DashboardPage>
       </Route>
       <Route path="/">

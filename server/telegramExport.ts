@@ -58,21 +58,15 @@ export async function renderTelegramDocument(
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            min-height: 100% !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
             background: #fff !important;
-          }
-          body {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: flex-start !important;
           }
           @page {
             size: 210mm 297mm;
             margin: 0;
           }
           .telegram-export-page {
-            flex: 0 0 210mm !important;
             width: 210mm !important;
             min-height: 297mm !important;
             display: block !important;

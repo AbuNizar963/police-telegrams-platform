@@ -59,7 +59,13 @@ async function renderTelegramDocument(html: string, format: "pdf" | "png") {
             min-height: 297mm !important;
             background: #fff !important;
           }
+          @page {
+            size: 210mm 297mm;
+            margin: 0;
+          }
           .telegram-export-page {
+            width: 210mm !important;
+            min-height: 297mm !important;
             display: block !important;
             margin: 0 !important;
           }
@@ -90,9 +96,10 @@ async function renderTelegramDocument(html: string, format: "pdf" | "png") {
     if (format === "pdf") {
       return {
         body: await page.pdf({
-          format: "A4",
+          width: "210mm",
+          height: "297mm",
           printBackground: true,
-          preferCSSPageSize: true,
+          preferCSSPageSize: false,
           margin: { top: "0", right: "0", bottom: "0", left: "0" },
           tagged: true,
         }),
@@ -102,7 +109,11 @@ async function renderTelegramDocument(html: string, format: "pdf" | "png") {
     }
 
     return {
-      body: await paper.screenshot({ type: "png", animations: "disabled" }),
+      body: await page.screenshot({
+        type: "png",
+        animations: "disabled",
+        clip: { x: 0, y: 0, width: 794, height: 1123 },
+      }),
       contentType: "image/png",
       fileName: "telegram.png",
     };

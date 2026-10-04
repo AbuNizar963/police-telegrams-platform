@@ -80,6 +80,7 @@ const PRINT_PAGE_HEIGHT_MM = 297;
 // Microsoft Word "Narrow" margins: 0.5in on every side.
 const PRINT_MARGIN_MM = 12.7;
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
+const TELEGRAMS_PER_PAGE = 10;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {
     font-family: "Cairo";
@@ -469,7 +470,7 @@ export default function Home() {
       status: status === "all" ? undefined : status,
       category: category === "all" ? undefined : category,
       page,
-      pageSize: 100,
+      pageSize: TELEGRAMS_PER_PAGE,
     }),
     [search, severity, priority, status, category, page]
   );
@@ -702,7 +703,8 @@ export default function Home() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 جميع السجلات مرتبة تنازليًا حسب الرقم التسلسلي مع ختم الهوية
-                الرقمية وسجل تدقيق كامل.
+                الرقمية وسجل تدقيق كامل. البحث والتصفية يشملان كامل السجل المتاح
+                لك قبل تقسيم النتائج إلى صفحات.
               </p>
             </div>
             <div className="relative w-full lg:w-72">
@@ -908,7 +910,9 @@ export default function Home() {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={allRows.length < 100 || list.isFetching}
+                disabled={
+                  allRows.length < TELEGRAMS_PER_PAGE || list.isFetching
+                }
                 onClick={() => setPage(current => current + 1)}
               >
                 التالي
@@ -916,28 +920,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <aside className="space-y-4">
-          <Card className="border-border/70 bg-[#10233f] text-white shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-[#d8c38e]">
-                <Shield className="h-4 w-4" />
-                <span className="text-xs font-semibold tracking-wide">
-                  سلامة السجل
-                </span>
-              </div>
-              <p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p>
-              <p className="mt-2 text-xs leading-6 text-slate-300">
-                كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الأرشفة
-                الإدارية متاحة للمالك فقط ويُسجل في سجل التدقيق.
-              </p>
-              <div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                حماية تشغيلية نشطة
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
       </div>
 
       <Button

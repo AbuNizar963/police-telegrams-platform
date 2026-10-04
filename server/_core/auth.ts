@@ -45,7 +45,7 @@ function serializeSessionCookie(
 
   return parts.join("; ");
 }
-const SESSION_MAX_AGE = 60 * 60 * 12;
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
@@ -75,7 +75,7 @@ export async function setAuthenticatedSession(
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
     .setIssuedAt()
-    .setExpirationTime("12h")
+    .setExpirationTime("30d")
     .sign(getSessionKey());
 
   res.setHeader(

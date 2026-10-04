@@ -1,4 +1,13 @@
-import { Bell, Moon, Settings, Sun, UserRound, Users } from "lucide-react";
+import {
+  Bell,
+  LogOut,
+  Moon,
+  Settings,
+  ShieldCheck,
+  Sun,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
@@ -33,7 +42,7 @@ function decodeVapidKey(value: string): Uint8Array {
  */
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
   });
@@ -171,6 +180,15 @@ export default function HeaderActions() {
             <span>الملف الشخصي</span>
           </DropdownMenuItem>
           <DropdownMenuItem
+            onSelect={() => {
+              window.location.href = "/profile#about";
+            }}
+            className="cursor-pointer justify-end gap-2"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span>حول النظام وميزاته</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onSelect={toggleTheme}
             className="cursor-pointer justify-end gap-2"
           >
@@ -194,6 +212,14 @@ export default function HeaderActions() {
                 ? "إيقاف إشعارات البرقيات"
                 : "تفعيل إشعارات البرقيات"}
             </span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => void logout()}
+            className="cursor-pointer justify-end gap-2 text-destructive focus:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>تسجيل الخروج</span>
           </DropdownMenuItem>
           {user?.role === "admin" && (
             <>

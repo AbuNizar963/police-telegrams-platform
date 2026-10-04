@@ -1,7 +1,9 @@
 import {
   Bell,
+  FileText,
   Info,
   LogOut,
+  Menu,
   Moon,
   Settings,
   Sun,
@@ -166,7 +168,7 @@ export default function HeaderActions() {
             title="الإعدادات"
             className="h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
           >
-            <Settings className="h-[18px] w-[18px]" />
+            <Menu className="h-[19px] w-[19px]" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-64">
@@ -246,6 +248,15 @@ export default function HeaderActions() {
             </>
           )}
           <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              window.location.href = "/terms";
+            }}
+            className="cursor-pointer justify-end gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            <span>الشروط والأحكام</span>
+          </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
               window.location.href = "/about";

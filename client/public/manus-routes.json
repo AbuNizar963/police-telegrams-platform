@@ -3,6 +3,7 @@
     { "path": "/", "title": "مركز البرقيات" },
     { "path": "/profile", "title": "الملف الشخصي" },
     { "path": "/about", "title": "حول النظام" },
+    { "path": "/terms", "title": "الشروط والأحكام" },
     { "path": "/verify/:token", "title": "التحقق من البرقية" }
   ]
 }

@@ -39,7 +39,10 @@ async function launchBrowser() {
   });
 }
 
-async function renderTelegramDocument(html: string, format: "pdf" | "png") {
+export async function renderTelegramDocument(
+  html: string,
+  format: "pdf" | "png"
+) {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage({

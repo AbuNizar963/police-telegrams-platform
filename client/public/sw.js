@@ -1,12 +1,20 @@
-const CACHE_NAME = "police-telegrams-shell-v3";
+const CACHE_NAME = "police-telegrams-shell-v4";
 const SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then(cache => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async cache => {
+      await Promise.allSettled(
+        SHELL.map(async url => {
+          try {
+            await cache.add(url);
+          } catch {
+            // A missing optional asset must not block the service worker install.
+          }
+        })
+      );
+      await self.skipWaiting();
+    })
   );
 });
 
@@ -19,7 +27,12 @@ self.addEventListener("activate", event => {
           keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
         )
       )
-      .then(() => self.clients.claim())
+      .then(async () => {
+        if ("navigationPreload" in self.registration) {
+          await self.registration.navigationPreload.enable();
+        }
+        await self.clients.claim();
+      })
   );
 });
 
@@ -79,8 +92,23 @@ self.addEventListener("fetch", event => {
   )
     return;
   event.respondWith(
-    fetch(request).catch(() =>
-      caches.match(request).then(response => response || caches.match("/"))
-    )
+    (async () => {
+      const cached = await caches.match(request);
+      const preload = await event.preloadResponse;
+      try {
+        const response = preload || (await fetch(request));
+        if (response.ok && response.type === "basic") {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      } catch {
+        if (cached) return cached;
+        if (request.mode === "navigate") {
+          return (await caches.match("/")) || Response.error();
+        }
+        return Response.error();
+      }
+    })()
   );
 });

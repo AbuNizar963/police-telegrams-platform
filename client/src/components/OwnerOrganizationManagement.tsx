@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Database, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -662,7 +663,8 @@ export default function OwnerOrganizationManagement() {
                     className="mb-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
                   >
                     <p className="text-sm font-semibold">
-                      {telegram?.serialCode} — {telegram?.subject}
+                      {getTelegramDisplayNumber(telegram?.serialCode)} —{" "}
+                      {telegram?.subject}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       من {from?.name ?? "جهة"} إلى {to?.name ?? "جهة"}

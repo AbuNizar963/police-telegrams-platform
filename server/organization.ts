@@ -784,18 +784,6 @@ export async function listPendingRouteApprovals(
   const byId = new Map(
     organizations.map(organization => [organization.id, organization])
   );
-  const governorateFor = (organizationId: string): string | null => {
-    let current = byId.get(organizationId);
-    const visited = new Set<string>();
-    while (current && !visited.has(current.id)) {
-      visited.add(current.id);
-      if (current.type === "governorate") return current.id;
-      current = current.parentOrganizationId
-        ? byId.get(current.parentOrganizationId)
-        : undefined;
-    }
-    return null;
-  };
   const { data, error } = await getSupabaseAdmin()
     .from("telegram_routes")
     .select(
@@ -807,7 +795,7 @@ export async function listPendingRouteApprovals(
   return (data ?? []).filter(
     route =>
       canViewAll ||
-      governorateFor(String(route.fromOrganizationId)) ===
+      byId.get(String(route.fromOrganizationId))?.parentOrganizationId ===
         membership.organizationId
   ) as Array<Record<string, unknown>>;
 }

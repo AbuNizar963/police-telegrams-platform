@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(14);
 
 select has_function(
   'public',
@@ -149,11 +149,11 @@ select results_eq(
     where "serialCode" = 'TEST-ROUTE-DIRECT-9100001'
   $$,
   $$
-    select 'forwarded:' || id::text
+    select 'approved:' || id::text
     from public.organizations
-    where code = 'TEST-ROUTE-GOV-A'
+    where code = 'TEST-ROUTE-UNIT-A'
   $$,
-  'direct route atomically moves the telegram and marks it forwarded'
+  'direct route remains at the source while approval is pending'
 );
 
 select ok(
@@ -162,10 +162,38 @@ select ok(
     from public.telegram_actions as action
     join public.telegrams as telegram on telegram.id = action."telegramId"
     where telegram."serialCode" = 'TEST-ROUTE-DIRECT-9100001'
-      and action.action = 'telegram.route'
-      and action."toStatus" = 'forwarded'
+      and action.action = 'telegram.route.requested'
+      and action."toStatus" = 'approved'
   ),
-  'direct route records a lifecycle action'
+  'direct route records a pending lifecycle action'
+);
+
+select lives_ok(
+  $$
+    select public.approve_telegram_route(
+      route.id,
+      approver.id,
+      true,
+      'اعتماد السلطة الأعلى للمسار المباشر'
+    )
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    join public.users as approver on approver.name = 'Test Governorate A Approver'
+    where telegram."serialCode" = 'TEST-ROUTE-DIRECT-9100001'
+  $$,
+  'higher authority approves the direct route'
+);
+select ok(
+  exists (
+    select 1
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    where telegram."serialCode" = 'TEST-ROUTE-DIRECT-9100001'
+      and route."approvalStatus" = 'approved'
+      and route."routeSerialCode" is not null
+      and telegram.status = 'forwarded'
+  ),
+  'approval transfers the telegram and assigns a new route serial'
 );
 
 insert into public.telegrams (
@@ -248,7 +276,7 @@ select throws_ok(
     where telegram."serialCode" = 'TEST-ROUTE-APPROVAL-9100002'
   $$,
   '42501',
-  'Only the governorate command may approve this route',
+  'Only the immediate higher authority may decide this route',
   'a governorate outside the source hierarchy cannot approve the route'
 );
 

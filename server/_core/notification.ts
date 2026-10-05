@@ -127,3 +127,60 @@ export async function notifyOrganizationTelegramCreated(input: {
   );
   return { sent, removed, configured: true };
 }
+export async function notifyOrganizationRouteEvent(input: {
+  organizationId: string;
+  type: "route.requested" | "route.approved" | "route.rejected";
+  title: string;
+  body: string;
+  telegramId: number;
+  serialCode: string;
+  routeId: number;
+  routeSerialCode?: string | null;
+}): Promise<{ sent: number; removed: number; configured: boolean }> {
+  if (!vapidConfigured) {
+    return { sent: 0, removed: 0, configured: false };
+  }
+  const subscriptions = await listPushSubscriptions(input.organizationId);
+  const payload = JSON.stringify({
+    type: `telegram.${input.type}`,
+    title: input.title,
+    body: input.body,
+    tag: `telegram-route-${input.routeId}-${input.type}`,
+    url: `/?telegram=${input.telegramId}`,
+    data: {
+      telegramId: input.telegramId,
+      serialCode: input.serialCode,
+      routeId: input.routeId,
+      routeSerialCode: input.routeSerialCode ?? null,
+    },
+  });
+  let sent = 0;
+  let removed = 0;
+  await Promise.all(
+    subscriptions.map(async subscription => {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+          },
+          payload,
+          { TTL: 300 }
+        );
+        sent += 1;
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await deletePushSubscription(
+            subscription.userId,
+            subscription.endpoint
+          );
+          removed += 1;
+        } else {
+          console.warn("[Notification] Route push delivery failed", error);
+        }
+      }
+    })
+  );
+  return { sent, removed, configured: true };
+}

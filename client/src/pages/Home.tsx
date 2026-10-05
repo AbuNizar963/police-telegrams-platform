@@ -322,6 +322,8 @@ function Kpi({
   icon: Icon,
   tone,
   numberSystem,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: number;
@@ -329,9 +331,27 @@ function Kpi({
   icon: typeof FileText;
   tone: string;
   numberSystem: NumberSystem;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="border-border/60 bg-card shadow-sm">
+    <Card
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? active : undefined}
+      onClick={onClick}
+      onKeyDown={event => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={`border-border/60 bg-card shadow-sm transition-all ${
+        onClick
+          ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          : ""
+      } ${active ? "border-primary bg-primary/[0.04] shadow-md ring-1 ring-primary/30" : ""}`}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -362,6 +382,9 @@ export default function Home() {
   const [telegramView, setTelegramView] = useState<
     "all" | "outgoing" | "incoming"
   >("all");
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | undefined>();
+  const [dateTo, setDateTo] = useState<string | undefined>();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -470,14 +493,16 @@ export default function Home() {
       priority: priority === "all" ? undefined : priority,
       status: status === "all" ? undefined : status,
       category: category === "all" ? undefined : category,
+      from: dateFrom,
+      to: dateTo,
       page,
       pageSize: TELEGRAMS_PER_PAGE,
     }),
-    [search, severity, priority, status, category, page]
+    [search, severity, priority, status, category, dateFrom, dateTo, page]
   );
   useEffect(() => {
     setPage(1);
-  }, [search, severity, priority, status, category]);
+  }, [search, severity, priority, status, category, dateFrom, dateTo]);
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
@@ -531,6 +556,45 @@ export default function Home() {
     const isOutgoing = row.organizationId === row.currentOrganizationId;
     return telegramView === "outgoing" ? isOutgoing : !isOutgoing;
   });
+
+  const clearKpiFilters = () => {
+    setSearch("");
+    setSeverity("all");
+    setPriority("all");
+    setStatus("all");
+    setCategory("all");
+    setTelegramView("all");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(1);
+  };
+
+  const selectKpi = (key: string) => {
+    clearKpiFilters();
+    setActiveKpi(key);
+
+    if (key === "today") {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      setDateFrom(start.toISOString());
+      setDateTo(end.toISOString());
+    } else if (key === "urgent") {
+      setPriority("urgent");
+    } else if (key === "incoming") {
+      setTelegramView("incoming");
+    } else if (key === "in-progress") {
+      setStatus("in_progress");
+    } else if (key === "resolved") {
+      setStatus("resolved");
+    }
+  };
+
+  const clearSelectedKpi = () => {
+    clearKpiFilters();
+    setActiveKpi(null);
+  };
 
   return (
     <div
@@ -649,6 +713,8 @@ export default function Home() {
           detail="الرصيد التشغيلي"
           icon={FileText}
           tone="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          active={activeKpi === "total"}
+          onClick={() => selectKpi("total")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -657,6 +723,8 @@ export default function Home() {
           detail="آخر 24 ساعة"
           icon={Activity}
           tone="bg-blue-500/10 text-blue-600"
+          active={activeKpi === "today"}
+          onClick={() => selectKpi("today")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -665,6 +733,8 @@ export default function Home() {
           detail="تحتاج انتباهاً"
           icon={Siren}
           tone="bg-red-500/10 text-red-600"
+          active={activeKpi === "urgent"}
+          onClick={() => selectKpi("urgent")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -673,6 +743,8 @@ export default function Home() {
           detail="إلى جهتك الحالية"
           icon={Inbox}
           tone="bg-emerald-500/10 text-emerald-600"
+          active={activeKpi === "incoming"}
+          onClick={() => selectKpi("incoming")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -681,6 +753,8 @@ export default function Home() {
           detail="قيد المعالجة"
           icon={Radio}
           tone="bg-cyan-500/10 text-cyan-600"
+          active={activeKpi === "in-progress"}
+          onClick={() => selectKpi("in-progress")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -689,6 +763,8 @@ export default function Home() {
           detail="تم إغلاقها"
           icon={CheckCircle2}
           tone="bg-emerald-500/10 text-emerald-600"
+          active={activeKpi === "resolved"}
+          onClick={() => selectKpi("resolved")}
         />
       </section>
 
@@ -701,6 +777,27 @@ export default function Home() {
                 <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
                   {formatCount(rows.length, numberSystem)} نتيجة
                 </span>
+                {activeKpi ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedKpi}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/15"
+                    aria-label="إزالة مرشح بطاقة الإحصاء"
+                  >
+                    {activeKpi === "today"
+                      ? "الصادرة اليوم"
+                      : activeKpi === "urgent"
+                        ? "أولوية عاجل"
+                        : activeKpi === "incoming"
+                          ? "البرقيات الواردة"
+                          : activeKpi === "in-progress"
+                            ? "تحت الإجراء"
+                            : activeKpi === "resolved"
+                              ? "مكتملة"
+                              : "إجمالي البرقيات"}
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : null}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 جميع السجلات مرتبة تنازليًا حسب الرقم التسلسلي مع ختم الهوية

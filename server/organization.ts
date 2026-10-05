@@ -665,6 +665,9 @@ export async function listRoutingTargets(
         organization.id !== current.id &&
         (organization.parentOrganizationId === current.id ||
           current.parentOrganizationId === organization.id ||
+          (current.parentOrganizationId !== null &&
+            organization.parentOrganizationId ===
+              current.parentOrganizationId) ||
           organization.id === current.telegramDestinationOrganizationId)
     )
     .sort((left, right) =>

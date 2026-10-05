@@ -44,6 +44,10 @@ import {
   getUserByUsername,
   getUserOrganizationId,
   deletePushSubscription,
+  listUserNotifications,
+  markNotificationRead,
+  notifyOrganizationUsers,
+  notifyUser,
   upsertPushSubscription,
 } from "./db";
 import {
@@ -52,6 +56,7 @@ import {
   createOrganization,
   ensureOrganizationAccounts,
   getConfiguredTelegramDestination,
+  getOrganizationById,
   getUserOrganizationMembership,
   listAllOrganizations,
   listOrganizationAccountSummaries,
@@ -76,6 +81,7 @@ import {
 } from "./storage";
 import {
   getWebPushPublicKey,
+  notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
 
@@ -356,6 +362,15 @@ export const appRouter = router({
   }),
 
   notifications: router({
+    inbox: protectedProcedure.query(({ ctx }) =>
+      listUserNotifications(ctx.user.id)
+    ),
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await markNotificationRead(ctx.user.id, input.id);
+        return { read: true };
+      }),
     config: protectedProcedure.query(() => ({
       enabled: Boolean(getWebPushPublicKey()),
       publicKey: getWebPushPublicKey(),
@@ -950,23 +965,35 @@ export const appRouter = router({
           }),
         });
 
-        const routedTelegram =
-          route.approvalStatus === "pending"
-            ? null
-            : await getTelegramById(input.id);
-        if (routedTelegram) {
-          try {
-            await notifyOrganizationTelegramCreated({
-              organizationId: route.toOrganizationId,
-              serialCode: routedTelegram.serialCode,
-              subject: routedTelegram.subject,
-              recipient: routedTelegram.recipient,
-              priority: routedTelegram.priority,
-              telegramId: routedTelegram.id,
+        try {
+          const telegram = await getTelegramById(input.id);
+          const sourceOrganization = await getOrganizationById(
+            route.fromOrganizationId
+          );
+          if (telegram && sourceOrganization?.parentOrganizationId) {
+            const destination = await getOrganizationById(
+              route.toOrganizationId
+            );
+            await notifyOrganizationUsers({
+              organizationId: sourceOrganization.parentOrganizationId,
+              type: "route.requested",
+              title: "طلب إحالة بانتظار اعتماد السلطة الأعلى",
+              body: `البرقية ${telegram.serialCode} مطلوبة للإحالة إلى ${destination?.name ?? "جهة مستلمة"}.`,
+              telegramId: telegram.id,
+              routeId: route.id,
             });
-          } catch (error) {
-            console.warn("[Notification] Telegram routing push failed", error);
+            await notifyOrganizationRouteEvent({
+              organizationId: sourceOrganization.parentOrganizationId,
+              type: "route.requested",
+              title: "طلب إحالة بانتظار الاعتماد",
+              body: `البرقية ${telegram.serialCode} تحتاج قرار السلطة الأعلى.`,
+              telegramId: telegram.id,
+              serialCode: telegram.serialCode,
+              routeId: route.id,
+            });
           }
+        } catch (error) {
+          console.warn("[Notification] Route request dispatch failed", error);
         }
         return route;
       }),
@@ -1011,13 +1038,40 @@ export const appRouter = router({
             reason: input.reason ?? null,
           }),
         });
-        if (route.approvalStatus === "approved") {
-          const routedTelegram = await getTelegramById(route.telegramId);
-          if (routedTelegram) {
+        const routedTelegram = await getTelegramById(route.telegramId);
+        if (routedTelegram) {
+          if (route.approvalStatus === "approved") {
+            await notifyUser({
+              userId: route.forwardedByUserId,
+              organizationId: route.fromOrganizationId,
+              type: "route.approved",
+              title: "تم اعتماد إحالة البرقية",
+              body: `اعتمدت السلطة الأعلى إحالة ${routedTelegram.serialCode}. رقم الإحالة الجديد: ${route.routeSerialCode ?? "غير متاح"}.`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
+            await notifyOrganizationUsers({
+              organizationId: route.toOrganizationId,
+              type: "route.approved",
+              title: "برقية واردة معتمدة",
+              body: `وردت البرقية ${routedTelegram.serialCode} برقم إحالة ${route.routeSerialCode ?? "جديد"} باسم السلطة المعتمدة.`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
             try {
+              await notifyOrganizationRouteEvent({
+                organizationId: route.toOrganizationId,
+                type: "route.approved",
+                title: "برقية واردة معتمدة",
+                body: `وردت البرقية برقم إحالة ${route.routeSerialCode ?? "جديد"}.`,
+                telegramId: routedTelegram.id,
+                serialCode: routedTelegram.serialCode,
+                routeId: route.id,
+                routeSerialCode: route.routeSerialCode,
+              });
               await notifyOrganizationTelegramCreated({
                 organizationId: route.toOrganizationId,
-                serialCode: routedTelegram.serialCode,
+                serialCode: route.routeSerialCode ?? routedTelegram.serialCode,
                 subject: routedTelegram.subject,
                 recipient: routedTelegram.recipient,
                 priority: routedTelegram.priority,
@@ -1026,6 +1080,32 @@ export const appRouter = router({
             } catch (error) {
               console.warn(
                 "[Notification] Approved route push dispatch failed",
+                error
+              );
+            }
+          } else {
+            await notifyUser({
+              userId: route.forwardedByUserId,
+              organizationId: route.fromOrganizationId,
+              type: "route.rejected",
+              title: "تم رفض إحالة البرقية",
+              body: `رُفضت إحالة ${routedTelegram.serialCode}: ${route.approvalReason ?? input.reason ?? "دون سبب"}`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
+            try {
+              await notifyOrganizationRouteEvent({
+                organizationId: route.fromOrganizationId,
+                type: "route.rejected",
+                title: "تم رفض إحالة البرقية",
+                body: `رُفضت إحالة ${routedTelegram.serialCode}.`,
+                telegramId: routedTelegram.id,
+                serialCode: routedTelegram.serialCode,
+                routeId: route.id,
+              });
+            } catch (error) {
+              console.warn(
+                "[Notification] Rejected route push dispatch failed",
                 error
               );
             }
@@ -1193,7 +1273,7 @@ export const appRouter = router({
         }
 
         if (configuredDestination) {
-          await routeTelegram({
+          const route = await routeTelegram({
             telegramId: telegram.id,
             toOrganizationId: configuredDestination.id,
             forwardedByUserId: ctx.user.id,
@@ -1202,6 +1282,25 @@ export const appRouter = router({
               ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
               : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
           });
+          try {
+            const sourceOrganization =
+              await getOrganizationById(organizationId);
+            if (sourceOrganization?.parentOrganizationId) {
+              await notifyOrganizationUsers({
+                organizationId: sourceOrganization.parentOrganizationId,
+                type: "route.requested",
+                title: "طلب إحالة بانتظار اعتماد السلطة الأعلى",
+                body: `البرقية ${telegram.serialCode} تحتاج موافقة قبل انتقالها إلى الجهة المستلمة.`,
+                telegramId: telegram.id,
+                routeId: route.id,
+              });
+            }
+          } catch (error) {
+            console.warn(
+              "[Notification] Create route notification failed",
+              error
+            );
+          }
           const routedTelegram = await getTelegramById(telegram.id);
           if (routedTelegram) telegram = routedTelegram;
         }

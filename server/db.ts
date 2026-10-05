@@ -781,6 +781,121 @@ export async function writeAuditLog(
   const { error } = await getSupabaseAdmin().from("audit_logs").insert(input);
   throwIfError(error, "Failed to write audit log");
 }
+export type NotificationRecord = {
+  id: number;
+  userId: number;
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId: number | null;
+  routeId: number | null;
+  readAt: Date | null;
+  createdAt: Date;
+};
+const mapNotification = (row: Record<string, unknown>): NotificationRecord => ({
+  id: Number(row.id),
+  userId: Number(row.userId),
+  organizationId: String(row.organizationId),
+  type: String(row.type),
+  title: String(row.title),
+  body: String(row.body),
+  telegramId: row.telegramId == null ? null : Number(row.telegramId),
+  routeId: row.routeId == null ? null : Number(row.routeId),
+  readAt: row.readAt ? asDate(row.readAt) : null,
+  createdAt: asDate(row.createdAt),
+});
+export async function notifyOrganizationUsers(input: {
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId?: number | null;
+  routeId?: number | null;
+}): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { data: members, error: memberError } = await supabase
+    .from("organization_memberships")
+    .select("userId")
+    .eq("organizationId", input.organizationId)
+    .eq("isActive", true);
+  throwIfError(memberError, "Failed to load notification recipients");
+  const userIds = Array.from(
+    new Set(
+      (members ?? []).map(row => Number(row.userId)).filter(Number.isFinite)
+    )
+  );
+  if (userIds.length === 0) return;
+  const { error } = await supabase.from("notifications").insert(
+    userIds.map(userId => ({
+      userId,
+      organizationId: input.organizationId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      telegramId: input.telegramId ?? null,
+      routeId: input.routeId ?? null,
+    }))
+  );
+  throwIfError(error, "Failed to create organization notifications");
+}
+export async function notifyUser(input: {
+  userId: number;
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId?: number | null;
+  routeId?: number | null;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("notifications")
+    .insert({
+      userId: input.userId,
+      organizationId: input.organizationId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      telegramId: input.telegramId ?? null,
+      routeId: input.routeId ?? null,
+    });
+  throwIfError(error, "Failed to create user notification");
+}
+export async function listUserNotifications(
+  userId: number,
+  limit = 30
+): Promise<{ items: NotificationRecord[]; unreadCount: number }> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("userId", userId)
+    .order("createdAt", { ascending: false })
+    .limit(limit);
+  throwIfError(error, "Failed to list notifications");
+  const { count, error: countError } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("userId", userId)
+    .is("readAt", null);
+  throwIfError(countError, "Failed to count unread notifications");
+  const items = (data ?? []).map(row =>
+    mapNotification(row as Record<string, unknown>)
+  );
+  return { items, unreadCount: count ?? 0 };
+}
+export async function markNotificationRead(
+  userId: number,
+  id: number
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("notifications")
+    .update({ readAt: new Date().toISOString() })
+    .eq("id", id)
+    .eq("userId", userId)
+    .is("readAt", null);
+  throwIfError(error, "Failed to mark notification as read");
+}
 
 async function countTelegrams(
   _userId: number,

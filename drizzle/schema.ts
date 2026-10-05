@@ -374,6 +374,8 @@ export const telegramRoutes = pgTable(
     approvedByUserId: integer("approvedByUserId"),
     approvedAt: timestamp("approvedAt", { withTimezone: true }),
     approvalReason: text("approvalReason"),
+    routeSerialNumber: integer("routeSerialNumber"),
+    routeSerialCode: varchar("routeSerialCode", { length: 48 }),
     note: text("note"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
@@ -392,6 +394,43 @@ export const telegramRoutes = pgTable(
       table.createdAt
     ),
     index("telegram_routes_forwarder_idx").on(table.forwardedByUserId),
+  ]
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    type: varchar("type", { length: 64 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    body: text("body").notNull(),
+    telegramId: integer("telegramId").references(() => telegrams.id, {
+      onDelete: "restrict",
+    }),
+    routeId: integer("routeId").references(() => telegramRoutes.id, {
+      onDelete: "restrict",
+    }),
+    readAt: timestamp("readAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  table => [
+    index("notifications_user_unread_idx").on(
+      table.userId,
+      table.readAt,
+      table.createdAt
+    ),
+    index("notifications_organization_idx").on(
+      table.organizationId,
+      table.createdAt
+    ),
   ]
 );
 

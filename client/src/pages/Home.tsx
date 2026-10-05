@@ -3089,7 +3089,7 @@ function TelegramDetail({
         ["approved", "in_progress", "forwarded"].includes(telegram.status) && (
           <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden">
             <p className="text-xs font-bold text-[#7a5c1e]">
-              إحالة مركزية بين الوحدات الشرطية
+              طلب إحالة عبر السلطة الأعلى
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
               <select
@@ -3122,7 +3122,9 @@ function TelegramDetail({
                 }
                 className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
               >
-                {routeTelegram.isPending ? "جارٍ الإحالة..." : "إحالة البرقية"}
+                {routeTelegram.isPending
+                  ? "جارٍ إرسال طلب الموافقة..."
+                  : "إرسال طلب الموافقة"}
               </Button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">

@@ -639,7 +639,7 @@ export default function OwnerOrganizationManagement() {
             <div className="mt-5 border-t pt-4">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="text-sm font-bold">
-                  طلبات الإحالة العابرة للمناطق
+                  طلبات إحالة البرقيات بانتظار السلطة الأعلى
                 </h4>
                 <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700">
                   {pendingApprovals.data?.length ?? 0}
@@ -667,7 +667,8 @@ export default function OwnerOrganizationManagement() {
                       {telegram?.subject}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      من {from?.name ?? "جهة"} إلى {to?.name ?? "جهة"}
+                      طلب من {from?.name ?? "جهة"} إلى {to?.name ?? "جهة"} — لا
+                      ينتقل إلا بعد اعتماد السلطة الأعلى
                     </p>
                     <div className="mt-2 flex gap-2">
                       <Button
@@ -678,7 +679,7 @@ export default function OwnerOrganizationManagement() {
                           approveRoute.mutate({
                             routeId: Number(route.id),
                             approved: true,
-                            reason: "اعتماد قيادة المحافظة",
+                            reason: "اعتماد السلطة الأعلى",
                           })
                         }
                       >
@@ -689,13 +690,17 @@ export default function OwnerOrganizationManagement() {
                         size="sm"
                         variant="outline"
                         disabled={approveRoute.isPending}
-                        onClick={() =>
+                        onClick={() => {
+                          const reason = window
+                            .prompt("أدخل سبب رفض الإحالة (إلزامي):")
+                            ?.trim();
+                          if (!reason) return;
                           approveRoute.mutate({
                             routeId: Number(route.id),
                             approved: false,
-                            reason: "رفض وفق التسلسل الإداري",
-                          })
-                        }
+                            reason,
+                          });
+                        }}
                       >
                         رفض
                       </Button>

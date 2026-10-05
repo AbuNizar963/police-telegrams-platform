@@ -347,6 +347,8 @@ export async function listTelegrams(
     | "resolved"
     | "completed"
     | "archived",
+  from?: string,
+  to?: string,
   page = 1,
   pageSize = 50
 ): Promise<Telegram[]> {
@@ -370,6 +372,8 @@ export async function listTelegrams(
   if (priority) query = query.eq("priority", priority);
   if (category) query = query.eq("category", category);
   if (status) query = query.eq("status", status);
+  if (from) query = query.gte("createdAt", from);
+  if (to) query = query.lt("createdAt", to);
 
   if (search?.trim()) {
     const safe = search

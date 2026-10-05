@@ -734,6 +734,8 @@ export const appRouter = router({
             priority: prioritySchema.optional(),
             category: categorySchema.optional(),
             status: statusSchema.optional(),
+            from: z.string().datetime().optional(),
+            to: z.string().datetime().optional(),
             page: z.number().int().min(1).max(100000).default(1),
             pageSize: z.number().int().min(1).max(100).default(50),
           })
@@ -754,6 +756,8 @@ export const appRouter = router({
           input?.priority,
           input?.category,
           input?.status,
+          input?.from,
+          input?.to,
           input?.page,
           input?.pageSize
         );

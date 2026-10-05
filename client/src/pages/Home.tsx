@@ -570,6 +570,12 @@ export default function Home() {
   };
 
   const selectKpi = (key: string) => {
+    if (activeKpi === key) {
+      clearKpiFilters();
+      setActiveKpi(null);
+      return;
+    }
+
     clearKpiFilters();
     setActiveKpi(key);
 

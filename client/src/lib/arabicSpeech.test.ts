@@ -22,9 +22,17 @@ describe("correctArabicSpeechText", () => {
     );
   });
 
+  it("corrects common Arabic feminine words and attached prepositions", () => {
+    expect(
+      correctArabicSpeechText(
+        "العمليه الامنيه والدوريه الميدانيه بالمدرسه وللدائره الرسميه"
+      )
+    ).toBe("العملية الأمنية والدورية الميدانية بالمدرسة وللدائرة الرسمية");
+  });
+
   it("preserves valid words ending in ه", () => {
-    expect(correctArabicSpeechText("هذا وجه ومياه وانتباه")).toBe(
-      "هذا وجه ومياه وانتباه"
+    expect(correctArabicSpeechText("هذا وجه ومياه وانتباه وتنبيه وتوجيه")).toBe(
+      "هذا وجه ومياه وانتباه وتنبيه وتوجيه"
     );
   });
 

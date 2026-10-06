@@ -5,7 +5,7 @@
  * as «المدرسه» without corrupting valid words such as «وجه»، «مياه»، or
  * «انتباه» that genuinely end in هـ.
  */
-const wordCorrections: Readonly<Record<string, string>> = {
+const explicitWordCorrections: Readonly<Record<string, string>> = {
   الساعه: "الساعة",
   ساعه: "ساعة",
   المدرسه: "المدرسة",
@@ -26,16 +26,16 @@ const wordCorrections: Readonly<Record<string, string>> = {
   المعنيه: "المعنية",
   المسؤوله: "المسؤولة",
   الرسميه: "الرسمية",
-  الامنيه: "الامنية",
+  الامنيه: "الأمنية",
   الجنائيه: "الجنائية",
-  الاداريه: "الادارية",
+  الاداريه: "الإدارية",
   المروريه: "المرورية",
   اليوميه: "اليومية",
   الشهريه: "الشهرية",
   جهه: "جهة",
   الغرفه: "الغرفة",
   غرفه: "غرفة",
-  الاداره: "الادارة",
+  الاداره: "الإدارة",
   اداره: "إدارة",
   الرساله: "الرسالة",
   رساله: "رسالة",
@@ -74,6 +74,46 @@ const wordCorrections: Readonly<Record<string, string>> = {
   البلاغه: "البلاغة",
 };
 
+// A conservative vocabulary for common Arabic feminine nouns and adjectives.
+// Only listed words are changed; a blanket final ه -> ة rule would corrupt
+// valid words such as «وجه»، «تنبيه»، and «توجيه».
+const commonTaaMarbutaWords = `
+مدرسة المدرسة جامعة الجامعة حياة الحياة سيارة السيارة مدينة المدينة قضية القضية
+خدمة الخدمة جهة الجهة غرفة الغرفة إدارة الإدارة الادارة الادارة رسالة الرسالة
+مهمة المهمة منطقة المنطقة حادثة الحادثة واقعة الواقعة حالة الحالة قوة القوة
+شرطة الشرطة صحة الصحة حماية الحماية متابعة المتابعة محكمة المحكمة نيابة النيابة
+وزارة الوزارة دائرة الدائرة مؤسسة المؤسسة مديرية المديرية ساعة الساعة يومية اليومية
+شهرية الشهرية أسبوعية الأسبوعية سنوية السنوية عملية العملية آلية الآلية دورية الدورية
+مركبة المركبة دراجة الدراجة نقطة النقطة مدة المدة فترة الفترة محافظة المحافظة
+قرية القرية حملة الحملة خطة الخطة استجابة الاستجابة مراقبة المراقبة ملاحظة الملاحظة
+منشأة المنشأة إفادة الإفادة وثيقة الوثيقة إجازة الإجازة زيارة الزيارة مداهمة المداهمة
+إصابة الإصابة معالجة المعالجة مواجهة المواجهة رسمية الرسمية أمنية الأمنية جنائية الجنائية
+إدارية الإدارية مرورية المرورية قضائية القضائية اجتماعية الاجتماعية اقتصادية الاقتصادية
+سياسية السياسية صحية الصحية مدنية المدنية عسكرية العسكرية حكومية الحكومية وطنية الوطنية
+دولية الدولية محلية المحلية داخلية الداخلية خارجية الخارجية ميدانية الميدانية نهائية النهائية
+أولية الأولية طارئة الطارئة مباشرة المباشرة مؤقتة المؤقتة دائمة الدائمة مسلحة المسلحة
+إضافية الإضافية ضرورية الضرورية مطلوبة المطلوبة مستعجلة المستعجلة قانونية القانونية
+إلكترونية الإلكترونية فنية الفنية مركزية المركزية قريبة القريبة بعيدة البعيدة مشتركة المشتركة
+مخصصة المخصصة مجهزة المجهزة معنية المعنية مسؤولة المسؤولة موجودة الموجودة متواجدة المتواجدة
+مخالفة المخالفة مفقودة المفقودة موقوفة الموقوفة محتجزة المحتجزة مسروقة المسروقة
+مقيدة المقيدة معلومة المعلومة مجهولة المجهولة عاجلة العاجلة استثنائية الاستثنائية
+تلقائية التلقائية ضرورية الضرورية أمنية الأمنية سكنية السكنية خدمية الخدمية تنظيمية التنظيمية
+`
+  .trim()
+  .split(/\s+/);
+
+const generatedTaaMarbutaCorrections: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    commonTaaMarbutaWords
+      .filter(word => word.endsWith("ة"))
+      .map(word => [`${word.slice(0, -1)}ه`, word])
+  );
+
+const wordCorrections: Readonly<Record<string, string>> = {
+  ...generatedTaaMarbutaCorrections,
+  ...explicitWordCorrections,
+};
+
 const arabicDiacritics =
   "[\\u0610-\\u061A\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]*";
 
@@ -81,11 +121,10 @@ function wordPattern(value: string): RegExp {
   const letters = Array.from(value)
     .map(letter => `${letter}${arabicDiacritics}`)
     .join("");
-  // The lookbehinds also allow the common Arabic conjunctions «و» and «ف».
-  // Thus «والمدرسه» becomes «والمدرسة», while longer unmatched words remain
-  // protected by the trailing boundary below.
+  // Allow common attached Arabic conjunctions and prepositions («و»، «ف»، «ب»،
+  // «ك»، «ل») while keeping whole-word matching to protect unrelated words.
   return new RegExp(
-    `(^|(?<=[^ء-يA-Za-z0-9])|(?<=[وف]))${letters}(?=$|[^ء-يA-Za-z0-9])`,
+    `(^|(?<=[^ء-يA-Za-z0-9])|(?<=[وفبكل]))${letters}(?=$|[^ء-يA-Za-z0-9])`,
     "g"
   );
 }

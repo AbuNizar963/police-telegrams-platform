@@ -1,6 +1,7 @@
 import { ENV } from "./_core/env";
 
-export const COHERE_ARABIC_TRANSCRIBE_MODEL = "cohere-transcribe-03-2026";
+export const COHERE_ARABIC_TRANSCRIBE_MODEL =
+  "cohere-transcribe-arabic-07-2026";
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 

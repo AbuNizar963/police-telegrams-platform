@@ -23,6 +23,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   Archive,
   Activity,
+  FileSpreadsheet,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -46,6 +47,12 @@ const menuItems = [
     icon: Plus,
     label: "إنشاء برقية",
     action: "open-telegram-composer",
+  },
+  {
+    key: "telegram-excel-tools",
+    icon: FileSpreadsheet,
+    label: "استيراد وتصدير السجل",
+    action: "open-telegram-excel-tools",
   },
   {
     key: "accounts",

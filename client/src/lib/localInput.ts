@@ -14,6 +14,34 @@ type TesseractApi = {
 declare global {
   interface Window {
     Tesseract?: TesseractApi;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+
+  interface SpeechRecognition extends EventTarget {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    maxAlternatives: number;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onstart: ((event: Event) => void) | null;
+    onend: ((event: Event) => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  }
+
+  interface SpeechRecognitionEvent extends Event {
+    readonly results: SpeechRecognitionResultList;
+  }
+
+  interface SpeechRecognitionErrorEvent extends Event {
+    readonly error: string;
+    readonly message: string;
+  }
+
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognition;
   }
 }
 
@@ -187,4 +215,27 @@ export async function audioBlobToWav(blob: Blob): Promise<Blob> {
   } finally {
     await context.close();
   }
+}
+
+export function createArabicSpeechRecognition(): SpeechRecognition {
+  if (typeof window === "undefined") {
+    throw new Error("التعرف الصوتي متاح داخل المتصفح فقط");
+  }
+
+  const Recognition =
+    window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+  if (!Recognition) {
+    throw new Error(
+      "التعرف الصوتي غير متاح في هذا المتصفح. استخدم Chrome على الهاتف أو الكمبيوتر."
+    );
+  }
+
+  const recognition = new Recognition();
+  recognition.lang = "ar-SA";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  return recognition;
 }

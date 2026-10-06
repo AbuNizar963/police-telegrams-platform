@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ENV } from "./_core/env";
 import {
   AiInputConfigurationError,
+  COHERE_ARABIC_TRANSCRIBE_MODEL,
   extractTextWithPaddleOcr,
   getAiInputCapabilities,
   textFromPaddleOcrResponse,
@@ -80,7 +81,8 @@ describe("AI input providers", () => {
     expect(url).toBe("https://api.cohere.com/v2/audio/transcriptions");
     expect(options.headers).toEqual({ Authorization: "Bearer test-key" });
     const form = options.body as FormData;
-    expect(form.get("model")).toBe("cohere-transcribe-arabic-07-2026");
+    expect(form.get("model")).toBe("cohere-transcribe-03-2026");
+    expect(form.get("model")).toBe(COHERE_ARABIC_TRANSCRIBE_MODEL);
     expect(form.get("language")).toBe("ar");
     expect(form.get("file")).toBeInstanceOf(File);
   });

@@ -87,6 +87,7 @@ import {
 import {
   AiInputConfigurationError,
   AiInputUpstreamError,
+  COHERE_ARABIC_TRANSCRIBE_MODEL,
   MAX_AUDIO_BYTES,
   MAX_IMAGE_BYTES,
   extractTextWithPaddleOcr,
@@ -187,7 +188,7 @@ export const appRouter = router({
         try {
           return {
             text: await transcribeArabicAudio(input),
-            engine: "cohere-transcribe-arabic-07-2026" as const,
+            engine: COHERE_ARABIC_TRANSCRIBE_MODEL,
           };
         } catch (error) {
           throw toAiInputTrpcError(error);

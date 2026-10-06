@@ -1750,6 +1750,7 @@ function TelegramComposer({
   const highAccuracyStreamRef = useRef<MediaStream | null>(null);
   const highAccuracyChunksRef = useRef<Blob[]>([]);
   const highAccuracyStartingRef = useRef(false);
+  const highAccuracyBaseBodyRef = useRef("");
   const speechShouldContinueRef = useRef(false);
   const speechBaseBodyRef = useRef("");
   const speechRestartTimerRef = useRef<number | null>(null);
@@ -1838,7 +1839,9 @@ function TelegramComposer({
     }
     const recognition = speechRecognitionRef.current;
     speechRecognitionRef.current = null;
-    setRecording(false);
+    if (!highAccuracyRecorderRef.current && !highAccuracyStartingRef.current) {
+      setRecording(false);
+    }
     if (recognition) {
       try {
         recognition.stop();
@@ -1881,6 +1884,9 @@ function TelegramComposer({
         // let onend restart the session instead of treating silence as failure.
         if (event.error === "no-speech") return;
 
+        const highAccuracySession =
+          Boolean(highAccuracyRecorderRef.current) ||
+          highAccuracyStartingRef.current;
         speechShouldContinueRef.current = false;
         const message =
           event.error === "not-allowed"
@@ -1890,7 +1896,13 @@ function TelegramComposer({
               : "تعذر تحويل الصوت إلى نص";
 
         stopBrowserSpeechRecognition();
-        toast.error(message);
+        if (highAccuracySession) {
+          toast.warning(
+            "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
+          );
+        } else {
+          toast.error(message);
+        }
       };
 
       recognition.onend = () => {
@@ -1901,7 +1913,10 @@ function TelegramComposer({
 
         if (!speechShouldContinueRef.current) {
           speechRecognitionRef.current = null;
-          setRecording(false);
+          setRecording(
+            Boolean(highAccuracyRecorderRef.current) ||
+              highAccuracyStartingRef.current
+          );
           return;
         }
 
@@ -1917,11 +1932,16 @@ function TelegramComposer({
             nextRecognition.onstart = recognition.onstart;
             nextRecognition.start();
           } catch {
+            const highAccuracySession =
+              Boolean(highAccuracyRecorderRef.current) ||
+              highAccuracyStartingRef.current;
             speechShouldContinueRef.current = false;
             speechRecognitionRef.current = null;
-            setRecording(false);
-            toast.error(
-              "توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة"
+            setRecording(highAccuracySession);
+            toast.warning(
+              highAccuracySession
+                ? "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
+                : "توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة"
             );
           }
         }, 250);
@@ -1935,10 +1955,17 @@ function TelegramComposer({
     } catch (error) {
       speechShouldContinueRef.current = false;
       speechRecognitionRef.current = null;
-      setRecording(false);
-      toast.error(
-        error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي"
-      );
+      const highAccuracySession =
+        Boolean(highAccuracyRecorderRef.current) ||
+        highAccuracyStartingRef.current;
+      setRecording(highAccuracySession);
+      if (highAccuracySession) {
+        toast.warning("التسجيل مستمر؛ سيظهر النص بعد الضغط على إيقاف التسجيل");
+      } else {
+        toast.error(
+          error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي"
+        );
+      }
     }
   };
 
@@ -1971,7 +1998,7 @@ function TelegramComposer({
         return;
       }
 
-      appendText(correctedText);
+      setBody(`${highAccuracyBaseBodyRef.current}${correctedText}`.trimEnd());
       toast.success("تم تحويل الصوت بمحرك Cohere Transcribe Arabic");
     } catch (error) {
       toast.error(
@@ -2010,6 +2037,9 @@ function TelegramComposer({
       }
 
       highAccuracyStreamRef.current = stream;
+      highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
+        ? `${bodyValueRef.current.trim()}\n`
+        : "";
       const recorder = new MediaRecorder(stream);
       highAccuracyChunksRef.current = [];
       highAccuracyRecorderRef.current = recorder;
@@ -2025,6 +2055,9 @@ function TelegramComposer({
       };
       recorder.start(1_000);
       highAccuracyStartingRef.current = false;
+      // Keep the microphone session open for the full user-controlled recording,
+      // while Web Speech Recognition displays live words as they are spoken.
+      startBrowserSpeechRecognition();
     } catch (error) {
       highAccuracyStartingRef.current = false;
       releaseHighAccuracyStream();
@@ -2036,6 +2069,7 @@ function TelegramComposer({
   };
 
   const stopHighAccuracyRecording = () => {
+    stopBrowserSpeechRecognition();
     const recorder = highAccuracyRecorderRef.current;
     if (recorder && recorder.state !== "inactive") {
       recorder.stop();
@@ -2314,11 +2348,7 @@ function TelegramComposer({
             ) : (
               <Mic className="ml-2 h-3.5 w-3.5" />
             )}
-            {recording
-              ? "إيقاف التسجيل"
-              : canUseHighAccuracySpeech
-                ? "تحدث بدقة عالية"
-                : "اضغط للتحدث"}
+            {recording ? "إيقاف التسجيل" : "ابدأ التسجيل"}
           </Button>
         </div>
 
@@ -2332,8 +2362,8 @@ function TelegramComposer({
           <p className="mt-1">
             <strong className="text-foreground">الصوت:</strong>{" "}
             {canUseHighAccuracySpeech
-              ? "يُسجّل محليًا ثم يُفرّغ بمحرك Cohere Transcribe Arabic؛ يُصحح النص النهائي تلقائيًا مثل «المدرسة» بالتاء المربوطة."
-              : "يستخدم التعرف الصوتي المتاح في المتصفح. فعّل Cohere Transcribe Arabic من إعدادات الخادم لدقة عربية أعلى."}
+              ? "يظل التسجيل مفتوحًا ويظهر الكلام مكتوبًا مباشرة حتى تضغط «إيقاف التسجيل»، ثم يُحسّن التفريغ بمحرك Cohere Transcribe Arabic."
+              : "يظل التعرف الصوتي نشطًا ويكتب الكلام مباشرة حتى تضغط «إيقاف التسجيل». فعّل Cohere Transcribe Arabic من إعدادات الخادم لدقة أعلى."}
           </p>
         </div>
       </div>

@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
+  Cpu,
+  Download,
   FileDown,
   FileImage,
   FileSpreadsheet,
@@ -51,6 +53,12 @@ import {
   createArabicSpeechRecognition,
   extractArabicTextFromImage,
 } from "@/lib/localInput";
+import {
+  prepareLocalArabicAsr,
+  transcribeArabicLocally,
+  type LocalArabicAsrBackend,
+  type LocalArabicAsrProgress,
+} from "@/lib/localArabicAsr";
 import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
@@ -1714,6 +1722,16 @@ function TelegramComposer({
   const [category, setCategory] = useState<Category>("administrative");
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
+  const [speechEngine, setSpeechEngine] = useState<"browser" | "local">(
+    "browser"
+  );
+  const [localAsrStatus, setLocalAsrStatus] = useState<
+    "idle" | "loading" | "ready"
+  >("idle");
+  const [localAsrProgress, setLocalAsrProgress] =
+    useState<LocalArabicAsrProgress | null>(null);
+  const [localAsrBackend, setLocalAsrBackend] =
+    useState<LocalArabicAsrBackend | null>(null);
   const [imageInputOpen, setImageInputOpen] = useState(false);
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
@@ -1751,7 +1769,9 @@ function TelegramComposer({
   const highAccuracyChunksRef = useRef<Blob[]>([]);
   const highAccuracyStartingRef = useRef(false);
   const highAccuracyBaseBodyRef = useRef("");
+  const localRecordingTimerRef = useRef<number | null>(null);
   const speechShouldContinueRef = useRef(false);
+  const contextualBiasingDisabledRef = useRef(false);
   const speechBaseBodyRef = useRef("");
   const speechRestartTimerRef = useRef<number | null>(null);
   const bodyValueRef = useRef(body);
@@ -1853,7 +1873,10 @@ function TelegramComposer({
 
   const startBrowserSpeechRecognition = () => {
     try {
-      const recognition = createArabicSpeechRecognition();
+      contextualBiasingDisabledRef.current = false;
+      const recognition = createArabicSpeechRecognition({
+        contextualBiasing: !contextualBiasingDisabledRef.current,
+      });
       speechShouldContinueRef.current = true;
       speechBaseBodyRef.current = body.trim() ? `${body.trim()}\n` : "";
       speechRecognitionRef.current = recognition;
@@ -1883,6 +1906,22 @@ function TelegramComposer({
         // Browsers commonly emit no-speech during a pause. Keep listening and
         // let onend restart the session instead of treating silence as failure.
         if (event.error === "no-speech") return;
+        if (event.error === "phrases-not-supported") {
+          contextualBiasingDisabledRef.current = true;
+          try {
+            recognition.abort();
+          } catch {
+            // onend will restart without experimental phrase hints.
+          }
+          return;
+        }
+        if (
+          event.error === "aborted" &&
+          contextualBiasingDisabledRef.current &&
+          speechShouldContinueRef.current
+        ) {
+          return;
+        }
 
         const highAccuracySession =
           Boolean(highAccuracyRecorderRef.current) ||
@@ -1924,7 +1963,9 @@ function TelegramComposer({
           if (!speechShouldContinueRef.current) return;
 
           try {
-            const nextRecognition = createArabicSpeechRecognition();
+            const nextRecognition = createArabicSpeechRecognition({
+              contextualBiasing: !contextualBiasingDisabledRef.current,
+            });
             speechRecognitionRef.current = nextRecognition;
             nextRecognition.onresult = recognition.onresult;
             nextRecognition.onerror = recognition.onerror;
@@ -1984,7 +2025,30 @@ function TelegramComposer({
 
     setProcessingInput(true);
     try {
-      const wav = await audioBlobToWav(new Blob(chunks, { type: mimeType }));
+      const recordingBlob = new Blob(chunks, { type: mimeType });
+      if (speechEngine === "local") {
+        setLocalAsrProgress({
+          progress: null,
+          stage: "تحويل التسجيل محليًا إلى نص عربي",
+        });
+        const localText = await transcribeArabicLocally(
+          recordingBlob,
+          progress => setLocalAsrProgress(progress)
+        );
+        const correctedText = removeRepeatedSpeech(
+          correctArabicText(localText)
+        );
+        if (!correctedText) {
+          toast.error("لم يتم التعرف على كلام واضح في التسجيل");
+          return;
+        }
+
+        setBody(`${highAccuracyBaseBodyRef.current}${correctedText}`.trimEnd());
+        toast.success("تم تفريغ الصوت محليًا بنموذج Whisper Small");
+        return;
+      }
+
+      const wav = await audioBlobToWav(recordingBlob);
       if (wav.size > 25 * 1024 * 1024) {
         throw new Error("مدة التسجيل طويلة جدًا؛ سجّل مقطعًا أقصر من فضلك");
       }
@@ -2006,6 +2070,37 @@ function TelegramComposer({
       );
     } finally {
       setProcessingInput(false);
+      setLocalAsrProgress(null);
+    }
+  };
+
+  const prepareLocalSpeechModel = async () => {
+    if (localAsrStatus === "loading" || localAsrStatus === "ready") return;
+
+    setLocalAsrStatus("loading");
+    setLocalAsrProgress({ progress: 0, stage: "بدء تنزيل نموذج Whisper" });
+    setProcessingInput(true);
+    try {
+      const backend = await prepareLocalArabicAsr(progress =>
+        setLocalAsrProgress(progress)
+      );
+      setLocalAsrBackend(backend);
+      setLocalAsrStatus("ready");
+      toast.success(
+        backend === "webgpu"
+          ? "أصبح محرك Whisper المحلي جاهزًا بتسريع WebGPU"
+          : "أصبح محرك Whisper المحلي جاهزًا عبر WASM"
+      );
+    } catch (error) {
+      setLocalAsrStatus("idle");
+      toast.error(
+        error instanceof Error
+          ? `تعذر تجهيز المحرك المحلي: ${error.message}`
+          : "تعذر تجهيز محرك Whisper المحلي"
+      );
+    } finally {
+      setProcessingInput(false);
+      setLocalAsrProgress(null);
     }
   };
 
@@ -2068,7 +2163,91 @@ function TelegramComposer({
     }
   };
 
+  const startLocalSpeechRecording = async () => {
+    if (localAsrStatus !== "ready") {
+      toast.warning("جهّز محرك Whisper المحلي قبل بدء التسجيل");
+      return;
+    }
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      toast.error("التسجيل المحلي غير مدعوم في هذا المتصفح");
+      return;
+    }
+
+    highAccuracyStartingRef.current = true;
+    setRecording(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+
+      if (!highAccuracyStartingRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      highAccuracyStreamRef.current = stream;
+      highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
+        ? `${bodyValueRef.current.trim()}\n`
+        : "";
+      highAccuracyChunksRef.current = [];
+
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/mp4;codecs=mp4a.40.2",
+        "audio/webm",
+        "audio/mp4",
+      ].find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      highAccuracyRecorderRef.current = recorder;
+      recorder.ondataavailable = event => {
+        if (event.data.size) highAccuracyChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        highAccuracyChunksRef.current = [];
+        toast.error("تعذر تسجيل الصوت محليًا");
+      };
+      recorder.onstop = () => {
+        void finishHighAccuracyRecording();
+      };
+      recorder.start(1_000);
+      highAccuracyStartingRef.current = false;
+      localRecordingTimerRef.current = window.setTimeout(
+        () => {
+          localRecordingTimerRef.current = null;
+          if (highAccuracyRecorderRef.current?.state === "recording") {
+            toast.warning(
+              "وصل التسجيل المحلي إلى الحد الأقصى (10 دقائق) وسيُفرّغ الآن"
+            );
+            stopHighAccuracyRecording();
+          }
+        },
+        10 * 60 * 1_000
+      );
+    } catch (error) {
+      highAccuracyStartingRef.current = false;
+      releaseHighAccuracyStream();
+      setRecording(false);
+      toast.error(
+        error instanceof Error ? error.message : "تعذر الوصول إلى الميكروفون"
+      );
+    }
+  };
+
   const stopHighAccuracyRecording = () => {
+    if (localRecordingTimerRef.current !== null) {
+      window.clearTimeout(localRecordingTimerRef.current);
+      localRecordingTimerRef.current = null;
+    }
     stopBrowserSpeechRecognition();
     const recorder = highAccuracyRecorderRef.current;
     if (recorder && recorder.state !== "inactive") {
@@ -2091,6 +2270,11 @@ function TelegramComposer({
       return;
     }
 
+    if (speechEngine === "local") {
+      void startLocalSpeechRecording();
+      return;
+    }
+
     if (canUseHighAccuracySpeech) {
       void startHighAccuracyRecording();
     } else {
@@ -2101,6 +2285,10 @@ function TelegramComposer({
   useEffect(
     () => () => {
       speechShouldContinueRef.current = false;
+      if (localRecordingTimerRef.current !== null) {
+        window.clearTimeout(localRecordingTimerRef.current);
+        localRecordingTimerRef.current = null;
+      }
       if (speechRestartTimerRef.current !== null) {
         window.clearTimeout(speechRestartTimerRef.current);
       }
@@ -2334,7 +2522,10 @@ function TelegramComposer({
             type="button"
             variant={recording ? "destructive" : "outline"}
             onClick={toggleRecording}
-            disabled={processingInput}
+            disabled={
+              processingInput ||
+              (speechEngine === "local" && localAsrStatus !== "ready")
+            }
             className="h-9 rounded-lg text-xs"
           >
             {recording ? (
@@ -2346,6 +2537,93 @@ function TelegramComposer({
           </Button>
         </div>
 
+        <div className="grid gap-2 rounded-lg border bg-muted/20 p-3">
+          <label className="grid gap-1.5 text-xs font-bold">
+            <span className="flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-[#9b7c3d]" />
+              محرك الكتابة الصوتية
+            </span>
+            <select
+              value={speechEngine}
+              onChange={event =>
+                setSpeechEngine(event.target.value as "browser" | "local")
+              }
+              disabled={recording || processingInput}
+              className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+              aria-label="محرك الكتابة الصوتية"
+            >
+              <option value="browser">مباشر عبر المتصفح</option>
+              <option value="local">Whisper محلي — خصوصية أعلى</option>
+            </select>
+          </label>
+
+          {speechEngine === "local" && (
+            <div
+              className="grid gap-2 rounded-md bg-background p-2.5 text-[11px] leading-5 text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {localAsrStatus === "ready" ? (
+                <p>
+                  محرك Whisper Small العربي جاهز
+                  {localAsrBackend === "webgpu"
+                    ? " بتسريع WebGPU."
+                    : " عبر WASM؛ قد يكون أبطأ."}
+                </p>
+              ) : (
+                <>
+                  <p>
+                    لا يُرسل الصوت إلى خدمة التعرف؛ سيظهر النص بعد إيقاف التسجيل
+                    (حتى 10 دقائق للمقطع). يتطلب أول استخدام تنزيلًا يقارب 300
+                    ميغابايت، ويحتفظ المتصفح بالنموذج مؤقتًا للاستخدام التالي.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void prepareLocalSpeechModel()}
+                    disabled={processingInput || localAsrStatus === "loading"}
+                    className="h-9 justify-start rounded-lg text-xs"
+                  >
+                    <Download className="ml-2 h-3.5 w-3.5" />
+                    {localAsrStatus === "loading"
+                      ? `جارٍ تجهيز النموذج${
+                          localAsrProgress?.progress !== null &&
+                          localAsrProgress?.progress !== undefined
+                            ? ` — ${localAsrProgress.progress}%`
+                            : "..."
+                        }`
+                      : "تنزيل وتجهيز Whisper Small (نحو 300 ميغابايت)"}
+                  </Button>
+                  {localAsrStatus === "loading" && localAsrProgress && (
+                    <p>{localAsrProgress.stage}</p>
+                  )}
+                  {localAsrStatus === "loading" &&
+                    localAsrProgress?.progress !== null &&
+                    localAsrProgress?.progress !== undefined && (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-[#9b7c3d] transition-all"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, localAsrProgress.progress))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                </>
+              )}
+              {recording && (
+                <p>
+                  التسجيل جارٍ؛ سيبدأ التفريغ المحلي بعد الضغط على «إيقاف
+                  التسجيل».
+                </p>
+              )}
+              {processingInput && localAsrProgress?.stage && (
+                <p>{localAsrProgress.stage}</p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="rounded-lg border bg-muted/30 p-3 text-[11px] leading-6 text-muted-foreground">
           <p>
             <strong className="text-foreground">الصورة:</strong>{" "}
@@ -2355,9 +2633,11 @@ function TelegramComposer({
           </p>
           <p className="mt-1">
             <strong className="text-foreground">الصوت:</strong>{" "}
-            {canUseHighAccuracySpeech
-              ? "يظهر الكلام مباشرة وقد تسمع نغمة قصيرة عند إعادة تشغيل جلسة المتصفح؛ بعد الإيقاف يُحسّن النص بمحرك Cohere العربي."
-              : "يكتب المتصفح الكلام مباشرة حتى تضغط «إيقاف التسجيل». قد تسمع نغمة قصيرة كلما أعاد المتصفح تشغيل جلسة التعرف بعد وقفة."}
+            {speechEngine === "local"
+              ? "يُسجل الصوت ويُفرّغ بعد الإيقاف بنموذج Whisper على جهازك؛ لا يحتاج مفتاح API ولا يصدر نغمة إعادة التعرف."
+              : canUseHighAccuracySpeech
+                ? "يظهر الكلام مباشرة؛ قد تسمع نغمة عند إعادة تشغيل جلسة المتصفح، ثم يحسّن Cohere النص بعد الإيقاف."
+                : "يكتب المتصفح الكلام مباشرة حتى الإيقاف. بعض المتصفحات ترسل الصوت إلى خدمة التعرف الخاصة بها، وقد تسمع نغمة عند إعادة تشغيل الجلسة."}
           </p>
         </div>
       </div>

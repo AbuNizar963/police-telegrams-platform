@@ -15,6 +15,10 @@ declare global {
   interface Window {
     Tesseract?: TesseractApi;
     webkitSpeechRecognition?: new () => SpeechRecognition;
+    SpeechRecognitionPhrase?: new (
+      phrase: string,
+      boost?: number
+    ) => SpeechRecognitionPhraseHint;
   }
 
   interface SpeechRecognition extends EventTarget {
@@ -29,6 +33,12 @@ declare global {
     onend: ((event: Event) => void) | null;
     onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
     onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    phrases?: SpeechRecognitionPhraseHint[];
+  }
+
+  interface SpeechRecognitionPhraseHint {
+    readonly phrase: string;
+    readonly boost: number;
   }
 
   interface SpeechRecognitionEvent extends Event {
@@ -44,6 +54,32 @@ declare global {
     SpeechRecognition?: new () => SpeechRecognition;
   }
 }
+
+/** Optional Web Speech contextual biasing; ignored by browsers that lack it. */
+export const ARABIC_SPEECH_CONTEXT_HINTS: ReadonlyArray<
+  readonly [phrase: string, boost: number]
+> = [
+  ["المدرسة", 5],
+  ["مدرسة", 4],
+  ["البرقية", 4],
+  ["بلاغ", 4],
+  ["البلاغ", 4],
+  ["الجهة الموجه إليها", 4],
+  ["درجة السرية", 3],
+  ["درجة الأولوية", 3],
+  ["سري للغاية", 3],
+  ["دورية", 4],
+  ["المديرية", 4],
+  ["مديرية الأمن", 4],
+  ["مخفر الشرطة", 4],
+  ["مركز الشرطة", 4],
+  ["الجهة", 4],
+  ["الرسالة", 3],
+  ["المنطقة", 3],
+  ["الحادثة", 3],
+  ["السرية", 3],
+  ["الأولوية", 3],
+];
 
 let tesseractLoadPromise: Promise<TesseractApi> | null = null;
 let ocrWorkerPromise: Promise<TesseractWorker> | null = null;
@@ -217,7 +253,9 @@ export async function audioBlobToWav(blob: Blob): Promise<Blob> {
   }
 }
 
-export function createArabicSpeechRecognition(): SpeechRecognition {
+export function createArabicSpeechRecognition(options?: {
+  contextualBiasing?: boolean;
+}): SpeechRecognition {
   if (typeof window === "undefined") {
     throw new Error("التعرف الصوتي متاح داخل المتصفح فقط");
   }
@@ -236,6 +274,21 @@ export function createArabicSpeechRecognition(): SpeechRecognition {
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
+
+  const Phrase = window.SpeechRecognitionPhrase;
+  if (
+    options?.contextualBiasing !== false &&
+    Phrase &&
+    "phrases" in recognition
+  ) {
+    try {
+      recognition.phrases = ARABIC_SPEECH_CONTEXT_HINTS.map(
+        ([phrase, boost]) => new Phrase(phrase, boost)
+      );
+    } catch {
+      // Contextual biasing is experimental; ordinary recognition must survive.
+    }
+  }
 
   return recognition;
 }

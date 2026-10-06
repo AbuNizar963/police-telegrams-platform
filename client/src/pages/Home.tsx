@@ -55,10 +55,10 @@ import {
 } from "@/lib/localInput";
 import {
   prepareLocalArabicAsr,
-  transcribeArabicLocally,
   type LocalArabicAsrBackend,
   type LocalArabicAsrProgress,
 } from "@/lib/localArabicAsr";
+import { LiveArabicWhisperRecorder } from "@/lib/liveArabicWhisperRecorder";
 import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
@@ -1769,7 +1769,7 @@ function TelegramComposer({
   const highAccuracyChunksRef = useRef<Blob[]>([]);
   const highAccuracyStartingRef = useRef(false);
   const highAccuracyBaseBodyRef = useRef("");
-  const localRecordingTimerRef = useRef<number | null>(null);
+  const localLiveRecorderRef = useRef<LiveArabicWhisperRecorder | null>(null);
   const speechShouldContinueRef = useRef(false);
   const contextualBiasingDisabledRef = useRef(false);
   const speechBaseBodyRef = useRef("");
@@ -2026,28 +2026,6 @@ function TelegramComposer({
     setProcessingInput(true);
     try {
       const recordingBlob = new Blob(chunks, { type: mimeType });
-      if (speechEngine === "local") {
-        setLocalAsrProgress({
-          progress: null,
-          stage: "تحويل التسجيل محليًا إلى نص عربي",
-        });
-        const localText = await transcribeArabicLocally(
-          recordingBlob,
-          progress => setLocalAsrProgress(progress)
-        );
-        const correctedText = removeRepeatedSpeech(
-          correctArabicText(localText)
-        );
-        if (!correctedText) {
-          toast.error("لم يتم التعرف على كلام واضح في التسجيل");
-          return;
-        }
-
-        setBody(`${highAccuracyBaseBodyRef.current}${correctedText}`.trimEnd());
-        toast.success("تم تفريغ الصوت محليًا بنموذج Whisper Small");
-        return;
-      }
-
       const wav = await audioBlobToWav(recordingBlob);
       if (wav.size > 25 * 1024 * 1024) {
         throw new Error("مدة التسجيل طويلة جدًا؛ سجّل مقطعًا أقصر من فضلك");
@@ -2190,6 +2168,7 @@ function TelegramComposer({
 
       if (!highAccuracyStartingRef.current) {
         stream.getTracks().forEach(track => track.stop());
+        setRecording(false);
         return;
       }
 
@@ -2197,46 +2176,45 @@ function TelegramComposer({
       highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
         ? `${bodyValueRef.current.trim()}\n`
         : "";
-      highAccuracyChunksRef.current = [];
-
-      const mimeType = [
-        "audio/webm;codecs=opus",
-        "audio/mp4;codecs=mp4a.40.2",
-        "audio/webm",
-        "audio/mp4",
-      ].find(type => MediaRecorder.isTypeSupported(type));
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-      highAccuracyRecorderRef.current = recorder;
-      recorder.ondataavailable = event => {
-        if (event.data.size) highAccuracyChunksRef.current.push(event.data);
-      };
-      recorder.onerror = () => {
-        highAccuracyChunksRef.current = [];
-        toast.error("تعذر تسجيل الصوت محليًا");
-      };
-      recorder.onstop = () => {
-        void finishHighAccuracyRecording();
-      };
-      recorder.start(1_000);
       highAccuracyStartingRef.current = false;
-      localRecordingTimerRef.current = window.setTimeout(
-        () => {
-          localRecordingTimerRef.current = null;
-          if (highAccuracyRecorderRef.current?.state === "recording") {
-            toast.warning(
-              "وصل التسجيل المحلي إلى الحد الأقصى (10 دقائق) وسيُفرّغ الآن"
+      localLiveRecorderRef.current = new LiveArabicWhisperRecorder({
+        onTranscript: transcript => {
+          setBody(`${highAccuracyBaseBodyRef.current}${transcript}`.trimEnd());
+        },
+        onProgress: progress => setLocalAsrProgress(progress),
+        onCaptureStopped: () => {
+          setRecording(false);
+          setProcessingInput(true);
+          releaseHighAccuracyStream();
+        },
+        onFinished: transcript => {
+          localLiveRecorderRef.current = null;
+          setRecording(false);
+          setProcessingInput(false);
+          setLocalAsrProgress(null);
+          if (transcript) {
+            toast.success(
+              "اكتمل التفريغ المحلي؛ ظهر النص تدريجيًا أثناء التسجيل"
             );
-            stopHighAccuracyRecording();
+          } else {
+            toast.error("لم يتم التعرف على كلام واضح في التسجيل");
           }
         },
-        10 * 60 * 1_000
-      );
+        onError: error => toast.warning(error.message),
+        onNotice: message => toast.warning(message),
+      });
+      setLocalAsrProgress({
+        progress: null,
+        stage: "يظهر النص تدريجيًا مع تفريغ المقاطع أثناء الكلام",
+      });
+      localLiveRecorderRef.current.start(stream);
     } catch (error) {
       highAccuracyStartingRef.current = false;
+      localLiveRecorderRef.current?.dispose();
+      localLiveRecorderRef.current = null;
       releaseHighAccuracyStream();
       setRecording(false);
+      setProcessingInput(false);
       toast.error(
         error instanceof Error ? error.message : "تعذر الوصول إلى الميكروفون"
       );
@@ -2244,9 +2222,17 @@ function TelegramComposer({
   };
 
   const stopHighAccuracyRecording = () => {
-    if (localRecordingTimerRef.current !== null) {
-      window.clearTimeout(localRecordingTimerRef.current);
-      localRecordingTimerRef.current = null;
+    if (speechEngine === "local") {
+      highAccuracyStartingRef.current = false;
+      if (localLiveRecorderRef.current) {
+        setProcessingInput(true);
+        localLiveRecorderRef.current.stop();
+      } else {
+        releaseHighAccuracyStream();
+        setRecording(false);
+        setProcessingInput(false);
+      }
+      return;
     }
     stopBrowserSpeechRecognition();
     const recorder = highAccuracyRecorderRef.current;
@@ -2262,7 +2248,11 @@ function TelegramComposer({
 
   const toggleRecording = () => {
     if (recording) {
-      if (highAccuracyRecorderRef.current || highAccuracyStartingRef.current) {
+      if (
+        speechEngine === "local" ||
+        highAccuracyRecorderRef.current ||
+        highAccuracyStartingRef.current
+      ) {
         stopHighAccuracyRecording();
       } else {
         stopBrowserSpeechRecognition();
@@ -2285,15 +2275,13 @@ function TelegramComposer({
   useEffect(
     () => () => {
       speechShouldContinueRef.current = false;
-      if (localRecordingTimerRef.current !== null) {
-        window.clearTimeout(localRecordingTimerRef.current);
-        localRecordingTimerRef.current = null;
-      }
       if (speechRestartTimerRef.current !== null) {
         window.clearTimeout(speechRestartTimerRef.current);
       }
       speechRecognitionRef.current?.stop();
       speechRecognitionRef.current = null;
+      localLiveRecorderRef.current?.dispose();
+      localLiveRecorderRef.current = null;
       highAccuracyStartingRef.current = false;
       const recorder = highAccuracyRecorderRef.current;
       if (recorder) {
@@ -2573,8 +2561,9 @@ function TelegramComposer({
               ) : (
                 <>
                   <p>
-                    لا يُرسل الصوت إلى خدمة التعرف؛ سيظهر النص بعد إيقاف التسجيل
-                    (حتى 10 دقائق للمقطع). يتطلب أول استخدام تنزيلًا يقارب 300
+                    لا يُرسل الصوت إلى خدمة التعرف؛ يظهر النص تدريجيًا أثناء
+                    الكلام على دفعات قصيرة، ويكتمل المقطع الأخير بعد الإيقاف.
+                    الحد الأقصى 10 دقائق. يتطلب أول استخدام تنزيلًا يقارب 300
                     ميغابايت، ويحتفظ المتصفح بالنموذج مؤقتًا للاستخدام التالي.
                   </p>
                   <Button
@@ -2613,11 +2602,11 @@ function TelegramComposer({
               )}
               {recording && (
                 <p>
-                  التسجيل جارٍ؛ سيبدأ التفريغ المحلي بعد الضغط على «إيقاف
-                  التسجيل».
+                  التسجيل جارٍ؛ سيظهر النص تدريجيًا أثناء التحدث، ويُفرّغ آخر
+                  مقطع بعد الضغط على «إيقاف التسجيل».
                 </p>
               )}
-              {processingInput && localAsrProgress?.stage && (
+              {localAsrStatus === "ready" && localAsrProgress?.stage && (
                 <p>{localAsrProgress.stage}</p>
               )}
             </div>
@@ -2634,7 +2623,7 @@ function TelegramComposer({
           <p className="mt-1">
             <strong className="text-foreground">الصوت:</strong>{" "}
             {speechEngine === "local"
-              ? "يُسجل الصوت ويُفرّغ بعد الإيقاف بنموذج Whisper على جهازك؛ لا يحتاج مفتاح API ولا يصدر نغمة إعادة التعرف."
+              ? "يظهر النص أثناء التسجيل على دفعات قصيرة عبر Whisper على جهازك؛ لا يحتاج مفتاح API ولا يعيد فتح التعرف أو يصدر نغمة."
               : canUseHighAccuracySpeech
                 ? "يظهر الكلام مباشرة؛ قد تسمع نغمة عند إعادة تشغيل جلسة المتصفح، ثم يحسّن Cohere النص بعد الإيقاف."
                 : "يكتب المتصفح الكلام مباشرة حتى الإيقاف. بعض المتصفحات ترسل الصوت إلى خدمة التعرف الخاصة بها، وقد تسمع نغمة عند إعادة تشغيل الجلسة."}

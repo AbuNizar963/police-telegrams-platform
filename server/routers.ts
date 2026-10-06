@@ -103,6 +103,14 @@ const categorySchema = z.enum([
   "traffic",
   "security",
   "tactical",
+  "intelligence",
+  "emergency",
+  "public_order",
+  "personnel",
+  "logistics",
+  "training",
+  "community",
+  "other",
 ]);
 const statusSchema = z.enum([
   "draft",

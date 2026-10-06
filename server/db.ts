@@ -333,7 +333,15 @@ export async function listTelegrams(
     | "administrative"
     | "traffic"
     | "security"
-    | "tactical",
+    | "tactical"
+    | "intelligence"
+    | "emergency"
+    | "public_order"
+    | "personnel"
+    | "logistics"
+    | "training"
+    | "community"
+    | "other",
   status?:
     | "draft"
     | "submitted"
@@ -405,7 +413,15 @@ export async function getTelegramReport(
       | "administrative"
       | "traffic"
       | "security"
-      | "tactical";
+      | "tactical"
+      | "intelligence"
+      | "emergency"
+      | "public_order"
+      | "personnel"
+      | "logistics"
+      | "training"
+      | "community"
+      | "other";
     status?: string;
     from?: string;
     to?: string;

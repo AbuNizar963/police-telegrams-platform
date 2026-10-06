@@ -1,6 +1,6 @@
 export const classificationLabels = {
   secret: "سري",
-  normal: "غير سري",
+  normal: "عادي",
 } as const;
 
 export const priorityLabels = {
@@ -14,7 +14,15 @@ export const categoryLabels = {
   administrative: "إداري",
   traffic: "مروري",
   security: "أمني",
-  tactical: "تكتيكي",
+  tactical: "عملياتي",
+  intelligence: "استخباراتي",
+  emergency: "طوارئ",
+  public_order: "حفظ النظام",
+  personnel: "شؤون الأفراد",
+  logistics: "إمداد ودعم",
+  training: "تدريب وتأهيل",
+  community: "مجتمعي وشكاوى",
+  other: "أخرى",
 } as const;
 
 export const statusLabels = {

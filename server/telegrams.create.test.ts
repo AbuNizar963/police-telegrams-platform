@@ -112,6 +112,38 @@ describe("telegrams.create", () => {
     expect(mocked.routeTelegram).not.toHaveBeenCalled();
   });
 
+  it("accepts every supported police telegram category", async () => {
+    const categories = [
+      "criminal",
+      "administrative",
+      "traffic",
+      "security",
+      "tactical",
+      "intelligence",
+      "emergency",
+      "public_order",
+      "personnel",
+      "logistics",
+      "training",
+      "community",
+      "other",
+    ] as const;
+    const caller = appRouter.createCaller(createContext());
+
+    for (const category of categories) {
+      await caller.telegrams.create({
+        subject: `اختبار ${category}`,
+        recipient: "غرفة العمليات",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "normal",
+        category,
+      });
+    }
+
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(categories.length);
+  });
+
   it("returns the persisted telegram when a concurrent retry wins the idempotency race", async () => {
     const caller = appRouter.createCaller(createContext());
     const persistedTelegram = {

@@ -2123,13 +2123,7 @@ function TelegramComposer({
   };
 
   return (
-    <Modal
-      title="إنشاء برقية تشغيلية"
-      subtitle="سيتم تثبيت هويتك الرقمية تلقائيًا من الحساب الموثق."
-      close={close}
-      fullScreenOnMobile
-      wide
-    >
+    <Modal title="إنشاء برقية جديدة" close={close} fullScreenOnMobile wide>
       <div className="grid gap-4">
         {!online && (
           <div
@@ -2140,16 +2134,6 @@ function TelegramComposer({
             جهاز آخر حتى ينجح الحفظ.
           </div>
         )}
-        <label className="grid gap-1.5 text-xs font-bold">
-          الموضوع
-          <Input
-            value={subject}
-            onChange={event => setSubject(event.target.value)}
-            placeholder="عنوان مختصر ودقيق للبلاغ"
-            className="h-11 rounded-lg"
-          />
-        </label>
-
         <label className="grid gap-1.5 text-xs font-bold">
           الجهة الموجهة إليها
           <select
@@ -2238,6 +2222,16 @@ function TelegramComposer({
             ))}
           </select>
         </div>
+
+        <label className="grid gap-1.5 text-xs font-bold">
+          الموضوع
+          <Input
+            value={subject}
+            onChange={event => setSubject(event.target.value)}
+            placeholder="عنوان مختصر ودقيق للبلاغ"
+            className="h-11 rounded-lg"
+          />
+        </label>
 
         <label className="grid gap-1.5 text-xs font-bold">
           نص البرقية
@@ -3795,7 +3789,7 @@ function Modal({
   wide = false,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   close: () => void;
   children: React.ReactNode;
   fullScreenOnMobile?: boolean;
@@ -3811,10 +3805,14 @@ function Modal({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs font-bold text-[#9b7c3d]">
-              {subtitle}
-            </p>
-            <h2 className="mt-1 text-xl font-bold">{title}</h2>
+            {subtitle && (
+              <p className="font-mono text-xs font-bold text-[#9b7c3d]">
+                {subtitle}
+              </p>
+            )}
+            <h2 className={`${subtitle ? "mt-1" : ""} text-xl font-bold`}>
+              {title}
+            </h2>
           </div>
           <button
             onClick={close}

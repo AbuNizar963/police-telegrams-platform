@@ -29,6 +29,14 @@ export const category = pgEnum("telegram_category", [
   "traffic",
   "security",
   "tactical",
+  "intelligence",
+  "emergency",
+  "public_order",
+  "personnel",
+  "logistics",
+  "training",
+  "community",
+  "other",
 ]);
 export const telegramStatus = pgEnum("telegram_status", [
   "draft",

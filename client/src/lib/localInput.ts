@@ -132,6 +132,91 @@ export async function extractArabicTextFromImage(file: File): Promise<string> {
   return result.data.text.trim();
 }
 
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve(String(reader.result ?? "").split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("تعذر قراءة الملف الصوتي"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function writeAscii(view: DataView, offset: number, value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+}
+
+function encodeMonoWav(
+  audio: AudioBuffer,
+  targetSampleRate = 16_000
+): ArrayBuffer {
+  const sourceSampleRate = audio.sampleRate;
+  const sampleCount = Math.max(
+    1,
+    Math.ceil((audio.length * targetSampleRate) / sourceSampleRate)
+  );
+  const buffer = new ArrayBuffer(44 + sampleCount * 2);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + sampleCount * 2, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, sampleCount * 2, true);
+
+  const channels = Array.from({ length: audio.numberOfChannels }, (_, index) =>
+    audio.getChannelData(index)
+  );
+  for (let index = 0; index < sampleCount; index += 1) {
+    const sourceIndex = Math.min(
+      audio.length - 1,
+      Math.floor((index * sourceSampleRate) / targetSampleRate)
+    );
+    const sample =
+      channels.reduce((sum, channel) => sum + (channel[sourceIndex] ?? 0), 0) /
+      channels.length;
+    view.setInt16(
+      44 + index * 2,
+      Math.max(-1, Math.min(1, sample)) * 0x7fff,
+      true
+    );
+  }
+
+  return buffer;
+}
+
+/**
+ * MediaRecorder normally produces WebM/Opus, which is deliberately converted
+ * into WAV because the high-accuracy Arabic endpoint accepts WAV reliably.
+ */
+export async function audioBlobToWav(blob: Blob): Promise<Blob> {
+  if (!blob.size) throw new Error("لم يُسجل أي صوت");
+  if (typeof window === "undefined" || !window.AudioContext) {
+    throw new Error("تحويل الصوت عالي الدقة غير متاح في هذا المتصفح");
+  }
+
+  const context = new window.AudioContext();
+  try {
+    const source = await blob.arrayBuffer();
+    const decoded = await context.decodeAudioData(source.slice(0));
+    return new Blob([encodeMonoWav(decoded)], { type: "audio/wav" });
+  } catch {
+    throw new Error("تعذر تجهيز التسجيل الصوتي للتحويل");
+  } finally {
+    await context.close();
+  }
+}
+
 export function createArabicSpeechRecognition(): SpeechRecognition {
   if (typeof window === "undefined") {
     throw new Error("التعرف الصوتي متاح داخل المتصفح فقط");

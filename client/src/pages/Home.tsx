@@ -46,13 +46,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  audioBlobToWav,
+  blobToBase64,
   createArabicSpeechRecognition,
   extractArabicTextFromImage,
 } from "@/lib/localInput";
-import {
-  correctArabicSpeechText,
-  removeRepeatedSpeech,
-} from "@/lib/arabicSpeech";
+import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import {
@@ -1720,6 +1719,13 @@ function TelegramComposer({
     () => typeof navigator === "undefined" || navigator.onLine
   );
 
+  const aiInputCapabilities = trpc.aiInput.capabilities.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const highAccuracyTranscription = trpc.aiInput.transcribe.useMutation();
+  const highAccuracyOcr = trpc.aiInput.extractText.useMutation();
+
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     window.addEventListener("online", update);
@@ -1740,11 +1746,19 @@ function TelegramComposer({
   }, [recipientOrganizationId, routingTargets]);
 
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const highAccuracyRecorderRef = useRef<MediaRecorder | null>(null);
+  const highAccuracyStreamRef = useRef<MediaStream | null>(null);
+  const highAccuracyChunksRef = useRef<Blob[]>([]);
+  const highAccuracyStartingRef = useRef(false);
   const speechShouldContinueRef = useRef(false);
   const speechBaseBodyRef = useRef("");
   const speechRestartTimerRef = useRef<number | null>(null);
   const bodyValueRef = useRef(body);
   bodyValueRef.current = body;
+
+  const canUseHighAccuracySpeech = aiInputCapabilities.data?.speech === true;
+  const canUseHighAccuracyOcr = aiInputCapabilities.data?.ocr === true;
+
   const appendText = (text: string) => {
     const clean = text.trim();
     if (clean) {
@@ -1752,6 +1766,11 @@ function TelegramComposer({
         current.trim() ? `${current.trim()}\n${clean}` : clean
       );
     }
+  };
+
+  const releaseHighAccuracyStream = () => {
+    highAccuracyStreamRef.current?.getTracks().forEach(track => track.stop());
+    highAccuracyStreamRef.current = null;
   };
 
   const handleImage = async (file?: File) => {
@@ -1767,11 +1786,39 @@ function TelegramComposer({
 
     setProcessingInput(true);
     try {
-      const text = await extractArabicTextFromImage(file);
-      appendText(text);
+      const supportedByHighAccuracyOcr = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ].includes(file.type);
+      let text: string;
+      let usedHighAccuracyOcr = false;
+
+      if (canUseHighAccuracyOcr && supportedByHighAccuracyOcr) {
+        try {
+          const result = await highAccuracyOcr.mutateAsync({
+            imageBase64: await blobToBase64(file),
+            contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+          });
+          text = result.text;
+          usedHighAccuracyOcr = true;
+        } catch {
+          toast.warning(
+            "تعذر محرك قراءة الصور المتقدم؛ جارٍ استخدام البديل المحلي"
+          );
+          text = await extractArabicTextFromImage(file);
+        }
+      } else {
+        text = await extractArabicTextFromImage(file);
+      }
+
+      const correctedText = correctArabicText(text);
+      appendText(correctedText);
       toast.success(
-        text
-          ? "تم تحويل الصورة إلى نص مجانًا داخل المتصفح"
+        correctedText
+          ? usedHighAccuracyOcr
+            ? "تمت قراءة الصورة بمحرك PaddleOCR-VL"
+            : "تم تحويل الصورة إلى نص محليًا"
           : "لم يتم العثور على نص واضح في الصورة"
       );
     } catch (error) {
@@ -1783,7 +1830,7 @@ function TelegramComposer({
     }
   };
 
-  const stopSpeechRecognition = () => {
+  const stopBrowserSpeechRecognition = () => {
     speechShouldContinueRef.current = false;
     if (speechRestartTimerRef.current !== null) {
       window.clearTimeout(speechRestartTimerRef.current);
@@ -1801,12 +1848,7 @@ function TelegramComposer({
     }
   };
 
-  const toggleRecording = () => {
-    if (recording) {
-      stopSpeechRecognition();
-      return;
-    }
-
+  const startBrowserSpeechRecognition = () => {
     try {
       const recognition = createArabicSpeechRecognition();
       speechShouldContinueRef.current = true;
@@ -1826,8 +1868,8 @@ function TelegramComposer({
           else interim.push(transcript);
         }
 
-        const finalText = correctArabicSpeechText(finalized.join(" "));
-        const interimText = correctArabicSpeechText(interim.join(" "));
+        const finalText = correctArabicText(finalized.join(" "));
+        const interimText = correctArabicText(interim.join(" "));
         const liveText = [finalText, interimText].filter(Boolean).join(" ");
         setBody(
           removeRepeatedSpeech(`${speechBaseBodyRef.current}${liveText}`)
@@ -1847,7 +1889,7 @@ function TelegramComposer({
               ? "خدمة التعرف الصوتي في المتصفح غير متاحة حاليًا"
               : "تعذر تحويل الصوت إلى نص";
 
-        stopSpeechRecognition();
+        stopBrowserSpeechRecognition();
         toast.error(message);
       };
 
@@ -1900,6 +1942,128 @@ function TelegramComposer({
     }
   };
 
+  const finishHighAccuracyRecording = async () => {
+    const chunks = highAccuracyChunksRef.current;
+    const mimeType = highAccuracyRecorderRef.current?.mimeType || "audio/webm";
+    highAccuracyChunksRef.current = [];
+    highAccuracyRecorderRef.current = null;
+    releaseHighAccuracyStream();
+    setRecording(false);
+
+    if (!chunks.length) {
+      toast.error("لم يُلتقط صوت كافٍ للتحويل");
+      return;
+    }
+
+    setProcessingInput(true);
+    try {
+      const wav = await audioBlobToWav(new Blob(chunks, { type: mimeType }));
+      if (wav.size > 25 * 1024 * 1024) {
+        throw new Error("مدة التسجيل طويلة جدًا؛ سجّل مقطعًا أقصر من فضلك");
+      }
+
+      const result = await highAccuracyTranscription.mutateAsync({
+        audioBase64: await blobToBase64(wav),
+      });
+      const correctedText = correctArabicText(result.text);
+      if (!correctedText) {
+        toast.error("لم يتم التعرف على كلام واضح في التسجيل");
+        return;
+      }
+
+      appendText(correctedText);
+      toast.success("تم تحويل الصوت بمحرك Cohere Transcribe Arabic");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تحويل التسجيل عالي الدقة"
+      );
+    } finally {
+      setProcessingInput(false);
+    }
+  };
+
+  const startHighAccuracyRecording = async () => {
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      toast.warning("التسجيل عالي الدقة غير مدعوم هنا؛ سيُستخدم إدخال المتصفح");
+      startBrowserSpeechRecognition();
+      return;
+    }
+
+    highAccuracyStartingRef.current = true;
+    setRecording(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+
+      if (!highAccuracyStartingRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      highAccuracyStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      highAccuracyChunksRef.current = [];
+      highAccuracyRecorderRef.current = recorder;
+      recorder.ondataavailable = event => {
+        if (event.data.size) highAccuracyChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        highAccuracyChunksRef.current = [];
+        toast.error("تعذر تسجيل الصوت عالي الدقة");
+      };
+      recorder.onstop = () => {
+        void finishHighAccuracyRecording();
+      };
+      recorder.start(1_000);
+      highAccuracyStartingRef.current = false;
+    } catch (error) {
+      highAccuracyStartingRef.current = false;
+      releaseHighAccuracyStream();
+      setRecording(false);
+      toast.error(
+        error instanceof Error ? error.message : "تعذر الوصول إلى الميكروفون"
+      );
+    }
+  };
+
+  const stopHighAccuracyRecording = () => {
+    const recorder = highAccuracyRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+
+    highAccuracyStartingRef.current = false;
+    releaseHighAccuracyStream();
+    setRecording(false);
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      if (highAccuracyRecorderRef.current || highAccuracyStartingRef.current) {
+        stopHighAccuracyRecording();
+      } else {
+        stopBrowserSpeechRecognition();
+      }
+      return;
+    }
+
+    if (canUseHighAccuracySpeech) {
+      void startHighAccuracyRecording();
+    } else {
+      startBrowserSpeechRecognition();
+    }
+  };
+
   useEffect(
     () => () => {
       speechShouldContinueRef.current = false;
@@ -1908,6 +2072,15 @@ function TelegramComposer({
       }
       speechRecognitionRef.current?.stop();
       speechRecognitionRef.current = null;
+      highAccuracyStartingRef.current = false;
+      const recorder = highAccuracyRecorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        if (recorder.state !== "inactive") recorder.stop();
+      }
+      highAccuracyRecorderRef.current = null;
+      releaseHighAccuracyStream();
     },
     []
   );
@@ -2141,19 +2314,26 @@ function TelegramComposer({
             ) : (
               <Mic className="ml-2 h-3.5 w-3.5" />
             )}
-            {recording ? "إيقاف الاستماع" : "اضغط للتحدث"}
+            {recording
+              ? "إيقاف التسجيل"
+              : canUseHighAccuracySpeech
+                ? "تحدث بدقة عالية"
+                : "اضغط للتحدث"}
           </Button>
         </div>
 
         <div className="rounded-lg border bg-muted/30 p-3 text-[11px] leading-6 text-muted-foreground">
           <p>
-            <strong className="text-foreground">الصورة:</strong> تتم قراءتها
-            بمحرك Tesseract المجاني داخل المتصفح، ولا تحتاج إلى مفتاح OpenAI.
+            <strong className="text-foreground">الصورة:</strong>{" "}
+            {canUseHighAccuracyOcr
+              ? "تُقرأ بمحرك PaddleOCR-VL العربي المتقدم عبر الخدمة الخاصة، مع بديل محلي عند تعذره."
+              : "تُقرأ محليًا بمحرك Tesseract المجاني. فعّل خدمة PaddleOCR-VL الخاصة للدقة الأعلى في صور الكاميرا والوثائق."}
           </p>
           <p className="mt-1">
-            <strong className="text-foreground">الصوت:</strong> يستخدم التعرف
-            الصوتي المتاح في المتصفح باللغة العربية. قد يعتمد Chrome على خدمة
-            التعرف السحابية حسب إعدادات الجهاز والمتصفح.
+            <strong className="text-foreground">الصوت:</strong>{" "}
+            {canUseHighAccuracySpeech
+              ? "يُسجّل محليًا ثم يُفرّغ بمحرك Cohere Transcribe Arabic؛ يُصحح النص النهائي تلقائيًا مثل «المدرسة» بالتاء المربوطة."
+              : "يستخدم التعرف الصوتي المتاح في المتصفح. فعّل Cohere Transcribe Arabic من إعدادات الخادم لدقة عربية أعلى."}
           </p>
         </div>
       </div>

@@ -1,9 +1,9 @@
 /**
- * Corrects a conservative set of frequent Arabic speech-to-text substitutions.
+ * Corrects a conservative set of frequent Arabic speech/OCR substitutions.
  *
- * Speech engines sometimes emit ه where a word should end in ة. Replacements
- * are limited to known complete words so valid words such as وجه، مياه، and
- * انتباه are never changed by a blanket final-letter substitution.
+ * Replacements are whole-word only. This fixes predictable ة/ه mistakes such
+ * as «المدرسه» without corrupting valid words such as «وجه»، «مياه»، or
+ * «انتباه» that genuinely end in هـ.
  */
 const wordCorrections: Readonly<Record<string, string>> = {
   الساعه: "الساعة",
@@ -36,7 +36,7 @@ const wordCorrections: Readonly<Record<string, string>> = {
   الغرفه: "الغرفة",
   غرفه: "غرفة",
   الاداره: "الادارة",
-  اداره: "ادارة",
+  اداره: "إدارة",
   الرساله: "الرسالة",
   رساله: "رسالة",
   المهمه: "المهمة",
@@ -74,23 +74,39 @@ const wordCorrections: Readonly<Record<string, string>> = {
   البلاغه: "البلاغة",
 };
 
+const arabicDiacritics =
+  "[\\u0610-\\u061A\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]*";
+
+function wordPattern(value: string): RegExp {
+  const letters = Array.from(value)
+    .map(letter => `${letter}${arabicDiacritics}`)
+    .join("");
+  // The lookbehinds also allow the common Arabic conjunctions «و» and «ف».
+  // Thus «والمدرسه» becomes «والمدرسة», while longer unmatched words remain
+  // protected by the trailing boundary below.
+  return new RegExp(
+    `(^|(?<=[^ء-يA-Za-z0-9])|(?<=[وف]))${letters}(?=$|[^ء-يA-Za-z0-9])`,
+    "g"
+  );
+}
+
 const correctionPatterns = Object.entries(wordCorrections).map(
   ([incorrect, correct]) => ({
-    pattern: new RegExp(
-      `(^|[^ء-يA-Za-z0-9])${incorrect}(?=$|[^ء-يA-Za-z0-9])`,
-      "g"
-    ),
+    pattern: wordPattern(incorrect),
     replacement: `$1${correct}`,
   })
 );
 
-export function correctArabicSpeechText(value: string): string {
+export function correctArabicText(value: string): string {
   return correctionPatterns.reduce(
     (text, correction) =>
       text.replace(correction.pattern, correction.replacement),
-    value
+    value.normalize("NFC")
   );
 }
+
+/** @deprecated Use correctArabicText: this function now also covers OCR output. */
+export const correctArabicSpeechText = correctArabicText;
 
 function comparableWord(word: string): string {
   return word.replace(/^[،؛,.!?؟:]+|[،؛,.!?؟:]+$/g, "");
@@ -127,7 +143,17 @@ export function removeRepeatedSpeech(value: string): string {
     if (!removed) index += 1;
   }
 
-  return collapseProgressiveDatePhrases(words).join(" ");
+  let collapsed = words;
+  // Browser ASR may send a chain of revisions in overlapping segments. Repeat
+  // the merge until a pass makes no change, rather than retaining the final
+  // overlapping revision.
+  for (let pass = 0; pass < words.length; pass += 1) {
+    const next = collapseProgressiveDatePhrases(collapsed);
+    if (next.join(" ") === collapsed.join(" ")) return next.join(" ");
+    collapsed = next;
+  }
+
+  return collapsed.join(" ");
 }
 
 function collapseProgressiveDatePhrases(words: string[]): string[] {
@@ -139,7 +165,7 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
     const match = remaining
       .join(" ")
       .match(
-        /^(الساعة\s+\d{1,2}(?::\d{2})?\s+من\s+تاريخ\s+)(\d{1,2}(?:[/.\-]\d{1,2}){0,2})(?=\s|$)/
+        /^(الساعة\s+\d{1,2}(?::\d{2})?\s+من\s+تاريخ\s+)(\d{1,2}(?:[/.\-]\d{1,2})?(?:[/.\-]\d{2,4})?)(?=\s|$)/
       );
 
     if (!match) {
@@ -166,7 +192,9 @@ function collapseProgressiveDatePhrases(words: string[]): string[] {
       const candidateDate = words[nextIndex + phraseWords.length];
       if (
         !candidateDate ||
-        !/^\d{1,2}(?:[/.\-]\d{1,2}){0,2}$/.test(comparableWord(candidateDate))
+        !/^\d{1,2}(?:[/.\-]\d{1,2})?(?:[/.\-]\d{2,4})?$/.test(
+          comparableWord(candidateDate)
+        )
       ) {
         break;
       }

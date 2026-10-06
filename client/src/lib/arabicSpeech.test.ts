@@ -36,6 +36,13 @@ describe("correctArabicSpeechText", () => {
     expect(correctArabicSpeechText("المدرسه-الجامعه")).toBe("المدرسة-الجامعة");
   });
 
+  it("keeps the school correction reliable when a source includes harakat", () => {
+    expect(correctArabicSpeechText("ذهبت إلى المَدْرَسَهِ")).toBe(
+      "ذهبت إلى المدرسة"
+    );
+    expect(correctArabicSpeechText("مَدْرَسَه قريبة")).toBe("مدرسة قريبة");
+  });
+
   it("does not replace a matching substring inside a longer word", () => {
     expect(correctArabicSpeechText("مدرسهية")).toBe("مدرسهية");
   });

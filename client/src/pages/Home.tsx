@@ -367,6 +367,7 @@ export default function Home() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [excelToolsOpen, setExcelToolsOpen] = useState(false);
   const [excelImportOpen, setExcelImportOpen] = useState(false);
   const [excelRows, setExcelRows] = useState<TelegramSpreadsheetRow[]>([]);
   const [excelSkippedRows, setExcelSkippedRows] = useState(0);
@@ -410,9 +411,13 @@ export default function Home() {
     }
 
     const openComposer = () => setComposerOpen(true);
+    const openExcelTools = () => setExcelToolsOpen(true);
     window.addEventListener("open-telegram-composer", openComposer);
-    return () =>
+    window.addEventListener("open-telegram-excel-tools", openExcelTools);
+    return () => {
       window.removeEventListener("open-telegram-composer", openComposer);
+      window.removeEventListener("open-telegram-excel-tools", openExcelTools);
+    };
   }, []);
 
   const updateDisplayColumns = (column: DisplayColumn, visible: boolean) => {
@@ -708,42 +713,6 @@ export default function Home() {
             >
               تقرير البرقيات
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
-            onClick={() => void exportCurrentTable()}
-            disabled={exportingExcel}
-            title="تصدير الصفوف الظاهرة بنفس تنسيق سجل Excel"
-          >
-            <FileSpreadsheet className="ml-2 h-4 w-4" />
-            {exportingExcel ? "جارٍ التصدير..." : "تصدير Excel"}
-          </Button>
-          {canManageExcel && (
-            <>
-              <input
-                ref={excelInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={event => {
-                  const file = event.target.files?.[0];
-                  event.currentTarget.value = "";
-                  if (file) void handleExcelFile(file);
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
-                onClick={openExcelPicker}
-                title="استيراد سجل Excel بعد مراجعته"
-              >
-                <Upload className="ml-2 h-4 w-4" />
-                استيراد Excel
-              </Button>
-            </>
           )}
           <Button
             type="button"
@@ -1153,6 +1122,17 @@ export default function Home() {
           close={() => setReportOpen(false)}
         />
       )}
+      {excelToolsOpen && (
+        <ExcelToolsModal
+          canImport={canManageExcel}
+          exporting={exportingExcel}
+          close={() => setExcelToolsOpen(false)}
+          exportRows={() => void exportCurrentTable()}
+          openImport={openExcelPicker}
+          inputRef={excelInputRef}
+          onFile={file => void handleExcelFile(file)}
+        />
+      )}
       {composerOpen && (
         <TelegramComposer
           pending={create.isPending}
@@ -1194,6 +1174,92 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+function ExcelToolsModal({
+  canImport,
+  exporting,
+  close,
+  exportRows,
+  openImport,
+  inputRef,
+  onFile,
+}: {
+  canImport: boolean;
+  exporting: boolean;
+  close: () => void;
+  exportRows: () => void;
+  openImport: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <Modal
+      title="استيراد وتصدير سجل البرقيات"
+      subtitle="أدوات السجل بصيغة Excel"
+      close={close}
+    >
+      <div className="space-y-4">
+        <p className="text-sm leading-7 text-muted-foreground">
+          استخدم هذه النافذة لتصدير النتائج المفلترة أو استيراد سجل مطابق لنموذج
+          البرقيات المعتمد.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={exportRows}
+            disabled={exporting}
+            className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.08] disabled:cursor-wait disabled:opacity-60"
+          >
+            <FileSpreadsheet className="h-8 w-8 text-primary" />
+            <span className="font-bold">
+              {exporting ? "جارٍ تجهيز الملف..." : "تصدير سجل البرقيات"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ملف Excel بورقتي صادر ووارد
+            </span>
+          </button>
+          {canImport ? (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={event => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) onFile(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={openImport}
+                className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-[#b4945a]/30 bg-[#b4945a]/[0.06] p-5 text-center transition-colors hover:border-[#b4945a] hover:bg-[#b4945a]/[0.12]"
+              >
+                <Upload className="h-8 w-8 text-[#9b7c3d]" />
+                <span className="font-bold">استيراد سجل البرقيات</span>
+                <span className="text-xs text-muted-foreground">
+                  معاينة وفحص قبل الاعتماد
+                </span>
+              </button>
+            </>
+          ) : (
+            <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-muted/20 p-5 text-center text-muted-foreground">
+              <LockKeyhole className="h-7 w-7" />
+              <span className="text-sm font-semibold">
+                الاستيراد متاح لمسؤول الجهة فقط
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border bg-muted/20 p-3 text-xs leading-6 text-muted-foreground">
+          يحافظ التصدير والاستيراد على ترتيب أعمدة السجل، بما في ذلك عمود تاريخ
+          البرقية، ولا يؤدي الاستيراد إلى حذف أو استبدال السجلات الموجودة.
+        </div>
+      </div>
+    </Modal>
   );
 }
 

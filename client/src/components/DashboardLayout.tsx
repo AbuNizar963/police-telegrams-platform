@@ -40,7 +40,7 @@ import { BrandMark } from "./BrandMark";
 import HeaderActions from "./HeaderActions";
 
 const menuItems = [
-  { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
+  { key: "dashboard", icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
   {
     key: "create-telegram",
     icon: Plus,
@@ -50,14 +50,14 @@ const menuItems = [
   {
     key: "accounts",
     icon: Users,
-    label: "إدارة حسابات الشرطيين",
+    label: "إدارة المستخدمين",
     action: "open-owner-user-management",
     adminOnly: true,
   },
   {
     key: "locations",
     icon: MapPinned,
-    label: "خريطة البلاغات والمواقع",
+    label: "خريطة البلاغات والمواقع الجغرافية",
     tab: "locations",
   },
   { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },

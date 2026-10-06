@@ -3,20 +3,20 @@ import { toast } from "sonner";
 import { Building2, Database, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import { organizationTypeLabels } from "@/lib/uiLabels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const typeLabels = {
-  central: "المركز الرئيسي",
-  governorate: "قيادة المحافظة",
-  region: "قيادة المنطقة",
-  police_department: "قسم الشرطة",
-  station: "مخفر الشرطة",
-  command: "قيادة",
-  department: "إدارة",
-  unit: "وحدة",
-} as const;
-type OrganizationType = keyof typeof typeLabels;
+const typeLabels = organizationTypeLabels;
+type OrganizationType =
+  | "central"
+  | "governorate"
+  | "region"
+  | "police_department"
+  | "station"
+  | "command"
+  | "department"
+  | "unit";
 const accountManagedTypes = new Set<OrganizationType>([
   "governorate",
   "region",
@@ -38,7 +38,13 @@ export default function OwnerOrganizationManagement() {
     username: string;
     password: string;
   } | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    code: string;
+    name: string;
+    type: OrganizationType;
+    parentOrganizationId: string;
+    telegramDestinationOrganizationId: string;
+  }>({
     code: "",
     name: "",
     type: "governorate" as OrganizationType,
@@ -267,13 +273,14 @@ export default function OwnerOrganizationManagement() {
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-wide text-[#9b7c3d]">
-              POLICE ORGANIZATION HIERARCHY
+              الهيكل التنظيمي للجهات الشرطية
             </p>
             <h2 id="owner-org-title" className="mt-1 text-xl font-bold">
               إدارة المناطق والأقسام والمخافر
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              المركز الرئيسي ← المحافظة ← قيادة المنطقة ← قسم الشرطة ← المخفر.
+              القيادة المركزية ← قيادة المحافظة ← قيادة المنطقة ← مديرية الشرطة
+              ← القسم ← المخفر.
             </p>
           </div>
           <Button

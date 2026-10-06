@@ -48,7 +48,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   audioBlobToWav,
   blobToBase64,
-  createArabicSpeechRecognition,
   extractArabicTextFromImage,
 } from "@/lib/localInput";
 import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
@@ -86,6 +85,7 @@ function escapeHtml(value: string) {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");
+const LIVE_TRANSCRIPTION_SEGMENT_MS = 12_000;
 const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
@@ -1745,15 +1745,19 @@ function TelegramComposer({
     }
   }, [recipientOrganizationId, routingTargets]);
 
-  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const highAccuracyRecorderRef = useRef<MediaRecorder | null>(null);
   const highAccuracyStreamRef = useRef<MediaStream | null>(null);
   const highAccuracyChunksRef = useRef<Blob[]>([]);
   const highAccuracyStartingRef = useRef(false);
   const highAccuracyBaseBodyRef = useRef("");
-  const speechShouldContinueRef = useRef(false);
-  const speechBaseBodyRef = useRef("");
-  const speechRestartTimerRef = useRef<number | null>(null);
+  const highAccuracyRotationTimerRef = useRef<number | null>(null);
+  const highAccuracyStopRequestedRef = useRef(false);
+  const highAccuracyPendingSegmentsRef = useRef(0);
+  const highAccuracyNextSegmentRef = useRef(0);
+  const highAccuracyNextCommitRef = useRef(0);
+  const highAccuracySegmentResultsRef = useRef(new Map<number, string>());
+  const highAccuracyLiveTextRef = useRef("");
+  const highAccuracyErrorShownRef = useRef(false);
   const bodyValueRef = useRef(body);
   bodyValueRef.current = body;
 
@@ -1772,6 +1776,158 @@ function TelegramComposer({
   const releaseHighAccuracyStream = () => {
     highAccuracyStreamRef.current?.getTracks().forEach(track => track.stop());
     highAccuracyStreamRef.current = null;
+  };
+
+  const clearHighAccuracyRotationTimer = () => {
+    if (highAccuracyRotationTimerRef.current !== null) {
+      window.clearTimeout(highAccuracyRotationTimerRef.current);
+      highAccuracyRotationTimerRef.current = null;
+    }
+  };
+
+  const finishHighAccuracySessionIfReady = () => {
+    if (
+      !highAccuracyStopRequestedRef.current ||
+      highAccuracyRecorderRef.current ||
+      highAccuracyPendingSegmentsRef.current > 0
+    ) {
+      return;
+    }
+
+    releaseHighAccuracyStream();
+    setRecording(false);
+    setProcessingInput(false);
+    if (highAccuracyLiveTextRef.current.trim()) {
+      toast.success("اكتمل التفريغ الصوتي المباشر");
+    } else if (!highAccuracyErrorShownRef.current) {
+      toast.error("لم يتم التعرف على كلام واضح في التسجيل");
+    }
+  };
+
+  const commitHighAccuracySegment = (index: number, text: string) => {
+    highAccuracySegmentResultsRef.current.set(index, text.trim());
+
+    while (
+      highAccuracySegmentResultsRef.current.has(
+        highAccuracyNextCommitRef.current
+      )
+    ) {
+      const nextText =
+        highAccuracySegmentResultsRef.current.get(
+          highAccuracyNextCommitRef.current
+        ) ?? "";
+      highAccuracySegmentResultsRef.current.delete(
+        highAccuracyNextCommitRef.current
+      );
+      highAccuracyNextCommitRef.current += 1;
+      if (nextText) {
+        highAccuracyLiveTextRef.current = removeRepeatedSpeech(
+          [highAccuracyLiveTextRef.current, nextText].filter(Boolean).join(" ")
+        );
+      }
+    }
+
+    setBody(
+      `${highAccuracyBaseBodyRef.current}${highAccuracyLiveTextRef.current}`.trimEnd()
+    );
+  };
+
+  const transcribeHighAccuracySegment = async (index: number, blob: Blob) => {
+    highAccuracyPendingSegmentsRef.current += 1;
+    try {
+      if (!blob.size) {
+        commitHighAccuracySegment(index, "");
+        return;
+      }
+
+      const wav = await audioBlobToWav(blob);
+      const result = await highAccuracyTranscription.mutateAsync({
+        audioBase64: await blobToBase64(wav),
+      });
+      commitHighAccuracySegment(index, correctArabicText(result.text));
+    } catch (error) {
+      commitHighAccuracySegment(index, "");
+      if (!highAccuracyErrorShownRef.current) {
+        highAccuracyErrorShownRef.current = true;
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "تعذر تحويل جزء من التسجيل الصوتي"
+        );
+      }
+    } finally {
+      highAccuracyPendingSegmentsRef.current -= 1;
+      finishHighAccuracySessionIfReady();
+    }
+  };
+
+  const startHighAccuracySegment = () => {
+    const stream = highAccuracyStreamRef.current;
+    if (!stream || highAccuracyStopRequestedRef.current) {
+      finishHighAccuracySessionIfReady();
+      return;
+    }
+
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch {
+      highAccuracyStopRequestedRef.current = true;
+      clearHighAccuracyRotationTimer();
+      highAccuracyErrorShownRef.current = true;
+      toast.error("تعذر متابعة التسجيل الصوتي");
+      finishHighAccuracySessionIfReady();
+      return;
+    }
+
+    const segmentIndex = highAccuracyNextSegmentRef.current++;
+    highAccuracyChunksRef.current = [];
+    highAccuracyRecorderRef.current = recorder;
+    recorder.ondataavailable = event => {
+      if (event.data.size) highAccuracyChunksRef.current.push(event.data);
+    };
+    recorder.onerror = () => {
+      if (!highAccuracyErrorShownRef.current) {
+        highAccuracyErrorShownRef.current = true;
+        toast.error("تعذر تسجيل جزء من الصوت");
+      }
+      highAccuracyStopRequestedRef.current = true;
+      clearHighAccuracyRotationTimer();
+      if (recorder.state !== "inactive") recorder.stop();
+    };
+    recorder.onstop = () => {
+      if (highAccuracyRecorderRef.current === recorder) {
+        highAccuracyRecorderRef.current = null;
+      }
+      const chunks = highAccuracyChunksRef.current;
+      highAccuracyChunksRef.current = [];
+      const segment = new Blob(chunks, {
+        type: recorder.mimeType || "audio/webm",
+      });
+      void transcribeHighAccuracySegment(segmentIndex, segment);
+
+      if (highAccuracyStopRequestedRef.current) {
+        finishHighAccuracySessionIfReady();
+        return;
+      }
+
+      startHighAccuracySegment();
+    };
+
+    try {
+      recorder.start();
+      clearHighAccuracyRotationTimer();
+      highAccuracyRotationTimerRef.current = window.setTimeout(() => {
+        highAccuracyRotationTimerRef.current = null;
+        if (recorder.state === "recording") recorder.stop();
+      }, LIVE_TRANSCRIPTION_SEGMENT_MS);
+    } catch {
+      highAccuracyRecorderRef.current = null;
+      highAccuracyStopRequestedRef.current = true;
+      highAccuracyErrorShownRef.current = true;
+      toast.error("تعذر بدء التسجيل الصوتي");
+      finishHighAccuracySessionIfReady();
+    }
   };
 
   const handleImage = async (file?: File) => {
@@ -1831,195 +1987,26 @@ function TelegramComposer({
     }
   };
 
-  const stopBrowserSpeechRecognition = () => {
-    speechShouldContinueRef.current = false;
-    if (speechRestartTimerRef.current !== null) {
-      window.clearTimeout(speechRestartTimerRef.current);
-      speechRestartTimerRef.current = null;
-    }
-    const recognition = speechRecognitionRef.current;
-    speechRecognitionRef.current = null;
-    if (!highAccuracyRecorderRef.current && !highAccuracyStartingRef.current) {
-      setRecording(false);
-    }
-    if (recognition) {
-      try {
-        recognition.stop();
-      } catch {
-        // The recognition session may already have ended.
-      }
-    }
-  };
-
-  const startBrowserSpeechRecognition = () => {
-    try {
-      const recognition = createArabicSpeechRecognition();
-      speechShouldContinueRef.current = true;
-      speechBaseBodyRef.current = body.trim() ? `${body.trim()}\n` : "";
-      speechRecognitionRef.current = recognition;
-
-      recognition.onresult = event => {
-        const finalized: string[] = [];
-        const interim: string[] = [];
-
-        for (let index = 0; index < event.results.length; index += 1) {
-          const result = event.results[index];
-          const transcript = result?.[0]?.transcript?.trim();
-          if (!transcript) continue;
-
-          if (result.isFinal) finalized.push(transcript);
-          else interim.push(transcript);
-        }
-
-        const finalText = correctArabicText(finalized.join(" "));
-        const interimText = correctArabicText(interim.join(" "));
-        const liveText = [finalText, interimText].filter(Boolean).join(" ");
-        setBody(
-          removeRepeatedSpeech(`${speechBaseBodyRef.current}${liveText}`)
-        );
-      };
-
-      recognition.onerror = event => {
-        // Browsers commonly emit no-speech during a pause. Keep listening and
-        // let onend restart the session instead of treating silence as failure.
-        if (event.error === "no-speech") return;
-
-        const highAccuracySession =
-          Boolean(highAccuracyRecorderRef.current) ||
-          highAccuracyStartingRef.current;
-        speechShouldContinueRef.current = false;
-        const message =
-          event.error === "not-allowed"
-            ? "اسمح للمتصفح بالوصول إلى الميكروفون"
-            : event.error === "network"
-              ? "خدمة التعرف الصوتي في المتصفح غير متاحة حاليًا"
-              : "تعذر تحويل الصوت إلى نص";
-
-        stopBrowserSpeechRecognition();
-        if (highAccuracySession) {
-          toast.warning(
-            "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
-          );
-        } else {
-          toast.error(message);
-        }
-      };
-
-      recognition.onend = () => {
-        const currentBody = bodyValueRef.current.trim();
-        if (currentBody) {
-          speechBaseBodyRef.current = `${currentBody}\n`;
-        }
-
-        if (!speechShouldContinueRef.current) {
-          speechRecognitionRef.current = null;
-          setRecording(
-            Boolean(highAccuracyRecorderRef.current) ||
-              highAccuracyStartingRef.current
-          );
-          return;
-        }
-
-        speechRestartTimerRef.current = window.setTimeout(() => {
-          if (!speechShouldContinueRef.current) return;
-
-          try {
-            const nextRecognition = createArabicSpeechRecognition();
-            speechRecognitionRef.current = nextRecognition;
-            nextRecognition.onresult = recognition.onresult;
-            nextRecognition.onerror = recognition.onerror;
-            nextRecognition.onend = recognition.onend;
-            nextRecognition.onstart = recognition.onstart;
-            nextRecognition.start();
-          } catch {
-            const highAccuracySession =
-              Boolean(highAccuracyRecorderRef.current) ||
-              highAccuracyStartingRef.current;
-            speechShouldContinueRef.current = false;
-            speechRecognitionRef.current = null;
-            setRecording(highAccuracySession);
-            toast.warning(
-              highAccuracySession
-                ? "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
-                : "توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة"
-            );
-          }
-        }, 250);
-      };
-
-      recognition.onstart = () => {
-        setRecording(true);
-      };
-
-      recognition.start();
-    } catch (error) {
-      speechShouldContinueRef.current = false;
-      speechRecognitionRef.current = null;
-      const highAccuracySession =
-        Boolean(highAccuracyRecorderRef.current) ||
-        highAccuracyStartingRef.current;
-      setRecording(highAccuracySession);
-      if (highAccuracySession) {
-        toast.warning("التسجيل مستمر؛ سيظهر النص بعد الضغط على إيقاف التسجيل");
-      } else {
-        toast.error(
-          error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي"
-        );
-      }
-    }
-  };
-
-  const finishHighAccuracyRecording = async () => {
-    const chunks = highAccuracyChunksRef.current;
-    const mimeType = highAccuracyRecorderRef.current?.mimeType || "audio/webm";
-    highAccuracyChunksRef.current = [];
-    highAccuracyRecorderRef.current = null;
-    releaseHighAccuracyStream();
-    setRecording(false);
-
-    if (!chunks.length) {
-      toast.error("لم يُلتقط صوت كافٍ للتحويل");
-      return;
-    }
-
-    setProcessingInput(true);
-    try {
-      const wav = await audioBlobToWav(new Blob(chunks, { type: mimeType }));
-      if (wav.size > 25 * 1024 * 1024) {
-        throw new Error("مدة التسجيل طويلة جدًا؛ سجّل مقطعًا أقصر من فضلك");
-      }
-
-      const result = await highAccuracyTranscription.mutateAsync({
-        audioBase64: await blobToBase64(wav),
-      });
-      const correctedText = correctArabicText(result.text);
-      if (!correctedText) {
-        toast.error("لم يتم التعرف على كلام واضح في التسجيل");
-        return;
-      }
-
-      setBody(`${highAccuracyBaseBodyRef.current}${correctedText}`.trimEnd());
-      toast.success("تم تحويل الصوت بمحرك Cohere Transcribe Arabic");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "تعذر تحويل التسجيل عالي الدقة"
-      );
-    } finally {
-      setProcessingInput(false);
-    }
-  };
-
   const startHighAccuracyRecording = async () => {
     if (
       !navigator.mediaDevices?.getUserMedia ||
       typeof MediaRecorder === "undefined"
     ) {
-      toast.warning("التسجيل عالي الدقة غير مدعوم هنا؛ سيُستخدم إدخال المتصفح");
-      startBrowserSpeechRecognition();
+      toast.error(
+        "التسجيل المباشر بلا نغمة يحتاج متصفحًا حديثًا يدعم تسجيل الصوت"
+      );
       return;
     }
 
     highAccuracyStartingRef.current = true;
+    highAccuracyStopRequestedRef.current = false;
+    highAccuracyPendingSegmentsRef.current = 0;
+    highAccuracyNextSegmentRef.current = 0;
+    highAccuracyNextCommitRef.current = 0;
+    highAccuracySegmentResultsRef.current.clear();
+    highAccuracyLiveTextRef.current = "";
+    highAccuracyErrorShownRef.current = false;
+    clearHighAccuracyRotationTimer();
     setRecording(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -2040,24 +2027,8 @@ function TelegramComposer({
       highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
         ? `${bodyValueRef.current.trim()}\n`
         : "";
-      const recorder = new MediaRecorder(stream);
-      highAccuracyChunksRef.current = [];
-      highAccuracyRecorderRef.current = recorder;
-      recorder.ondataavailable = event => {
-        if (event.data.size) highAccuracyChunksRef.current.push(event.data);
-      };
-      recorder.onerror = () => {
-        highAccuracyChunksRef.current = [];
-        toast.error("تعذر تسجيل الصوت عالي الدقة");
-      };
-      recorder.onstop = () => {
-        void finishHighAccuracyRecording();
-      };
-      recorder.start(1_000);
       highAccuracyStartingRef.current = false;
-      // Keep the microphone session open for the full user-controlled recording,
-      // while Web Speech Recognition displays live words as they are spoken.
-      startBrowserSpeechRecognition();
+      startHighAccuracySegment();
     } catch (error) {
       highAccuracyStartingRef.current = false;
       releaseHighAccuracyStream();
@@ -2069,48 +2040,53 @@ function TelegramComposer({
   };
 
   const stopHighAccuracyRecording = () => {
-    stopBrowserSpeechRecognition();
+    clearHighAccuracyRotationTimer();
+    highAccuracyStopRequestedRef.current = true;
+    setProcessingInput(true);
     const recorder = highAccuracyRecorderRef.current;
-    if (recorder && recorder.state !== "inactive") {
-      recorder.stop();
+    if (recorder) {
+      if (recorder.state !== "inactive") recorder.stop();
       return;
     }
 
-    highAccuracyStartingRef.current = false;
-    releaseHighAccuracyStream();
-    setRecording(false);
+    if (highAccuracyStartingRef.current) {
+      highAccuracyStartingRef.current = false;
+      releaseHighAccuracyStream();
+      setRecording(false);
+      setProcessingInput(false);
+      return;
+    }
+
+    finishHighAccuracySessionIfReady();
   };
 
   const toggleRecording = () => {
     if (recording) {
-      if (highAccuracyRecorderRef.current || highAccuracyStartingRef.current) {
-        stopHighAccuracyRecording();
-      } else {
-        stopBrowserSpeechRecognition();
-      }
+      stopHighAccuracyRecording();
       return;
     }
 
     if (canUseHighAccuracySpeech) {
       void startHighAccuracyRecording();
     } else {
-      startBrowserSpeechRecognition();
+      toast.error(
+        aiInputCapabilities.isPending
+          ? "جارٍ التحقق من إعداد التفريغ الصوتي؛ أعد المحاولة بعد لحظة"
+          : "للكتابة الحية دون نغمة، يلزم تفعيل محرك التفريغ العربي في إعدادات الخادم"
+      );
     }
   };
 
   useEffect(
     () => () => {
-      speechShouldContinueRef.current = false;
-      if (speechRestartTimerRef.current !== null) {
-        window.clearTimeout(speechRestartTimerRef.current);
-      }
-      speechRecognitionRef.current?.stop();
-      speechRecognitionRef.current = null;
+      highAccuracyStopRequestedRef.current = true;
+      clearHighAccuracyRotationTimer();
       highAccuracyStartingRef.current = false;
       const recorder = highAccuracyRecorderRef.current;
       if (recorder) {
         recorder.ondataavailable = null;
         recorder.onstop = null;
+        recorder.onerror = null;
         if (recorder.state !== "inactive") recorder.stop();
       }
       highAccuracyRecorderRef.current = null;
@@ -2362,8 +2338,8 @@ function TelegramComposer({
           <p className="mt-1">
             <strong className="text-foreground">الصوت:</strong>{" "}
             {canUseHighAccuracySpeech
-              ? "يظل التسجيل مفتوحًا ويظهر الكلام مكتوبًا مباشرة حتى تضغط «إيقاف التسجيل»، ثم يُحسّن التفريغ بمحرك Cohere Transcribe Arabic."
-              : "يظل التعرف الصوتي نشطًا ويكتب الكلام مباشرة حتى تضغط «إيقاف التسجيل». فعّل Cohere Transcribe Arabic من إعدادات الخادم لدقة أعلى."}
+              ? "تسجيل متصل بلا إعادة تشغيل التعرف الصوتي؛ يظهر النص على دفعات كل نحو 12 ثانية حتى تضغط «إيقاف التسجيل»."
+              : "الكتابة الحية بلا نغمة غير مهيأة؛ يلزم ضبط COHERE_API_KEY على الخادم. لا نستخدم التعرف الصوتي الذي يعيد تشغيل النغمة."}
           </p>
         </div>
       </div>

@@ -54,6 +54,13 @@ import {
 } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import {
+  categoryLabels,
+  classificationLabels,
+  organizationTypeLabels,
+  priorityLabels,
+  statusLabels,
+} from "@/lib/uiLabels";
 import qrcode from "@/lib/qrcode-generator";
 import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
 
@@ -112,43 +119,6 @@ const EXPORT_CAIRO_FONT_FACES = `
     src: url("/fonts/cairo-700.ttf") format("truetype");
   }
 `;
-const classificationLabels = { secret: "سري", normal: "عادي" } as const;
-const priorityLabels = {
-  slow: "بطيء",
-  normal: "عادي",
-  urgent: "عاجل",
-} as const;
-const categoryLabels = {
-  criminal: "جنائي",
-  administrative: "إداري",
-  traffic: "مروري",
-  security: "أمني",
-  tactical: "تكتيكي",
-} as const;
-const statusLabels = {
-  draft: "مسودة",
-  submitted: "مرسلة للمراجعة",
-  in_review: "قيد المراجعة",
-  approved: "معتمدة",
-  returned: "معادة للتصحيح",
-  rejected: "مرفوضة",
-  forwarded: "محالة",
-  pending: "قيد الانتظار",
-  in_progress: "تحت الإجراء",
-  resolved: "مكتملة",
-  completed: "مكتملة نهائيًا",
-  archived: "مؤرشفة",
-} as const;
-const organizationTypeLabels: Record<string, string> = {
-  central: "القيادة المركزية",
-  governorate: "قيادة المحافظة",
-  region: "قيادة المنطقة",
-  police_department: "مديرية الشرطة",
-  station: "المخفر",
-  command: "القيادة",
-  department: "القسم",
-  unit: "الوحدة",
-};
 const statusStyles = {
   draft: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
   submitted: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
@@ -754,7 +724,7 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="تحت الإجراء"
+          label="قيد الإجراء"
           value={data.inProgress}
           detail="قيد المعالجة"
           icon={Radio}
@@ -764,7 +734,7 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="مكتملة"
+          label="مكتملة نهائيًا"
           value={data.resolved}
           detail="تم إغلاقها"
           icon={CheckCircle2}
@@ -797,9 +767,9 @@ export default function Home() {
                         : activeKpi === "incoming"
                           ? "البرقيات الواردة"
                           : activeKpi === "in-progress"
-                            ? "تحت الإجراء"
+                            ? "قيد الإجراء"
                             : activeKpi === "resolved"
-                              ? "مكتملة"
+                              ? "مكتملة نهائيًا"
                               : "إجمالي البرقيات"}
                     <X className="h-3 w-3" />
                   </button>
@@ -1124,7 +1094,7 @@ function DisplayCustomizationModal({
   return (
     <Modal
       title="تخصيص عرض سجل البرقيات"
-      subtitle="DISPLAY / TABLE SETTINGS"
+      subtitle="إعدادات عرض السجل"
       close={close}
     >
       <div className="space-y-4">
@@ -2358,7 +2328,7 @@ function TelegramDetail({
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
             <p><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
-            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
+            <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
@@ -3468,7 +3438,7 @@ function DepartmentSettingsModal({
   return (
     <Modal
       title="إعدادات القسم والموقع"
-      subtitle="ADMIN / DEPARTMENT SETTINGS"
+      subtitle="إعدادات القسم والجهة"
       close={() => setOpen(false)}
     >
       <div className="space-y-5">

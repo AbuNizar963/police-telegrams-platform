@@ -109,6 +109,33 @@ const statusSchema = z.enum([
   "archived",
 ]);
 
+function parseImportedDate(value?: string, time?: string): Date | undefined {
+  const normalized = (value ?? "")
+    .trim()
+    .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[.]/g, "/");
+  const match = normalized.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
+  if (!match) return undefined;
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const third = Number(match[3]);
+  const year = first > 31 ? first : third;
+  const month = first > 31 ? second : second;
+  const day = first > 31 ? third : first;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  const timeMatch = (time ?? "").trim().match(/^(\d{1,2})(?::(\d{2}))?/);
+  if (timeMatch)
+    date.setUTCHours(Number(timeMatch[1]), Number(timeMatch[2] ?? 0));
+  return date;
+}
+
 export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
@@ -778,6 +805,41 @@ export const appRouter = router({
         );
       }),
 
+    exportRows: protectedProcedure
+      .input(
+        z
+          .object({
+            search: z.string().max(120).optional(),
+            classification: classificationSchema.optional(),
+            priority: prioritySchema.optional(),
+            category: categorySchema.optional(),
+            status: statusSchema.optional(),
+            from: z.string().datetime().optional(),
+            to: z.string().datetime().optional(),
+          })
+          .optional()
+      )
+      .query(async ({ ctx, input }) => {
+        const canViewAll = ctx.user.role === "admin";
+        const organizationId = canViewAll
+          ? null
+          : await getUserOrganizationId(ctx.user.id);
+        return listTelegrams(
+          ctx.user.id,
+          canViewAll,
+          organizationId,
+          input?.search,
+          input?.classification,
+          input?.priority,
+          input?.category,
+          input?.status,
+          input?.from,
+          input?.to,
+          1,
+          1000
+        );
+      }),
+
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -1353,6 +1415,149 @@ export const appRouter = router({
         }
 
         return telegram;
+      }),
+    importRows: organizationAdminProcedure
+      .input(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                originalSerial: z.string().max(120).optional(),
+                time: z.string().max(120).optional(),
+                sender: z.string().max(255).optional(),
+                date: z.string().max(120).optional(),
+                body: z.string().trim().min(3).max(20000),
+                recipient: z.string().max(255).optional(),
+                signature: z.string().max(255).optional(),
+                notes: z.string().max(4000).optional(),
+                sheetName: z.enum(["صادر", "وارد"]),
+              })
+            )
+            .min(1)
+            .max(1000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const settings = await getOrCreateSettings(ctx.user.id);
+        const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
+        let created = 0;
+        let skipped = 0;
+        const errors: Array<{ row: number; message: string }> = [];
+
+        for (let index = 0; index < input.rows.length; index += 1) {
+          const row = input.rows[index];
+          const sourceKey = JSON.stringify({
+            organizationId,
+            sheetName: row.sheetName,
+            originalSerial: row.originalSerial ?? "",
+            time: row.time ?? "",
+            date: row.date ?? "",
+            body: row.body,
+          });
+          const idempotencyKey = `excel-import:${createHash("sha256")
+            .update(sourceKey)
+            .digest("hex")}`;
+          try {
+            const existing = await getTelegramByIdempotencyKey(idempotencyKey);
+            if (existing) {
+              skipped += 1;
+              continue;
+            }
+            const serialNumber = await allocateSerialNumber();
+            const dateParts = new Intl.DateTimeFormat("en-CA", {
+              timeZone: settings.timezone,
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }).formatToParts(new Date());
+            const dateValues = Object.fromEntries(
+              dateParts.map(part => [part.type, part.value])
+            );
+            const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+            const serialCode = `${settings.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
+            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            const importedBody = [
+              row.body,
+              row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",
+              row.notes ? `\nملاحظات السجل الأصلي: ${row.notes}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
+            const telegram = await createTelegram({
+              serialNumber,
+              serialCode,
+              idempotencyKey,
+              verificationToken: randomUUID(),
+              createdAt: importedCreatedAt,
+              createdByUserId: ctx.user.id,
+              organizationId,
+              currentOrganizationId: organizationId,
+              creatorName,
+              creatorEmail: ctx.user.email ?? null,
+              creatorBadgeId: ctx.user.badgeNumber ?? null,
+              creatorIp: null,
+              creatorFingerprint: ctx.user.authUserId,
+              subject:
+                row.sender?.trim() ||
+                `سجل مستورد من Excel رقم ${row.originalSerial || index + 1}`,
+              recipient: row.recipient?.trim() || "غير محدد في السجل الأصلي",
+              body: importedBody,
+              classification: "normal",
+              priority: "normal",
+              category: "administrative",
+              status: "draft",
+              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
+            });
+            await writeAuditLog({
+              actorUserId: ctx.user.id,
+              actorName: creatorName,
+              action: "telegram.import.excel",
+              entityType: "telegram",
+              entityId: String(telegram.id),
+              metadata: JSON.stringify({
+                sheetName: row.sheetName,
+                originalSerial: row.originalSerial ?? null,
+                originalDate: row.date ?? null,
+                originalTime: row.time ?? null,
+              }),
+            });
+            await recordTelegramAction({
+              telegramId: telegram.id,
+              actorUserId: ctx.user.id,
+              action: "telegram.import.excel",
+              toStatus: telegram.status,
+              metadata: {
+                sheetName: row.sheetName,
+                originalSerial: row.originalSerial ?? null,
+                originalDate: row.date ?? null,
+              },
+            });
+            await recordTelegramVersion({
+              telegramId: telegram.id,
+              changedByUserId: ctx.user.id,
+              changeReason: "استيراد السجل من ملف Excel",
+              snapshot: {
+                subject: telegram.subject,
+                recipient: telegram.recipient,
+                body: telegram.body,
+                classification: telegram.classification,
+                priority: telegram.priority,
+                category: telegram.category,
+                status: telegram.status,
+              },
+            });
+            created += 1;
+          } catch (error) {
+            errors.push({
+              row: index + 2,
+              message:
+                error instanceof Error ? error.message : "تعذر استيراد الصف",
+            });
+          }
+        }
+
+        return { created, skipped, errors: errors.slice(0, 25) };
       }),
   }),
 });

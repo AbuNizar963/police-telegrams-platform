@@ -353,7 +353,7 @@ export async function listTelegrams(
   pageSize = 50
 ): Promise<Telegram[]> {
   const safePage = Math.max(1, Math.floor(page));
-  const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
+  const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("*")

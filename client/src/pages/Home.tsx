@@ -18,6 +18,7 @@ import {
   Clock3,
   FileDown,
   FileImage,
+  FileSpreadsheet,
   FileText,
   ImagePlus,
   Inbox,
@@ -54,6 +55,11 @@ import {
 } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import {
+  downloadTelegramWorkbook,
+  parseTelegramWorkbook,
+  type TelegramSpreadsheetRow,
+} from "@/lib/telegramSpreadsheet";
 import {
   categoryLabels,
   classificationLabels,
@@ -361,6 +367,12 @@ export default function Home() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [excelRows, setExcelRows] = useState<TelegramSpreadsheetRow[]>([]);
+  const [excelSkippedRows, setExcelSkippedRows] = useState(0);
+  const [excelFileName, setExcelFileName] = useState("");
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const excelInputRef = useRef<HTMLInputElement>(null);
   const [displayColumns, setDisplayColumns] = useState<
     Record<DisplayColumn, boolean>
   >(DEFAULT_DISPLAY_COLUMNS);
@@ -492,6 +504,22 @@ export default function Home() {
     { enabled: selectedId !== null }
   );
   const utils = trpc.useUtils();
+  const importExcel = trpc.telegrams.importRows.useMutation({
+    onSuccess: result => {
+      toast.success(
+        `تم استيراد ${result.created} برقية${result.skipped ? `، وتخطي ${result.skipped} مكررة` : ""}`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`تعذر استيراد ${result.errors.length} صفًا`);
+      }
+      setExcelImportOpen(false);
+      setExcelRows([]);
+      setExcelFileName("");
+      utils.telegrams.list.invalidate();
+      utils.dashboard.stats.invalidate();
+    },
+    onError: error => toast.error(error.message || "تعذر استيراد ملف Excel"),
+  });
   const create = trpc.telegrams.create.useMutation({
     onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
@@ -526,6 +554,71 @@ export default function Home() {
     const isOutgoing = row.organizationId === row.currentOrganizationId;
     return telegramView === "outgoing" ? isOutgoing : !isOutgoing;
   });
+  const canManageExcel =
+    me.data?.role === "admin" ||
+    ["system_admin", "organization_admin"].includes(
+      organizationContext.data?.role ?? ""
+    );
+
+  const exportCurrentTable = async () => {
+    setExportingExcel(true);
+    try {
+      const exportRows = await utils.telegrams.exportRows.fetch({
+        search: input.search,
+        classification: input.classification,
+        priority: input.priority,
+        status: input.status,
+        category: input.category,
+        from: input.from,
+        to: input.to,
+      });
+      if (exportRows.length === 0) {
+        toast.info("لا توجد صفوف قابلة للتصدير ضمن الفلاتر الحالية");
+        return;
+      }
+      downloadTelegramWorkbook(
+        exportRows.map(row => ({
+          serial: localizeDigits(
+            getTelegramDisplayNumber(row.serialCode),
+            numberSystem
+          ),
+          time: formatConfiguredDate(row.createdAt, settings.data),
+          sender: row.creatorName,
+          date:
+            formatConfiguredDate(row.createdAt, settings.data).split(" ")[0] ??
+            "",
+          body: row.body,
+          recipient: row.recipient,
+          signature: row.creatorName,
+          notes: row.workflowReason ?? "",
+          direction:
+            row.organizationId === row.currentOrganizationId ? "صادر" : "وارد",
+        })),
+        `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      toast.success(`تم تصدير ${exportRows.length} برقية بصيغة Excel`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تصدير Excel");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExcelFile = async (file: File) => {
+    try {
+      const parsed = await parseTelegramWorkbook(file);
+      setExcelRows(parsed.rows);
+      setExcelSkippedRows(parsed.skippedRows);
+      setExcelFileName(file.name);
+      setExcelImportOpen(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر قراءة ملف Excel"
+      );
+    }
+  };
+
+  const openExcelPicker = () => excelInputRef.current?.click();
 
   const clearKpiFilters = () => {
     setSearch("");
@@ -615,6 +708,42 @@ export default function Home() {
             >
               تقرير البرقيات
             </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
+            onClick={() => void exportCurrentTable()}
+            disabled={exportingExcel}
+            title="تصدير الصفوف الظاهرة بنفس تنسيق سجل Excel"
+          >
+            <FileSpreadsheet className="ml-2 h-4 w-4" />
+            {exportingExcel ? "جارٍ التصدير..." : "تصدير Excel"}
+          </Button>
+          {canManageExcel && (
+            <>
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={event => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) void handleExcelFile(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
+                onClick={openExcelPicker}
+                title="استيراد سجل Excel بعد مراجعته"
+              >
+                <Upload className="ml-2 h-4 w-4" />
+                استيراد Excel
+              </Button>
+            </>
           )}
           <Button
             type="button"
@@ -1054,7 +1183,122 @@ export default function Home() {
         <DepartmentSettingsModal settings={settings.data} />
       )}
       {me.data?.role === "admin" && <OwnerUserManagement />}
+      {excelImportOpen && (
+        <ExcelImportPreviewModal
+          fileName={excelFileName}
+          rows={excelRows}
+          skippedRows={excelSkippedRows}
+          pending={importExcel.isPending}
+          close={() => setExcelImportOpen(false)}
+          confirm={() => importExcel.mutate({ rows: excelRows })}
+        />
+      )}
     </div>
+  );
+}
+
+function ExcelImportPreviewModal({
+  fileName,
+  rows,
+  skippedRows,
+  pending,
+  close,
+  confirm,
+}: {
+  fileName: string;
+  rows: TelegramSpreadsheetRow[];
+  skippedRows: number;
+  pending: boolean;
+  close: () => void;
+  confirm: () => void;
+}) {
+  return (
+    <Modal
+      title="مراجعة استيراد سجل البرقيات"
+      subtitle="استيراد ذكي وآمن من Excel"
+      close={close}
+      wide
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">الملف</p>
+            <p className="mt-1 truncate text-sm font-semibold">{fileName}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">صفوف صالحة</p>
+            <p className="mt-1 text-xl font-bold">{rows.length}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">
+              صفوف فارغة أو ناقصة
+            </p>
+            <p className="mt-1 text-xl font-bold">{skippedRows}</p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900">
+          سيُنشئ النظام رقمًا جديدًا لكل سجل داخل المنصة، ويحفظ رقم الصف والورقة
+          والوقت الأصلي في سجل التدقيق. لن تُحذف البرقيات الموجودة، وإعادة رفع
+          الملف نفسه ستتخطى الصفوف المستوردة سابقًا.
+        </div>
+        <div className="max-h-[42vh] overflow-auto rounded-xl border">
+          <table className="w-full min-w-[760px] text-right text-xs">
+            <thead className="sticky top-0 bg-muted">
+              <tr>
+                <th className="p-3">الورقة</th>
+                <th className="p-3">الرقم الأصلي</th>
+                <th className="p-3">الوقت</th>
+                <th className="p-3">المرسل</th>
+                <th className="p-3">تاريخ البرقية</th>
+                <th className="p-3">نص البرقية</th>
+                <th className="p-3">المستلم</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 100).map((row, index) => (
+                <tr
+                  key={`${row.sheetName}-${row.originalSerial}-${index}`}
+                  className="border-t align-top"
+                >
+                  <td className="p-3 font-semibold">{row.sheetName}</td>
+                  <td className="p-3">{row.originalSerial || "—"}</td>
+                  <td className="p-3">{row.time || "—"}</td>
+                  <td className="max-w-48 p-3">{row.sender || "—"}</td>
+                  <td className="p-3">{row.date || "—"}</td>
+                  <td className="max-w-[28rem] p-3">{row.body}</td>
+                  <td className="max-w-48 p-3">{row.recipient || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length > 100 && (
+            <p className="border-t p-3 text-center text-xs text-muted-foreground">
+              تظهر أول 100 صف للمعاينة فقط، وسيتم استيراد جميع الصفوف الصالحة.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={close}
+            disabled={pending}
+          >
+            إلغاء
+          </Button>
+          <Button
+            type="button"
+            onClick={confirm}
+            disabled={pending || rows.length === 0}
+            className="bg-[#10233f] text-white hover:bg-[#18375f]"
+          >
+            {pending
+              ? "جارٍ استيراد السجلات..."
+              : `اعتماد استيراد ${rows.length} برقية`}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

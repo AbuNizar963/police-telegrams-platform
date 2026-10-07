@@ -65,6 +65,7 @@ import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import {
   downloadTelegramWorkbook,
   parseTelegramWorkbook,
+  type TelegramSpreadsheetIssue,
   type TelegramSpreadsheetRow,
 } from "@/lib/telegramSpreadsheet";
 import {
@@ -91,6 +92,26 @@ function escapeHtml(value: string) {
         "'": "&#39;",
       })[character] ?? character
   );
+}
+
+function downloadImportErrorReport(
+  errors: Array<{ row: number; message: string }>
+) {
+  const content = [
+    ["رقم الصف", "سبب عدم الاستيراد"],
+    ...errors.map(error => [String(error.row), error.message]),
+  ]
+    .map(row => row.map(value => `"${value.replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["\uFEFF" + content], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `تقرير-أخطاء-الاستيراد-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");
@@ -378,6 +399,10 @@ export default function Home() {
   const [excelImportOpen, setExcelImportOpen] = useState(false);
   const [excelRows, setExcelRows] = useState<TelegramSpreadsheetRow[]>([]);
   const [excelSkippedRows, setExcelSkippedRows] = useState(0);
+  const [excelDuplicateRows, setExcelDuplicateRows] = useState(0);
+  const [excelIssues, setExcelIssues] = useState<TelegramSpreadsheetIssue[]>(
+    []
+  );
   const [excelFileName, setExcelFileName] = useState("");
   const [exportingExcel, setExportingExcel] = useState(false);
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -523,10 +548,14 @@ export default function Home() {
       );
       if (result.errors.length > 0) {
         toast.warning(`تعذر استيراد ${result.errors.length} صفًا`);
+        downloadImportErrorReport(result.errors);
       }
       setExcelImportOpen(false);
       setExcelRows([]);
       setExcelFileName("");
+      setExcelSkippedRows(0);
+      setExcelDuplicateRows(0);
+      setExcelIssues([]);
       utils.telegrams.list.invalidate();
       utils.dashboard.stats.invalidate();
     },
@@ -621,6 +650,8 @@ export default function Home() {
       const parsed = await parseTelegramWorkbook(file);
       setExcelRows(parsed.rows);
       setExcelSkippedRows(parsed.skippedRows);
+      setExcelDuplicateRows(parsed.duplicateRows);
+      setExcelIssues(parsed.issues);
       setExcelFileName(file.name);
       setExcelImportOpen(true);
     } catch (error) {
@@ -1175,6 +1206,8 @@ export default function Home() {
           fileName={excelFileName}
           rows={excelRows}
           skippedRows={excelSkippedRows}
+          duplicateRows={excelDuplicateRows}
+          issues={excelIssues}
           pending={importExcel.isPending}
           close={() => setExcelImportOpen(false)}
           confirm={() => importExcel.mutate({ rows: excelRows })}
@@ -1274,6 +1307,8 @@ function ExcelImportPreviewModal({
   fileName,
   rows,
   skippedRows,
+  duplicateRows,
+  issues,
   pending,
   close,
   confirm,
@@ -1281,6 +1316,8 @@ function ExcelImportPreviewModal({
   fileName: string;
   rows: TelegramSpreadsheetRow[];
   skippedRows: number;
+  duplicateRows: number;
+  issues: TelegramSpreadsheetIssue[];
   pending: boolean;
   close: () => void;
   confirm: () => void;
@@ -1293,7 +1330,7 @@ function ExcelImportPreviewModal({
       wide
     >
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border bg-muted/20 p-3">
             <p className="text-[11px] text-muted-foreground">الملف</p>
             <p className="mt-1 truncate text-sm font-semibold">{fileName}</p>
@@ -1308,12 +1345,37 @@ function ExcelImportPreviewModal({
             </p>
             <p className="mt-1 text-xl font-bold">{skippedRows}</p>
           </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">مكررات مستبعدة</p>
+            <p className="mt-1 text-xl font-bold">{duplicateRows}</p>
+          </div>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900">
           سيُنشئ النظام رقمًا جديدًا لكل سجل داخل المنصة، ويحفظ رقم الصف والورقة
           والوقت الأصلي في سجل التدقيق. لن تُحذف البرقيات الموجودة، وإعادة رفع
           الملف نفسه ستتخطى الصفوف المستوردة سابقًا.
         </div>
+        {issues.length > 0 && (
+          <details className="rounded-xl border bg-muted/10 p-3">
+            <summary className="cursor-pointer text-sm font-semibold">
+              عرض تقرير التحقق ({issues.length} ملاحظة)
+            </summary>
+            <div className="mt-3 max-h-32 space-y-2 overflow-auto text-xs text-muted-foreground">
+              {issues.slice(0, 20).map((issue, index) => (
+                <div
+                  key={`${issue.sheetName}-${issue.rowNumber}-${index}`}
+                  className="flex flex-wrap gap-x-2 gap-y-1 rounded-lg border bg-background p-2"
+                >
+                  <span className="font-semibold text-foreground">
+                    {issue.sheetName} — صف {issue.rowNumber}
+                  </span>
+                  <span>{issue.reason}</span>
+                  {issue.value ? <span>({issue.value})</span> : null}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
         <div className="max-h-[42vh] overflow-auto rounded-xl border">
           <table className="w-full min-w-[760px] text-right text-xs">
             <thead className="sticky top-0 bg-muted">

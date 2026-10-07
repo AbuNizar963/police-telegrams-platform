@@ -37,6 +37,13 @@ export type TelegramSpreadsheetExportRow = {
   direction: TelegramSpreadsheetDirection;
 };
 
+export type TelegramSpreadsheetIssue = {
+  rowNumber: number;
+  sheetName: string;
+  reason: string;
+  value?: string;
+};
+
 function text(value: unknown) {
   return String(value ?? "").trim();
 }
@@ -104,7 +111,7 @@ function findHeaderIndexes(headerRow: unknown[]) {
     time: find("ساعة الأرسال أو الوصول", "ساعة الإرسال أو الوصول", "الوقت"),
     sender: find("الجهة المرسلة واسم المرسل", "الجهة والمرسل", "المرسل"),
     date: find("تاريخ البرقية", "تاريخ"),
-    body: find("نص البرقية", "البرقية", "نص"),
+    body: find("نص البرقية", "نص البرقية الرسمي", "نص"),
     recipient: find("الجهة المرسلة واسم المستلم", "الجهة والمستلم", "المستلم"),
     signature: find("توقيع المرسل أو المستلم", "التوقيع"),
     notes: find("ملاحظات", "الملاحظة"),
@@ -118,12 +125,23 @@ function cell(row: unknown[], index: number) {
 export async function parseTelegramWorkbook(file: File): Promise<{
   rows: TelegramSpreadsheetRow[];
   skippedRows: number;
+  duplicateRows: number;
+  issues: TelegramSpreadsheetIssue[];
   sheets: string[];
 }> {
+  if (!/\.(xlsx|xls)$/i.test(file.name)) {
+    throw new Error("يرجى اختيار ملف Excel بصيغة xlsx أو xls.");
+  }
+  if (file.size > 15 * 1024 * 1024) {
+    throw new Error("حجم ملف Excel أكبر من الحد المسموح وهو 15 ميغابايت.");
+  }
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
   const rows: TelegramSpreadsheetRow[] = [];
+  const issues: TelegramSpreadsheetIssue[] = [];
+  const fingerprints = new Set<string>();
   let skippedRows = 0;
+  let duplicateRows = 0;
 
   for (const sheetName of workbook.SheetNames) {
     const direction: TelegramSpreadsheetDirection =
@@ -160,7 +178,9 @@ export async function parseTelegramWorkbook(file: File): Promise<{
       notes: indexes.notes >= 0 ? indexes.notes : hasDateColumn ? 7 : 6,
     };
 
-    for (const rawRow of matrix.slice(headerIndex + 1)) {
+    const dataRows = matrix.slice(headerIndex + 1);
+    for (let offset = 0; offset < dataRows.length; offset += 1) {
+      const rawRow = dataRows[offset];
       const row = Array.isArray(rawRow) ? rawRow : [];
       const body = cell(row, fallback.body);
       const sender = cell(row, fallback.sender);
@@ -169,13 +189,39 @@ export async function parseTelegramWorkbook(file: File): Promise<{
       if (!body && !sender && !recipient && !notes) continue;
       if (body.length < 3) {
         skippedRows += 1;
+        issues.push({
+          rowNumber: headerIndex + 2 + rows.length,
+          sheetName,
+          reason: "نص البرقية فارغ أو أقصر من الحد الأدنى.",
+          value: body,
+        });
         continue;
       }
+      const date = cell(row, fallback.date);
+      const originalSerial = cell(row, fallback.serial);
+      const fingerprint = [
+        direction,
+        normalized(originalSerial),
+        normalized(date),
+        normalized(cell(row, fallback.time)),
+        normalized(body),
+      ].join("|");
+      if (fingerprints.has(fingerprint)) {
+        duplicateRows += 1;
+        issues.push({
+          rowNumber: headerIndex + 2 + rows.length,
+          sheetName,
+          reason: "صف مكرر داخل الملف وتم استبعاده تلقائيًا.",
+          value: originalSerial || body.slice(0, 80),
+        });
+        continue;
+      }
+      fingerprints.add(fingerprint);
       rows.push({
-        originalSerial: cell(row, fallback.serial),
+        originalSerial,
         time: cell(row, fallback.time),
         sender,
-        date: cell(row, fallback.date),
+        date,
         body,
         recipient,
         signature: cell(row, fallback.signature),
@@ -193,5 +239,11 @@ export async function parseTelegramWorkbook(file: File): Promise<{
   if (rows.length > 1000) {
     throw new Error("الحد الأقصى للاستيراد في العملية الواحدة هو 1000 برقية.");
   }
-  return { rows, skippedRows, sheets: workbook.SheetNames };
+  return {
+    rows,
+    skippedRows,
+    duplicateRows,
+    issues: issues.slice(0, 100),
+    sheets: workbook.SheetNames,
+  };
 }

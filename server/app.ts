@@ -5,6 +5,7 @@ import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
 import { getSupabaseAdmin } from "./_core/supabase";
+import { registerTelegramExportRoutes } from "./telegramExport";
 
 /**
  * Creates the HTTP application shared by the local server and Vercel.
@@ -22,6 +23,7 @@ export function createApp(
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageRoutes(app);
+  registerTelegramExportRoutes(app);
 
   app.get("/api/verify/:token", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -40,20 +42,22 @@ export function createApp(
       const supabase = getSupabaseAdmin();
       const { data: telegram, error } = await supabase
         .from("telegrams")
-        .select("serialCode, creatorName, archivedAt, status")
+        .select(
+          "serialNumber, creatorName, createdAt, organizationId, archivedAt, status"
+        )
         .eq("verificationToken", token)
         .maybeSingle();
 
       if (error) throw error;
       if (!telegram) return res.status(404).json({ valid: false });
 
-      const { data: settings, error: settingsError } = await supabase
-        .from("department_settings")
-        .select("unitName")
-        .eq("configKey", "primary")
+      const { data: organization, error: organizationError } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", telegram.organizationId)
         .maybeSingle();
 
-      if (settingsError) throw settingsError;
+      if (organizationError) throw organizationError;
 
       return res.status(200).json({
         valid: true,
@@ -61,8 +65,9 @@ export function createApp(
           telegram.status === "archived" || telegram.archivedAt
             ? "archived"
             : "valid",
-        serialCode: telegram.serialCode,
-        unitName: settings?.unitName ?? "الوحدة الشرطية",
+        serialNumber: telegram.serialNumber,
+        createdAt: telegram.createdAt,
+        unitName: organization?.name ?? "الوحدة الشرطية",
         creatorName: telegram.creatorName,
       });
     } catch (error) {

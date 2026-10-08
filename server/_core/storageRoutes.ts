@@ -33,6 +33,25 @@ export function registerStorageRoutes(app: Express): void {
       const url = isDepartmentLogo
         ? await storageCreateSignedUrl(key, 10 * 60)
         : await storageGetSignedUrl(key, user);
+      if (isDepartmentLogo) {
+        try {
+          const assetResponse = await fetch(url);
+          if (!assetResponse.ok) {
+            throw new Error("Logo storage backend error");
+          }
+          res.set("Cache-Control", "private, max-age=300");
+          res.set(
+            "Content-Type",
+            assetResponse.headers.get("content-type") ?? "image/png"
+          );
+          res.send(Buffer.from(await assetResponse.arrayBuffer()));
+          return;
+        } catch (error) {
+          // Keep a redirect fallback for storage providers that do not allow
+          // server-side fetching; the browser can still follow the signed URL.
+          console.warn("[Storage] Logo proxy unavailable, using signed URL", error);
+        }
+      }
       res.set("Cache-Control", "private, max-age=300");
       res.redirect(307, url);
     } catch (error) {

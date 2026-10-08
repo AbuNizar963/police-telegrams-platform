@@ -36,8 +36,9 @@ createRoot(document.getElementById("root")!).render(
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
+    void navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then(registration => registration.update())
       .catch(error => console.warn("PWA shell registration failed", error));
   });
 }

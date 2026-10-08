@@ -333,7 +333,15 @@ export async function listTelegrams(
     | "administrative"
     | "traffic"
     | "security"
-    | "tactical",
+    | "tactical"
+    | "intelligence"
+    | "emergency"
+    | "public_order"
+    | "personnel"
+    | "logistics"
+    | "training"
+    | "community"
+    | "other",
   status?:
     | "draft"
     | "submitted"
@@ -347,11 +355,13 @@ export async function listTelegrams(
     | "resolved"
     | "completed"
     | "archived",
+  from?: string,
+  to?: string,
   page = 1,
   pageSize = 50
 ): Promise<Telegram[]> {
   const safePage = Math.max(1, Math.floor(page));
-  const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
+  const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
   let query = getSupabaseAdmin()
     .from("telegrams")
     .select("*")
@@ -370,6 +380,8 @@ export async function listTelegrams(
   if (priority) query = query.eq("priority", priority);
   if (category) query = query.eq("category", category);
   if (status) query = query.eq("status", status);
+  if (from) query = query.gte("createdAt", from);
+  if (to) query = query.lt("createdAt", to);
 
   if (search?.trim()) {
     const safe = search
@@ -401,7 +413,15 @@ export async function getTelegramReport(
       | "administrative"
       | "traffic"
       | "security"
-      | "tactical";
+      | "tactical"
+      | "intelligence"
+      | "emergency"
+      | "public_order"
+      | "personnel"
+      | "logistics"
+      | "training"
+      | "community"
+      | "other";
     status?: string;
     from?: string;
     to?: string;
@@ -715,22 +735,60 @@ export async function updateTelegram(
   return mapTelegram(data as Record<string, unknown>);
 }
 
-export async function deleteTelegram(id: number): Promise<Telegram> {
-  const archivedAt = new Date().toISOString();
-  const { data, error } = await getSupabaseAdmin()
+export type TelegramPurgeResult = {
+  telegram: Telegram;
+  attachmentStorageKeys: string[];
+};
+
+/**
+ * Permanently removes a telegram and every record that references it
+ * (workflow versions, attachment metadata, workflow actions and routing
+ * history). The referencing foreign keys are declared ON DELETE RESTRICT, so
+ * dependents are always removed before the telegram row itself: a partial
+ * failure can never leave an orphaned dependent record behind.
+ *
+ * Private storage objects are not owned by this layer; their keys are returned
+ * so the caller can clean them through the storage provider.
+ */
+export async function purgeTelegramPermanently(
+  id: number
+): Promise<TelegramPurgeResult | undefined> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: attachmentRows, error: attachmentError } = await supabase
+    .from("telegram_attachments")
+    .select("storageKey")
+    .eq("telegramId", id);
+  throwIfError(attachmentError, "Failed to load telegram attachments");
+
+  // Order matters: every referencing table is cleared before its parent row.
+  const dependentTables = [
+    "telegram_actions",
+    "telegram_versions",
+    "telegram_attachments",
+    "telegram_routes",
+  ] as const;
+
+  for (const table of dependentTables) {
+    const { error } = await supabase.from(table).delete().eq("telegramId", id);
+    throwIfError(error, `Failed to purge ${table}`);
+  }
+
+  const { data, error } = await supabase
     .from("telegrams")
-    .update({
-      status: "archived",
-      archivedAt,
-      closedAt: archivedAt,
-      workflowReason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
-      updatedAt: archivedAt,
-    })
+    .delete()
     .eq("id", id)
     .select("*")
-    .single();
+    .maybeSingle();
   throwIfError(error, "Failed to delete telegram");
-  return mapTelegram(data as Record<string, unknown>);
+  if (!data) return undefined;
+
+  return {
+    telegram: mapTelegram(data as Record<string, unknown>),
+    attachmentStorageKeys: (attachmentRows ?? [])
+      .map(row => String((row as { storageKey?: unknown }).storageKey ?? ""))
+      .filter(key => key.length > 0),
+  };
 }
 
 export async function writeAuditLog(
@@ -738,6 +796,121 @@ export async function writeAuditLog(
 ): Promise<void> {
   const { error } = await getSupabaseAdmin().from("audit_logs").insert(input);
   throwIfError(error, "Failed to write audit log");
+}
+export type NotificationRecord = {
+  id: number;
+  userId: number;
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId: number | null;
+  routeId: number | null;
+  readAt: Date | null;
+  createdAt: Date;
+};
+const mapNotification = (row: Record<string, unknown>): NotificationRecord => ({
+  id: Number(row.id),
+  userId: Number(row.userId),
+  organizationId: String(row.organizationId),
+  type: String(row.type),
+  title: String(row.title),
+  body: String(row.body),
+  telegramId: row.telegramId == null ? null : Number(row.telegramId),
+  routeId: row.routeId == null ? null : Number(row.routeId),
+  readAt: row.readAt ? asDate(row.readAt) : null,
+  createdAt: asDate(row.createdAt),
+});
+export async function notifyOrganizationUsers(input: {
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId?: number | null;
+  routeId?: number | null;
+}): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const { data: members, error: memberError } = await supabase
+    .from("organization_memberships")
+    .select("userId")
+    .eq("organizationId", input.organizationId)
+    .eq("isActive", true);
+  throwIfError(memberError, "Failed to load notification recipients");
+  const userIds = Array.from(
+    new Set(
+      (members ?? []).map(row => Number(row.userId)).filter(Number.isFinite)
+    )
+  );
+  if (userIds.length === 0) return;
+  const { error } = await supabase.from("notifications").insert(
+    userIds.map(userId => ({
+      userId,
+      organizationId: input.organizationId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      telegramId: input.telegramId ?? null,
+      routeId: input.routeId ?? null,
+    }))
+  );
+  throwIfError(error, "Failed to create organization notifications");
+}
+export async function notifyUser(input: {
+  userId: number;
+  organizationId: string;
+  type: string;
+  title: string;
+  body: string;
+  telegramId?: number | null;
+  routeId?: number | null;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("notifications")
+    .insert({
+      userId: input.userId,
+      organizationId: input.organizationId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      telegramId: input.telegramId ?? null,
+      routeId: input.routeId ?? null,
+    });
+  throwIfError(error, "Failed to create user notification");
+}
+export async function listUserNotifications(
+  userId: number,
+  limit = 30
+): Promise<{ items: NotificationRecord[]; unreadCount: number }> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("userId", userId)
+    .order("createdAt", { ascending: false })
+    .limit(limit);
+  throwIfError(error, "Failed to list notifications");
+  const { count, error: countError } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("userId", userId)
+    .is("readAt", null);
+  throwIfError(countError, "Failed to count unread notifications");
+  const items = (data ?? []).map(row =>
+    mapNotification(row as Record<string, unknown>)
+  );
+  return { items, unreadCount: count ?? 0 };
+}
+export async function markNotificationRead(
+  userId: number,
+  id: number
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("notifications")
+    .update({ readAt: new Date().toISOString() })
+    .eq("id", id)
+    .eq("userId", userId)
+    .is("readAt", null);
+  throwIfError(error, "Failed to mark notification as read");
 }
 
 async function countTelegrams(
@@ -868,6 +1041,7 @@ export async function updateUserPassword(
     .from("users")
     .update({
       password_hash: passwordHash,
+      mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id);

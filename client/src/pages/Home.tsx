@@ -1,7 +1,5 @@
 import { trpc } from "@/lib/trpc";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
-import { BrandMark } from "@/components/BrandMark";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,8 +16,11 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
+  Cpu,
+  Download,
   FileDown,
   FileImage,
+  FileSpreadsheet,
   FileText,
   ImagePlus,
   Inbox,
@@ -40,21 +41,40 @@ import {
   Siren,
   SlidersHorizontal,
   Square,
+  Trash2,
   Upload,
   UserRound,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useIsMobile } from "@/hooks/useMobile";
 import {
+  audioBlobToWav,
+  blobToBase64,
   createArabicSpeechRecognition,
   extractArabicTextFromImage,
 } from "@/lib/localInput";
 import {
-  correctArabicSpeechText,
-  removeRepeatedSpeech,
-} from "@/lib/arabicSpeech";
+  prepareLocalArabicAsr,
+  type LocalArabicAsrBackend,
+  type LocalArabicAsrProgress,
+} from "@/lib/localArabicAsr";
+import { LiveArabicWhisperRecorder } from "@/lib/liveArabicWhisperRecorder";
+import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
+import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import {
+  downloadTelegramWorkbook,
+  parseTelegramWorkbook,
+  type TelegramSpreadsheetIssue,
+  type TelegramSpreadsheetRow,
+} from "@/lib/telegramSpreadsheet";
+import {
+  categoryLabels,
+  classificationLabels,
+  organizationTypeLabels,
+  priorityLabels,
+  statusLabels,
+} from "@/lib/uiLabels";
 import qrcode from "@/lib/qrcode-generator";
 import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
 
@@ -74,34 +94,65 @@ function escapeHtml(value: string) {
   );
 }
 
+function downloadImportErrorReport(
+  errors: Array<{ row: number; message: string }>
+) {
+  const content = [
+    ["رقم الصف", "سبب عدم الاستيراد"],
+    ...errors.map(error => [String(error.row), error.message]),
+  ]
+    .map(row => row.map(value => `"${value.replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["\uFEFF" + content], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `تقرير-أخطاء-الاستيراد-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const numberFormatter = new Intl.NumberFormat("en-US");
-const classificationLabels = { secret: "سري", normal: "عادي" } as const;
-const priorityLabels = {
-  slow: "بطيء",
-  normal: "عادي",
-  urgent: "عاجل",
-} as const;
-const categoryLabels = {
-  criminal: "جنائي",
-  administrative: "إداري",
-  traffic: "مروري",
-  security: "أمني",
-  tactical: "تكتيكي",
-} as const;
-const statusLabels = {
-  draft: "مسودة",
-  submitted: "مرسلة للمراجعة",
-  in_review: "قيد المراجعة",
-  approved: "معتمدة",
-  returned: "معادة للتصحيح",
-  rejected: "مرفوضة",
-  forwarded: "محالة",
-  pending: "قيد الانتظار",
-  in_progress: "تحت الإجراء",
-  resolved: "مكتملة",
-  completed: "مكتملة نهائيًا",
-  archived: "مؤرشفة",
-} as const;
+const PRINT_PAGE_WIDTH_PX = 794;
+const PRINT_PAGE_HEIGHT_PX = 1123;
+const PRINT_PAGE_WIDTH_MM = 210;
+const PRINT_PAGE_HEIGHT_MM = 297;
+// Microsoft Word "Narrow" margins: 0.5in on every side.
+const PRINT_MARGIN_MM = 12.7;
+const LIVE_REFRESH_INTERVAL_MS = 15_000;
+const TELEGRAMS_PER_PAGE = 10;
+const EXPORT_CAIRO_FONT_FACES = `
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/fonts/cairo-400.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 500;
+    font-display: block;
+    src: url("/fonts/cairo-500.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 600;
+    font-display: block;
+    src: url("/fonts/cairo-600.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Cairo";
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url("/fonts/cairo-700.ttf") format("truetype");
+  }
+`;
 const statusStyles = {
   draft: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
   submitted: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
@@ -188,6 +239,38 @@ function formatConfiguredDate(
   return localizeDigits(text, settings?.numberSystem ?? "latin");
 }
 
+function formatConfiguredHeaderDateTime(
+  value: Date | string | number,
+  settings?: {
+    timezone?: string;
+    dateFormat?: string;
+    numberSystem?: NumberSystem;
+  }
+) {
+  const date = new Date(value);
+  const timezone = settings?.timezone ?? "Asia/Riyadh";
+  const numberSystem = settings?.numberSystem ?? "latin";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(date)
+      .map(part => [part.type, part.value])
+  );
+  const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
+  return localizeDigits(
+    `${formattedDate} - ${parts.hour}:${parts.minute}:${parts.second}`,
+    numberSystem
+  );
+}
+
 function SeverityBadge({ value }: { value: Classification }) {
   const Icon = value === "secret" ? LockKeyhole : Shield;
   return (
@@ -243,6 +326,8 @@ function Kpi({
   icon: Icon,
   tone,
   numberSystem,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: number;
@@ -250,9 +335,27 @@ function Kpi({
   icon: typeof FileText;
   tone: string;
   numberSystem: NumberSystem;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="border-border/60 bg-card shadow-sm">
+    <Card
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? active : undefined}
+      onClick={onClick}
+      onKeyDown={event => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={`border-border/60 bg-card shadow-sm transition-all ${
+        onClick
+          ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          : ""
+      } ${active ? "border-primary bg-primary/[0.04] shadow-md ring-1 ring-primary/30" : ""}`}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -274,9 +377,7 @@ function Kpi({
 }
 
 export default function Home() {
-  const { state: sidebarState } = useSidebar();
-  const isMobile = useIsMobile();
-  const showStandaloneBrand = !isMobile && sidebarState === "collapsed";
+  const [liveNow, setLiveNow] = useState(() => new Date());
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState<"all" | Classification>("all");
   const [priority, setPriority] = useState<"all" | Priority>("all");
@@ -285,15 +386,34 @@ export default function Home() {
   const [telegramView, setTelegramView] = useState<
     "all" | "outgoing" | "incoming"
   >("all");
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string | undefined>();
+  const [dateTo, setDateTo] = useState<string | undefined>();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [composerOpen, setComposerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCustomizeOpen, setDisplayCustomizeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [excelToolsOpen, setExcelToolsOpen] = useState(false);
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [excelRows, setExcelRows] = useState<TelegramSpreadsheetRow[]>([]);
+  const [excelSkippedRows, setExcelSkippedRows] = useState(0);
+  const [excelDuplicateRows, setExcelDuplicateRows] = useState(0);
+  const [excelIssues, setExcelIssues] = useState<TelegramSpreadsheetIssue[]>(
+    []
+  );
+  const [excelFileName, setExcelFileName] = useState("");
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const excelInputRef = useRef<HTMLInputElement>(null);
   const [displayColumns, setDisplayColumns] = useState<
     Record<DisplayColumn, boolean>
   >(DEFAULT_DISPLAY_COLUMNS);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setLiveNow(new Date()), 1000);
+    return () => window.clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     try {
@@ -323,9 +443,13 @@ export default function Home() {
     }
 
     const openComposer = () => setComposerOpen(true);
+    const openExcelTools = () => setExcelToolsOpen(true);
     window.addEventListener("open-telegram-composer", openComposer);
-    return () =>
+    window.addEventListener("open-telegram-excel-tools", openExcelTools);
+    return () => {
       window.removeEventListener("open-telegram-composer", openComposer);
+      window.removeEventListener("open-telegram-excel-tools", openExcelTools);
+    };
   }, []);
 
   const updateDisplayColumns = (column: DisplayColumn, visible: boolean) => {
@@ -388,30 +512,60 @@ export default function Home() {
       priority: priority === "all" ? undefined : priority,
       status: status === "all" ? undefined : status,
       category: category === "all" ? undefined : category,
+      from: dateFrom,
+      to: dateTo,
       page,
-      pageSize: 100,
+      pageSize: TELEGRAMS_PER_PAGE,
     }),
-    [search, severity, priority, status, category, page]
+    [search, severity, priority, status, category, dateFrom, dateTo, page]
   );
   useEffect(() => {
     setPage(1);
-  }, [search, severity, priority, status, category]);
+  }, [search, severity, priority, status, category, dateFrom, dateTo]);
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
-  const stats = trpc.dashboard.stats.useQuery();
+  const stats = trpc.dashboard.stats.useQuery(undefined, {
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  });
   const routingTargets = trpc.organizations.routingTargets.useQuery();
-  const list = trpc.telegrams.list.useQuery(input);
+  const list = trpc.telegrams.list.useQuery(input, {
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  });
   const detail = trpc.telegrams.get.useQuery(
     { id: selectedId ?? 0 },
     { enabled: selectedId !== null }
   );
   const utils = trpc.useUtils();
+  const importExcel = trpc.telegrams.importRows.useMutation({
+    onSuccess: result => {
+      toast.success(
+        `تم استيراد ${result.created} برقية${result.skipped ? `، وتخطي ${result.skipped} مكررة` : ""}`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`تعذر استيراد ${result.errors.length} صفًا`);
+        downloadImportErrorReport(result.errors);
+      }
+      setExcelImportOpen(false);
+      setExcelRows([]);
+      setExcelFileName("");
+      setExcelSkippedRows(0);
+      setExcelDuplicateRows(0);
+      setExcelIssues([]);
+      utils.telegrams.list.invalidate();
+      utils.dashboard.stats.invalidate();
+    },
+    onError: error => toast.error(error.message || "تعذر استيراد ملف Excel"),
+  });
   const create = trpc.telegrams.create.useMutation({
     onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: telegram.serialCode,
+        serialCode: getTelegramDisplayNumber(telegram.serialCode),
         subject: telegram.subject,
         telegramId: telegram.id,
       });
@@ -441,6 +595,118 @@ export default function Home() {
     const isOutgoing = row.organizationId === row.currentOrganizationId;
     return telegramView === "outgoing" ? isOutgoing : !isOutgoing;
   });
+  const canManageExcel =
+    me.data?.role === "admin" ||
+    ["system_admin", "organization_admin"].includes(
+      organizationContext.data?.role ?? ""
+    );
+
+  const exportCurrentTable = async () => {
+    setExportingExcel(true);
+    try {
+      const exportRows = await utils.telegrams.exportRows.fetch({
+        search: input.search,
+        classification: input.classification,
+        priority: input.priority,
+        status: input.status,
+        category: input.category,
+        from: input.from,
+        to: input.to,
+      });
+      if (exportRows.length === 0) {
+        toast.info("لا توجد صفوف قابلة للتصدير ضمن الفلاتر الحالية");
+        return;
+      }
+      downloadTelegramWorkbook(
+        exportRows.map(row => ({
+          serial: localizeDigits(
+            getTelegramDisplayNumber(row.serialCode),
+            numberSystem
+          ),
+          time: formatConfiguredDate(row.createdAt, settings.data),
+          sender: row.creatorName,
+          date:
+            formatConfiguredDate(row.createdAt, settings.data).split(" ")[0] ??
+            "",
+          body: row.body,
+          recipient: row.recipient,
+          signature: row.creatorName,
+          notes: row.workflowReason ?? "",
+          direction:
+            row.organizationId === row.currentOrganizationId ? "صادر" : "وارد",
+        })),
+        `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      toast.success(`تم تصدير ${exportRows.length} برقية بصيغة Excel`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تصدير Excel");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExcelFile = async (file: File) => {
+    try {
+      const parsed = await parseTelegramWorkbook(file);
+      setExcelRows(parsed.rows);
+      setExcelSkippedRows(parsed.skippedRows);
+      setExcelDuplicateRows(parsed.duplicateRows);
+      setExcelIssues(parsed.issues);
+      setExcelFileName(file.name);
+      setExcelImportOpen(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر قراءة ملف Excel"
+      );
+    }
+  };
+
+  const openExcelPicker = () => excelInputRef.current?.click();
+
+  const clearKpiFilters = () => {
+    setSearch("");
+    setSeverity("all");
+    setPriority("all");
+    setStatus("all");
+    setCategory("all");
+    setTelegramView("all");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(1);
+  };
+
+  const selectKpi = (key: string) => {
+    if (activeKpi === key) {
+      clearKpiFilters();
+      setActiveKpi(null);
+      return;
+    }
+
+    clearKpiFilters();
+    setActiveKpi(key);
+
+    if (key === "today") {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      setDateFrom(start.toISOString());
+      setDateTo(end.toISOString());
+    } else if (key === "urgent") {
+      setPriority("urgent");
+    } else if (key === "incoming") {
+      setTelegramView("incoming");
+    } else if (key === "in-progress") {
+      setStatus("in_progress");
+    } else if (key === "resolved") {
+      setStatus("resolved");
+    }
+  };
+
+  const clearSelectedKpi = () => {
+    clearKpiFilters();
+    setActiveKpi(null);
+  };
 
   return (
     <div
@@ -448,27 +714,25 @@ export default function Home() {
       className="mx-auto min-h-[calc(100vh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
     >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          {showStandaloneBrand ? <BrandMark size="md" /> : null}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9b7c3d]">
-                TELEGRAM OPERATIONS
-              </span>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                النظام متصل
-              </span>
-            </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">
-              مركز البرقيات
-            </h1>
-          </div>
-        </div>
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <div className="hidden items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
             <Clock3 className="h-3.5 w-3.5" />
-            {formatConfiguredDate(new Date(), settings.data)}
+            <time dateTime={liveNow.toISOString()} aria-live="polite">
+              {formatConfiguredDate(liveNow, settings.data)}
+            </time>
+          </div>
+          <div
+            className="hidden items-center gap-1.5 rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-3 py-2 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300 sm:flex"
+            title="تتحدث الإحصاءات والسجل تلقائيًا كل 15 ثانية"
+            aria-label="التحديث المباشر مفعّل"
+          >
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            مباشر
+            {stats.isFetching && (
+              <span className="mr-1 text-[10px] font-normal opacity-75">
+                جارٍ التحديث
+              </span>
+            )}
           </div>
           {(me.data?.role === "admin" ||
             [
@@ -561,6 +825,8 @@ export default function Home() {
           detail="الرصيد التشغيلي"
           icon={FileText}
           tone="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          active={activeKpi === "total"}
+          onClick={() => selectKpi("total")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -569,6 +835,8 @@ export default function Home() {
           detail="آخر 24 ساعة"
           icon={Activity}
           tone="bg-blue-500/10 text-blue-600"
+          active={activeKpi === "today"}
+          onClick={() => selectKpi("today")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -577,6 +845,8 @@ export default function Home() {
           detail="تحتاج انتباهاً"
           icon={Siren}
           tone="bg-red-500/10 text-red-600"
+          active={activeKpi === "urgent"}
+          onClick={() => selectKpi("urgent")}
         />
         <Kpi
           numberSystem={numberSystem}
@@ -585,22 +855,28 @@ export default function Home() {
           detail="إلى جهتك الحالية"
           icon={Inbox}
           tone="bg-emerald-500/10 text-emerald-600"
+          active={activeKpi === "incoming"}
+          onClick={() => selectKpi("incoming")}
         />
         <Kpi
           numberSystem={numberSystem}
-          label="تحت الإجراء"
+          label="قيد الإجراء"
           value={data.inProgress}
           detail="قيد المعالجة"
           icon={Radio}
           tone="bg-cyan-500/10 text-cyan-600"
+          active={activeKpi === "in-progress"}
+          onClick={() => selectKpi("in-progress")}
         />
         <Kpi
           numberSystem={numberSystem}
-          label="مكتملة"
+          label="مكتملة نهائيًا"
           value={data.resolved}
           detail="تم إغلاقها"
           icon={CheckCircle2}
           tone="bg-emerald-500/10 text-emerald-600"
+          active={activeKpi === "resolved"}
+          onClick={() => selectKpi("resolved")}
         />
       </section>
 
@@ -613,10 +889,32 @@ export default function Home() {
                 <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
                   {formatCount(rows.length, numberSystem)} نتيجة
                 </span>
+                {activeKpi ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedKpi}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/15"
+                    aria-label="إزالة مرشح بطاقة الإحصاء"
+                  >
+                    {activeKpi === "today"
+                      ? "الصادرة اليوم"
+                      : activeKpi === "urgent"
+                        ? "أولوية عاجل"
+                        : activeKpi === "incoming"
+                          ? "البرقيات الواردة"
+                          : activeKpi === "in-progress"
+                            ? "قيد الإجراء"
+                            : activeKpi === "resolved"
+                              ? "مكتملة نهائيًا"
+                              : "إجمالي البرقيات"}
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : null}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 جميع السجلات مرتبة تنازليًا حسب الرقم التسلسلي مع ختم الهوية
-                الرقمية وسجل تدقيق كامل.
+                الرقمية وسجل تدقيق كامل. البحث والتصفية يشملان كامل السجل المتاح
+                لك قبل تقسيم النتائج إلى صفحات.
               </p>
             </div>
             <div className="relative w-full lg:w-72">
@@ -770,7 +1068,10 @@ export default function Home() {
                     />
                   )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
-                    {localizeDigits(row.serialCode, numberSystem)}
+                    {localizeDigits(
+                      getTelegramDisplayNumber(row.serialCode),
+                      numberSystem
+                    )}
                   </span>
                   <span className="md:hidden">
                     <StatusBadge value={row.status} />
@@ -822,7 +1123,9 @@ export default function Home() {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={allRows.length < 100 || list.isFetching}
+                disabled={
+                  allRows.length < TELEGRAMS_PER_PAGE || list.isFetching
+                }
                 onClick={() => setPage(current => current + 1)}
               >
                 التالي
@@ -830,28 +1133,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <aside className="space-y-4">
-          <Card className="border-border/70 bg-[#10233f] text-white shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-[#d8c38e]">
-                <Shield className="h-4 w-4" />
-                <span className="text-xs font-semibold tracking-wide">
-                  سلامة السجل
-                </span>
-              </div>
-              <p className="mt-3 text-sm font-semibold">الهوية الرقمية مفعلة</p>
-              <p className="mt-2 text-xs leading-6 text-slate-300">
-                كل برقية تُربط بحساب منشئها وتوقيتها وسجل التدقيق. الأرشفة
-                الإدارية متاحة للمالك فقط ويُسجل في سجل التدقيق.
-              </p>
-              <div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-300">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                حماية تشغيلية نشطة
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
       </div>
 
       <Button
@@ -879,9 +1160,21 @@ export default function Home() {
           close={() => setReportOpen(false)}
         />
       )}
+      {excelToolsOpen && (
+        <ExcelToolsModal
+          canImport={canManageExcel}
+          exporting={exportingExcel}
+          close={() => setExcelToolsOpen(false)}
+          exportRows={() => void exportCurrentTable()}
+          openImport={openExcelPicker}
+          inputRef={excelInputRef}
+          onFile={file => void handleExcelFile(file)}
+        />
+      )}
       {composerOpen && (
         <TelegramComposer
           pending={create.isPending}
+          routingTargets={routingTargets.data ?? []}
           close={() => setComposerOpen(false)}
           submit={values => create.mutate(values)}
         />
@@ -908,7 +1201,239 @@ export default function Home() {
         <DepartmentSettingsModal settings={settings.data} />
       )}
       {me.data?.role === "admin" && <OwnerUserManagement />}
+      {excelImportOpen && (
+        <ExcelImportPreviewModal
+          fileName={excelFileName}
+          rows={excelRows}
+          skippedRows={excelSkippedRows}
+          duplicateRows={excelDuplicateRows}
+          issues={excelIssues}
+          pending={importExcel.isPending}
+          close={() => setExcelImportOpen(false)}
+          confirm={() => importExcel.mutate({ rows: excelRows })}
+        />
+      )}
     </div>
+  );
+}
+
+function ExcelToolsModal({
+  canImport,
+  exporting,
+  close,
+  exportRows,
+  openImport,
+  inputRef,
+  onFile,
+}: {
+  canImport: boolean;
+  exporting: boolean;
+  close: () => void;
+  exportRows: () => void;
+  openImport: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <Modal
+      title="استيراد وتصدير سجل البرقيات"
+      subtitle="أدوات السجل بصيغة Excel"
+      close={close}
+    >
+      <div className="space-y-4">
+        <p className="text-sm leading-7 text-muted-foreground">
+          استخدم هذه النافذة لتصدير النتائج المفلترة أو استيراد سجل مطابق لنموذج
+          البرقيات المعتمد.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={exportRows}
+            disabled={exporting}
+            className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.08] disabled:cursor-wait disabled:opacity-60"
+          >
+            <FileSpreadsheet className="h-8 w-8 text-primary" />
+            <span className="font-bold">
+              {exporting ? "جارٍ تجهيز الملف..." : "تصدير سجل البرقيات"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ملف Excel بورقتي صادر ووارد
+            </span>
+          </button>
+          {canImport ? (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={event => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) onFile(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={openImport}
+                className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-[#b4945a]/30 bg-[#b4945a]/[0.06] p-5 text-center transition-colors hover:border-[#b4945a] hover:bg-[#b4945a]/[0.12]"
+              >
+                <Upload className="h-8 w-8 text-[#9b7c3d]" />
+                <span className="font-bold">استيراد سجل البرقيات</span>
+                <span className="text-xs text-muted-foreground">
+                  معاينة وفحص قبل الاعتماد
+                </span>
+              </button>
+            </>
+          ) : (
+            <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-muted/20 p-5 text-center text-muted-foreground">
+              <LockKeyhole className="h-7 w-7" />
+              <span className="text-sm font-semibold">
+                الاستيراد متاح لمسؤول الجهة فقط
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border bg-muted/20 p-3 text-xs leading-6 text-muted-foreground">
+          يحافظ التصدير والاستيراد على ترتيب أعمدة السجل، بما في ذلك عمود تاريخ
+          البرقية، ولا يؤدي الاستيراد إلى حذف أو استبدال السجلات الموجودة.
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ExcelImportPreviewModal({
+  fileName,
+  rows,
+  skippedRows,
+  duplicateRows,
+  issues,
+  pending,
+  close,
+  confirm,
+}: {
+  fileName: string;
+  rows: TelegramSpreadsheetRow[];
+  skippedRows: number;
+  duplicateRows: number;
+  issues: TelegramSpreadsheetIssue[];
+  pending: boolean;
+  close: () => void;
+  confirm: () => void;
+}) {
+  return (
+    <Modal
+      title="مراجعة استيراد سجل البرقيات"
+      subtitle="استيراد ذكي وآمن من Excel"
+      close={close}
+      wide
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">الملف</p>
+            <p className="mt-1 truncate text-sm font-semibold">{fileName}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">صفوف صالحة</p>
+            <p className="mt-1 text-xl font-bold">{rows.length}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">
+              صفوف فارغة أو ناقصة
+            </p>
+            <p className="mt-1 text-xl font-bold">{skippedRows}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] text-muted-foreground">مكررات مستبعدة</p>
+            <p className="mt-1 text-xl font-bold">{duplicateRows}</p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900">
+          سيُنشئ النظام رقمًا جديدًا لكل سجل داخل المنصة، ويحفظ رقم الصف والورقة
+          والوقت الأصلي في سجل التدقيق. لن تُحذف البرقيات الموجودة، وإعادة رفع
+          الملف نفسه ستتخطى الصفوف المستوردة سابقًا.
+        </div>
+        {issues.length > 0 && (
+          <details className="rounded-xl border bg-muted/10 p-3">
+            <summary className="cursor-pointer text-sm font-semibold">
+              عرض تقرير التحقق ({issues.length} ملاحظة)
+            </summary>
+            <div className="mt-3 max-h-32 space-y-2 overflow-auto text-xs text-muted-foreground">
+              {issues.slice(0, 20).map((issue, index) => (
+                <div
+                  key={`${issue.sheetName}-${issue.rowNumber}-${index}`}
+                  className="flex flex-wrap gap-x-2 gap-y-1 rounded-lg border bg-background p-2"
+                >
+                  <span className="font-semibold text-foreground">
+                    {issue.sheetName} — صف {issue.rowNumber}
+                  </span>
+                  <span>{issue.reason}</span>
+                  {issue.value ? <span>({issue.value})</span> : null}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        <div className="max-h-[42vh] overflow-auto rounded-xl border">
+          <table className="w-full min-w-[760px] text-right text-xs">
+            <thead className="sticky top-0 bg-muted">
+              <tr>
+                <th className="p-3">الورقة</th>
+                <th className="p-3">الرقم الأصلي</th>
+                <th className="p-3">الوقت</th>
+                <th className="p-3">المرسل</th>
+                <th className="p-3">تاريخ البرقية</th>
+                <th className="p-3">نص البرقية</th>
+                <th className="p-3">المستلم</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 100).map((row, index) => (
+                <tr
+                  key={`${row.sheetName}-${row.originalSerial}-${index}`}
+                  className="border-t align-top"
+                >
+                  <td className="p-3 font-semibold">{row.sheetName}</td>
+                  <td className="p-3">{row.originalSerial || "—"}</td>
+                  <td className="p-3">{row.time || "—"}</td>
+                  <td className="max-w-48 p-3">{row.sender || "—"}</td>
+                  <td className="p-3">{row.date || "—"}</td>
+                  <td className="max-w-[28rem] p-3">{row.body}</td>
+                  <td className="max-w-48 p-3">{row.recipient || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length > 100 && (
+            <p className="border-t p-3 text-center text-xs text-muted-foreground">
+              تظهر أول 100 صف للمعاينة فقط، وسيتم استيراد جميع الصفوف الصالحة.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={close}
+            disabled={pending}
+          >
+            إلغاء
+          </Button>
+          <Button
+            type="button"
+            onClick={confirm}
+            disabled={pending || rows.length === 0}
+            className="bg-[#10233f] text-white hover:bg-[#18375f]"
+          >
+            {pending
+              ? "جارٍ استيراد السجلات..."
+              : `اعتماد استيراد ${rows.length} برقية`}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -948,7 +1473,7 @@ function DisplayCustomizationModal({
   return (
     <Modal
       title="تخصيص عرض سجل البرقيات"
-      subtitle="DISPLAY / TABLE SETTINGS"
+      subtitle="إعدادات عرض السجل"
       close={close}
     >
       <div className="space-y-4">
@@ -1040,7 +1565,10 @@ function TelegramReportModal({
     const lines = [
       header,
       ...rows.map(row => [
-        row.serialCode,
+        localizeDigits(
+          getTelegramDisplayNumber(row.serialCode),
+          settings?.numberSystem ?? "latin"
+        ),
         row.subject,
         row.recipient,
         statusLabels[row.status],
@@ -1146,7 +1674,12 @@ function TelegramReportModal({
             <tbody>
               {rows.map(row => (
                 <tr key={row.id} className="border-t">
-                  <td className="p-3 font-mono">{row.serialCode}</td>
+                  <td className="p-3 font-mono">
+                    {localizeDigits(
+                      getTelegramDisplayNumber(row.serialCode),
+                      settings?.numberSystem ?? "latin"
+                    )}
+                  </td>
                   <td className="p-3 font-semibold">{row.subject}</td>
                   <td className="p-3">{row.recipient}</td>
                   <td className="p-3">{statusLabels[row.status]}</td>
@@ -1218,14 +1751,23 @@ function TelegramViewButton({
 
 function TelegramComposer({
   pending,
+  routingTargets,
   close,
   submit,
 }: {
   pending: boolean;
+  routingTargets: Array<{
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    isConfiguredDestination?: boolean;
+  }>;
   close: () => void;
   submit: (values: {
     subject: string;
     recipient: string;
+    recipientOrganizationId?: string;
     body: string;
     classification: Classification;
     priority: Priority;
@@ -1234,6 +1776,7 @@ function TelegramComposer({
 }) {
   const [subject, setSubject] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [recipientOrganizationId, setRecipientOrganizationId] = useState("");
   const [body, setBody] = useState("");
   const [classification, setClassification] =
     useState<Classification>("normal");
@@ -1241,10 +1784,27 @@ function TelegramComposer({
   const [category, setCategory] = useState<Category>("administrative");
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
+  const [speechEngine, setSpeechEngine] = useState<"browser" | "local">(
+    "browser"
+  );
+  const [localAsrStatus, setLocalAsrStatus] = useState<
+    "idle" | "loading" | "ready"
+  >("idle");
+  const [localAsrProgress, setLocalAsrProgress] =
+    useState<LocalArabicAsrProgress | null>(null);
+  const [localAsrBackend, setLocalAsrBackend] =
+    useState<LocalArabicAsrBackend | null>(null);
   const [imageInputOpen, setImageInputOpen] = useState(false);
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
   );
+
+  const aiInputCapabilities = trpc.aiInput.capabilities.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const highAccuracyTranscription = trpc.aiInput.transcribe.useMutation();
+  const highAccuracyOcr = trpc.aiInput.extractText.useMutation();
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -1256,12 +1816,32 @@ function TelegramComposer({
     };
   }, []);
 
+  useEffect(() => {
+    const configuredTarget = routingTargets.find(
+      target => target.isConfiguredDestination
+    );
+    if (configuredTarget && !recipientOrganizationId) {
+      setRecipient(configuredTarget.name);
+    }
+  }, [recipientOrganizationId, routingTargets]);
+
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const highAccuracyRecorderRef = useRef<MediaRecorder | null>(null);
+  const highAccuracyStreamRef = useRef<MediaStream | null>(null);
+  const highAccuracyChunksRef = useRef<Blob[]>([]);
+  const highAccuracyStartingRef = useRef(false);
+  const highAccuracyBaseBodyRef = useRef("");
+  const localLiveRecorderRef = useRef<LiveArabicWhisperRecorder | null>(null);
   const speechShouldContinueRef = useRef(false);
+  const contextualBiasingDisabledRef = useRef(false);
   const speechBaseBodyRef = useRef("");
   const speechRestartTimerRef = useRef<number | null>(null);
   const bodyValueRef = useRef(body);
   bodyValueRef.current = body;
+
+  const canUseHighAccuracySpeech = aiInputCapabilities.data?.speech === true;
+  const canUseHighAccuracyOcr = aiInputCapabilities.data?.ocr === true;
+
   const appendText = (text: string) => {
     const clean = text.trim();
     if (clean) {
@@ -1269,6 +1849,11 @@ function TelegramComposer({
         current.trim() ? `${current.trim()}\n${clean}` : clean
       );
     }
+  };
+
+  const releaseHighAccuracyStream = () => {
+    highAccuracyStreamRef.current?.getTracks().forEach(track => track.stop());
+    highAccuracyStreamRef.current = null;
   };
 
   const handleImage = async (file?: File) => {
@@ -1284,11 +1869,39 @@ function TelegramComposer({
 
     setProcessingInput(true);
     try {
-      const text = await extractArabicTextFromImage(file);
-      appendText(text);
+      const supportedByHighAccuracyOcr = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ].includes(file.type);
+      let text: string;
+      let usedHighAccuracyOcr = false;
+
+      if (canUseHighAccuracyOcr && supportedByHighAccuracyOcr) {
+        try {
+          const result = await highAccuracyOcr.mutateAsync({
+            imageBase64: await blobToBase64(file),
+            contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+          });
+          text = result.text;
+          usedHighAccuracyOcr = true;
+        } catch {
+          toast.warning(
+            "تعذر محرك قراءة الصور المتقدم؛ جارٍ استخدام البديل المحلي"
+          );
+          text = await extractArabicTextFromImage(file);
+        }
+      } else {
+        text = await extractArabicTextFromImage(file);
+      }
+
+      const correctedText = correctArabicText(text);
+      appendText(correctedText);
       toast.success(
-        text
-          ? "تم تحويل الصورة إلى نص مجانًا داخل المتصفح"
+        correctedText
+          ? usedHighAccuracyOcr
+            ? "تمت قراءة الصورة بمحرك PaddleOCR-VL"
+            : "تم تحويل الصورة إلى نص محليًا"
           : "لم يتم العثور على نص واضح في الصورة"
       );
     } catch (error) {
@@ -1300,7 +1913,7 @@ function TelegramComposer({
     }
   };
 
-  const stopSpeechRecognition = () => {
+  const stopBrowserSpeechRecognition = () => {
     speechShouldContinueRef.current = false;
     if (speechRestartTimerRef.current !== null) {
       window.clearTimeout(speechRestartTimerRef.current);
@@ -1308,7 +1921,9 @@ function TelegramComposer({
     }
     const recognition = speechRecognitionRef.current;
     speechRecognitionRef.current = null;
-    setRecording(false);
+    if (!highAccuracyRecorderRef.current && !highAccuracyStartingRef.current) {
+      setRecording(false);
+    }
     if (recognition) {
       try {
         recognition.stop();
@@ -1318,14 +1933,12 @@ function TelegramComposer({
     }
   };
 
-  const toggleRecording = () => {
-    if (recording) {
-      stopSpeechRecognition();
-      return;
-    }
-
+  const startBrowserSpeechRecognition = () => {
     try {
-      const recognition = createArabicSpeechRecognition();
+      contextualBiasingDisabledRef.current = false;
+      const recognition = createArabicSpeechRecognition({
+        contextualBiasing: !contextualBiasingDisabledRef.current,
+      });
       speechShouldContinueRef.current = true;
       speechBaseBodyRef.current = body.trim() ? `${body.trim()}\n` : "";
       speechRecognitionRef.current = recognition;
@@ -1343,8 +1956,8 @@ function TelegramComposer({
           else interim.push(transcript);
         }
 
-        const finalText = correctArabicSpeechText(finalized.join(" "));
-        const interimText = correctArabicSpeechText(interim.join(" "));
+        const finalText = correctArabicText(finalized.join(" "));
+        const interimText = correctArabicText(interim.join(" "));
         const liveText = [finalText, interimText].filter(Boolean).join(" ");
         setBody(
           removeRepeatedSpeech(`${speechBaseBodyRef.current}${liveText}`)
@@ -1355,7 +1968,26 @@ function TelegramComposer({
         // Browsers commonly emit no-speech during a pause. Keep listening and
         // let onend restart the session instead of treating silence as failure.
         if (event.error === "no-speech") return;
+        if (event.error === "phrases-not-supported") {
+          contextualBiasingDisabledRef.current = true;
+          try {
+            recognition.abort();
+          } catch {
+            // onend will restart without experimental phrase hints.
+          }
+          return;
+        }
+        if (
+          event.error === "aborted" &&
+          contextualBiasingDisabledRef.current &&
+          speechShouldContinueRef.current
+        ) {
+          return;
+        }
 
+        const highAccuracySession =
+          Boolean(highAccuracyRecorderRef.current) ||
+          highAccuracyStartingRef.current;
         speechShouldContinueRef.current = false;
         const message =
           event.error === "not-allowed"
@@ -1364,8 +1996,14 @@ function TelegramComposer({
               ? "خدمة التعرف الصوتي في المتصفح غير متاحة حاليًا"
               : "تعذر تحويل الصوت إلى نص";
 
-        stopSpeechRecognition();
-        toast.error(message);
+        stopBrowserSpeechRecognition();
+        if (highAccuracySession) {
+          toast.warning(
+            "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
+          );
+        } else {
+          toast.error(message);
+        }
       };
 
       recognition.onend = () => {
@@ -1376,7 +2014,10 @@ function TelegramComposer({
 
         if (!speechShouldContinueRef.current) {
           speechRecognitionRef.current = null;
-          setRecording(false);
+          setRecording(
+            Boolean(highAccuracyRecorderRef.current) ||
+              highAccuracyStartingRef.current
+          );
           return;
         }
 
@@ -1384,7 +2025,9 @@ function TelegramComposer({
           if (!speechShouldContinueRef.current) return;
 
           try {
-            const nextRecognition = createArabicSpeechRecognition();
+            const nextRecognition = createArabicSpeechRecognition({
+              contextualBiasing: !contextualBiasingDisabledRef.current,
+            });
             speechRecognitionRef.current = nextRecognition;
             nextRecognition.onresult = recognition.onresult;
             nextRecognition.onerror = recognition.onerror;
@@ -1392,11 +2035,16 @@ function TelegramComposer({
             nextRecognition.onstart = recognition.onstart;
             nextRecognition.start();
           } catch {
+            const highAccuracySession =
+              Boolean(highAccuracyRecorderRef.current) ||
+              highAccuracyStartingRef.current;
             speechShouldContinueRef.current = false;
             speechRecognitionRef.current = null;
-            setRecording(false);
-            toast.error(
-              "توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة"
+            setRecording(highAccuracySession);
+            toast.warning(
+              highAccuracySession
+                ? "توقف العرض المباشر للنص؛ سيبقى التسجيل مستمرًا وسيُفرّغ عند إيقافه"
+                : "توقف التعرف الصوتي؛ اضغط على الميكروفون لإعادة المحاولة"
             );
           }
         }, 250);
@@ -1410,10 +2058,279 @@ function TelegramComposer({
     } catch (error) {
       speechShouldContinueRef.current = false;
       speechRecognitionRef.current = null;
+      const highAccuracySession =
+        Boolean(highAccuracyRecorderRef.current) ||
+        highAccuracyStartingRef.current;
+      setRecording(highAccuracySession);
+      if (highAccuracySession) {
+        toast.warning("التسجيل مستمر؛ سيظهر النص بعد الضغط على إيقاف التسجيل");
+      } else {
+        toast.error(
+          error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي"
+        );
+      }
+    }
+  };
+
+  const finishHighAccuracyRecording = async () => {
+    const chunks = highAccuracyChunksRef.current;
+    const mimeType = highAccuracyRecorderRef.current?.mimeType || "audio/webm";
+    highAccuracyChunksRef.current = [];
+    highAccuracyRecorderRef.current = null;
+    releaseHighAccuracyStream();
+    setRecording(false);
+
+    if (!chunks.length) {
+      toast.error("لم يُلتقط صوت كافٍ للتحويل");
+      return;
+    }
+
+    setProcessingInput(true);
+    try {
+      const recordingBlob = new Blob(chunks, { type: mimeType });
+      const wav = await audioBlobToWav(recordingBlob);
+      if (wav.size > 25 * 1024 * 1024) {
+        throw new Error("مدة التسجيل طويلة جدًا؛ سجّل مقطعًا أقصر من فضلك");
+      }
+
+      const result = await highAccuracyTranscription.mutateAsync({
+        audioBase64: await blobToBase64(wav),
+      });
+      const correctedText = correctArabicText(result.text);
+      if (!correctedText) {
+        toast.error("لم يتم التعرف على كلام واضح في التسجيل");
+        return;
+      }
+
+      setBody(`${highAccuracyBaseBodyRef.current}${correctedText}`.trimEnd());
+      toast.success("تم تحويل الصوت بمحرك Cohere Transcribe Arabic");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تحويل التسجيل عالي الدقة"
+      );
+    } finally {
+      setProcessingInput(false);
+      setLocalAsrProgress(null);
+    }
+  };
+
+  const prepareLocalSpeechModel = async () => {
+    if (localAsrStatus === "loading" || localAsrStatus === "ready") return;
+
+    setLocalAsrStatus("loading");
+    setLocalAsrProgress({ progress: 0, stage: "بدء تنزيل نموذج Whisper" });
+    setProcessingInput(true);
+    try {
+      const backend = await prepareLocalArabicAsr(progress =>
+        setLocalAsrProgress(progress)
+      );
+      setLocalAsrBackend(backend);
+      setLocalAsrStatus("ready");
+      toast.success(
+        backend === "webgpu"
+          ? "أصبح محرك Whisper المحلي جاهزًا بتسريع WebGPU"
+          : "أصبح محرك Whisper المحلي جاهزًا عبر WASM"
+      );
+    } catch (error) {
+      setLocalAsrStatus("idle");
+      toast.error(
+        error instanceof Error
+          ? `تعذر تجهيز المحرك المحلي: ${error.message}`
+          : "تعذر تجهيز محرك Whisper المحلي"
+      );
+    } finally {
+      setProcessingInput(false);
+      setLocalAsrProgress(null);
+    }
+  };
+
+  const startHighAccuracyRecording = async () => {
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      toast.warning("التسجيل عالي الدقة غير مدعوم هنا؛ سيُستخدم إدخال المتصفح");
+      startBrowserSpeechRecognition();
+      return;
+    }
+
+    highAccuracyStartingRef.current = true;
+    setRecording(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+
+      if (!highAccuracyStartingRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      highAccuracyStreamRef.current = stream;
+      highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
+        ? `${bodyValueRef.current.trim()}\n`
+        : "";
+      const recorder = new MediaRecorder(stream);
+      highAccuracyChunksRef.current = [];
+      highAccuracyRecorderRef.current = recorder;
+      recorder.ondataavailable = event => {
+        if (event.data.size) highAccuracyChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        highAccuracyChunksRef.current = [];
+        toast.error("تعذر تسجيل الصوت عالي الدقة");
+      };
+      recorder.onstop = () => {
+        void finishHighAccuracyRecording();
+      };
+      recorder.start(1_000);
+      highAccuracyStartingRef.current = false;
+      // Keep the microphone session open for the full user-controlled recording,
+      // while Web Speech Recognition displays live words as they are spoken.
+      startBrowserSpeechRecognition();
+    } catch (error) {
+      highAccuracyStartingRef.current = false;
+      releaseHighAccuracyStream();
       setRecording(false);
       toast.error(
-        error instanceof Error ? error.message : "تعذر تشغيل التعرف الصوتي"
+        error instanceof Error ? error.message : "تعذر الوصول إلى الميكروفون"
       );
+    }
+  };
+
+  const startLocalSpeechRecording = async () => {
+    if (localAsrStatus !== "ready") {
+      toast.warning("جهّز محرك Whisper المحلي قبل بدء التسجيل");
+      return;
+    }
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      toast.error("التسجيل المحلي غير مدعوم في هذا المتصفح");
+      return;
+    }
+
+    highAccuracyStartingRef.current = true;
+    setRecording(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+
+      if (!highAccuracyStartingRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        setRecording(false);
+        return;
+      }
+
+      highAccuracyStreamRef.current = stream;
+      highAccuracyBaseBodyRef.current = bodyValueRef.current.trim()
+        ? `${bodyValueRef.current.trim()}\n`
+        : "";
+      highAccuracyStartingRef.current = false;
+      localLiveRecorderRef.current = new LiveArabicWhisperRecorder({
+        onTranscript: transcript => {
+          setBody(`${highAccuracyBaseBodyRef.current}${transcript}`.trimEnd());
+        },
+        onProgress: progress => setLocalAsrProgress(progress),
+        onCaptureStopped: () => {
+          setRecording(false);
+          setProcessingInput(true);
+          releaseHighAccuracyStream();
+        },
+        onFinished: transcript => {
+          localLiveRecorderRef.current = null;
+          setRecording(false);
+          setProcessingInput(false);
+          setLocalAsrProgress(null);
+          if (transcript) {
+            toast.success(
+              "اكتمل التفريغ المحلي؛ ظهر النص تدريجيًا أثناء التسجيل"
+            );
+          } else {
+            toast.error("لم يتم التعرف على كلام واضح في التسجيل");
+          }
+        },
+        onError: error => toast.warning(error.message),
+        onNotice: message => toast.warning(message),
+      });
+      setLocalAsrProgress({
+        progress: null,
+        stage: "يظهر النص تدريجيًا مع تفريغ المقاطع أثناء الكلام",
+      });
+      localLiveRecorderRef.current.start(stream);
+    } catch (error) {
+      highAccuracyStartingRef.current = false;
+      localLiveRecorderRef.current?.dispose();
+      localLiveRecorderRef.current = null;
+      releaseHighAccuracyStream();
+      setRecording(false);
+      setProcessingInput(false);
+      toast.error(
+        error instanceof Error ? error.message : "تعذر الوصول إلى الميكروفون"
+      );
+    }
+  };
+
+  const stopHighAccuracyRecording = () => {
+    if (speechEngine === "local") {
+      highAccuracyStartingRef.current = false;
+      if (localLiveRecorderRef.current) {
+        setProcessingInput(true);
+        localLiveRecorderRef.current.stop();
+      } else {
+        releaseHighAccuracyStream();
+        setRecording(false);
+        setProcessingInput(false);
+      }
+      return;
+    }
+    stopBrowserSpeechRecognition();
+    const recorder = highAccuracyRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+
+    highAccuracyStartingRef.current = false;
+    releaseHighAccuracyStream();
+    setRecording(false);
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      if (
+        speechEngine === "local" ||
+        highAccuracyRecorderRef.current ||
+        highAccuracyStartingRef.current
+      ) {
+        stopHighAccuracyRecording();
+      } else {
+        stopBrowserSpeechRecognition();
+      }
+      return;
+    }
+
+    if (speechEngine === "local") {
+      void startLocalSpeechRecording();
+      return;
+    }
+
+    if (canUseHighAccuracySpeech) {
+      void startHighAccuracyRecording();
+    } else {
+      startBrowserSpeechRecognition();
     }
   };
 
@@ -1425,6 +2342,17 @@ function TelegramComposer({
       }
       speechRecognitionRef.current?.stop();
       speechRecognitionRef.current = null;
+      localLiveRecorderRef.current?.dispose();
+      localLiveRecorderRef.current = null;
+      highAccuracyStartingRef.current = false;
+      const recorder = highAccuracyRecorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        if (recorder.state !== "inactive") recorder.stop();
+      }
+      highAccuracyRecorderRef.current = null;
+      releaseHighAccuracyStream();
     },
     []
   );
@@ -1448,6 +2376,7 @@ function TelegramComposer({
     submit({
       subject: subject.trim(),
       recipient: recipient.trim(),
+      ...(recipientOrganizationId ? { recipientOrganizationId } : {}),
       body: body.trim(),
       classification,
       priority,
@@ -1456,13 +2385,7 @@ function TelegramComposer({
   };
 
   return (
-    <Modal
-      title="إنشاء برقية تشغيلية"
-      subtitle="سيتم تثبيت هويتك الرقمية تلقائيًا من الحساب الموثق."
-      close={close}
-      fullScreenOnMobile
-      wide
-    >
+    <Modal title="إنشاء برقية جديدة" close={close} fullScreenOnMobile wide>
       <div className="grid gap-4">
         {!online && (
           <div
@@ -1474,23 +2397,35 @@ function TelegramComposer({
           </div>
         )}
         <label className="grid gap-1.5 text-xs font-bold">
-          الموضوع
-          <Input
-            value={subject}
-            onChange={event => setSubject(event.target.value)}
-            placeholder="عنوان مختصر ودقيق للبلاغ"
-            className="h-11 rounded-lg"
-          />
-        </label>
-
-        <label className="grid gap-1.5 text-xs font-bold">
           الجهة الموجهة إليها
-          <Input
-            value={recipient}
-            onChange={event => setRecipient(event.target.value)}
-            placeholder="القطاع أو المسؤول المعني"
-            className="h-11 rounded-lg"
-          />
+          <select
+            value={recipientOrganizationId}
+            onChange={event => {
+              const targetId = event.target.value;
+              const target = routingTargets.find(item => item.id === targetId);
+              setRecipientOrganizationId(targetId);
+              setRecipient(
+                target?.name ??
+                  routingTargets.find(item => item.isConfiguredDestination)
+                    ?.name ??
+                  ""
+              );
+            }}
+            className="h-11 rounded-lg border bg-background px-3 text-sm"
+          >
+            <option value="">
+              {routingTargets.some(target => target.isConfiguredDestination)
+                ? "التوجيه الافتراضي حسب إعداد الجهة"
+                : "اختر القيادة أو المديرية أو الجهة المستقبلة"}
+            </option>
+            {routingTargets.map(target => (
+              <option key={target.id} value={target.id}>
+                {organizationTypeLabels[target.type] ?? "جهة شرطية"} —{" "}
+                {target.name}
+                {target.isConfiguredDestination ? " (افتراضي)" : ""}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="grid gap-1.5 text-xs font-bold">
@@ -1549,6 +2484,16 @@ function TelegramComposer({
             ))}
           </select>
         </div>
+
+        <label className="grid gap-1.5 text-xs font-bold">
+          الموضوع
+          <Input
+            value={subject}
+            onChange={event => setSubject(event.target.value)}
+            placeholder="عنوان مختصر ودقيق للبلاغ"
+            className="h-11 rounded-lg"
+          />
+        </label>
 
         <label className="grid gap-1.5 text-xs font-bold">
           نص البرقية
@@ -1627,7 +2572,10 @@ function TelegramComposer({
             type="button"
             variant={recording ? "destructive" : "outline"}
             onClick={toggleRecording}
-            disabled={processingInput}
+            disabled={
+              processingInput ||
+              (speechEngine === "local" && localAsrStatus !== "ready")
+            }
             className="h-9 rounded-lg text-xs"
           >
             {recording ? (
@@ -1635,19 +2583,112 @@ function TelegramComposer({
             ) : (
               <Mic className="ml-2 h-3.5 w-3.5" />
             )}
-            {recording ? "إيقاف الاستماع" : "اضغط للتحدث"}
+            {recording ? "إيقاف التسجيل" : "ابدأ التسجيل"}
           </Button>
+        </div>
+
+        <div className="grid gap-2 rounded-lg border bg-muted/20 p-3">
+          <label className="grid gap-1.5 text-xs font-bold">
+            <span className="flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-[#9b7c3d]" />
+              محرك الكتابة الصوتية
+            </span>
+            <select
+              value={speechEngine}
+              onChange={event =>
+                setSpeechEngine(event.target.value as "browser" | "local")
+              }
+              disabled={recording || processingInput}
+              className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+              aria-label="محرك الكتابة الصوتية"
+            >
+              <option value="browser">مباشر عبر المتصفح</option>
+              <option value="local">Whisper محلي — خصوصية أعلى</option>
+            </select>
+          </label>
+
+          {speechEngine === "local" && (
+            <div
+              className="grid gap-2 rounded-md bg-background p-2.5 text-[11px] leading-5 text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {localAsrStatus === "ready" ? (
+                <p>
+                  محرك Whisper Small العربي جاهز
+                  {localAsrBackend === "webgpu"
+                    ? " بتسريع WebGPU."
+                    : " عبر WASM؛ قد يكون أبطأ."}
+                </p>
+              ) : (
+                <>
+                  <p>
+                    لا يُرسل الصوت إلى خدمة التعرف؛ يظهر النص تدريجيًا أثناء
+                    الكلام على دفعات قصيرة، ويكتمل المقطع الأخير بعد الإيقاف.
+                    الحد الأقصى 10 دقائق. يتطلب أول استخدام تنزيلًا يقارب 300
+                    ميغابايت، ويحتفظ المتصفح بالنموذج مؤقتًا للاستخدام التالي.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void prepareLocalSpeechModel()}
+                    disabled={processingInput || localAsrStatus === "loading"}
+                    className="h-9 justify-start rounded-lg text-xs"
+                  >
+                    <Download className="ml-2 h-3.5 w-3.5" />
+                    {localAsrStatus === "loading"
+                      ? `جارٍ تجهيز النموذج${
+                          localAsrProgress?.progress !== null &&
+                          localAsrProgress?.progress !== undefined
+                            ? ` — ${localAsrProgress.progress}%`
+                            : "..."
+                        }`
+                      : "تنزيل وتجهيز Whisper Small (نحو 300 ميغابايت)"}
+                  </Button>
+                  {localAsrStatus === "loading" && localAsrProgress && (
+                    <p>{localAsrProgress.stage}</p>
+                  )}
+                  {localAsrStatus === "loading" &&
+                    localAsrProgress?.progress !== null &&
+                    localAsrProgress?.progress !== undefined && (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-[#9b7c3d] transition-all"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, localAsrProgress.progress))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                </>
+              )}
+              {recording && (
+                <p>
+                  التسجيل جارٍ؛ سيظهر النص تدريجيًا أثناء التحدث، ويُفرّغ آخر
+                  مقطع بعد الضغط على «إيقاف التسجيل».
+                </p>
+              )}
+              {localAsrStatus === "ready" && localAsrProgress?.stage && (
+                <p>{localAsrProgress.stage}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border bg-muted/30 p-3 text-[11px] leading-6 text-muted-foreground">
           <p>
-            <strong className="text-foreground">الصورة:</strong> تتم قراءتها
-            بمحرك Tesseract المجاني داخل المتصفح، ولا تحتاج إلى مفتاح OpenAI.
+            <strong className="text-foreground">الصورة:</strong>{" "}
+            {canUseHighAccuracyOcr
+              ? "تُقرأ بمحرك PaddleOCR-VL العربي المتقدم عبر الخدمة الخاصة، مع بديل محلي عند تعذره."
+              : "تُقرأ محليًا بمحرك Tesseract المجاني. فعّل خدمة PaddleOCR-VL الخاصة للدقة الأعلى في صور الكاميرا والوثائق."}
           </p>
           <p className="mt-1">
-            <strong className="text-foreground">الصوت:</strong> يستخدم التعرف
-            الصوتي المتاح في المتصفح باللغة العربية. قد يعتمد Chrome على خدمة
-            التعرف السحابية حسب إعدادات الجهاز والمتصفح.
+            <strong className="text-foreground">الصوت:</strong>{" "}
+            {speechEngine === "local"
+              ? "يظهر النص أثناء التسجيل على دفعات قصيرة عبر Whisper على جهازك؛ لا يحتاج مفتاح API ولا يعيد فتح التعرف أو يصدر نغمة."
+              : canUseHighAccuracySpeech
+                ? "يظهر الكلام مباشرة؛ قد تسمع نغمة عند إعادة تشغيل جلسة المتصفح، ثم يحسّن Cohere النص بعد الإيقاف."
+                : "يكتب المتصفح الكلام مباشرة حتى الإيقاف. بعض المتصفحات ترسل الصوت إلى خدمة التعرف الخاصة بها، وقد تسمع نغمة عند إعادة تشغيل الجلسة."}
           </p>
         </div>
       </div>
@@ -1723,15 +2764,26 @@ function TelegramDetail({
     onError: error => toast.error(error.message || "تعذر تعديل البرقية"),
   });
   const deleteTelegram = trpc.telegrams.delete.useMutation({
-    onSuccess: async () => {
-      toast.success("تمت أرشفة البرقية");
+    onSuccess: async result => {
+      toast.success(
+        result.deletedAttachmentCount > 0
+          ? `تم حذف البرقية ${getTelegramDisplayNumber(result.serialCode)} نهائيًا مع ${result.deletedAttachmentCount} مرفق`
+          : `تم حذف البرقية ${getTelegramDisplayNumber(result.serialCode)} نهائيًا`
+      );
+      if (result.pendingStorageCleanup > 0) {
+        toast.warning(
+          "تم حذف البرقية، لكن تعذر تنظيف بعض ملفات المرفقات من مساحة التخزين"
+        );
+      }
       await Promise.all([
         utils.telegrams.list.invalidate(),
+        utils.telegrams.get.invalidate({ id: telegram.id }),
         utils.dashboard.stats.invalidate(),
+        utils.reports.telegrams.invalidate(),
       ]);
       close();
     },
-    onError: error => toast.error(error.message || "تعذر أرشفة البرقية"),
+    onError: error => toast.error(error.message || "تعذر حذف البرقية"),
   });
   const transition = trpc.telegrams.transition.useMutation({
     onSuccess: async () => {
@@ -1777,6 +2829,26 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر تسجيل استلام الإحالة"),
   });
+  const decideRouteAsReceiver =
+    trpc.telegrams.decideRouteAsReceiver.useMutation({
+      onSuccess: async route => {
+        toast.success(
+          route.receiverDecisionStatus === "accepted"
+            ? "تم تأكيد استلام البرقية"
+            : "تم رفض استلام البرقية وتسجيل السبب"
+        );
+        await Promise.all([
+          utils.telegrams.incomingRoutes.invalidate({
+            telegramId: telegram.id,
+          }),
+          utils.telegrams.get.invalidate({ id: telegram.id }),
+          utils.telegrams.list.invalidate(),
+          utils.dashboard.stats.invalidate(),
+        ]);
+      },
+      onError: error =>
+        toast.error(error.message || "تعذر تسجيل قرار الاستلام"),
+    });
   const uploadAttachment = trpc.telegrams.uploadAttachment.useMutation({
     onSuccess: async () => {
       toast.success("تم رفع المرفق وتسجيل بصمته في الخادم");
@@ -1862,19 +2934,17 @@ function TelegramDetail({
     const departmentName = settings?.departmentName ?? "قسم العمليات";
     const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const headerCreatedAt = formatConfiguredHeaderDateTime(
+      telegram.createdAt,
+      settings
+    );
     const location =
       telegram.gpsLatitude != null && telegram.gpsLongitude != null
         ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
         : "غير محدد";
-    const serialDigits =
-      String(telegram.serialCode).split("-").pop() ??
-      String(telegram.serialCode);
-    const parsedSerial = Number.parseInt(serialDigits, 10);
-    const displaySerial = Number.isFinite(parsedSerial)
-      ? String(parsedSerial)
-      : String(telegram.serialCode);
+    const displaySerial = getTelegramDisplayNumber(telegram.serialCode);
     const logo = settings?.logoUrl
-      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" crossorigin="anonymous" />`
+      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
@@ -1911,13 +2981,14 @@ function TelegramDetail({
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
+        ${EXPORT_CAIRO_FONT_FACES}
         .telegram-export-page {
           position: relative;
           isolation: isolate;
           box-sizing: border-box;
-          width: 794px;
-          min-height: 1123px;
-          padding: 19px;
+          width: ${PRINT_PAGE_WIDTH_PX}px;
+          min-height: ${PRINT_PAGE_HEIGHT_PX}px;
+          padding: ${PRINT_MARGIN_MM}mm;
           margin: 0;
           background: #fff;
           color: #172033;
@@ -1934,8 +3005,8 @@ function TelegramDetail({
           top: 50%;
           left: 50%;
           z-index: 0;
-          width: 75%;
-          height: 75%;
+          width: 93.75%;
+          height: 93.75%;
           max-width: none;
           max-height: none;
           transform: translate(-50%, -50%);
@@ -1973,33 +3044,36 @@ function TelegramDetail({
         }
         .telegram-export-page .official-header {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 160px minmax(0, 1fr);
-          align-items: center;
-          gap: 12px;
+          grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+          align-items: start;
+          gap: 2px;
           padding: 0 0 22px;
           border-bottom: 3px solid #b49a55;
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
+        /* Mirror the two blocks from the page edges, not from the logo. */
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 12px; font-weight: 700; line-height: 2; white-space: nowrap; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
+        .telegram-export-page .header-government p { transform-origin: right center; }
+        .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
-        .telegram-export-page .government-name { font-size: 12px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .government-subtitle { font-size: 12px; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 11px; font-weight: 700; line-height: 2.15; white-space: nowrap; }
+        .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;
-          width: 160px;
-          height: 160px;
+          width: 120px;
+          height: 120px;
           margin: 0 auto;
           object-fit: contain;
         }
          .telegram-export-page .official-seal {
-          width: 145px;
-          height: 145px;
+          width: 110px;
+          height: 110px;
           margin: 0 auto;
           border: 2px solid #b49a55;
           border-radius: 50%;
@@ -2102,7 +3176,7 @@ function TelegramDetail({
         @media print {
           @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; padding: 0; background: #fff; }
-          .telegram-export-page { width: 210mm; min-height: 297mm; }
+          .telegram-export-page { width: ${PRINT_PAGE_WIDTH_MM}mm; min-height: ${PRINT_PAGE_HEIGHT_MM}mm; }
         }
       </style>
       <article class="telegram-export-page" dir="rtl" lang="ar">
@@ -2117,9 +3191,9 @@ function TelegramDetail({
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
-            <p><strong>الوقت والتاريخ:</strong> ${escapeHtml(createdAt)}</p>
+            <p><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
-            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
+            <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
@@ -2171,14 +3245,14 @@ function TelegramDetail({
       const availableWidth = host.clientWidth;
       if (!availableWidth) return;
 
-      const scale = Math.min(1, availableWidth / 794);
+      const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
       const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
       exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
       paper.style.position = "absolute";
       paper.style.top = "0";
       paper.style.left = "50%";
-      paper.style.marginLeft = "-397px";
+      paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
       paper.style.transformOrigin = "top center";
       paper.style.transform = `scale(${scale})`;
       host.style.height = `${scaledHeight}px`;
@@ -2195,147 +3269,104 @@ function TelegramDetail({
     };
   }, [telegram, settings]);
 
-  const capture = async () => {
-    const { default: html2canvas } = await import("html2canvas");
+  const renderOfficialDocument = async (format: "pdf" | "png") => {
     await document.fonts.ready;
+    const wrapper = createExportPaper();
+    const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
+    if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
-    const exportWrapper = createExportPaper();
-    const paper = exportWrapper.querySelector<HTMLElement>(
-      ".telegram-export-page"
-    );
-    if (!paper) {
-      throw new Error("تعذر تجهيز قالب البرقية للتصدير");
-    }
-
-    const mount = document.createElement("div");
-    mount.setAttribute("aria-hidden", "true");
-    mount.style.cssText =
-      "position:fixed;left:-10000px;top:0;width:794px;z-index:-1;pointer-events:none;";
-    mount.appendChild(exportWrapper);
-    document.body.appendChild(mount);
-
-    try {
-      await document.fonts.load('700 18px "Cairo"');
-      const images = Array.from(
-        paper.querySelectorAll<HTMLImageElement>("img")
-      );
-      await Promise.all(
-        images.map(async image => {
+    // The saved logo URL is protected by the app's authenticated storage
+    // route. Chromium runs without the browser session, so inline each image
+    // while the authenticated page can still fetch it.
+    const imageCache = new Map<string, string>();
+    await Promise.all(
+      Array.from(wrapper.querySelectorAll<HTMLImageElement>("img")).map(
+        async image => {
+          const source = image.currentSrc || image.src;
+          if (!source || source.startsWith("data:")) return;
           try {
-            const source = image.currentSrc || image.src;
-            if (!source) {
-              image.remove();
-              return;
-            }
-
-            // Inline images before canvas capture. A successfully decoded remote
-            // image can still taint the canvas when its host does not grant CORS.
-            if (!source.startsWith("data:")) {
-              const imageUrl = new URL(source, document.baseURI);
-              const response = await fetch(imageUrl.href, {
-                mode: "cors",
-                credentials:
-                  imageUrl.origin === window.location.origin
-                    ? "same-origin"
-                    : "omit",
-                cache: "force-cache",
+            let dataUrl = imageCache.get(source);
+            if (!dataUrl) {
+              const response = await fetch(source, {
+                credentials: "same-origin",
               });
-              if (!response.ok) {
-                throw new Error(`Image request failed: ${response.status}`);
-              }
-
+              if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
               const blob = await response.blob();
               if (!blob.type.startsWith("image/")) {
-                throw new Error("Image response has an invalid content type");
+                throw new Error("مصدر الشعار ليس صورة صالحة");
               }
-
-              const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result));
-                reader.onerror = () =>
-                  reject(new Error("Unable to read image"));
-                reader.readAsDataURL(blob);
-              });
-
-              image.removeAttribute("srcset");
-              image.removeAttribute("crossorigin");
-              image.src = dataUrl;
+              const imageUrl = URL.createObjectURL(blob);
+              try {
+                const preview = new Image();
+                preview.decoding = "async";
+                preview.src = imageUrl;
+                await preview.decode();
+                const maxDimension = 800;
+                const scale = Math.min(
+                  1,
+                  maxDimension /
+                    Math.max(preview.naturalWidth, preview.naturalHeight)
+                );
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(
+                  1,
+                  Math.round(preview.naturalWidth * scale)
+                );
+                canvas.height = Math.max(
+                  1,
+                  Math.round(preview.naturalHeight * scale)
+                );
+                const context = canvas.getContext("2d");
+                if (!context) throw new Error("تعذر تجهيز صورة الشعار");
+                context.drawImage(preview, 0, 0, canvas.width, canvas.height);
+                dataUrl = canvas.toDataURL("image/webp", 0.86);
+                if (!dataUrl.startsWith("data:image/webp")) {
+                  dataUrl = canvas.toDataURL("image/png");
+                }
+              } finally {
+                URL.revokeObjectURL(imageUrl);
+              }
+              imageCache.set(source, dataUrl);
             }
-
+            image.removeAttribute("crossorigin");
+            image.removeAttribute("srcset");
+            image.src = dataUrl;
             await image.decode();
           } catch {
-            // Keep export usable if an optional logo cannot be fetched safely.
-            image.remove();
+            // Never send a broken image to Chromium. Replace it with the same
+            // vector fallback used when no logo is configured.
+            image.outerHTML = image.classList.contains("watermark-logo")
+              ? `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`
+              : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
           }
-        })
-      );
+        }
+      )
+    );
 
-      const measuredHeight = Math.max(
-        paper.scrollHeight,
-        paper.getBoundingClientRect().height,
-        1123
-      );
-      return await html2canvas(paper, {
-        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
-        width: 794,
-        height: Math.ceil(measuredHeight),
-        windowWidth: 794,
-        windowHeight: Math.ceil(measuredHeight),
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        onclone: clonedDocument => {
-          // html2canvas cannot parse modern oklch() colors emitted by the app's
-          // Tailwind theme. The export sheet is self-contained, so isolate the
-          // cloned document from application styles and retain only its print CSS.
-          // Remove application styles from the entire cloned document, not
-          // only <head>. Some bundlers inject style elements into <body>, and
-          // html2canvas parses those rules even when the export sheet itself
-          // uses only browser-safe colors. This is the source of the
-          // "unsupported color function oklch" failure on image/PDF export.
-          clonedDocument
-            .querySelectorAll('style, link[rel="stylesheet"]')
-            .forEach(stylesheet => stylesheet.remove());
-
-          // Export CSS is deliberately self-contained and uses hexadecimal
-          // colors, so restore only those rules after removing app styles.
-          const exportStyles = exportWrapper.querySelector("style");
-          if (exportStyles) {
-            const isolatedStyles = clonedDocument.createElement("style");
-            isolatedStyles.textContent = exportStyles.textContent ?? "";
-            clonedDocument.head.appendChild(isolatedStyles);
-          }
-
-          // Avoid inherited theme colors on the cloned root/body.
-          clonedDocument.documentElement.style.colorScheme = "light";
-          clonedDocument.documentElement.style.backgroundColor = "#ffffff";
-          clonedDocument.body.style.color = "#172033";
-          clonedDocument.body.style.backgroundColor = "#ffffff";
-        },
-      });
-    } finally {
-      mount.remove();
+    const html = `<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="${window.location.origin}/" />
+  </head>
+  <body>${wrapper.innerHTML}</body>
+</html>`;
+    const response = await fetch("/api/telegram-render", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format, html }),
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(payload?.error || "تعذر إنشاء الوثيقة الرسمية");
     }
+    return response.blob();
   };
 
-  const printTelegram = async () => {
-    const exportWrapper = createExportPaper();
-    const printRoot = document.createElement("div");
-    const printStyle = document.createElement("style");
-
-    printRoot.id = "telegram-print-root";
-    printRoot.setAttribute("dir", "rtl");
-    printRoot.setAttribute("aria-hidden", "true");
-    printRoot.style.position = "fixed";
-    printRoot.style.inset = "0";
-    printRoot.style.zIndex = "-1";
-    printRoot.style.width = "210mm";
-    printRoot.style.minHeight = "297mm";
-    printRoot.style.background = "#fff";
-
-    printStyle.id = "telegram-print-style";
-    printStyle.textContent = `
+  const getPrintStyles = () => `
       @media print {
         html, body {
           margin: 0 !important;
@@ -2352,17 +3383,25 @@ function TelegramDetail({
           inset: auto !important;
           z-index: auto !important;
           display: block !important;
-          width: 210mm !important;
-          min-height: 297mm !important;
+          width: 100vw !important;
+          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          min-height: 0 !important;
+          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #fff !important;
+          overflow: hidden !important;
         }
 
         #telegram-print-root .telegram-export-page {
-          width: 210mm !important;
-          min-height: 297mm !important;
-          margin: 0 !important;
+          width: ${PRINT_PAGE_WIDTH_MM}mm !important;
+          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          margin: 0 auto !important;
+          overflow: hidden !important;
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
         }
 
         @page {
@@ -2370,7 +3409,25 @@ function TelegramDetail({
           margin: 0;
         }
       }
-    `;
+`;
+
+  const printTelegram = async () => {
+    const exportWrapper = createExportPaper();
+    const printRoot = document.createElement("div");
+    const printStyle = document.createElement("style");
+
+    printRoot.id = "telegram-print-root";
+    printRoot.setAttribute("dir", "rtl");
+    printRoot.setAttribute("aria-hidden", "true");
+    printRoot.style.position = "fixed";
+    printRoot.style.inset = "0";
+    printRoot.style.zIndex = "-1";
+    printRoot.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+    printRoot.style.minHeight = `${PRINT_PAGE_HEIGHT_MM}mm`;
+    printRoot.style.background = "#fff";
+
+    printStyle.id = "telegram-print-style";
+    printStyle.textContent = getPrintStyles();
 
     printRoot.appendChild(exportWrapper);
     document.head.appendChild(printStyle);
@@ -2420,23 +3477,7 @@ function TelegramDetail({
     }
   };
 
-  const imageBlob = async (): Promise<Blob> => {
-    const canvas = await capture();
-
-    return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        blob => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("تعذر إنشاء الصورة"));
-          }
-        },
-        "image/png",
-        1
-      );
-    });
-  };
+  const imageBlob = async (): Promise<Blob> => renderOfficialDocument("png");
 
   const downloadImage = async () => {
     setExporting("image");
@@ -2470,7 +3511,7 @@ function TelegramDetail({
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${telegram.serialCode}`,
+          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
           text: telegram.subject,
           files: [file],
         });
@@ -2501,25 +3542,29 @@ function TelegramDetail({
     setExporting(share ? "share" : "pdf");
 
     try {
-      const pdf = await makePdf();
-      const blob = pdf.output("blob");
+      const blob = await renderOfficialDocument("pdf");
       const file = new File([blob], `${telegram.serialCode}.pdf`, {
         type: "application/pdf",
       });
 
       if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${telegram.serialCode}`,
+          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
           text: telegram.subject,
           files: [file],
         });
         toast.success("تم فتح خيارات مشاركة البرقية");
       } else {
-        pdf.save(`${telegram.serialCode}.pdf`);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         toast.success(
           share
-            ? "تم تنزيل ملف PDF للمشاركة"
-            : "تم تنزيل البرقية بصيغة PDF عالية الدقة"
+            ? "المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل ملف PDF"
+            : "تم تنزيل البرقية بصيغة PDF مطابقة للطباعة"
         );
       }
     } catch (error) {
@@ -2533,76 +3578,13 @@ function TelegramDetail({
     }
   };
 
-  const makePdf = async () => {
-    const sourceCanvas = await capture();
-    const { jsPDF } = await import("jspdf");
-    const pdf = new jsPDF({
-      orientation: "p",
-      unit: "mm",
-      format: "a4",
-      compress: true,
-    });
-    // Match the same A4 page box used by browser printing: 210 × 297 mm,
-    // with the paper's internal 14mm padding already included in the captured pixels.
-    const margin = 0;
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const sourcePixelsPerMm = sourceCanvas.width / pageWidth;
-    const pagePixelHeight = Math.floor(pageHeight * sourcePixelsPerMm);
-    let sourceY = 0;
-    let pageIndex = 0;
-
-    while (sourceY < sourceCanvas.height) {
-      const sliceHeight = Math.min(
-        pagePixelHeight,
-        sourceCanvas.height - sourceY
-      );
-      const pageCanvas = document.createElement("canvas");
-      pageCanvas.width = sourceCanvas.width;
-      pageCanvas.height = sliceHeight;
-
-      const pageContext = pageCanvas.getContext("2d");
-      if (!pageContext) {
-        throw new Error("تعذر تجهيز صفحات PDF");
-      }
-
-      pageContext.fillStyle = "#ffffff";
-      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      pageContext.drawImage(
-        sourceCanvas,
-        0,
-        sourceY,
-        sourceCanvas.width,
-        sliceHeight,
-        0,
-        0,
-        pageCanvas.width,
-        sliceHeight
-      );
-
-      if (pageIndex > 0) pdf.addPage();
-      const sliceHeightMm = sliceHeight / sourcePixelsPerMm;
-      pdf.addImage(
-        pageCanvas.toDataURL("image/jpeg", 0.96),
-        "JPEG",
-        margin,
-        margin,
-        pageWidth,
-        sliceHeightMm,
-        undefined,
-        "FAST"
-      );
-
-      sourceY += sliceHeight;
-      pageIndex += 1;
-    }
-
-    return pdf;
-  };
   return (
     <Modal
       title={telegram.subject}
-      subtitle={telegram.serialCode}
+      subtitle={localizeDigits(
+        getTelegramDisplayNumber(telegram.serialCode),
+        settings?.numberSystem ?? "latin"
+      )}
       close={close}
     >
       <div
@@ -2624,28 +3606,66 @@ function TelegramDetail({
                 <div>
                   <p className="font-semibold">
                     {route.status === "received"
-                      ? "تم استلام الإحالة"
-                      : "إحالة بانتظار الاستلام"}
+                      ? "تم تأكيد استلام الإحالة"
+                      : route.status === "rejected"
+                        ? "تم رفض استلام الإحالة"
+                        : "إحالة بانتظار تأكيد الجهة المستقبلة"}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {route.status === "received" && route.receivedAt
                       ? `وقت الاستلام: ${new Date(route.receivedAt).toLocaleString("ar-SY")}`
-                      : "يمكن للوحدة المستلمة تأكيد التسلم من هنا"}
+                      : route.status === "rejected"
+                        ? `سبب الرفض: ${route.receiverDecisionReason ?? "غير محدد"}`
+                        : "يجب على الجهة المستقبلة تأكيد الاستلام أو رفضه بسبب موثق"}
                   </p>
                 </div>
                 {route.status === "sent" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={receiveRoute.isPending}
-                    onClick={() => {
-                      if (window.confirm("تأكيد استلام هذه الإحالة؟")) {
-                        receiveRoute.mutate({ routeId: route.id });
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        decideRouteAsReceiver.isPending ||
+                        receiveRoute.isPending
                       }
-                    }}
-                  >
-                    تأكيد الاستلام
-                  </Button>
+                      onClick={() => {
+                        if (window.confirm("تأكيد استلام هذه الإحالة؟")) {
+                          decideRouteAsReceiver.mutate({
+                            routeId: route.id,
+                            accepted: true,
+                            reason: null,
+                          });
+                        }
+                      }}
+                    >
+                      تأكيد الاستلام
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      disabled={
+                        decideRouteAsReceiver.isPending ||
+                        receiveRoute.isPending
+                      }
+                      onClick={() => {
+                        const reason = window
+                          .prompt("أدخل سبب رفض الاستلام (إلزامي):")
+                          ?.trim();
+                        if (!reason) {
+                          toast.error("سبب رفض الاستلام مطلوب");
+                          return;
+                        }
+                        decideRouteAsReceiver.mutate({
+                          routeId: route.id,
+                          accepted: false,
+                          reason,
+                        });
+                      }}
+                    >
+                      رفض الاستلام
+                    </Button>
+                  </div>
                 )}
               </div>
             ))}
@@ -2689,186 +3709,191 @@ function TelegramDetail({
           </div>
         </div>
       )}
-      <div className="mt-5 flex flex-wrap gap-2 print:hidden">
-        <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">
-          {uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}
-          <input
-            type="file"
-            className="hidden"
-            accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
-            disabled={uploadAttachment.isPending}
-            onChange={event => {
-              handleAttachment(event.target.files?.[0]);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-        <Button
-          onClick={printTelegram}
-          className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
-        >
-          <Printer className="ml-2 h-4 w-4" />
-          طباعة
-        </Button>
-        <Button
-          onClick={() => exportPdf(false)}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <FileDown className="ml-2 h-4 w-4" />
-          {exporting === "pdf" ? "جارٍ التجهيز..." : "PDF عالي الدقة"}
-        </Button>
-        <Button
-          onClick={downloadImage}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <FileImage className="ml-2 h-4 w-4" />
-          {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
-        </Button>
-        <Button
-          onClick={() => exportPdf(true)}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <Share2 className="ml-2 h-4 w-4" />
-          {exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}
-        </Button>
-        <Button
-          onClick={shareImage}
-          disabled={!!exporting}
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <Share2 className="ml-2 h-4 w-4" />
-          {exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}
-        </Button>
-        <Button
-          onClick={() =>
-            toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
-          }
-          variant="outline"
-          className="h-10 flex-1 rounded-lg sm:flex-none"
-        >
-          <LocateFixed className="ml-2 h-4 w-4" />
-          الموقع
-        </Button>
-        {isAdmin && (
-          <>
-            <Button
-              onClick={() => setEditOpen(true)}
-              variant="outline"
-              className="h-10 flex-1 rounded-lg sm:flex-none"
-            >
-              <Save className="ml-2 h-4 w-4" />
-              تعديل البرقية
-            </Button>
-            {telegram.status === "draft" && (
+      <div className="mt-5 rounded-xl border bg-muted/20 p-2 print:hidden">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">
+            {uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}
+            <input
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
+              disabled={uploadAttachment.isPending}
+              onChange={event => {
+                handleAttachment(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <Button
+            onClick={printTelegram}
+            className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
+          >
+            <Printer className="ml-2 h-4 w-4" />
+            طباعة
+          </Button>
+          <Button
+            onClick={() => exportPdf(false)}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <FileDown className="ml-2 h-4 w-4" />
+            {exporting === "pdf" ? "جارٍ فتح الطباعة..." : "PDF مطابق للطباعة"}
+          </Button>
+          <Button
+            onClick={downloadImage}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <FileImage className="ml-2 h-4 w-4" />
+            {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
+          </Button>
+          <Button
+            onClick={() => exportPdf(true)}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <Share2 className="ml-2 h-4 w-4" />
+            {exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}
+          </Button>
+          <Button
+            onClick={shareImage}
+            disabled={!!exporting}
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <Share2 className="ml-2 h-4 w-4" />
+            {exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}
+          </Button>
+          <Button
+            onClick={() =>
+              toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
+            }
+            variant="outline"
+            className="h-10 flex-1 rounded-lg sm:flex-none"
+          >
+            <LocateFixed className="ml-2 h-4 w-4" />
+            الموقع
+          </Button>
+          {isAdmin && (
+            <>
               <Button
-                onClick={() => requestTransition("submitted")}
-                disabled={transition.isPending}
+                onClick={() => setEditOpen(true)}
                 variant="outline"
                 className="h-10 flex-1 rounded-lg sm:flex-none"
               >
-                إرسال للمراجعة
+                <Save className="ml-2 h-4 w-4" />
+                تعديل البرقية
               </Button>
-            )}
-            {telegram.status === "submitted" && (
-              <Button
-                onClick={() => requestTransition("in_review")}
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                بدء المراجعة
-              </Button>
-            )}
-            {telegram.status === "pending" && (
-              <Button
-                onClick={() => requestTransition("in_progress")}
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                بدء الإجراء
-              </Button>
-            )}
-            {(telegram.status === "in_progress" ||
-              telegram.status === "approved" ||
-              telegram.status === "forwarded") && (
-              <Button
-                onClick={() =>
-                  requestTransition(
-                    telegram.status === "in_progress"
-                      ? "completed"
-                      : "completed"
-                  )
-                }
-                disabled={transition.isPending}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                إكمال المعالجة
-              </Button>
-            )}
-            {telegram.status === "in_review" && (
-              <>
+              {telegram.status === "draft" && (
                 <Button
-                  onClick={() => requestTransition("approved")}
-                  disabled={transition.isPending}
-                  className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none"
-                >
-                  اعتماد
-                </Button>
-                <Button
-                  onClick={() => requestTransition("returned")}
+                  onClick={() => requestTransition("submitted")}
                   disabled={transition.isPending}
                   variant="outline"
                   className="h-10 flex-1 rounded-lg sm:flex-none"
                 >
-                  إرجاع بسبب
+                  إرسال للمراجعة
                 </Button>
+              )}
+              {telegram.status === "submitted" && (
                 <Button
-                  onClick={() => requestTransition("rejected")}
+                  onClick={() => requestTransition("in_review")}
                   disabled={transition.isPending}
-                  variant="destructive"
+                  variant="outline"
                   className="h-10 flex-1 rounded-lg sm:flex-none"
                 >
-                  رفض
+                  بدء المراجعة
                 </Button>
-              </>
-            )}
-            {telegram.status === "resolved" ||
-            telegram.status === "completed" ? (
+              )}
+              {telegram.status === "pending" && (
+                <Button
+                  onClick={() => requestTransition("in_progress")}
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  بدء الإجراء
+                </Button>
+              )}
+              {(telegram.status === "in_progress" ||
+                telegram.status === "approved" ||
+                telegram.status === "forwarded") && (
+                <Button
+                  onClick={() =>
+                    requestTransition(
+                      telegram.status === "in_progress"
+                        ? "completed"
+                        : "completed"
+                    )
+                  }
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  إكمال المعالجة
+                </Button>
+              )}
+              {telegram.status === "in_review" && (
+                <>
+                  <Button
+                    onClick={() => requestTransition("approved")}
+                    disabled={transition.isPending}
+                    className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none"
+                  >
+                    اعتماد
+                  </Button>
+                  <Button
+                    onClick={() => requestTransition("returned")}
+                    disabled={transition.isPending}
+                    variant="outline"
+                    className="h-10 flex-1 rounded-lg sm:flex-none"
+                  >
+                    إرجاع بسبب
+                  </Button>
+                  <Button
+                    onClick={() => requestTransition("rejected")}
+                    disabled={transition.isPending}
+                    variant="destructive"
+                    className="h-10 flex-1 rounded-lg sm:flex-none"
+                  >
+                    رفض
+                  </Button>
+                </>
+              )}
+              {telegram.status === "resolved" ||
+              telegram.status === "completed" ? (
+                <Button
+                  onClick={() => requestTransition("archived")}
+                  disabled={transition.isPending}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  أرشفة
+                </Button>
+              ) : null}
               <Button
-                onClick={() => requestTransition("archived")}
-                disabled={transition.isPending}
-                variant="outline"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+                    )
+                  )
+                    deleteTelegram.mutate({ id: telegram.id });
+                }}
+                disabled={deleteTelegram.isPending}
+                variant="destructive"
                 className="h-10 flex-1 rounded-lg sm:flex-none"
               >
-                أرشفة
+                <Trash2 className="ml-2 h-4 w-4" />
+                {deleteTelegram.isPending
+                  ? "جارٍ الحذف النهائي..."
+                  : "حذف نهائي"}
               </Button>
-            ) : null}
-            <Button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `هل أنت متأكد من أرشفة البرقية ${telegram.serialCode}؟ سيبقى سجلها محفوظًا.`
-                  )
-                )
-                  deleteTelegram.mutate({ id: telegram.id });
-              }}
-              disabled={deleteTelegram.isPending}
-              variant="destructive"
-              className="h-10 flex-1 rounded-lg sm:flex-none"
-            >
-              {deleteTelegram.isPending ? "جارٍ الأرشفة..." : "أرشفة البرقية"}
-            </Button>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
       {canOperate && !isAdmin && (
         <div className="mt-4 flex flex-wrap gap-2 print:hidden">
@@ -2937,7 +3962,7 @@ function TelegramDetail({
         ["approved", "in_progress", "forwarded"].includes(telegram.status) && (
           <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden">
             <p className="text-xs font-bold text-[#7a5c1e]">
-              إحالة مركزية بين الوحدات الشرطية
+              طلب إحالة عبر السلطة الأعلى
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
               <select
@@ -2970,7 +3995,9 @@ function TelegramDetail({
                 }
                 className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
               >
-                {routeTelegram.isPending ? "جارٍ الإحالة..." : "إحالة البرقية"}
+                {routeTelegram.isPending
+                  ? "جارٍ إرسال طلب الموافقة..."
+                  : "إرسال طلب الموافقة"}
               </Button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
@@ -3175,7 +4202,7 @@ function Modal({
   wide = false,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   close: () => void;
   children: React.ReactNode;
   fullScreenOnMobile?: boolean;
@@ -3191,10 +4218,14 @@ function Modal({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs font-bold text-[#9b7c3d]">
-              {subtitle}
-            </p>
-            <h2 className="mt-1 text-xl font-bold">{title}</h2>
+            {subtitle && (
+              <p className="font-mono text-xs font-bold text-[#9b7c3d]">
+                {subtitle}
+              </p>
+            )}
+            <h2 className={`${subtitle ? "mt-1" : ""} text-xl font-bold`}>
+              {title}
+            </h2>
           </div>
           <button
             onClick={close}
@@ -3314,7 +4345,7 @@ function DepartmentSettingsModal({
   return (
     <Modal
       title="إعدادات القسم والموقع"
-      subtitle="ADMIN / DEPARTMENT SETTINGS"
+      subtitle="إعدادات القسم والجهة"
       close={() => setOpen(false)}
     >
       <div className="space-y-5">
@@ -3409,7 +4440,8 @@ function DepartmentSettingsModal({
             className="h-11 rounded-lg font-mono uppercase"
           />
           <span className="text-[11px] font-normal text-muted-foreground">
-            ستظهر مثل: {serialPrefix || "POL"}-2026-09-22-00001
+            سيُحفظ الرقم الكامل داخليًا للتدقيق، ويظهر في الواجهة مثل: 1، بينما
+            يُعرض التاريخ في خانة مستقلة.
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">

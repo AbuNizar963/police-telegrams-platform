@@ -4,7 +4,10 @@ import type {
   OrganizationMemberRole,
   TelegramRoute,
 } from "../drizzle/schema";
+import { randomBytes, randomUUID } from "node:crypto";
+import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
+import { writeAuditLog } from "./db";
 
 function throwIfError(
   error: { message: string } | null,
@@ -112,13 +115,249 @@ export async function listOrganizationsForUser(
     );
 }
 
+const ACCOUNT_ORGANIZATION_TYPES = new Set<Organization["type"]>([
+  "governorate",
+  "region",
+  "command",
+  "police_department",
+  "station",
+  "unit",
+]);
+
+const ARABIC_TRANSLITERATION: Record<string, string> = {
+  ا: "a",
+  أ: "a",
+  إ: "i",
+  آ: "aa",
+  ء: "a",
+  ب: "b",
+  ت: "t",
+  ث: "th",
+  ج: "j",
+  ح: "h",
+  خ: "kh",
+  د: "d",
+  ذ: "dh",
+  ر: "r",
+  ز: "z",
+  س: "s",
+  ش: "sh",
+  ص: "s",
+  ض: "d",
+  ط: "t",
+  ظ: "z",
+  ع: "a",
+  غ: "gh",
+  ف: "f",
+  ق: "q",
+  ك: "k",
+  ل: "l",
+  م: "m",
+  ن: "n",
+  ه: "h",
+  و: "w",
+  ي: "y",
+  ى: "a",
+  ة: "h",
+  ئ: "y",
+  ؤ: "w",
+};
+
+function transliterateOrganizationName(name: string): string {
+  const transliterated = name
+    .split("")
+    .map(character => ARABIC_TRANSLITERATION[character] ?? character)
+    .join("")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+  return transliterated.slice(0, 110) || "police_unit";
+}
+
+function organizationAccountPrefix(type: Organization["type"]): string {
+  const prefixes: Partial<Record<Organization["type"], string>> = {
+    governorate: "gov",
+    region: "rg",
+    command: "hq",
+    police_department: "pd",
+    station: "st",
+    unit: "unit",
+  };
+  return prefixes[type] ?? "unit";
+}
+
+async function createOrganizationAccount(input: {
+  organization: Organization;
+  createdByUserId?: number;
+}): Promise<{ username: string; password: string; userId: number }> {
+  const client = getSupabaseAdmin();
+  const prefix = organizationAccountPrefix(input.organization.type);
+  const codeSlug = transliterateOrganizationName(
+    input.organization.code
+  ).replace(new RegExp(`^${prefix}_`, "i"), "");
+  const base = `${prefix}_${codeSlug}`;
+  let username = base;
+  for (let suffix = 2; ; suffix += 1) {
+    const existing = await client
+      .from("users")
+      .select("id")
+      .ilike("username", username)
+      .maybeSingle();
+    throwIfError(existing.error, "Failed to check organization account");
+    if (!existing.data) break;
+    username = `${base.slice(0, 120 - String(suffix).length - 1)}_${suffix}`;
+  }
+  const temporaryPassword = randomBytes(12).toString("base64url");
+  const now = new Date().toISOString();
+  const { data, error } = await client
+    .from("users")
+    .insert({
+      authUserId: randomUUID(),
+      organizationId: input.organization.id,
+      username,
+      password_hash: await hashPassword(temporaryPassword),
+      mustChangePassword: true,
+      name: input.organization.name,
+      unit: input.organization.name,
+      email: null,
+      loginMethod: "password",
+      role: "user",
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: now,
+    })
+    .select("id")
+    .single();
+  if (error || !data) {
+    throw new Error("تعذر إنشاء الحساب الافتراضي للجهة");
+  }
+  try {
+    await addOrganizationMembership({
+      organizationId: input.organization.id,
+      userId: data.id,
+      role: "organization_admin",
+    });
+  } catch (error) {
+    await client.from("users").delete().eq("id", data.id);
+    throw error;
+  }
+  if (input.createdByUserId) {
+    await writeAuditLog({
+      actorUserId: input.createdByUserId,
+      actorName: "مالك النظام",
+      action: "organization.account.create",
+      entityType: "organization",
+      entityId: input.organization.id,
+      metadata: JSON.stringify({
+        username,
+        organizationName: input.organization.name,
+      }),
+    });
+  }
+  return { username, password: temporaryPassword, userId: data.id };
+}
+
+export type OrganizationAccountSummary = {
+  organizationId: string;
+  userId: number;
+  username: string;
+  loginMethod: string | null;
+  mustChangePassword: boolean;
+};
+
+export async function listOrganizationAccountSummaries(
+  organizationId?: string
+): Promise<OrganizationAccountSummary[]> {
+  let query = getSupabaseAdmin()
+    .from("users")
+    .select("id, organizationId, username, loginMethod, mustChangePassword")
+    .order("id", { ascending: true });
+  if (organizationId) query = query.eq("organizationId", organizationId);
+  const { data, error } = await query;
+  throwIfError(error, "Failed to list organization accounts");
+  return (data ?? []).map(row => ({
+    organizationId: String(row.organizationId),
+    userId: Number(row.id),
+    username: String(row.username ?? ""),
+    loginMethod: row.loginMethod ? String(row.loginMethod) : null,
+    mustChangePassword: row.mustChangePassword === true,
+  }));
+}
+
+export async function ensureOrganizationAccounts(input: {
+  actorUserId: number;
+}): Promise<{
+  created: Array<{
+    organizationId: string;
+    organizationName: string;
+    username: string;
+    password: string;
+  }>;
+}> {
+  const organizations = await listAllOrganizations();
+  const summaries = await listOrganizationAccountSummaries();
+  const existing = new Set(summaries.map(account => account.organizationId));
+  const created: Array<{
+    organizationId: string;
+    organizationName: string;
+    username: string;
+    password: string;
+  }> = [];
+  for (const organization of organizations) {
+    if (
+      !ACCOUNT_ORGANIZATION_TYPES.has(organization.type) ||
+      existing.has(organization.id)
+    ) {
+      continue;
+    }
+    const account = await createOrganizationAccount({
+      organization,
+      createdByUserId: input.actorUserId,
+    });
+    created.push({
+      organizationId: organization.id,
+      organizationName: organization.name,
+      username: account.username,
+      password: account.password,
+    });
+  }
+  return { created };
+}
+
+export async function provisionOrganizationAccount(input: {
+  organizationId: string;
+  actorUserId: number;
+}): Promise<{ organizationName: string; username: string; password: string }> {
+  const organization = await getOrganizationById(input.organizationId);
+  if (!organization) throw new Error("الجهة غير موجودة");
+  const existing = await listOrganizationAccountSummaries(organization.id);
+  if (existing.length > 0) throw new Error("يوجد حساب لهذه الجهة بالفعل");
+  if (!ACCOUNT_ORGANIZATION_TYPES.has(organization.type)) {
+    throw new Error("هذا المستوى التنظيمي لا يملك حساب جهة مباشرًا");
+  }
+  const account = await createOrganizationAccount({
+    organization,
+    createdByUserId: input.actorUserId,
+  });
+  return {
+    organizationName: organization.name,
+    username: account.username,
+    password: account.password,
+  };
+}
+
 export async function createOrganization(input: {
   parentOrganizationId?: string | null;
   telegramDestinationOrganizationId?: string | null;
   code: string;
   name: string;
   type: Organization["type"];
-}): Promise<Organization> {
+  createdByUserId?: number;
+}): Promise<{
+  organization: Organization;
+  account: { username: string; password: string; userId: number } | null;
+}> {
   await validateOrganizationParent(
     input.parentOrganizationId ?? null,
     input.type
@@ -141,7 +380,23 @@ export async function createOrganization(input: {
     .single();
 
   throwIfError(error, "Failed to create organization");
-  return mapOrganization(data as Record<string, unknown>);
+  const organization = mapOrganization(data as Record<string, unknown>);
+  let account = null;
+  if (ACCOUNT_ORGANIZATION_TYPES.has(organization.type)) {
+    try {
+      account = await createOrganizationAccount({
+        organization,
+        createdByUserId: input.createdByUserId,
+      });
+    } catch (accountError) {
+      await getSupabaseAdmin()
+        .from("organizations")
+        .delete()
+        .eq("id", organization.id);
+      throw accountError;
+    }
+  }
+  return { organization, account };
 }
 
 async function validateOrganizationParent(
@@ -245,6 +500,49 @@ export async function updateOrganization(input: {
   return mapOrganization(data as Record<string, unknown>);
 }
 
+export async function updateOrganizationAccount(input: {
+  organizationId: string;
+  username: string;
+  password?: string;
+}): Promise<{ username: string; passwordChanged: boolean }> {
+  const username = input.username.trim().toLowerCase();
+  const client = getSupabaseAdmin();
+  const duplicate = await client
+    .from("users")
+    .select("id")
+    .ilike("username", username)
+    .neq("organizationId", input.organizationId)
+    .maybeSingle();
+  throwIfError(duplicate.error, "Failed to check organization username");
+  if (duplicate.data) throw new Error("اسم المستخدم مستخدم بالفعل");
+
+  const existing = await client
+    .from("users")
+    .select("id")
+    .eq("organizationId", input.organizationId)
+    .eq("loginMethod", "password")
+    .maybeSingle();
+  throwIfError(existing.error, "Failed to load organization account");
+  if (!existing.data)
+    throw new Error("لا يوجد حساب لهذه الجهة؛ استخدم مزامنة الحسابات أولاً");
+
+  const values: Record<string, unknown> = {
+    username,
+    updatedAt: new Date().toISOString(),
+  };
+  if (input.password?.trim()) {
+    values.password_hash = await hashPassword(input.password);
+    values.mustChangePassword = true;
+    values.authUserId = randomUUID();
+  }
+  const { error } = await client
+    .from("users")
+    .update(values)
+    .eq("id", existing.data.id);
+  throwIfError(error, "Failed to update organization account");
+  return { username, passwordChanged: Boolean(input.password?.trim()) };
+}
+
 export async function getConfiguredTelegramDestination(
   userId: number
 ): Promise<Organization | null> {
@@ -340,7 +638,7 @@ export async function addOrganizationMembership(input: {
 
 export async function listRoutingTargets(
   userId: number
-): Promise<Organization[]> {
+): Promise<Array<Organization & { isConfiguredDestination: boolean }>> {
   const membership = await getUserOrganizationMembership(userId);
   if (!membership) {
     throw new Error("User is not assigned to an active organization");
@@ -355,13 +653,34 @@ export async function listRoutingTargets(
     .from("organizations")
     .select("*")
     .eq("isActive", true)
-    .neq("id", current.id)
-    .order("type", { ascending: true })
     .order("name", { ascending: true });
   throwIfError(error, "Failed to load routing targets");
-  return (data ?? []).map(row =>
+
+  const organizations = (data ?? []).map(row =>
     mapOrganization(row as Record<string, unknown>)
   );
+  return organizations
+    .filter(
+      organization =>
+        organization.id !== current.id &&
+        (organization.parentOrganizationId === current.id ||
+          current.parentOrganizationId === organization.id ||
+          (current.parentOrganizationId !== null &&
+            organization.parentOrganizationId ===
+              current.parentOrganizationId) ||
+          organization.id === current.telegramDestinationOrganizationId)
+    )
+    .sort((left, right) =>
+      `${left.type}-${left.name}`.localeCompare(
+        `${right.type}-${right.name}`,
+        "ar"
+      )
+    )
+    .map(organization => ({
+      ...organization,
+      isConfiguredDestination:
+        organization.id === current.telegramDestinationOrganizationId,
+    }));
 }
 
 export async function routeTelegram(input: {
@@ -369,6 +688,7 @@ export async function routeTelegram(input: {
   toOrganizationId: string;
   forwardedByUserId: number;
   note?: string | null;
+  allowDraft?: boolean;
 }): Promise<TelegramRoute> {
   const membership = await getUserOrganizationMembership(
     input.forwardedByUserId
@@ -383,6 +703,7 @@ export async function routeTelegram(input: {
     p_to_organization_id: input.toOrganizationId,
     p_forwarded_by_user_id: input.forwardedByUserId,
     p_note: input.note ?? null,
+    p_allow_draft: input.allowDraft ?? false,
   });
 
   throwIfError(error, "Failed to route telegram");
@@ -423,6 +744,25 @@ export async function receiveTelegramRoute(input: {
   return mapRoute(data as Record<string, unknown>);
 }
 
+export async function decideTelegramRouteAsReceiver(input: {
+  routeId: number;
+  receiverUserId: number;
+  accepted: boolean;
+  reason?: string | null;
+}): Promise<TelegramRoute> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "decide_telegram_route_receiver",
+    {
+      p_route_id: input.routeId,
+      p_receiver_user_id: input.receiverUserId,
+      p_accepted: input.accepted,
+      p_reason: input.reason ?? null,
+    }
+  );
+  throwIfError(error, "Failed to decide telegram route as receiver");
+  return mapRoute(data as Record<string, unknown>);
+}
+
 export async function listIncomingTelegramRoutes(input: {
   telegramId: number;
   userId: number;
@@ -440,7 +780,7 @@ export async function listIncomingTelegramRoutes(input: {
     .from("telegram_routes")
     .select("*")
     .eq("telegramId", input.telegramId)
-    .in("status", ["sent", "received"])
+    .in("status", ["sent", "received", "rejected"])
     .in("approvalStatus", ["not_required", "approved"])
     .order("createdAt", { ascending: false });
 
@@ -463,18 +803,6 @@ export async function listPendingRouteApprovals(
   const byId = new Map(
     organizations.map(organization => [organization.id, organization])
   );
-  const governorateFor = (organizationId: string): string | null => {
-    let current = byId.get(organizationId);
-    const visited = new Set<string>();
-    while (current && !visited.has(current.id)) {
-      visited.add(current.id);
-      if (current.type === "governorate") return current.id;
-      current = current.parentOrganizationId
-        ? byId.get(current.parentOrganizationId)
-        : undefined;
-    }
-    return null;
-  };
   const { data, error } = await getSupabaseAdmin()
     .from("telegram_routes")
     .select(
@@ -486,7 +814,7 @@ export async function listPendingRouteApprovals(
   return (data ?? []).filter(
     route =>
       canViewAll ||
-      governorateFor(String(route.fromOrganizationId)) ===
+      byId.get(String(route.fromOrganizationId))?.parentOrganizationId ===
         membership.organizationId
   ) as Array<Record<string, unknown>>;
 }

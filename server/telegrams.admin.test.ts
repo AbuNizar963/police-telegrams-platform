@@ -6,7 +6,7 @@ const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
   createTelegram: vi.fn(),
   updateTelegram: vi.fn(),
-  deleteTelegram: vi.fn(),
+  purgeTelegramPermanently: vi.fn(),
   getDashboardStats: vi.fn(),
   getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
@@ -20,6 +20,16 @@ const mocked = vi.hoisted(() => ({
 }));
 
 vi.mock("./db", () => mocked);
+const storageMocks = vi.hoisted(() => ({
+  storageDelete: vi.fn(),
+}));
+vi.mock("./storage", async importOriginal => {
+  const actual = await importOriginal<typeof import("./storage")>();
+  return {
+    ...actual,
+    storageDelete: storageMocks.storageDelete,
+  };
+});
 
 function contextFor(role: "admin" | "user"): TrpcContext {
   return {
@@ -89,7 +99,11 @@ describe("telegram administration permissions", () => {
       id,
       updatedAt: new Date(),
     }));
-    mocked.deleteTelegram.mockResolvedValue(telegram);
+    mocked.purgeTelegramPermanently.mockResolvedValue({
+      telegram,
+      attachmentStorageKeys: [],
+    });
+    storageMocks.storageDelete.mockResolvedValue(undefined);
     mocked.writeAuditLog.mockResolvedValue(undefined);
     mocked.recordTelegramAction.mockResolvedValue(undefined);
   });
@@ -111,7 +125,8 @@ describe("telegram administration permissions", () => {
       code: "FORBIDDEN",
     });
     expect(mocked.getTelegramById).not.toHaveBeenCalled();
-    expect(mocked.deleteTelegram).not.toHaveBeenCalled();
+    expect(mocked.purgeTelegramPermanently).not.toHaveBeenCalled();
+    expect(storageMocks.storageDelete).not.toHaveBeenCalled();
   });
 
   it("allows administrators to update a telegram without changing its creator or serial", async () => {
@@ -136,19 +151,86 @@ describe("telegram administration permissions", () => {
     );
   });
 
-  it("allows administrators to delete a telegram and records its original identity", async () => {
+  it("permanently removes a telegram for administrators and records its original identity", async () => {
     const caller = appRouter.createCaller(contextFor("admin"));
     const result = await caller.telegrams.delete({ id: 7 });
 
-    expect(result).toEqual({ success: true, id: 7 });
-    expect(mocked.deleteTelegram).toHaveBeenCalledWith(7);
+    expect(result).toEqual({
+      success: true,
+      id: 7,
+      serialCode: "POL-2026-09-29-01001",
+      permanent: true,
+      deletedAttachmentCount: 0,
+      pendingStorageCleanup: 0,
+    });
+    expect(mocked.purgeTelegramPermanently).toHaveBeenCalledWith(7);
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         actorUserId: 1,
-        action: "telegram.archive",
+        action: "telegram.delete",
         entityId: "7",
+        metadata: expect.stringContaining('"mode":"permanent"'),
+      })
+    );
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
         metadata: expect.stringContaining('"createdByUserId":42'),
       })
     );
+  });
+
+  it("cleans up stored attachment objects when the telegram is deleted", async () => {
+    mocked.purgeTelegramPermanently.mockResolvedValue({
+      telegram,
+      attachmentStorageKeys: [
+        "telegrams/7/report.pdf",
+        "telegrams/7/photo.jpg",
+      ],
+    });
+    const caller = appRouter.createCaller(contextFor("admin"));
+    const result = await caller.telegrams.delete({ id: 7 });
+
+    expect(storageMocks.storageDelete).toHaveBeenCalledTimes(2);
+    expect(storageMocks.storageDelete).toHaveBeenCalledWith(
+      "telegrams/7/report.pdf"
+    );
+    expect(result.deletedAttachmentCount).toBe(2);
+    expect(result.pendingStorageCleanup).toBe(0);
+  });
+
+  it("still removes the telegram when one stored object cannot be cleaned", async () => {
+    mocked.purgeTelegramPermanently.mockResolvedValue({
+      telegram,
+      attachmentStorageKeys: [
+        "telegrams/7/report.pdf",
+        "telegrams/7/photo.jpg",
+      ],
+    });
+    storageMocks.storageDelete.mockRejectedValueOnce(
+      new Error("Storage provider does not support cleanup")
+    );
+    const caller = appRouter.createCaller(contextFor("admin"));
+    const result = await caller.telegrams.delete({ id: 7 });
+
+    expect(result.success).toBe(true);
+    expect(result.deletedAttachmentCount).toBe(2);
+    expect(result.pendingStorageCleanup).toBe(1);
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.stringContaining(
+          '"pendingStorageCleanup":["telegrams/7/report.pdf"]'
+        ),
+      })
+    );
+  });
+
+  it("reports a missing telegram when the record is already gone", async () => {
+    mocked.purgeTelegramPermanently.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await expect(caller.telegrams.delete({ id: 7 })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,6 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
-import HeaderActions from "./components/HeaderActions";
 import OwnerUserManagement from "./components/OwnerUserManagement";
 import OwnerOrganizationManagement from "./components/OwnerOrganizationManagement";
 import OperationsWorkspace from "./components/OperationsWorkspace";
@@ -12,11 +11,12 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import VerifyTelegram from "./pages/VerifyTelegram";
 import Profile from "./pages/Profile";
+import About from "./pages/About";
+import Terms from "./pages/Terms";
 
 function DashboardPage({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <HeaderActions />
       <DashboardLayout>{children}</DashboardLayout>
       <OwnerUserManagement />
       <OwnerOrganizationManagement />
@@ -32,6 +32,16 @@ function Router() {
       <Route path="/profile">
         <DashboardPage>
           <Profile />
+        </DashboardPage>
+      </Route>
+      <Route path="/about">
+        <DashboardPage>
+          <About />
+        </DashboardPage>
+      </Route>
+      <Route path="/terms">
+        <DashboardPage>
+          <Terms />
         </DashboardPage>
       </Route>
       <Route path="/">

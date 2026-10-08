@@ -25,7 +25,6 @@ import {
   createTelegram,
   createTelegramAttachment,
   updateTelegram,
-  deleteTelegram,
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
@@ -35,6 +34,7 @@ import {
   getTelegramReport,
   listTelegramAttachments,
   listTelegrams,
+  purgeTelegramPermanently,
   recordTelegramAction,
   recordTelegramVersion,
   transitionTelegram,
@@ -44,15 +44,24 @@ import {
   getUserByUsername,
   getUserOrganizationId,
   deletePushSubscription,
+  listUserNotifications,
+  markNotificationRead,
+  notifyOrganizationUsers,
+  notifyUser,
   upsertPushSubscription,
 } from "./db";
 import {
   addOrganizationMembership,
   approveTelegramRoute,
   createOrganization,
+  decideTelegramRouteAsReceiver,
+  ensureOrganizationAccounts,
   getConfiguredTelegramDestination,
+  getOrganizationById,
   getUserOrganizationMembership,
   listAllOrganizations,
+  listOrganizationAccountSummaries,
+  provisionOrganizationAccount,
   listIncomingTelegramRoutes,
   listOrganizationsForUser,
   listPendingRouteApprovals,
@@ -61,6 +70,7 @@ import {
   routeTelegram,
   seedSyrianGovernorates,
   updateOrganization,
+  updateOrganizationAccount,
 } from "./organization";
 import {
   StorageAccessDeniedError,
@@ -72,8 +82,19 @@ import {
 } from "./storage";
 import {
   getWebPushPublicKey,
+  notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
+import {
+  AiInputConfigurationError,
+  AiInputUpstreamError,
+  COHERE_ARABIC_TRANSCRIBE_MODEL,
+  MAX_AUDIO_BYTES,
+  MAX_IMAGE_BYTES,
+  extractTextWithPaddleOcr,
+  getAiInputCapabilities,
+  transcribeArabicAudio,
+} from "./aiInput";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -83,6 +104,14 @@ const categorySchema = z.enum([
   "traffic",
   "security",
   "tactical",
+  "intelligence",
+  "emergency",
+  "public_order",
+  "personnel",
+  "logistics",
+  "training",
+  "community",
+  "other",
 ]);
 const statusSchema = z.enum([
   "draft",
@@ -99,10 +128,100 @@ const statusSchema = z.enum([
   "archived",
 ]);
 
+const base64MaxLength = (bytes: number) => Math.ceil(bytes / 3) * 4;
+
+function toAiInputTrpcError(error: unknown): TRPCError {
+  if (error instanceof AiInputConfigurationError) {
+    return new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ميزة الإدخال الذكي غير مهيأة لدى مسؤول النظام",
+    });
+  }
+
+  if (error instanceof AiInputUpstreamError) {
+    return new TRPCError({
+      code: "BAD_GATEWAY",
+      message: "تعذر إتمام معالجة الإدخال الذكي حاليًا",
+    });
+  }
+
+  console.error("AI input processing failed", error);
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "تعذر إتمام معالجة الإدخال الذكي حاليًا",
+  });
+}
+
+function parseImportedDate(value?: string, time?: string): Date | undefined {
+  const normalized = (value ?? "")
+    .trim()
+    .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[.]/g, "/");
+  const match = normalized.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
+  if (!match) return undefined;
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const third = Number(match[3]);
+  const year = first > 31 ? first : third;
+  const month = first > 31 ? second : second;
+  const day = first > 31 ? third : first;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  const timeMatch = (time ?? "").trim().match(/^(\d{1,2})(?::(\d{2}))?/);
+  if (timeMatch)
+    date.setUTCHours(Number(timeMatch[1]), Number(timeMatch[2] ?? 0));
+  return date;
+}
+
 export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
   userManagement: userManagementRouter,
+
+  aiInput: router({
+    capabilities: protectedProcedure.query(() => getAiInputCapabilities()),
+
+    transcribe: protectedProcedure
+      .input(
+        z.object({
+          audioBase64: z.string().min(4).max(base64MaxLength(MAX_AUDIO_BYTES)),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          return {
+            text: await transcribeArabicAudio(input),
+            engine: COHERE_ARABIC_TRANSCRIBE_MODEL,
+          };
+        } catch (error) {
+          throw toAiInputTrpcError(error);
+        }
+      }),
+
+    extractText: protectedProcedure
+      .input(
+        z.object({
+          imageBase64: z.string().min(4).max(base64MaxLength(MAX_IMAGE_BYTES)),
+          contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          return {
+            text: await extractTextWithPaddleOcr(input),
+            engine: "paddleocr-vl" as const,
+          };
+        } catch (error) {
+          throw toAiInputTrpcError(error);
+        }
+      }),
+  }),
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -204,6 +323,11 @@ export const appRouter = router({
     ),
 
     all: adminProcedure.query(() => listAllOrganizations()),
+    accounts: adminProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .query(({ input }) =>
+        listOrganizationAccountSummaries(input.organizationId)
+      ),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
       listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
     ),
@@ -236,7 +360,9 @@ export const appRouter = router({
           ]),
         })
       )
-      .mutation(({ input }) => createOrganization(input)),
+      .mutation(({ ctx, input }) =>
+        createOrganization({ ...input, createdByUserId: ctx.user.id })
+      ),
 
     update: adminProcedure
       .input(
@@ -251,6 +377,18 @@ export const appRouter = router({
             .max(64)
             .regex(/^[A-Z0-9_-]+$/i),
           name: z.string().trim().min(2).max(255),
+          accountUsername: z
+            .string()
+            .trim()
+            .max(120)
+            .regex(/^[a-zA-Z0-9._-]*$/)
+            .default(""),
+          accountPassword: z
+            .string()
+            .min(12)
+            .max(256)
+            .optional()
+            .or(z.literal("")),
           type: z.enum([
             "central",
             "governorate",
@@ -264,11 +402,34 @@ export const appRouter = router({
           isActive: z.boolean(),
         })
       )
-      .mutation(({ input }) => updateOrganization(input)),
+      .mutation(async ({ input }) => {
+        const { accountUsername, accountPassword, ...organizationInput } =
+          input;
+        const organization = await updateOrganization(organizationInput);
+        const account = accountUsername
+          ? await updateOrganizationAccount({
+              organizationId: organization.id,
+              username: accountUsername,
+              password: accountPassword || undefined,
+            })
+          : null;
+        return { organization, account };
+      }),
 
     seedSyrianGovernorates: adminProcedure.mutation(() =>
       seedSyrianGovernorates()
     ),
+    ensureAccounts: adminProcedure.mutation(({ ctx }) =>
+      ensureOrganizationAccounts({ actorUserId: ctx.user.id })
+    ),
+    provisionAccount: adminProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .mutation(({ ctx, input }) =>
+        provisionOrganizationAccount({
+          organizationId: input.organizationId,
+          actorUserId: ctx.user.id,
+        })
+      ),
 
     assignMember: organizationAdminProcedure
       .input(
@@ -310,6 +471,15 @@ export const appRouter = router({
   }),
 
   notifications: router({
+    inbox: protectedProcedure.query(({ ctx }) =>
+      listUserNotifications(ctx.user.id)
+    ),
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await markNotificationRead(ctx.user.id, input.id);
+        return { read: true };
+      }),
     config: protectedProcedure.query(() => ({
       enabled: Boolean(getWebPushPublicKey()),
       publicKey: getWebPushPublicKey(),
@@ -688,6 +858,8 @@ export const appRouter = router({
             priority: prioritySchema.optional(),
             category: categorySchema.optional(),
             status: statusSchema.optional(),
+            from: z.string().datetime().optional(),
+            to: z.string().datetime().optional(),
             page: z.number().int().min(1).max(100000).default(1),
             pageSize: z.number().int().min(1).max(100).default(50),
           })
@@ -708,8 +880,45 @@ export const appRouter = router({
           input?.priority,
           input?.category,
           input?.status,
+          input?.from,
+          input?.to,
           input?.page,
           input?.pageSize
+        );
+      }),
+
+    exportRows: protectedProcedure
+      .input(
+        z
+          .object({
+            search: z.string().max(120).optional(),
+            classification: classificationSchema.optional(),
+            priority: prioritySchema.optional(),
+            category: categorySchema.optional(),
+            status: statusSchema.optional(),
+            from: z.string().datetime().optional(),
+            to: z.string().datetime().optional(),
+          })
+          .optional()
+      )
+      .query(async ({ ctx, input }) => {
+        const canViewAll = ctx.user.role === "admin";
+        const organizationId = canViewAll
+          ? null
+          : await getUserOrganizationId(ctx.user.id);
+        return listTelegrams(
+          ctx.user.id,
+          canViewAll,
+          organizationId,
+          input?.search,
+          input?.classification,
+          input?.priority,
+          input?.category,
+          input?.status,
+          input?.from,
+          input?.to,
+          1,
+          1000
         );
       }),
 
@@ -814,29 +1023,61 @@ export const appRouter = router({
           });
         }
 
+        const purged = await purgeTelegramPermanently(existing.id);
+        if (!purged) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+
+        const failedStorageKeys: string[] = [];
+        for (const storageKey of purged.attachmentStorageKeys) {
+          try {
+            await storageDelete(storageKey);
+          } catch (error) {
+            failedStorageKeys.push(storageKey);
+            console.warn(
+              "[Telegram] Attachment object cleanup failed",
+              storageKey,
+              error
+            );
+          }
+        }
+
+        // The telegram and its history are physically removed; this audit entry
+        // stays as the immutable record that the deletion happened.
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
-          action: "telegram.archive",
+          action: "telegram.delete",
           entityType: "telegram",
-          entityId: String(existing.id),
+          entityId: String(purged.telegram.id),
           metadata: JSON.stringify({
-            serialNumber: existing.serialNumber,
+            mode: "permanent",
+            serialNumber: purged.telegram.serialNumber,
+            serialCode: purged.telegram.serialCode,
+            subject: existing.subject,
+            recipient: existing.recipient,
+            statusAtDeletion: existing.status,
             createdByUserId: existing.createdByUserId,
             creatorName: existing.creatorName,
+            creatorBadgeId: existing.creatorBadgeId ?? null,
+            deletedAttachmentCount: purged.attachmentStorageKeys.length,
+            pendingStorageCleanup: failedStorageKeys,
+            reason:
+              "حذف نهائي من حساب المالك أو المدير دون الاحتفاظ بسجل البرقية",
           }),
         });
 
-        await deleteTelegram(existing.id);
-        await recordTelegramAction({
-          telegramId: existing.id,
-          actorUserId: ctx.user.id,
-          action: "telegram.archive",
-          fromStatus: existing.status,
-          toStatus: "archived",
-          reason: "أرشفة إدارية مع الحفاظ على السجل التاريخي",
-        });
-        return { success: true as const, id: existing.id };
+        return {
+          success: true as const,
+          id: purged.telegram.id,
+          serialCode: purged.telegram.serialCode,
+          permanent: true as const,
+          deletedAttachmentCount: purged.attachmentStorageKeys.length,
+          pendingStorageCleanup: failedStorageKeys.length,
+        };
       }),
 
     route: protectedProcedure
@@ -868,23 +1109,35 @@ export const appRouter = router({
           }),
         });
 
-        const routedTelegram =
-          route.approvalStatus === "pending"
-            ? null
-            : await getTelegramById(input.id);
-        if (routedTelegram) {
-          try {
-            await notifyOrganizationTelegramCreated({
-              organizationId: route.toOrganizationId,
-              serialCode: routedTelegram.serialCode,
-              subject: routedTelegram.subject,
-              recipient: routedTelegram.recipient,
-              priority: routedTelegram.priority,
-              telegramId: routedTelegram.id,
+        try {
+          const telegram = await getTelegramById(input.id);
+          const sourceOrganization = await getOrganizationById(
+            route.fromOrganizationId
+          );
+          if (telegram && sourceOrganization?.parentOrganizationId) {
+            const destination = await getOrganizationById(
+              route.toOrganizationId
+            );
+            await notifyOrganizationUsers({
+              organizationId: sourceOrganization.parentOrganizationId,
+              type: "route.requested",
+              title: "طلب إحالة بانتظار اعتماد السلطة الأعلى",
+              body: `البرقية ${telegram.serialCode} مطلوبة للإحالة إلى ${destination?.name ?? "جهة مستلمة"}.`,
+              telegramId: telegram.id,
+              routeId: route.id,
             });
-          } catch (error) {
-            console.warn("[Notification] Telegram routing push failed", error);
+            await notifyOrganizationRouteEvent({
+              organizationId: sourceOrganization.parentOrganizationId,
+              type: "route.requested",
+              title: "طلب إحالة بانتظار الاعتماد",
+              body: `البرقية ${telegram.serialCode} تحتاج قرار السلطة الأعلى.`,
+              telegramId: telegram.id,
+              serialCode: telegram.serialCode,
+              routeId: route.id,
+            });
           }
+        } catch (error) {
+          console.warn("[Notification] Route request dispatch failed", error);
         }
         return route;
       }),
@@ -929,13 +1182,40 @@ export const appRouter = router({
             reason: input.reason ?? null,
           }),
         });
-        if (route.approvalStatus === "approved") {
-          const routedTelegram = await getTelegramById(route.telegramId);
-          if (routedTelegram) {
+        const routedTelegram = await getTelegramById(route.telegramId);
+        if (routedTelegram) {
+          if (route.approvalStatus === "approved") {
+            await notifyUser({
+              userId: route.forwardedByUserId,
+              organizationId: route.fromOrganizationId,
+              type: "route.approved",
+              title: "تم اعتماد إحالة البرقية",
+              body: `اعتمدت السلطة الأعلى إحالة ${routedTelegram.serialCode}. رقم الإحالة الجديد: ${route.routeSerialCode ?? "غير متاح"}.`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
+            await notifyOrganizationUsers({
+              organizationId: route.toOrganizationId,
+              type: "route.approved",
+              title: "برقية واردة معتمدة",
+              body: `وردت البرقية ${routedTelegram.serialCode} برقم إحالة ${route.routeSerialCode ?? "جديد"} باسم السلطة المعتمدة.`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
             try {
+              await notifyOrganizationRouteEvent({
+                organizationId: route.toOrganizationId,
+                type: "route.approved",
+                title: "برقية واردة معتمدة",
+                body: `وردت البرقية برقم إحالة ${route.routeSerialCode ?? "جديد"}.`,
+                telegramId: routedTelegram.id,
+                serialCode: routedTelegram.serialCode,
+                routeId: route.id,
+                routeSerialCode: route.routeSerialCode,
+              });
               await notifyOrganizationTelegramCreated({
                 organizationId: route.toOrganizationId,
-                serialCode: routedTelegram.serialCode,
+                serialCode: route.routeSerialCode ?? routedTelegram.serialCode,
                 subject: routedTelegram.subject,
                 recipient: routedTelegram.recipient,
                 priority: routedTelegram.priority,
@@ -944,6 +1224,32 @@ export const appRouter = router({
             } catch (error) {
               console.warn(
                 "[Notification] Approved route push dispatch failed",
+                error
+              );
+            }
+          } else {
+            await notifyUser({
+              userId: route.forwardedByUserId,
+              organizationId: route.fromOrganizationId,
+              type: "route.rejected",
+              title: "تم رفض إحالة البرقية",
+              body: `رُفضت إحالة ${routedTelegram.serialCode}: ${route.approvalReason ?? input.reason ?? "دون سبب"}`,
+              telegramId: routedTelegram.id,
+              routeId: route.id,
+            });
+            try {
+              await notifyOrganizationRouteEvent({
+                organizationId: route.fromOrganizationId,
+                type: "route.rejected",
+                title: "تم رفض إحالة البرقية",
+                body: `رُفضت إحالة ${routedTelegram.serialCode}.`,
+                telegramId: routedTelegram.id,
+                serialCode: routedTelegram.serialCode,
+                routeId: route.id,
+              });
+            } catch (error) {
+              console.warn(
+                "[Notification] Rejected route push dispatch failed",
                 error
               );
             }
@@ -966,6 +1272,60 @@ export const appRouter = router({
           entityId: String(route.id),
           metadata: JSON.stringify({ telegramId: route.telegramId }),
         });
+        return route;
+      }),
+    decideRouteAsReceiver: protectedProcedure
+      .input(
+        z.object({
+          routeId: z.number().int().positive(),
+          accepted: z.boolean(),
+          reason: z.string().trim().max(2000).nullable().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!input.accepted && !input.reason?.trim()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "سبب رفض الاستلام مطلوب",
+          });
+        }
+        const route = await decideTelegramRouteAsReceiver({
+          routeId: input.routeId,
+          receiverUserId: ctx.user.id,
+          accepted: input.accepted,
+          reason: input.reason,
+        });
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: input.accepted
+            ? "telegram.route.receiver_accept"
+            : "telegram.route.receiver_reject",
+          entityType: "telegram_route",
+          entityId: String(route.id),
+          metadata: JSON.stringify({
+            telegramId: route.telegramId,
+            reason: input.reason ?? null,
+          }),
+        });
+        const decidedTelegram = await getTelegramById(route.telegramId);
+        if (decidedTelegram) {
+          await notifyUser({
+            userId: route.forwardedByUserId,
+            organizationId: route.fromOrganizationId,
+            type: input.accepted
+              ? "route.receiver_accepted"
+              : "route.receiver_rejected",
+            title: input.accepted
+              ? "أكدت الجهة المستقبلة استلام البرقية"
+              : "رفضت الجهة المستقبلة استلام البرقية",
+            body: input.accepted
+              ? `أكدت الجهة المستقبلة استلام ${decidedTelegram.serialCode}.`
+              : `رُفض استلام ${decidedTelegram.serialCode}: ${input.reason}`,
+            telegramId: decidedTelegram.id,
+            routeId: route.id,
+          });
+        }
         return route;
       }),
 
@@ -1024,6 +1384,7 @@ export const appRouter = router({
         z.object({
           subject: z.string().trim().min(2).max(255),
           recipient: z.string().trim().min(2).max(255),
+          recipientOrganizationId: z.string().uuid().optional(),
           body: z.string().trim().min(3).max(20000),
           classification: classificationSchema,
           priority: prioritySchema,
@@ -1056,20 +1417,35 @@ export const appRouter = router({
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const organizationId = await getUserOrganizationId(ctx.user.id);
-        const configuredDestination = await getConfiguredTelegramDestination(
-          ctx.user.id
-        );
+        const selectedDestination = input.recipientOrganizationId
+          ? (await listRoutingTargets(ctx.user.id)).find(
+              target => target.id === input.recipientOrganizationId
+            )
+          : null;
+        if (input.recipientOrganizationId && !selectedDestination) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "الجهة المختارة غير متاحة ضمن مسار العمل المسموح",
+          });
+        }
+        const configuredDestination = selectedDestination
+          ? selectedDestination
+          : await getConfiguredTelegramDestination(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
           typeof creatorIpHeader === "string"
             ? creatorIpHeader.split(",")[0].trim()
             : null;
+        const {
+          recipientOrganizationId: _recipientOrganizationId,
+          ...telegramInput
+        } = input;
 
         let telegram: Awaited<ReturnType<typeof createTelegram>>;
         try {
           telegram = await createTelegram({
-            ...input,
+            ...telegramInput,
             serialNumber,
             serialCode,
             idempotencyKey: input.idempotencyKey ?? null,
@@ -1095,12 +1471,34 @@ export const appRouter = router({
         }
 
         if (configuredDestination) {
-          await routeTelegram({
+          const route = await routeTelegram({
             telegramId: telegram.id,
             toOrganizationId: configuredDestination.id,
             forwardedByUserId: ctx.user.id,
-            note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+            allowDraft: true,
+            note: input.recipientOrganizationId
+              ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
+              : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
           });
+          try {
+            const sourceOrganization =
+              await getOrganizationById(organizationId);
+            if (sourceOrganization?.parentOrganizationId) {
+              await notifyOrganizationUsers({
+                organizationId: sourceOrganization.parentOrganizationId,
+                type: "route.requested",
+                title: "طلب إحالة بانتظار اعتماد السلطة الأعلى",
+                body: `البرقية ${telegram.serialCode} تحتاج موافقة قبل انتقالها إلى الجهة المستلمة.`,
+                telegramId: telegram.id,
+                routeId: route.id,
+              });
+            }
+          } catch (error) {
+            console.warn(
+              "[Notification] Create route notification failed",
+              error
+            );
+          }
           const routedTelegram = await getTelegramById(telegram.id);
           if (routedTelegram) telegram = routedTelegram;
         }
@@ -1153,6 +1551,149 @@ export const appRouter = router({
         }
 
         return telegram;
+      }),
+    importRows: organizationAdminProcedure
+      .input(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                originalSerial: z.string().max(120).optional(),
+                time: z.string().max(120).optional(),
+                sender: z.string().max(255).optional(),
+                date: z.string().max(120).optional(),
+                body: z.string().trim().min(3).max(20000),
+                recipient: z.string().max(255).optional(),
+                signature: z.string().max(255).optional(),
+                notes: z.string().max(4000).optional(),
+                sheetName: z.enum(["صادر", "وارد"]),
+              })
+            )
+            .min(1)
+            .max(1000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const settings = await getOrCreateSettings(ctx.user.id);
+        const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
+        let created = 0;
+        let skipped = 0;
+        const errors: Array<{ row: number; message: string }> = [];
+
+        for (let index = 0; index < input.rows.length; index += 1) {
+          const row = input.rows[index];
+          const sourceKey = JSON.stringify({
+            organizationId,
+            sheetName: row.sheetName,
+            originalSerial: row.originalSerial ?? "",
+            time: row.time ?? "",
+            date: row.date ?? "",
+            body: row.body,
+          });
+          const idempotencyKey = `excel-import:${createHash("sha256")
+            .update(sourceKey)
+            .digest("hex")}`;
+          try {
+            const existing = await getTelegramByIdempotencyKey(idempotencyKey);
+            if (existing) {
+              skipped += 1;
+              continue;
+            }
+            const serialNumber = await allocateSerialNumber();
+            const dateParts = new Intl.DateTimeFormat("en-CA", {
+              timeZone: settings.timezone,
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }).formatToParts(new Date());
+            const dateValues = Object.fromEntries(
+              dateParts.map(part => [part.type, part.value])
+            );
+            const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+            const serialCode = `${settings.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
+            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            const importedBody = [
+              row.body,
+              row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",
+              row.notes ? `\nملاحظات السجل الأصلي: ${row.notes}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
+            const telegram = await createTelegram({
+              serialNumber,
+              serialCode,
+              idempotencyKey,
+              verificationToken: randomUUID(),
+              createdAt: importedCreatedAt,
+              createdByUserId: ctx.user.id,
+              organizationId,
+              currentOrganizationId: organizationId,
+              creatorName,
+              creatorEmail: ctx.user.email ?? null,
+              creatorBadgeId: ctx.user.badgeNumber ?? null,
+              creatorIp: null,
+              creatorFingerprint: ctx.user.authUserId,
+              subject:
+                row.sender?.trim() ||
+                `سجل مستورد من Excel رقم ${row.originalSerial || index + 1}`,
+              recipient: row.recipient?.trim() || "غير محدد في السجل الأصلي",
+              body: importedBody,
+              classification: "normal",
+              priority: "normal",
+              category: "administrative",
+              status: "draft",
+              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
+            });
+            await writeAuditLog({
+              actorUserId: ctx.user.id,
+              actorName: creatorName,
+              action: "telegram.import.excel",
+              entityType: "telegram",
+              entityId: String(telegram.id),
+              metadata: JSON.stringify({
+                sheetName: row.sheetName,
+                originalSerial: row.originalSerial ?? null,
+                originalDate: row.date ?? null,
+                originalTime: row.time ?? null,
+              }),
+            });
+            await recordTelegramAction({
+              telegramId: telegram.id,
+              actorUserId: ctx.user.id,
+              action: "telegram.import.excel",
+              toStatus: telegram.status,
+              metadata: {
+                sheetName: row.sheetName,
+                originalSerial: row.originalSerial ?? null,
+                originalDate: row.date ?? null,
+              },
+            });
+            await recordTelegramVersion({
+              telegramId: telegram.id,
+              changedByUserId: ctx.user.id,
+              changeReason: "استيراد السجل من ملف Excel",
+              snapshot: {
+                subject: telegram.subject,
+                recipient: telegram.recipient,
+                body: telegram.body,
+                classification: telegram.classification,
+                priority: telegram.priority,
+                category: telegram.category,
+                status: telegram.status,
+              },
+            });
+            created += 1;
+          } catch (error) {
+            errors.push({
+              row: index + 2,
+              message:
+                error instanceof Error ? error.message : "تعذر استيراد الصف",
+            });
+          }
+        }
+
+        return { created, skipped, errors: errors.slice(0, 25) };
       }),
   }),
 });

@@ -22,9 +22,17 @@ describe("correctArabicSpeechText", () => {
     );
   });
 
+  it("corrects common Arabic feminine words and attached prepositions", () => {
+    expect(
+      correctArabicSpeechText(
+        "العمليه الامنيه والدوريه الميدانيه بالمدرسه وللدائره الرسميه"
+      )
+    ).toBe("العملية الأمنية والدورية الميدانية بالمدرسة وللدائرة الرسمية");
+  });
+
   it("preserves valid words ending in ه", () => {
-    expect(correctArabicSpeechText("هذا وجه ومياه وانتباه")).toBe(
-      "هذا وجه ومياه وانتباه"
+    expect(correctArabicSpeechText("هذا وجه ومياه وانتباه وتنبيه وتوجيه")).toBe(
+      "هذا وجه ومياه وانتباه وتنبيه وتوجيه"
     );
   });
 
@@ -34,6 +42,13 @@ describe("correctArabicSpeechText", () => {
     );
     expect(correctArabicSpeechText("")).toBe("");
     expect(correctArabicSpeechText("المدرسه-الجامعه")).toBe("المدرسة-الجامعة");
+  });
+
+  it("keeps the school correction reliable when a source includes harakat", () => {
+    expect(correctArabicSpeechText("ذهبت إلى المَدْرَسَهِ")).toBe(
+      "ذهبت إلى المدرسة"
+    );
+    expect(correctArabicSpeechText("مَدْرَسَه قريبة")).toBe("مدرسة قريبة");
   });
 
   it("does not replace a matching substring inside a longer word", () => {

@@ -15,6 +15,10 @@ declare global {
   interface Window {
     Tesseract?: TesseractApi;
     webkitSpeechRecognition?: new () => SpeechRecognition;
+    SpeechRecognitionPhrase?: new (
+      phrase: string,
+      boost?: number
+    ) => SpeechRecognitionPhraseHint;
   }
 
   interface SpeechRecognition extends EventTarget {
@@ -29,6 +33,12 @@ declare global {
     onend: ((event: Event) => void) | null;
     onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
     onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    phrases?: SpeechRecognitionPhraseHint[];
+  }
+
+  interface SpeechRecognitionPhraseHint {
+    readonly phrase: string;
+    readonly boost: number;
   }
 
   interface SpeechRecognitionEvent extends Event {
@@ -44,6 +54,32 @@ declare global {
     SpeechRecognition?: new () => SpeechRecognition;
   }
 }
+
+/** Optional Web Speech contextual biasing; ignored by browsers that lack it. */
+export const ARABIC_SPEECH_CONTEXT_HINTS: ReadonlyArray<
+  readonly [phrase: string, boost: number]
+> = [
+  ["المدرسة", 5],
+  ["مدرسة", 4],
+  ["البرقية", 4],
+  ["بلاغ", 4],
+  ["البلاغ", 4],
+  ["الجهة الموجه إليها", 4],
+  ["درجة السرية", 3],
+  ["درجة الأولوية", 3],
+  ["سري للغاية", 3],
+  ["دورية", 4],
+  ["المديرية", 4],
+  ["مديرية الأمن", 4],
+  ["مخفر الشرطة", 4],
+  ["مركز الشرطة", 4],
+  ["الجهة", 4],
+  ["الرسالة", 3],
+  ["المنطقة", 3],
+  ["الحادثة", 3],
+  ["السرية", 3],
+  ["الأولوية", 3],
+];
 
 let tesseractLoadPromise: Promise<TesseractApi> | null = null;
 let ocrWorkerPromise: Promise<TesseractWorker> | null = null;
@@ -132,7 +168,94 @@ export async function extractArabicTextFromImage(file: File): Promise<string> {
   return result.data.text.trim();
 }
 
-export function createArabicSpeechRecognition(): SpeechRecognition {
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve(String(reader.result ?? "").split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("تعذر قراءة الملف الصوتي"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function writeAscii(view: DataView, offset: number, value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+}
+
+function encodeMonoWav(
+  audio: AudioBuffer,
+  targetSampleRate = 16_000
+): ArrayBuffer {
+  const sourceSampleRate = audio.sampleRate;
+  const sampleCount = Math.max(
+    1,
+    Math.ceil((audio.length * targetSampleRate) / sourceSampleRate)
+  );
+  const buffer = new ArrayBuffer(44 + sampleCount * 2);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + sampleCount * 2, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, sampleCount * 2, true);
+
+  const channels = Array.from({ length: audio.numberOfChannels }, (_, index) =>
+    audio.getChannelData(index)
+  );
+  for (let index = 0; index < sampleCount; index += 1) {
+    const sourceIndex = Math.min(
+      audio.length - 1,
+      Math.floor((index * sourceSampleRate) / targetSampleRate)
+    );
+    const sample =
+      channels.reduce((sum, channel) => sum + (channel[sourceIndex] ?? 0), 0) /
+      channels.length;
+    view.setInt16(
+      44 + index * 2,
+      Math.max(-1, Math.min(1, sample)) * 0x7fff,
+      true
+    );
+  }
+
+  return buffer;
+}
+
+/**
+ * MediaRecorder normally produces WebM/Opus, which is deliberately converted
+ * into WAV because the high-accuracy Arabic endpoint accepts WAV reliably.
+ */
+export async function audioBlobToWav(blob: Blob): Promise<Blob> {
+  if (!blob.size) throw new Error("لم يُسجل أي صوت");
+  if (typeof window === "undefined" || !window.AudioContext) {
+    throw new Error("تحويل الصوت عالي الدقة غير متاح في هذا المتصفح");
+  }
+
+  const context = new window.AudioContext();
+  try {
+    const source = await blob.arrayBuffer();
+    const decoded = await context.decodeAudioData(source.slice(0));
+    return new Blob([encodeMonoWav(decoded)], { type: "audio/wav" });
+  } catch {
+    throw new Error("تعذر تجهيز التسجيل الصوتي للتحويل");
+  } finally {
+    await context.close();
+  }
+}
+
+export function createArabicSpeechRecognition(options?: {
+  contextualBiasing?: boolean;
+}): SpeechRecognition {
   if (typeof window === "undefined") {
     throw new Error("التعرف الصوتي متاح داخل المتصفح فقط");
   }
@@ -151,6 +274,21 @@ export function createArabicSpeechRecognition(): SpeechRecognition {
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
+
+  const Phrase = window.SpeechRecognitionPhrase;
+  if (
+    options?.contextualBiasing !== false &&
+    Phrase &&
+    "phrases" in recognition
+  ) {
+    try {
+      recognition.phrases = ARABIC_SPEECH_CONTEXT_HINTS.map(
+        ([phrase, boost]) => new Phrase(phrase, boost)
+      );
+    } catch {
+      // Contextual biasing is experimental; ordinary recognition must survive.
+    }
+  }
 
   return recognition;
 }

@@ -23,6 +23,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   Archive,
   Activity,
+  FileSpreadsheet,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -37,9 +38,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { trpc } from "@/lib/trpc";
 import { BrandMark } from "./BrandMark";
+import HeaderActions from "./HeaderActions";
 
 const menuItems = [
-  { key: "dashboard", icon: LayoutDashboard, label: "لوحة القيادة", path: "/" },
+  { key: "dashboard", icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
   {
     key: "create-telegram",
     icon: Plus,
@@ -47,16 +49,22 @@ const menuItems = [
     action: "open-telegram-composer",
   },
   {
+    key: "telegram-excel-tools",
+    icon: FileSpreadsheet,
+    label: "استيراد وتصدير السجل",
+    action: "open-telegram-excel-tools",
+  },
+  {
     key: "accounts",
     icon: Users,
-    label: "إدارة حسابات الشرطيين",
+    label: "إدارة المستخدمين",
     action: "open-owner-user-management",
     adminOnly: true,
   },
   {
     key: "locations",
     icon: MapPinned,
-    label: "خريطة البلاغات والمواقع",
+    label: "خريطة البلاغات والمواقع الجغرافية",
     tab: "locations",
   },
   { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
@@ -90,6 +98,7 @@ export default function DashboardLayout({
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loading, user } = useAuth();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
@@ -102,6 +111,10 @@ export default function DashboardLayout({
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (user?.mustChangePassword) setLocation("/profile");
+  }, [setLocation, user?.mustChangePassword]);
 
   if (loading) {
     return <DashboardLayoutSkeleton />;
@@ -206,12 +219,13 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const isMobile = useIsMobile();
+  const showSidebarBrand = isMobile || !isCollapsed;
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (isCollapsed) {
@@ -250,30 +264,42 @@ function DashboardLayoutContent({
 
   return (
     <>
+      {!isMobile && !isCollapsed ? (
+        <button
+          type="button"
+          aria-label="إغلاق القائمة الجانبية"
+          className="fixed inset-0 z-20 bg-slate-950/35 backdrop-blur-[1px] transition-opacity"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           side="right"
           collapsible="offcanvas"
-          className="border-l-0"
+          className="z-30 border-l-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed ? (
+          <SidebarHeader className="border-b border-sidebar-border bg-sidebar/95 px-3 py-4">
+            <div className="flex w-full items-center justify-between gap-3">
+              {showSidebarBrand ? (
                 <BrandMark size="sm" showLabel className="min-w-0" />
               ) : null}
+              <button
+                onClick={toggleSidebar}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar-accent/40 text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="إغلاق القائمة الجانبية"
+                title="إغلاق القائمة"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+          <SidebarContent className="gap-0 px-3 py-5">
+            <p className="mb-3 px-2 text-[11px] font-semibold tracking-[0.14em] text-sidebar-foreground/55">
+              التنقل الرئيسي
+            </p>
+            <SidebarMenu className="gap-1.5">
               {menuItems
                 .filter(item => !item.adminOnly || user?.role === "admin")
                 .map(item => {
@@ -296,10 +322,10 @@ function DashboardLayoutContent({
                           }
                         }}
                         tooltip={item.label}
-                        className="h-10 font-normal transition-all"
+                        className="h-11 rounded-xl px-3 font-medium transition-colors data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-md data-[active=true]:hover:bg-primary/90"
                       >
                         <item.icon
-                          className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                          className={`h-[18px] w-[18px] ${isActive ? "text-current" : "text-sidebar-foreground/70"}`}
                         />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
@@ -309,10 +335,10 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="border-t border-sidebar-border p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button className="flex w-full items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-2.5 py-2.5 text-left transition-colors hover:bg-sidebar-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
                       {user?.name?.charAt(0).toUpperCase()}
@@ -350,23 +376,44 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
-        {!isMobile && (
-          <div className="sticky top-0 z-40 flex h-12 items-center border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
-            <SidebarTrigger
-              className="h-9 w-9 rounded-lg bg-background"
-              aria-label="فتح القائمة الجانبية"
-            />
+        {!isMobile ? (
+          <div
+            dir="rtl"
+            className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+          >
+            <div className="flex items-center gap-3">
+              <SidebarTrigger
+                className="h-10 w-10 shrink-0 rounded-xl border bg-background shadow-sm hover:bg-accent"
+                aria-label={
+                  isCollapsed
+                    ? "فتح القائمة الجانبية"
+                    : "إغلاق القائمة الجانبية"
+                }
+                title={isCollapsed ? "فتح القائمة" : "إغلاق القائمة"}
+              />
+              <BrandMark size="sm" />
+              <h1 className="text-lg font-bold tracking-tight text-foreground">
+                مركز البرقيات
+              </h1>
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                النظام متصل
+              </span>
+            </div>
+            <HeaderActions />
           </div>
-        )}
+        ) : null}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <BrandMark size="sm" showLabel compactLabel />
+              <SidebarTrigger className="h-10 w-10 rounded-xl border bg-background shadow-sm" />
+              <BrandMark size="sm" />
+              <span className="text-sm font-bold">مركز البرقيات</span>
               <span className="sr-only">
                 {activeMenuItem?.label ?? "القائمة"}
               </span>
             </div>
+            <HeaderActions />
           </div>
         )}
         <main className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12">

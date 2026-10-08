@@ -9,7 +9,7 @@ type BrandMarkProps = {
 };
 
 const sizeClasses = {
-  sm: "h-9 w-9 rounded-xl",
+  sm: "h-10 w-10 rounded-xl",
   md: "h-11 w-11 rounded-2xl",
   lg: "h-16 w-16 rounded-[1.35rem]",
 } as const;

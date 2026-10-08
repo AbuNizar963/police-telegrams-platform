@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapView, type MapMarker } from "@/components/Map";
@@ -27,17 +28,29 @@ const tabLabels: Record<WorkspaceTab, string> = {
   archive: "الأرشيف والسجلات المغلقة",
 };
 
+const LIVE_REFRESH_INTERVAL_MS = 15_000;
+
 export default function OperationsWorkspace() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<WorkspaceTab>("locations");
   const [search, setSearch] = useState("");
   const allTelegrams = trpc.telegrams.list.useQuery(
     { page: 1, pageSize: 100 },
-    { enabled: open, refetchOnWindowFocus: false }
+    {
+      enabled: open,
+      refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    }
   );
   const archivedTelegrams = trpc.telegrams.list.useQuery(
     { page: 1, pageSize: 100, status: "archived" },
-    { enabled: open && tab === "archive", refetchOnWindowFocus: false }
+    {
+      enabled: open && tab === "archive",
+      refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    }
   );
   const routingTargets = trpc.organizations.routingTargets.useQuery(undefined, {
     enabled: open && (tab === "units" || tab === "resources"),
@@ -72,13 +85,13 @@ export default function OperationsWorkspace() {
   const markers: MapMarker[] = locations.map(row => ({
     id: String(row.id),
     position: { lat: Number(row.gpsLatitude), lng: Number(row.gpsLongitude) },
-    title: `${row.serialCode} — ${row.subject}`,
+    title: `${getTelegramDisplayNumber(row.serialCode)} — ${row.subject}`,
   }));
   const filteredArchive = (archivedTelegrams.data ?? []).filter(row => {
     const needle = search.trim().toLowerCase();
     return (
       !needle ||
-      `${row.serialCode} ${row.subject} ${row.recipient}`
+      `${getTelegramDisplayNumber(row.serialCode)} ${row.subject} ${row.recipient}`
         .toLowerCase()
         .includes(needle)
     );
@@ -263,7 +276,7 @@ function LocationsPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">
-                      {row.serialCode} — {row.subject}
+                      {getTelegramDisplayNumber(row.serialCode)} — {row.subject}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {row.gpsLatitude}, {row.gpsLongitude}
@@ -457,7 +470,7 @@ function ArchivePanel({
               className="grid grid-cols-[130px_minmax(0,1fr)_140px_120px] items-center gap-3 px-4 py-3 text-sm"
             >
               <span className="font-mono text-xs font-bold text-[#9b7c3d]">
-                {row.serialCode}
+                {getTelegramDisplayNumber(row.serialCode)}
               </span>
               <span className="truncate font-semibold">{row.subject}</span>
               <span className="truncate text-xs text-muted-foreground">

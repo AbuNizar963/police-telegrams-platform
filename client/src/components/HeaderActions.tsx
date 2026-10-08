@@ -1,4 +1,15 @@
-import { Bell, Moon, Settings, Sun, UserRound, Users } from "lucide-react";
+import {
+  Bell,
+  FileText,
+  Info,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
@@ -33,9 +44,16 @@ function decodeVapidKey(value: string): Uint8Array {
  */
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
+  });
+  const notificationInbox = trpc.notifications.inbox.useQuery(undefined, {
+    enabled: Boolean(user),
+    refetchInterval: 15_000,
+  });
+  const markNotificationRead = trpc.notifications.markRead.useMutation({
+    onSuccess: () => void notificationInbox.refetch(),
   });
   const subscribe = trpc.notifications.subscribe.useMutation({
     onSuccess: () => toast.success("تم تفعيل إشعارات البرقيات على هذا الجهاز"),
@@ -110,7 +128,7 @@ export default function HeaderActions() {
   return (
     <div
       dir="rtl"
-      className="fixed left-4 top-3 z-[60] flex items-center gap-2 sm:left-6 sm:top-4"
+      className="flex items-center gap-2"
       aria-label="إجراءات الصفحة"
     >
       <DropdownMenu>
@@ -124,6 +142,11 @@ export default function HeaderActions() {
             className="relative h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
           >
             <Bell className="h-[18px] w-[18px]" />
+            {(notificationInbox.data?.unreadCount ?? 0) > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                {notificationInbox.data?.unreadCount}
+              </span>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-72">
@@ -131,18 +154,58 @@ export default function HeaderActions() {
             الإشعارات
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <div className="px-3 py-6 text-center">
-            <Bell className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              {pushEnabled
-                ? "إشعارات البرقيات مفعّلة"
-                : "إشعارات البرقيات غير مفعّلة"}
+          {notificationInbox.isLoading ? (
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+              جارٍ تحميل التنبيهات...
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {notificationConfig.data?.enabled
-                ? "ستصلك تنبيهات البرقيات الجديدة على هذا الجهاز."
-                : "فعّل مفاتيح VAPID على الخادم لإشعارات الخلفية."}
-            </p>
+          ) : notificationInbox.data?.items.length ? (
+            <div className="max-h-80 overflow-y-auto p-2">
+              {notificationInbox.data.items.map(notification => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className="mb-1 cursor-pointer flex-col items-stretch gap-1 rounded-lg p-3 text-right"
+                  onSelect={() => {
+                    if (!notification.readAt) {
+                      markNotificationRead.mutate({ id: notification.id });
+                    }
+                    if (notification.telegramId) {
+                      window.dispatchEvent(
+                        new CustomEvent("open-telegram", {
+                          detail: { telegramId: notification.telegramId },
+                        })
+                      );
+                    }
+                  }}
+                >
+                  <span className="flex items-center justify-between gap-2 text-xs font-bold">
+                    <span>{notification.title}</span>
+                    {!notification.readAt && (
+                      <span className="h-2 w-2 rounded-full bg-red-600" />
+                    )}
+                  </span>
+                  <span className="text-[11px] leading-5 text-muted-foreground">
+                    {notification.body}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(notification.createdAt).toLocaleString("ar-SY")}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          ) : (
+            <div className="px-3 py-6 text-center">
+              <Bell className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+              <p className="text-sm font-medium">لا توجد تنبيهات جديدة</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ستظهر هنا طلبات الإحالة وقرارات السلطة الأعلى.
+              </p>
+            </div>
+          )}
+          <DropdownMenuSeparator />
+          <div className="px-3 py-2 text-center text-[11px] text-muted-foreground">
+            {pushEnabled && notificationConfig.data?.enabled
+              ? "التنبيهات الداخلية وPush مفعّلة"
+              : "فعّل إشعارات الجهاز من قائمة الإعدادات"}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -157,7 +220,7 @@ export default function HeaderActions() {
             title="الإعدادات"
             className="h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
           >
-            <Settings className="h-[18px] w-[18px]" />
+            <Menu className="h-[19px] w-[19px]" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-64">
@@ -210,7 +273,7 @@ export default function HeaderActions() {
                 className="cursor-pointer justify-end gap-2"
               >
                 <Users className="h-4 w-4" />
-                <span>إدارة حسابات الشرطيين وإضافتها</span>
+                <span>إدارة المستخدمين وإضافة الحسابات</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
@@ -236,6 +299,33 @@ export default function HeaderActions() {
               </DropdownMenuItem>
             </>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              window.location.href = "/terms";
+            }}
+            className="cursor-pointer justify-end gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            <span>الشروط والأحكام</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              window.location.href = "/about";
+            }}
+            className="cursor-pointer justify-end gap-2"
+          >
+            <Info className="h-4 w-4" />
+            <span>حول النظام وميزاته</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => void logout()}
+            className="cursor-pointer justify-end gap-2 text-destructive focus:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>تسجيل الخروج</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -17,6 +17,7 @@ const mocked = vi.hoisted(() => ({
   recordTelegramAction: vi.fn(),
   recordTelegramVersion: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
+  listRoutingTargets: vi.fn(),
   routeTelegram: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("./organization", async importOriginal => {
   return {
     ...actual,
     getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
+    listRoutingTargets: mocked.listRoutingTargets,
     routeTelegram: mocked.routeTelegram,
   };
 });
@@ -70,6 +72,7 @@ describe("telegrams.create", () => {
     mocked.recordTelegramAction.mockResolvedValue(undefined);
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
+    mocked.listRoutingTargets.mockResolvedValue([]);
     mocked.routeTelegram.mockResolvedValue(undefined);
   });
 
@@ -107,6 +110,38 @@ describe("telegrams.create", () => {
       })
     );
     expect(mocked.routeTelegram).not.toHaveBeenCalled();
+  });
+
+  it("accepts every supported police telegram category", async () => {
+    const categories = [
+      "criminal",
+      "administrative",
+      "traffic",
+      "security",
+      "tactical",
+      "intelligence",
+      "emergency",
+      "public_order",
+      "personnel",
+      "logistics",
+      "training",
+      "community",
+      "other",
+    ] as const;
+    const caller = appRouter.createCaller(createContext());
+
+    for (const category of categories) {
+      await caller.telegrams.create({
+        subject: `اختبار ${category}`,
+        recipient: "غرفة العمليات",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "normal",
+        category,
+      });
+    }
+
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(categories.length);
   });
 
   it("returns the persisted telegram when a concurrent retry wins the idempotency race", async () => {
@@ -172,7 +207,45 @@ describe("telegrams.create", () => {
       telegramId: 7,
       toOrganizationId: destination.id,
       forwardedByUserId: 42,
+      allowDraft: true,
       note: "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+    });
+  });
+
+  it("routes to the explicitly selected allowed organization", async () => {
+    const destination = {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "قيادة المنطقة",
+      isConfiguredDestination: false,
+    };
+    const routedTelegram = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "POL-2026-10-02-01001",
+      status: "forwarded",
+      currentOrganizationId: destination.id,
+    };
+    mocked.listRoutingTargets.mockResolvedValue([destination]);
+    mocked.getTelegramById.mockResolvedValue(routedTelegram);
+
+    const caller = appRouter.createCaller(createContext());
+    await caller.telegrams.create({
+      subject: "إحالة يدوية",
+      recipient: destination.name,
+      recipientOrganizationId: destination.id,
+      body: "محتوى البرقية للاختبار",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+    });
+
+    expect(mocked.getConfiguredTelegramDestination).not.toHaveBeenCalled();
+    expect(mocked.routeTelegram).toHaveBeenCalledWith({
+      telegramId: 7,
+      toOrganizationId: destination.id,
+      forwardedByUserId: 42,
+      allowDraft: true,
+      note: "إحالة إلى الجهة المختارة عند إنشاء البرقية",
     });
   });
 });

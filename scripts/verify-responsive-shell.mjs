@@ -13,14 +13,16 @@ function assert(condition, message) {
   }
 }
 
-const [indexHtml, dashboardLayout, homePage, headerActions] = await Promise.all(
-  [
-    "client/index.html",
-    "client/src/components/DashboardLayout.tsx",
-    "client/src/pages/Home.tsx",
-    "client/src/components/HeaderActions.tsx",
-  ].map(readProjectFile)
-);
+const [indexHtml, dashboardLayout, homePage, headerActions, sidebarLayout] =
+  await Promise.all(
+    [
+      "client/index.html",
+      "client/src/components/DashboardLayout.tsx",
+      "client/src/pages/Home.tsx",
+      "client/src/components/HeaderActions.tsx",
+      "client/src/components/ui/sidebar.tsx",
+    ].map(readProjectFile)
+  );
 
 const viewportMatch = indexHtml.match(
   /<meta\s+name="viewport"\s+content="([^"]+)"\s*\/>/i
@@ -32,20 +34,51 @@ assert(
 );
 
 assert(
-  dashboardLayout.includes('<BrandMark size="sm" showLabel compactLabel />'),
+  dashboardLayout.includes('<BrandMark size="sm" />') &&
+    dashboardLayout.includes(
+      'className="h-10 w-10 rounded-xl border bg-background shadow-sm"'
+    ),
   "The mobile dashboard header must provide the primary brand mark."
 );
 
 assert(
-  homePage.includes('showStandaloneBrand ? <BrandMark size="md" /> : null'),
-  "The dashboard page must render the standalone brand only when the desktop sidebar is collapsed."
+  dashboardLayout.includes('<BrandMark size="sm" />') &&
+    dashboardLayout.includes("مركز البرقيات") &&
+    dashboardLayout.includes("النظام متصل") &&
+    !homePage.includes("TELEGRAM OPERATIONS"),
+  "The top bar must contain the brand, title, and status while the legacy label is removed."
 );
 
 assert(
   dashboardLayout.includes(
-    '{!isCollapsed ? (\n                <BrandMark size="sm" showLabel className="min-w-0" />'
-  ),
-  "The sidebar brand must be hidden when the desktop sidebar is collapsed."
+    "const showSidebarBrand = isMobile || !isCollapsed;"
+  ) && dashboardLayout.includes("{showSidebarBrand ? ("),
+  "The sidebar brand must be visible on mobile and only when the desktop sidebar is expanded."
+);
+
+assert(
+  dashboardLayout.includes('collapsible="offcanvas"') &&
+    dashboardLayout.includes("fixed inset-0 z-20") &&
+    dashboardLayout.includes("setOpen(false)"),
+  "The desktop sidebar must overlay the page and close through its backdrop."
+);
+
+assert(
+  dashboardLayout.includes(
+    "flex h-16 shrink-0 items-center justify-between border-b"
+  ) &&
+    dashboardLayout.includes('dir="rtl"') &&
+    dashboardLayout.includes("<HeaderActions />") &&
+    dashboardLayout.includes(
+      '<SidebarTrigger\n                className="h-10 w-10 shrink-0'
+    ),
+  "The desktop sidebar must expose its open button in a dedicated top bar."
+);
+
+assert(
+  sidebarLayout.includes('collapsible === "offcanvas"') &&
+    sidebarLayout.includes('"w-0"'),
+  "An offcanvas sidebar must not reserve layout width for the page content."
 );
 
 assert(

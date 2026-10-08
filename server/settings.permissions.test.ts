@@ -31,6 +31,7 @@ describe("department branding permissions", () => {
         unitChiefRank: "العقيد",
         unitChiefName: "محمد أحمد",
         serialPrefix: "TEST",
+        incomingSerialPrefix: "IN",
         serialStart: 1,
         timezone: "Asia/Riyadh",
         dateFormat: "dd/MM/yyyy HH:mm:ss",

@@ -613,6 +613,12 @@ export const appRouter = router({
             .min(1)
             .max(24)
             .regex(/^[A-Z0-9-]+$/),
+          incomingSerialPrefix: z
+            .string()
+            .trim()
+            .min(1)
+            .max(24)
+            .regex(/^[A-Z0-9-]+$/),
           serialStart: z.number().int().min(1).max(999999999),
           timezone: z.string().trim().min(3).max(64).default("Asia/Riyadh"),
           dateFormat: z
@@ -636,6 +642,7 @@ export const appRouter = router({
           unitChiefRank: input.unitChiefRank,
           unitChiefName: input.unitChiefName,
           serialPrefix: input.serialPrefix,
+          incomingSerialPrefix: input.incomingSerialPrefix,
           serialStart: input.serialStart,
           nextSerial: safeNextSerial,
           // The global serial remains an internal unique identifier. Reset the
@@ -1261,7 +1268,7 @@ export const appRouter = router({
               await updateRouteIncomingSerial({
                 routeId: route.id,
                 serialNumber: incomingSerialNumber,
-                serialCode: `${destinationSettings.serialPrefix}-${dateValues.year}-${dateValues.month}-${dateValues.day}-${String(incomingSerialNumber).padStart(5, "0")}`,
+                serialCode: `${destinationSettings.incomingSerialPrefix}-${dateValues.year}-${dateValues.month}-${dateValues.day}-${String(incomingSerialNumber).padStart(5, "0")}`,
               });
             }
             await notifyUser({

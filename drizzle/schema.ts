@@ -175,6 +175,9 @@ export const departmentSettings = pgTable("department_settings", {
   serialPrefix: varchar("serialPrefix", { length: 24 })
     .default("POL")
     .notNull(),
+  incomingSerialPrefix: varchar("incomingSerialPrefix", { length: 24 })
+    .default("POL")
+    .notNull(),
   serialStart: integer("serialStart").default(1).notNull(),
   nextSerial: integer("nextSerial").default(1).notNull(),
   nextOutgoingSerial: integer("nextOutgoingSerial").default(1).notNull(),

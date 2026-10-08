@@ -4317,6 +4317,7 @@ function DepartmentSettingsModal({
     unitChiefRank?: string;
     unitChiefName?: string;
     serialPrefix: string;
+    incomingSerialPrefix: string;
     serialStart: number;
     timezone?: string;
     dateFormat?: string;
@@ -4340,6 +4341,9 @@ function DepartmentSettingsModal({
   );
   const [serialPrefix, setSerialPrefix] = useState(
     settings?.serialPrefix ?? "POL"
+  );
+  const [incomingSerialPrefix, setIncomingSerialPrefix] = useState(
+    settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
   );
   const [serialStart, setSerialStart] = useState(settings?.serialStart ?? 1);
   const [timezone, setTimezone] = useState("Asia/Riyadh");
@@ -4371,6 +4375,9 @@ function DepartmentSettingsModal({
     setUnitChiefRank(settings?.unitChiefRank ?? "العقيد");
     setUnitChiefName(settings?.unitChiefName ?? "رئيس الوحدة");
     setSerialPrefix(settings?.serialPrefix ?? "POL");
+    setIncomingSerialPrefix(
+      settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
+    );
     setSerialStart(settings?.serialStart ?? 1);
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
     setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss");
@@ -4383,6 +4390,7 @@ function DepartmentSettingsModal({
     settings?.unitChiefName,
     settings?.logoUrl,
     settings?.serialPrefix,
+    settings?.incomingSerialPrefix,
     settings?.serialStart,
     settings?.timezone,
     settings?.dateFormat,
@@ -4509,7 +4517,7 @@ function DepartmentSettingsModal({
           </label>
         </div>
         <label className="grid gap-1.5 text-xs font-bold">
-          بادئة رقم البرقية
+          رقم بادئة برقية صادرة
           <Input
             value={serialPrefix}
             onChange={event =>
@@ -4523,6 +4531,22 @@ function DepartmentSettingsModal({
           <span className="text-[11px] font-normal text-muted-foreground">
             سيُحفظ الرقم الكامل داخليًا للتدقيق، ويظهر في الواجهة مثل: 1، بينما
             يُعرض التاريخ في خانة مستقلة.
+          </span>
+        </label>
+        <label className="grid gap-1.5 text-xs font-bold">
+          رقم بادئة برقية واردة
+          <Input
+            value={incomingSerialPrefix}
+            onChange={event =>
+              setIncomingSerialPrefix(
+                event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "")
+              )
+            }
+            placeholder="مثال: IN أو RECEIVED"
+            className="h-11 rounded-lg font-mono uppercase"
+          />
+          <span className="text-[11px] font-normal text-muted-foreground">
+            ستُستخدم هذه البادئة في رقم الوارد لدى الجهة المستقبلة.
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">
@@ -4690,6 +4714,7 @@ function DepartmentSettingsModal({
             !settings ||
             departmentName.trim().length < 2 ||
             serialPrefix.length < 1 ||
+            incomingSerialPrefix.length < 1 ||
             serialStart < 1
           }
           onClick={() =>
@@ -4700,6 +4725,7 @@ function DepartmentSettingsModal({
               unitChiefRank: unitChiefRank.trim(),
               unitChiefName: unitChiefName.trim(),
               serialPrefix,
+              incomingSerialPrefix,
               serialStart,
               timezone,
               dateFormat,

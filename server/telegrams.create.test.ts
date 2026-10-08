@@ -61,7 +61,8 @@ describe("telegrams.create", () => {
       "00000000-0000-0000-0000-000000000001"
     );
     mocked.getOrCreateSettings.mockResolvedValue({
-      serialPrefix: "POL",
+      serialPrefix: "OUT",
+      incomingSerialPrefix: "IN",
       timezone: "Asia/Riyadh",
     });
     mocked.createTelegram.mockImplementation(async input => ({
@@ -99,10 +100,10 @@ describe("telegrams.create", () => {
         creatorEmail: "ahmad@example.com",
         creatorFingerprint: "00000000-0000-4000-8000-000000000042",
         serialNumber: 1001,
-        serialCode: expect.stringMatching(/^POL-\d{4}-\d{2}-\d{2}-\d{5}$/),
+        serialCode: expect.stringMatching(/^OUT-\d{4}-\d{2}-\d{2}-\d{5}$/),
         organizationSerialNumber: 1,
         organizationSerialCode: expect.stringMatching(
-          /^POL-\d{4}-\d{2}-\d{2}-00001$/
+          /^OUT-\d{4}-\d{2}-\d{2}-00001$/
         ),
         verificationToken: expect.stringMatching(/^[0-9a-f-]{36}$/i),
       })

@@ -307,6 +307,8 @@ export async function getOrCreateSettings(
       ? "رئيس الجهة"
       : (template.unitChiefName ?? "رئيس الوحدة"),
     serialPrefix: template.serialPrefix ?? "POL",
+    incomingSerialPrefix:
+      template.incomingSerialPrefix ?? template.serialPrefix ?? "POL",
     serialStart: Number(template.serialStart ?? 1),
     nextSerial: Number(template.nextSerial ?? 1),
     nextOutgoingSerial: Number(

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { ENV } from "./_core/env";
 
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
@@ -13,14 +14,41 @@ const mocked = vi.hoisted(() => ({
   getOrganizationSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
+  getTelegramReport: vi.fn(),
+  getUserOrganizationId: vi.fn(),
+  listUserNotifications: vi.fn(),
   updateDepartmentSettings: vi.fn(),
   writeAuditLog: vi.fn(),
   createLocalOwnerUser: vi.fn(),
   getUserByUsername: vi.fn(),
   recordTelegramAction: vi.fn(),
 }));
+const organizationMocks = vi.hoisted(() => ({
+  getUserOrganizationMembership: vi.fn(),
+  getTelegramRouteById: vi.fn(),
+  getOrganizationById: vi.fn(),
+  approveTelegramRoute: vi.fn(),
+  receiveTelegramRoute: vi.fn(),
+  decideTelegramRouteAsReceiver: vi.fn(),
+  listPendingRouteApprovals: vi.fn(),
+}));
 
 vi.mock("./db", () => mocked);
+vi.mock("./organization", async importOriginal => {
+  const actual = await importOriginal<typeof import("./organization")>();
+  return {
+    ...actual,
+    getUserOrganizationMembership:
+      organizationMocks.getUserOrganizationMembership,
+    getTelegramRouteById: organizationMocks.getTelegramRouteById,
+    getOrganizationById: organizationMocks.getOrganizationById,
+    approveTelegramRoute: organizationMocks.approveTelegramRoute,
+    receiveTelegramRoute: organizationMocks.receiveTelegramRoute,
+    decideTelegramRouteAsReceiver:
+      organizationMocks.decideTelegramRouteAsReceiver,
+    listPendingRouteApprovals: organizationMocks.listPendingRouteApprovals,
+  };
+});
 const storageMocks = vi.hoisted(() => ({
   storageDelete: vi.fn(),
 }));
@@ -54,6 +82,14 @@ function contextFor(role: "admin" | "user"): TrpcContext {
   };
 }
 
+function ownerContextForTest(): TrpcContext {
+  const context = contextFor("admin");
+  return {
+    ...context,
+    user: { ...context.user, username: ENV.ownerUsername },
+  };
+}
+
 const telegram = {
   id: 7,
   serialNumber: 1001,
@@ -62,6 +98,8 @@ const telegram = {
   creatorName: "موظف",
   creatorEmail: "officer@example.com",
   creatorBadgeId: null,
+  organizationId: "00000000-0000-4000-8000-000000000007",
+  currentOrganizationId: "00000000-0000-4000-8000-000000000007",
   creatorIp: null,
   creatorFingerprint: null,
   subject: "موضوع سابق",
@@ -95,6 +133,11 @@ describe("telegram administration permissions", () => {
     vi.clearAllMocks();
     mocked.getTelegramById.mockResolvedValue(telegram);
     mocked.getOrganizationSettings.mockResolvedValue(undefined);
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: "00000000-0000-4000-8000-000000000099",
+      role: "member",
+      isActive: true,
+    });
     mocked.updateTelegram.mockImplementation(async (id, values) => ({
       ...telegram,
       ...values,
@@ -151,6 +194,169 @@ describe("telegram administration permissions", () => {
         metadata: expect.stringContaining('"serialNumber":1001'),
       })
     );
+  });
+
+  it("scopes the owner telegram list to the active workplace, even when children are requested", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    mocked.getUserOrganizationId.mockResolvedValue(activeOrganizationId);
+    mocked.listTelegrams.mockResolvedValue([]);
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await caller.telegrams.list({ organizationScope: "children" });
+
+    const call = mocked.listTelegrams.mock.calls[0];
+    expect(call[1]).toBe(false);
+    expect(call[2]).toBe(activeOrganizationId);
+    expect(call[12]).toBeNull();
+  });
+
+  it("keeps global telegram access for administrators who are not the platform owner", async () => {
+    mocked.listTelegrams.mockResolvedValue([]);
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await caller.telegrams.list();
+
+    const call = mocked.listTelegrams.mock.calls[0];
+    expect(call[1]).toBe(true);
+    expect(call[2]).toBeNull();
+  });
+
+  it("counts dashboard telegrams within the owner's active workplace", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    mocked.getUserOrganizationId.mockResolvedValue(activeOrganizationId);
+    mocked.getDashboardStats.mockResolvedValue({ total: 0 });
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await caller.dashboard.stats();
+
+    expect(mocked.getDashboardStats).toHaveBeenCalledWith(
+      1,
+      false,
+      activeOrganizationId
+    );
+  });
+
+  it("keeps report results inside the owner's active workplace", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: activeOrganizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getTelegramReport.mockResolvedValue({ rows: [], total: 0 });
+    const caller = appRouter.createCaller(ownerContextForTest());
+    const input = { page: 1, pageSize: 10 };
+
+    await caller.reports.telegrams(input);
+
+    expect(mocked.getTelegramReport).toHaveBeenCalledWith(
+      input,
+      false,
+      activeOrganizationId
+    );
+  });
+
+  it("keeps exported rows inside the owner's active workplace", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    mocked.getUserOrganizationId.mockResolvedValue(activeOrganizationId);
+    mocked.listTelegrams.mockResolvedValue([]);
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await caller.telegrams.exportRows();
+
+    const call = mocked.listTelegrams.mock.calls[0];
+    expect(call[1]).toBe(false);
+    expect(call[2]).toBe(activeOrganizationId);
+  });
+
+  it("scopes the owner's notification inbox to the active workplace", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    mocked.getUserOrganizationId.mockResolvedValue(activeOrganizationId);
+    mocked.listUserNotifications.mockResolvedValue({
+      items: [],
+      unreadCount: 0,
+    });
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await caller.notifications.inbox();
+
+    expect(mocked.listUserNotifications).toHaveBeenCalledWith(
+      1,
+      activeOrganizationId
+    );
+  });
+
+  it("limits owner pending approvals to the active workplace instead of global admin scope", async () => {
+    organizationMocks.listPendingRouteApprovals.mockResolvedValue([]);
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await caller.organizations.pendingApprovals();
+
+    expect(organizationMocks.listPendingRouteApprovals).toHaveBeenCalledWith(
+      1,
+      false
+    );
+  });
+
+  it("blocks owner route approvals and receiver decisions outside the active workplace", async () => {
+    const activeOrganizationId = "00000000-0000-4000-8000-000000000099";
+    const otherOrganizationId = "00000000-0000-4000-8000-000000000098";
+    const sourceOrganizationId = "00000000-0000-4000-8000-000000000097";
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: activeOrganizationId,
+      role: "system_admin",
+      isActive: true,
+    });
+    organizationMocks.getTelegramRouteById.mockResolvedValue({
+      id: 31,
+      fromOrganizationId: sourceOrganizationId,
+      toOrganizationId: otherOrganizationId,
+    });
+    organizationMocks.getOrganizationById.mockResolvedValue({
+      id: sourceOrganizationId,
+      parentOrganizationId: otherOrganizationId,
+    });
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await expect(
+      caller.telegrams.approveRoute({ routeId: 31, approved: true })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.telegrams.receiveRoute({ routeId: 31 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.telegrams.decideRouteAsReceiver({
+        routeId: 31,
+        accepted: true,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(organizationMocks.approveTelegramRoute).not.toHaveBeenCalled();
+    expect(organizationMocks.receiveTelegramRoute).not.toHaveBeenCalled();
+    expect(
+      organizationMocks.decideTelegramRouteAsReceiver
+    ).not.toHaveBeenCalled();
+  });
+
+  it("blocks the owner from reading, editing, or deleting another workplace's telegram", async () => {
+    mocked.getUserOrganizationId.mockResolvedValue(
+      "00000000-0000-4000-8000-000000000099"
+    );
+    const caller = appRouter.createCaller(ownerContextForTest());
+
+    await expect(caller.telegrams.get({ id: 7 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.telegrams.update(updateInput)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.telegrams.delete({ id: 7 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+
+    expect(mocked.updateTelegram).not.toHaveBeenCalled();
+    expect(mocked.purgeTelegramPermanently).not.toHaveBeenCalled();
+    expect(storageMocks.storageDelete).not.toHaveBeenCalled();
   });
 
   it("normalizes edited telegram text to its organization's number system", async () => {

@@ -65,6 +65,7 @@ import {
   getConfiguredTelegramDestination,
   getOrganizationById,
   getUserOrganizationMembership,
+  getTelegramRouteById,
   listAllOrganizations,
   listOrganizationAccountSummaries,
   listOrganizationDescendants,
@@ -134,6 +135,48 @@ const statusSchema = z.enum([
   "completed",
   "archived",
 ]);
+
+type TelegramScopeUser = {
+  id: number;
+  role: string;
+  username?: string | null;
+};
+
+function canViewAllTelegrams(user: TelegramScopeUser): boolean {
+  return user.role === "admin" && !isPlatformOwner(user);
+}
+
+async function assertTelegramOrganizationScope(
+  user: TelegramScopeUser,
+  telegram: {
+    organizationId: string;
+    currentOrganizationId: string | null;
+  },
+  message: string
+): Promise<void> {
+  if (canViewAllTelegrams(user)) return;
+
+  const organizationId = await getUserOrganizationId(user.id);
+  if (
+    telegram.organizationId !== organizationId &&
+    telegram.currentOrganizationId !== organizationId
+  ) {
+    throw new TRPCError({ code: "FORBIDDEN", message });
+  }
+}
+
+async function assertOwnerOrganizationScope(
+  user: TelegramScopeUser,
+  organizationId: string | null,
+  message: string
+): Promise<void> {
+  if (!isPlatformOwner(user)) return;
+
+  const activeOrganizationId = await getUserOrganizationId(user.id);
+  if (organizationId !== activeOrganizationId) {
+    throw new TRPCError({ code: "FORBIDDEN", message });
+  }
+}
 
 const base64MaxLength = (bytes: number) => Math.ceil(bytes / 3) * 4;
 
@@ -362,7 +405,7 @@ export const appRouter = router({
       ),
     allAccounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
-      listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
+      listPendingRouteApprovals(ctx.user.id, canViewAllTelegrams(ctx.user))
     ),
 
     create: adminProcedure
@@ -500,7 +543,7 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
-      const canViewAll = ctx.user.role === "admin";
+      const canViewAll = canViewAllTelegrams(ctx.user);
       const organizationId = await getUserOrganizationId(ctx.user.id);
 
       return getDashboardStats(ctx.user.id, canViewAll, organizationId);
@@ -508,9 +551,12 @@ export const appRouter = router({
   }),
 
   notifications: router({
-    inbox: protectedProcedure.query(({ ctx }) =>
-      listUserNotifications(ctx.user.id)
-    ),
+    inbox: protectedProcedure.query(async ({ ctx }) => {
+      const organizationId = isPlatformOwner(ctx.user)
+        ? await getUserOrganizationId(ctx.user.id)
+        : undefined;
+      return listUserNotifications(ctx.user.id, organizationId);
+    }),
     markRead: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
@@ -568,7 +614,8 @@ export const appRouter = router({
         })
       )
       .query(async ({ ctx, input }) => {
-        const canViewAll = ctx.user.role === "admin";
+        const owner = isPlatformOwner(ctx.user);
+        const canViewAll = canViewAllTelegrams(ctx.user);
         const membership = await getUserOrganizationMembership(ctx.user.id);
         const allowedRoles = [
           "system_admin",
@@ -579,6 +626,7 @@ export const appRouter = router({
         ];
         if (
           !canViewAll &&
+          !owner &&
           (!membership || !allowedRoles.includes(membership.role))
         ) {
           throw new TRPCError({
@@ -748,18 +796,11 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
-        if (ctx.user.role !== "admin") {
-          const organizationId = await getUserOrganizationId(ctx.user.id);
-          if (
-            telegram.organizationId !== organizationId &&
-            telegram.currentOrganizationId !== organizationId
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية إرفاق ملف بهذه البرقية",
-            });
-          }
-        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية إرفاق ملف بهذه البرقية"
+        );
         const bytes = Buffer.from(input.base64, "base64");
 
         if (bytes.byteLength > 10 * 1024 * 1024) {
@@ -827,18 +868,11 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
-        if (ctx.user.role !== "admin") {
-          const organizationId = await getUserOrganizationId(ctx.user.id);
-          if (
-            telegram.organizationId !== organizationId &&
-            telegram.currentOrganizationId !== organizationId
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية قراءة مرفقات هذه البرقية",
-            });
-          }
-        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية قراءة مرفقات هذه البرقية"
+        );
         return listTelegramAttachments(input.telegramId);
       }),
     downloadAttachment: protectedProcedure
@@ -858,18 +892,11 @@ export const appRouter = router({
             message: "البرقية المرتبطة بالمرفق غير موجودة",
           });
         }
-        if (ctx.user.role !== "admin") {
-          const organizationId = await getUserOrganizationId(ctx.user.id);
-          if (
-            telegram.organizationId !== organizationId &&
-            telegram.currentOrganizationId !== organizationId
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية تنزيل هذا المرفق",
-            });
-          }
-        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية تنزيل هذا المرفق"
+        );
         const url = await storageCreateSignedUrl(
           attachment.storageKey,
           10 * 60
@@ -901,22 +928,15 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
-        if (ctx.user.role !== "admin") {
-          const organizationId = await getUserOrganizationId(ctx.user.id);
-          if (
-            telegram.organizationId !== organizationId &&
-            telegram.currentOrganizationId !== organizationId
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "لا تملك صلاحية عرض سجل استلام هذه البرقية",
-            });
-          }
-        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض سجل استلام هذه البرقية"
+        );
         return listIncomingTelegramRoutes({
           telegramId: input.telegramId,
           userId: ctx.user.id,
-          canViewAll: ctx.user.role === "admin",
+          canViewAll: canViewAllTelegrams(ctx.user),
         });
       }),
 
@@ -940,20 +960,23 @@ export const appRouter = router({
           .optional()
       )
       .query(async ({ ctx, input }) => {
-        const canViewAll = ctx.user.role === "admin";
+        const owner = isPlatformOwner(ctx.user);
+        const canViewAll = canViewAllTelegrams(ctx.user);
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
-        const descendants = input?.organizationScope
-          ? await listOrganizationDescendants(ctx.user.id)
-          : [];
-        const organizationScopeIds = input?.organizationScope
-          ? input.organizationScope === "children"
-            ? [organizationId!, ...descendants.map(item => item.id)]
-            : descendants.some(item => item.id === input.organizationScope)
-              ? [input.organizationScope]
-              : [organizationId!]
-          : null;
+        const descendants =
+          !owner && input?.organizationScope
+            ? await listOrganizationDescendants(ctx.user.id)
+            : [];
+        const organizationScopeIds =
+          !owner && input?.organizationScope
+            ? input.organizationScope === "children"
+              ? [organizationId!, ...descendants.map(item => item.id)]
+              : descendants.some(item => item.id === input.organizationScope)
+                ? [input.organizationScope]
+                : [organizationId!]
+            : null;
 
         return listTelegrams(
           ctx.user.id,
@@ -987,7 +1010,7 @@ export const appRouter = router({
           .optional()
       )
       .query(async ({ ctx, input }) => {
-        const canViewAll = ctx.user.role === "admin";
+        const canViewAll = canViewAllTelegrams(ctx.user);
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
@@ -1019,19 +1042,11 @@ export const appRouter = router({
           });
         }
 
-        if (ctx.user.role === "admin") return telegram;
-
-        const organizationId = await getUserOrganizationId(ctx.user.id);
-        const canRead =
-          telegram.organizationId === organizationId ||
-          telegram.currentOrganizationId === organizationId;
-
-        if (!canRead) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "لا تملك صلاحية عرض هذه البرقية",
-          });
-        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض هذه البرقية"
+        );
 
         return telegram;
       }),
@@ -1061,6 +1076,11 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          existing,
+          "لا تملك صلاحية تعديل هذه البرقية خارج جهة العمل النشطة"
+        );
 
         if (input.status !== existing.status) {
           throw new TRPCError({
@@ -1116,6 +1136,11 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          existing,
+          "لا تملك صلاحية حذف هذه البرقية خارج جهة العمل النشطة"
+        );
 
         const purged = await purgeTelegramPermanently(existing.id);
         if (!purged) {
@@ -1183,6 +1208,18 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const existing = await getTelegramById(input.id);
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          existing,
+          "لا تملك صلاحية إحالة هذه البرقية خارج جهة العمل النشطة"
+        );
         const route = await routeTelegram({
           telegramId: input.id,
           toOrganizationId: input.toOrganizationId,
@@ -1284,6 +1321,23 @@ export const appRouter = router({
             code: "FORBIDDEN",
             message: "لا تملك صلاحية اعتماد إحالات البرقيات",
           });
+        }
+        if (isPlatformOwner(ctx.user)) {
+          const routeContext = await getTelegramRouteById(input.routeId);
+          if (!routeContext) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "الإحالة غير موجودة",
+            });
+          }
+          const sourceOrganization = await getOrganizationById(
+            routeContext.fromOrganizationId
+          );
+          await assertOwnerOrganizationScope(
+            ctx.user,
+            sourceOrganization?.parentOrganizationId ?? null,
+            "لا تملك صلاحية اعتماد إحالة خارج جهة العمل النشطة"
+          );
         }
         const route = await approveTelegramRoute({
           routeId: input.routeId,
@@ -1407,6 +1461,20 @@ export const appRouter = router({
     receiveRoute: protectedProcedure
       .input(z.object({ routeId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
+        if (isPlatformOwner(ctx.user)) {
+          const routeContext = await getTelegramRouteById(input.routeId);
+          if (!routeContext) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "الإحالة غير موجودة",
+            });
+          }
+          await assertOwnerOrganizationScope(
+            ctx.user,
+            routeContext.toOrganizationId,
+            "لا تملك صلاحية استلام إحالة خارج جهة العمل النشطة"
+          );
+        }
         const route = await receiveTelegramRoute({
           routeId: input.routeId,
           receiverUserId: ctx.user.id,
@@ -1435,6 +1503,20 @@ export const appRouter = router({
             code: "BAD_REQUEST",
             message: "سبب رفض الاستلام مطلوب",
           });
+        }
+        if (isPlatformOwner(ctx.user)) {
+          const routeContext = await getTelegramRouteById(input.routeId);
+          if (!routeContext) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "الإحالة غير موجودة",
+            });
+          }
+          await assertOwnerOrganizationScope(
+            ctx.user,
+            routeContext.toOrganizationId,
+            "لا تملك صلاحية اتخاذ قرار استلام خارج جهة العمل النشطة"
+          );
         }
         const route = await decideTelegramRouteAsReceiver({
           routeId: input.routeId,
@@ -1492,6 +1574,11 @@ export const appRouter = router({
             message: "البرقية غير موجودة",
           });
         }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          existing,
+          "لا تملك صلاحية تغيير حالة هذه البرقية خارج جهة العمل النشطة"
+        );
 
         try {
           const transitioned = await transitionTelegram({

@@ -766,6 +766,18 @@ export async function routeTelegram(input: {
   return mapRoute(data as Record<string, unknown>);
 }
 
+export async function getTelegramRouteById(
+  routeId: number
+): Promise<TelegramRoute | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .select("*")
+    .eq("id", routeId)
+    .maybeSingle();
+  throwIfError(error, "Failed to load telegram route");
+  return data ? mapRoute(data as Record<string, unknown>) : null;
+}
+
 export async function approveTelegramRoute(input: {
   routeId: number;
   approverUserId: number;

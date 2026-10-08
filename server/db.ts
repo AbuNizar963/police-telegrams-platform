@@ -1072,21 +1072,32 @@ export async function notifyUser(input: {
 }
 export async function listUserNotifications(
   userId: number,
+  organizationId?: string,
   limit = 30
 ): Promise<{ items: NotificationRecord[]; unreadCount: number }> {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
+  let notificationsQuery = supabase
     .from("notifications")
     .select("*")
-    .eq("userId", userId)
+    .eq("userId", userId);
+  if (organizationId) {
+    notificationsQuery = notificationsQuery.eq(
+      "organizationId",
+      organizationId
+    );
+  }
+  const { data, error } = await notificationsQuery
     .order("createdAt", { ascending: false })
     .limit(limit);
   throwIfError(error, "Failed to list notifications");
-  const { count, error: countError } = await supabase
+  let unreadQuery = supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .eq("userId", userId)
-    .is("readAt", null);
+    .eq("userId", userId);
+  if (organizationId) {
+    unreadQuery = unreadQuery.eq("organizationId", organizationId);
+  }
+  const { count, error: countError } = await unreadQuery.is("readAt", null);
   throwIfError(countError, "Failed to count unread notifications");
   const items = (data ?? []).map(row =>
     mapNotification(row as Record<string, unknown>)

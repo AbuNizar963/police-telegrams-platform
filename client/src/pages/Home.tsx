@@ -1,4 +1,6 @@
 import { trpc } from "@/lib/trpc";
+import { useQueryClient } from "@tanstack/react-query";
+import { getQueryKey } from "@trpc/react-query";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -537,6 +539,12 @@ export default function Home() {
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
+  useEffect(() => {
+    if (organizationContext.data?.isOwner) setOrganizationScope("current");
+  }, [
+    organizationContext.data?.isOwner,
+    organizationContext.data?.organizationId,
+  ]);
   const workplaceOrganizations = trpc.organizations.all.useQuery(undefined, {
     enabled: organizationContext.data?.isOwner === true,
   });
@@ -557,6 +565,28 @@ export default function Home() {
     { enabled: selectedId !== null }
   );
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
+  const clearWorkplaceSensitiveState = () => {
+    setSelectedId(null);
+    setComposerOpen(false);
+    setReportOpen(false);
+    setExcelToolsOpen(false);
+    setExcelImportOpen(false);
+    for (const queryKey of [
+      getQueryKey(trpc.telegrams.list),
+      getQueryKey(trpc.telegrams.get),
+      getQueryKey(trpc.telegrams.attachments),
+      getQueryKey(trpc.telegrams.incomingRoutes),
+      getQueryKey(trpc.reports.telegrams),
+      getQueryKey(trpc.dashboard.stats),
+      getQueryKey(trpc.organizations.pendingApprovals),
+      getQueryKey(trpc.notifications.inbox),
+      getQueryKey(trpc.settings.get),
+    ]) {
+      void queryClient.cancelQueries({ queryKey });
+      queryClient.removeQueries({ queryKey });
+    }
+  };
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -972,23 +1002,29 @@ export default function Home() {
           {filtersOpen && (
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <select
-                value={organizationScope}
-                onChange={event => setOrganizationScope(event.target.value)}
-                className="rounded-md border bg-background px-2.5 py-1.5 text-xs"
-              >
-                <option value="current">جهتي الحالية فقط</option>
-                {organizationDescendants.data?.length ? (
-                  <>
-                    <option value="children">جهتي والجهات التابعة</option>
-                    {organizationDescendants.data.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </>
-                ) : null}
-              </select>
+              {organizationContext.data?.isOwner ? (
+                <span className="rounded-md border bg-background px-2.5 py-1.5 text-xs">
+                  برقيات جهة العمل المحددة فقط
+                </span>
+              ) : (
+                <select
+                  value={organizationScope}
+                  onChange={event => setOrganizationScope(event.target.value)}
+                  className="rounded-md border bg-background px-2.5 py-1.5 text-xs"
+                >
+                  <option value="current">جهتي الحالية فقط</option>
+                  {organizationDescendants.data?.length ? (
+                    <>
+                      <option value="children">جهتي والجهات التابعة</option>
+                      {organizationDescendants.data.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </>
+                  ) : null}
+                </select>
+              )}
               <select
                 value={severity}
                 onChange={event =>
@@ -1241,6 +1277,7 @@ export default function Home() {
           isOwner={organizationContext.data?.isOwner === true}
           activeOrganizationId={organizationContext.data?.organizationId}
           organizations={workplaceOrganizations.data ?? []}
+          onWorkplaceChanged={clearWorkplaceSensitiveState}
         />
       )}
       {me.data?.role === "admin" && <OwnerUserManagement />}
@@ -4329,6 +4366,7 @@ function DepartmentSettingsModal({
   isOwner,
   activeOrganizationId,
   organizations,
+  onWorkplaceChanged,
 }: {
   settings?: {
     id: number;
@@ -4355,6 +4393,7 @@ function DepartmentSettingsModal({
     type: string;
     isActive: boolean;
   }>;
+  onWorkplaceChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedWorkplaceId, setSelectedWorkplaceId] = useState(
@@ -4388,6 +4427,7 @@ function DepartmentSettingsModal({
   const selectWorkplace = trpc.organizations.selectWorkplace.useMutation({
     onSuccess: async result => {
       setSelectedWorkplaceId(result.organizationId);
+      onWorkplaceChanged();
       await utils.invalidate();
       toast.success(`تم تغيير جهة العمل إلى ${result.organizationName}`);
     },

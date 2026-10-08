@@ -42,6 +42,7 @@ import {
   transitionTelegram,
   updateDepartmentSettings,
   updateRouteIncomingSerial,
+  updateRouteOutgoingSerial,
   writeAuditLog,
   createLocalOwnerUser,
   getUserByUsername,
@@ -1118,6 +1119,35 @@ export const appRouter = router({
           forwardedByUserId: ctx.user.id,
           note: input.note ?? null,
         });
+
+        const routedTelegram = await getTelegramById(input.id);
+        const sourceSettings = await getOrganizationSettings(
+          route.fromOrganizationId
+        );
+        if (sourceSettings) {
+          const outgoingSerialNumber =
+            route.fromOrganizationId === routedTelegram?.organizationId &&
+            routedTelegram.organizationSerialNumber
+              ? routedTelegram.organizationSerialNumber
+              : await allocateOrganizationSerialNumber(
+                  route.fromOrganizationId,
+                  "outgoing"
+                );
+          const dateParts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: sourceSettings.timezone,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).formatToParts(new Date());
+          const dateValues = Object.fromEntries(
+            dateParts.map(part => [part.type, part.value])
+          );
+          await updateRouteOutgoingSerial({
+            routeId: route.id,
+            serialNumber: outgoingSerialNumber,
+            serialCode: `${sourceSettings.serialPrefix}-${dateValues.year}-${dateValues.month}-${dateValues.day}-${String(outgoingSerialNumber).padStart(5, "0")}`,
+          });
+        }
 
         await writeAuditLog({
           actorUserId: ctx.user.id,

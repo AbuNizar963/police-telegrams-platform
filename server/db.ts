@@ -299,10 +299,13 @@ export async function getOrCreateSettings(
   const values = {
     configKey: organizationId ? `org:${organizationId}` : "primary",
     organizationId,
-    departmentName: organizationName ?? template.departmentName ?? "إدارة الشرطة",
+    departmentName:
+      organizationName ?? template.departmentName ?? "إدارة الشرطة",
     unitName: organizationName ?? template.unitName ?? "وحدة العمليات",
     unitChiefRank: organizationId ? "" : (template.unitChiefRank ?? "العقيد"),
-    unitChiefName: organizationId ? "رئيس الجهة" : (template.unitChiefName ?? "رئيس الوحدة"),
+    unitChiefName: organizationId
+      ? "رئيس الجهة"
+      : (template.unitChiefName ?? "رئيس الوحدة"),
     serialPrefix: template.serialPrefix ?? "POL",
     serialStart: Number(template.serialStart ?? 1),
     nextSerial: Number(template.nextSerial ?? 1),
@@ -408,6 +411,21 @@ export async function updateRouteIncomingSerial(input: {
   throwIfError(error, "Failed to save incoming organization serial");
 }
 
+export async function updateRouteOutgoingSerial(input: {
+  routeId: number;
+  serialNumber: number;
+  serialCode: string;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .update({
+      routeSerialNumber: input.serialNumber,
+      routeSerialCode: input.serialCode,
+    })
+    .eq("id", input.routeId);
+  throwIfError(error, "Failed to save outgoing organization serial");
+}
+
 export async function listTelegrams(
   _userId: number,
   canViewAll: boolean,
@@ -456,7 +474,12 @@ export async function listTelegrams(
     .order("serialNumber", { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
-  if (!canViewAll) {
+  if (organizationScopeIds?.length) {
+    const ids = organizationScopeIds.join(",");
+    query = query.or(
+      `organizationId.in.(${ids}),currentOrganizationId.in.(${ids})`
+    );
+  } else if (!canViewAll) {
     if (!organizationId) {
       throw new Error("Organization scope is required to list telegrams");
     }

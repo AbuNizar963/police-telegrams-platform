@@ -3633,7 +3633,9 @@ function TelegramDetail({
     <Modal
       title={telegram.subject}
       subtitle={localizeDigits(
-        getTelegramDisplayNumber(telegram.serialCode),
+        getTelegramDisplayNumber(
+          telegram.organizationSerialCode ?? telegram.serialCode
+        ),
         settings?.numberSystem ?? "latin"
       )}
       close={close}
@@ -3669,6 +3671,18 @@ function TelegramDetail({
                         ? `سبب الرفض: ${route.receiverDecisionReason ?? "غير محدد"}`
                         : "يجب على الجهة المستقبلة تأكيد الاستلام أو رفضه بسبب موثق"}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                    {route.routeSerialCode ? (
+                      <span className="rounded-md bg-primary/10 px-2 py-1 font-semibold text-primary">
+                        صادر الجهة المحيلة: {route.routeSerialCode}
+                      </span>
+                    ) : null}
+                    {route.incomingSerialCode ? (
+                      <span className="rounded-md bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-700 dark:text-emerald-300">
+                        وارد الجهة المستقبلة: {route.incomingSerialCode}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 {route.status === "sent" && (
                   <div className="flex flex-wrap gap-2">
@@ -4260,9 +4274,7 @@ function Modal({
   wide?: boolean;
 }) {
   return (
-    <div
-      className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6"
-    >
+    <div className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6">
       <div
         dir="rtl"
         className={`my-2 min-h-0 w-full overflow-y-auto bg-background p-5 shadow-2xl sm:my-0 sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-none rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[calc(100dvh-1rem)] rounded-t-[1.5rem]"}`}

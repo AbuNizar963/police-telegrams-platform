@@ -45,7 +45,9 @@ import {
   addOrganizationMembership,
   getUserOrganizationMembership,
   routeTelegram,
+  selectPlatformOwnerWorkplace,
 } from "./organization";
+import { ENV } from "./_core/env";
 
 describe("organization repository", () => {
   beforeEach(() => {
@@ -143,5 +145,60 @@ describe("organization repository", () => {
       p_note: "إحالة إلى القيادة",
       p_allow_draft: false,
     });
+  });
+
+  it("changes the owner's active organization through the atomic RPC", async () => {
+    const organizationId = "00000000-0000-0000-0000-000000000009";
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: organizationId,
+        code: "GOV-ALEPPO",
+        name: "قيادة الأمن الداخلي في حلب",
+        type: "governorate",
+        isActive: true,
+        createdAt: "2026-10-01T00:00:00.000Z",
+        updatedAt: "2026-10-01T00:00:00.000Z",
+      },
+      error: null,
+    });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: null });
+
+    await expect(
+      selectPlatformOwnerWorkplace({
+        user: { id: 1, username: ENV.ownerUsername, role: "admin" },
+        organizationId,
+      })
+    ).resolves.toMatchObject({
+      id: organizationId,
+      name: "قيادة الأمن الداخلي في حلب",
+    });
+
+    expect(mocks.rpc).toHaveBeenCalledWith("set_owner_workplace", {
+      p_user_id: 1,
+      p_organization_id: organizationId,
+    });
+  });
+
+  it("rejects workplace selection for a non-owner before touching the database", async () => {
+    await expect(
+      selectPlatformOwnerWorkplace({
+        user: { id: 8, username: "department-admin", role: "admin" },
+        organizationId: "00000000-0000-0000-0000-000000000009",
+      })
+    ).rejects.toThrow("لا تملك صلاحية تغيير جهة العمل");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("does not select a missing or inactive organization", async () => {
+    mocks.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+    await expect(
+      selectPlatformOwnerWorkplace({
+        user: { id: 1, username: ENV.ownerUsername, role: "admin" },
+        organizationId: "00000000-0000-0000-0000-000000000009",
+      })
+    ).rejects.toThrow("الجهة غير موجودة أو غير مفعّلة");
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

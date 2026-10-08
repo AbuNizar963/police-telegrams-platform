@@ -8,6 +8,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
+import { isPlatformOwner } from "./ownerAccess";
 
 function throwIfError(
   error: { message: string } | null,
@@ -89,6 +90,27 @@ export async function getOrganizationById(
 
   throwIfError(error, "Failed to load organization");
   return data ? mapOrganization(data as Record<string, unknown>) : null;
+}
+
+export async function selectPlatformOwnerWorkplace(input: {
+  user: { id: number; role: string; username?: string | null };
+  organizationId: string;
+}): Promise<Organization> {
+  if (!isPlatformOwner(input.user)) {
+    throw new Error("لا تملك صلاحية تغيير جهة العمل");
+  }
+
+  const organization = await getOrganizationById(input.organizationId);
+  if (!organization) {
+    throw new Error("الجهة غير موجودة أو غير مفعّلة");
+  }
+
+  const { error } = await getSupabaseAdmin().rpc("set_owner_workplace", {
+    p_user_id: input.user.id,
+    p_organization_id: organization.id,
+  });
+  throwIfError(error, "Failed to select owner workplace");
+  return organization;
 }
 
 export async function listOrganizationsForUser(

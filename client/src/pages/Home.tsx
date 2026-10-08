@@ -537,6 +537,9 @@ export default function Home() {
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
+  const workplaceOrganizations = trpc.organizations.all.useQuery(undefined, {
+    enabled: organizationContext.data?.isOwner === true,
+  });
   const organizationDescendants = trpc.organizations.descendants.useQuery();
   const stats = trpc.dashboard.stats.useQuery(undefined, {
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
@@ -1235,6 +1238,9 @@ export default function Home() {
         <DepartmentSettingsModal
           settings={settings.data}
           organizationName={organizationContext.data?.organizationName}
+          isOwner={organizationContext.data?.isOwner === true}
+          activeOrganizationId={organizationContext.data?.organizationId}
+          organizations={workplaceOrganizations.data ?? []}
         />
       )}
       {me.data?.role === "admin" && <OwnerUserManagement />}
@@ -4303,9 +4309,26 @@ function Modal({
   );
 }
 
+function organizationTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    central: "قيادة مركزية",
+    governorate: "قيادة محافظة",
+    region: "قيادة منطقة",
+    command: "قيادة",
+    police_department: "قيادة شرطة",
+    department: "قسم",
+    station: "مخفر",
+    unit: "وحدة",
+  };
+  return labels[type] ?? "جهة";
+}
+
 function DepartmentSettingsModal({
   settings,
   organizationName,
+  isOwner,
+  activeOrganizationId,
+  organizations,
 }: {
   settings?: {
     id: number;
@@ -4323,8 +4346,19 @@ function DepartmentSettingsModal({
     logoUrl: string | null;
   };
   organizationName?: string;
+  isOwner: boolean;
+  activeOrganizationId?: string;
+  organizations: Array<{
+    id: string;
+    name: string;
+    type: string;
+    isActive: boolean;
+  }>;
 }) {
   const [open, setOpen] = useState(false);
+  const [selectedWorkplaceId, setSelectedWorkplaceId] = useState(
+    activeOrganizationId ?? ""
+  );
   const [departmentName, setDepartmentName] = useState(
     settings?.departmentName ?? ""
   );
@@ -4350,6 +4384,17 @@ function DepartmentSettingsModal({
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
+  const selectWorkplace = trpc.organizations.selectWorkplace.useMutation({
+    onSuccess: async result => {
+      setSelectedWorkplaceId(result.organizationId);
+      await utils.invalidate();
+      toast.success(`تم تغيير جهة العمل إلى ${result.organizationName}`);
+    },
+    onError: error => {
+      setSelectedWorkplaceId(activeOrganizationId ?? "");
+      toast.error(error.message || "تعذر تغيير جهة العمل");
+    },
+  });
   const update = trpc.settings.update.useMutation({
     onSuccess: async result => {
       setOpen(false);
@@ -4397,6 +4442,9 @@ function DepartmentSettingsModal({
     settings?.dateFormat,
     settings?.numberSystem,
   ]);
+  useEffect(() => {
+    setSelectedWorkplaceId(activeOrganizationId ?? "");
+  }, [activeOrganizationId]);
 
   const handleLogo = async (file?: File) => {
     if (!file) return;
@@ -4429,6 +4477,42 @@ function DepartmentSettingsModal({
       close={() => setOpen(false)}
     >
       <div className="space-y-5">
+        {isOwner && (
+          <div className="rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b]">
+            <label className="grid gap-1.5 text-xs font-bold">
+              جهة العمل الحالية للمالك
+              <select
+                aria-label="جهة العمل الحالية للمالك"
+                value={selectedWorkplaceId || activeOrganizationId || ""}
+                disabled={selectWorkplace.isPending}
+                onChange={event => {
+                  const organizationId = event.currentTarget.value;
+                  setSelectedWorkplaceId(organizationId);
+                  if (
+                    organizationId &&
+                    organizationId !== activeOrganizationId
+                  ) {
+                    selectWorkplace.mutate({ organizationId });
+                  }
+                }}
+                className="h-11 rounded-lg border bg-background px-3 text-sm font-normal"
+              >
+                {organizations
+                  .filter(organization => organization.isActive)
+                  .map(organization => (
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name} —{" "}
+                      {organizationTypeLabel(organization.type)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <p className="mt-2 text-[11px] font-normal text-muted-foreground">
+              يحدد هذا الاختيار الجهة المستخدمة في إعدادات العمل والترقيم
+              والبرقيات الجديدة، مع بقاء صلاحية المالك لإدارة جميع الجهات.
+            </p>
+          </div>
+        )}
         <div className="rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 text-xs dark:bg-[#2d281b]">
           <p className="font-bold text-[#7a5c1e]">نطاق هذه الإعدادات</p>
           <p className="mt-1 text-muted-foreground">

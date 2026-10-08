@@ -176,6 +176,7 @@ export async function createLocalOwnerUser(input: {
       name: input.username,
       email: null,
       loginMethod: "password",
+      isPlatformOwner: true,
       role: "admin",
       createdAt: now,
       updatedAt: now,
@@ -189,11 +190,16 @@ export async function createLocalOwnerUser(input: {
   const owner = mapUser(data as Record<string, unknown>);
 
   try {
-    await addOrganizationMembership({
-      organizationId: organization.id,
-      userId: owner.id,
-      role: "organization_admin",
-    });
+    const { error: membershipError } = await getSupabaseAdmin().rpc(
+      "set_owner_workplace",
+      {
+        p_user_id: owner.id,
+        p_organization_id: organization.id,
+      }
+    );
+    if (membershipError) {
+      throw new Error(membershipError.message);
+    }
   } catch (error) {
     await getSupabaseAdmin().from("users").delete().eq("id", owner.id);
     throw error;

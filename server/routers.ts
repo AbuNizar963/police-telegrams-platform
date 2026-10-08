@@ -9,6 +9,7 @@ import {
   verifyPassword,
 } from "./_core/auth";
 import { ENV } from "./_core/env";
+import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
 import { z } from "zod";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
 import {
@@ -74,6 +75,7 @@ import {
   listRoutingTargets,
   receiveTelegramRoute,
   routeTelegram,
+  selectPlatformOwnerWorkplace,
   updateOrganization,
   updateOrganizationAccount,
 } from "./organization";
@@ -321,8 +323,28 @@ export const appRouter = router({
         organizationName: organization?.name ?? "الجهة الحالية",
         role: membership.role,
         isActive: membership.isActive,
+        isOwner: isPlatformOwner(ctx.user),
       };
     }),
+
+    selectWorkplace: protectedProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "هذا الخيار متاح لمالك النظام فقط",
+          });
+        }
+        const organization = await selectPlatformOwnerWorkplace({
+          user: ctx.user,
+          organizationId: input.organizationId,
+        });
+        return {
+          organizationId: organization.id,
+          organizationName: organization.name,
+        };
+      }),
 
     descendants: protectedProcedure.query(({ ctx }) =>
       listOrganizationDescendants(ctx.user.id)
@@ -455,6 +477,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (await isPlatformOwnerUserId(input.userId)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "لا يمكن تغيير عضوية مالك النظام من هذا المسار؛ استخدم محدد جهة العمل",
+          });
+        }
         if (
           ctx.user.role !== "admin" &&
           ctx.organizationMembership.organizationId !== input.organizationId

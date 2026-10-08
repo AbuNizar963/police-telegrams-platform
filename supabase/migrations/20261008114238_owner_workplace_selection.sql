@@ -25,17 +25,13 @@ BEGIN
     AND "isActive" = true
   LIMIT 1;
 
-  IF aleppo_id IS NULL THEN
-    RAISE EXCEPTION 'Active Aleppo governorate GOV-ALEPPO is missing';
-  END IF;
-
-  UPDATE public.organizations
-  SET "parentOrganizationId" = aleppo_id,
-      "updatedAt" = now()
-  WHERE code = 'ALSHAHBAA';
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Shahbaa organization ALSHAHBAA is missing';
+  IF aleppo_id IS NOT NULL THEN
+    UPDATE public.organizations
+    SET "parentOrganizationId" = aleppo_id,
+        "updatedAt" = now()
+    WHERE code = 'ALSHAHBAA';
+  ELSE
+    RAISE NOTICE 'Skipping Shahbaa hierarchy update: GOV-ALEPPO is not seeded in this database';
   END IF;
 
   SELECT count(*) INTO owner_count

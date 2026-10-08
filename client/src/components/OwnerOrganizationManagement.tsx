@@ -526,8 +526,33 @@ export default function OwnerOrganizationManagement() {
                 جارٍ تحميل الهيكل...
               </p>
             )}
+            {organizations.isError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                <p>تعذر تحميل الجهات حاليًا.</p>
+                <p className="mt-1 text-xs opacity-80">
+                  {organizations.error.message}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void organizations.refetch()}
+                >
+                  إعادة المحاولة
+                </Button>
+              </div>
+            )}
             <div className="max-h-[560px] space-y-2 overflow-y-auto">
-              {renderOrganizationTree(null)}
+              {!organizations.isLoading &&
+              !organizations.isError &&
+              (organizations.data ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  لا توجد جهات مسجلة في الهيكل التنظيمي.
+                </p>
+              ) : (
+                renderOrganizationTree(null)
+              )}
             </div>
             {selectedOrganization && (
               <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">

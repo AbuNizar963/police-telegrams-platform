@@ -638,6 +638,11 @@ export const appRouter = router({
           serialPrefix: input.serialPrefix,
           serialStart: input.serialStart,
           nextSerial: safeNextSerial,
+          // The global serial remains an internal unique identifier. Reset the
+          // organization-facing cursors so the SQL allocator begins from the
+          // configured local start and fills any number freed by deletion.
+          nextOutgoingSerial: input.serialStart,
+          nextIncomingSerial: input.serialStart,
           timezone: input.timezone,
           dateFormat: input.dateFormat,
           numberSystem: input.numberSystem,

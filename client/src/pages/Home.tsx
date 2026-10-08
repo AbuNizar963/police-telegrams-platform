@@ -4362,8 +4362,9 @@ function DepartmentSettingsModal({
     useState<SupportedNumberSystem>("latin");
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
   const update = trpc.settings.update.useMutation({
-    onSuccess: result => {
+    onSuccess: async result => {
       setOpen(false);
       setDepartmentName(result.departmentName);
       setUnitName(result.unitName);
@@ -4371,6 +4372,7 @@ function DepartmentSettingsModal({
       setUnitChiefName(result.unitChiefName);
       setNumberSystem(normalizeNumberSystem(result.numberSystem));
       setLogoUrl(result?.logoUrl ?? null);
+      await utils.settings.get.invalidate();
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
     },
     onError: error => toast.error(error.message || "تعذر تحديث إعدادات الجهة"),

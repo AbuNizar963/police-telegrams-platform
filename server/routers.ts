@@ -631,6 +631,7 @@ export const appRouter = router({
     update: organizationAdminProcedure
       .input(
         z.object({
+          organizationId: z.string().uuid().nullable().optional(),
           departmentName: z.string().trim().min(2).max(255),
           // الوحدة التابعة ورئيسها حقول اختيارية؛ الواجهة تسمح بحفظ الإعدادات
           // بدون وحدة تابعة، لذلك يجب قبول القيمة الفارغة بعد trim بدل رفضها.
@@ -664,6 +665,16 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
+        if (
+          input.organizationId !== undefined &&
+          dbSettings.organizationId !== input.organizationId
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "تغيّرت جهة العمل؛ حدّث الإعدادات ثم أعد الحفظ",
+          });
+        }
+
         const maxSerial = await getMaxSerialNumber();
         const safeNextSerial = Math.max(input.serialStart, maxSerial + 1);
 

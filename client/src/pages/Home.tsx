@@ -4332,6 +4332,7 @@ function DepartmentSettingsModal({
 }: {
   settings?: {
     id: number;
+    organizationId: string | null;
     departmentName: string;
     unitName?: string;
     unitChiefRank?: string;
@@ -4410,6 +4411,11 @@ function DepartmentSettingsModal({
     onError: error => toast.error(error.message || "تعذر تحديث إعدادات الجهة"),
   });
   const upload = trpc.settings.uploadLogo.useMutation();
+  const isOrganizationSettingsReady =
+    settings?.organizationId === (activeOrganizationId ?? null) &&
+    selectedWorkplaceId === (activeOrganizationId ?? "");
+  const isWorkplaceTransitioning =
+    selectWorkplace.isPending || !isOrganizationSettingsReady;
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -4431,6 +4437,7 @@ function DepartmentSettingsModal({
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
+    settings?.id,
     settings?.departmentName,
     settings?.unitName,
     settings?.unitChiefRank,
@@ -4787,6 +4794,7 @@ function DepartmentSettingsModal({
           disabled={
             update.isPending ||
             uploading ||
+            isWorkplaceTransitioning ||
             !settings ||
             departmentName.trim().length < 2 ||
             serialPrefix.length < 1 ||
@@ -4795,6 +4803,7 @@ function DepartmentSettingsModal({
           onClick={() =>
             settings &&
             update.mutate({
+              organizationId: settings.organizationId,
               departmentName: localizeDigits(
                 departmentName.trim(),
                 numberSystem
@@ -4815,7 +4824,11 @@ function DepartmentSettingsModal({
           className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
         >
           <Save className="ml-2 h-4 w-4" />
-          {update.isPending ? "جارٍ الحفظ..." : "حفظ إعدادات الجهة"}
+          {isWorkplaceTransitioning
+            ? "جارٍ تحميل إعدادات الجهة..."
+            : update.isPending
+              ? "جارٍ الحفظ..."
+              : "حفظ إعدادات الجهة"}
         </Button>
       </div>
     </Modal>

@@ -40,6 +40,7 @@ function adminContext(): TrpcContext {
 
 const settings = {
   id: 3,
+  organizationId: "00000000-0000-4000-8000-000000000003",
   departmentName: "قسم الاختبار",
   unitName: "وحدة العمليات",
   unitChiefRank: "العقيد",
@@ -76,6 +77,7 @@ describe("department telegram serial prefixes", () => {
     const caller = appRouter.createCaller(adminContext());
 
     await caller.settings.update({
+      organizationId: settings.organizationId,
       departmentName: "قسم الاختبار",
       unitName: "وحدة العمليات",
       unitChiefRank: "العقيد",
@@ -105,6 +107,7 @@ describe("department telegram serial prefixes", () => {
     const caller = appRouter.createCaller(adminContext());
 
     await caller.settings.update({
+      organizationId: settings.organizationId,
       departmentName: "قسم 12",
       unitName: "وحدة ٣",
       unitChiefRank: "عميد 4",
@@ -129,5 +132,30 @@ describe("department telegram serial prefixes", () => {
         numberSystem: "arabic",
       })
     );
+  });
+
+  it("rejects a settings save submitted for a stale workplace without writing", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await expect(
+      caller.settings.update({
+        organizationId: "00000000-0000-4000-8000-000000000004",
+        departmentName: "قسم الاختبار",
+        unitName: "وحدة العمليات",
+        unitChiefRank: "العقيد",
+        unitChiefName: "رئيس الوحدة",
+        serialPrefix: "OUT",
+        incomingSerialPrefix: "IN",
+        serialStart: 1,
+        incomingSerialStart: 1,
+        timezone: "Asia/Riyadh",
+        dateFormat: "dd/MM/yyyy HH:mm:ss",
+        numberSystem: "latin",
+        logoUrl: null,
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocked.updateDepartmentSettings).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
   });
 });

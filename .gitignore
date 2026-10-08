@@ -109,3 +109,6 @@ temp/
 # Local platform/runtime artifacts
 .webdev/
 .project-config.json
+
+# Large design assets are stored outside the repository
+/docs/assets/icon-master-1920.png

@@ -49,7 +49,10 @@ export function registerStorageRoutes(app: Express): void {
         } catch (error) {
           // Keep a redirect fallback for storage providers that do not allow
           // server-side fetching; the browser can still follow the signed URL.
-          console.warn("[Storage] Logo proxy unavailable, using signed URL", error);
+          console.warn(
+            "[Storage] Logo proxy unavailable, using signed URL",
+            error
+          );
         }
       }
       res.set("Cache-Control", "private, max-age=300");

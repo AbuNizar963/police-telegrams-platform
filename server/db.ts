@@ -264,20 +264,48 @@ export async function getOrCreateSettings(
   userId: number
 ): Promise<DepartmentSettingsView> {
   const client = getSupabaseAdmin();
-  const existing = await client
-    .from("department_settings")
-    .select("*")
-    .eq("configKey", "primary")
-    .maybeSingle();
+  const membership = await getUserOrganizationMembership(userId);
+  const organizationId = membership?.organizationId ?? null;
+  let existingQuery = client.from("department_settings").select("*").limit(1);
+  existingQuery = organizationId
+    ? existingQuery.eq("organizationId", organizationId)
+    : existingQuery.is("organizationId", null);
+  const existing = await existingQuery.maybeSingle();
   throwIfError(existing.error, "Failed to load department settings");
 
   if (existing.data) {
     return mapSettingsView(existing.data as Record<string, unknown>);
   }
 
+  const legacy = await client
+    .from("department_settings")
+    .select("*")
+    .eq("configKey", "primary")
+    .is("organizationId", null)
+    .maybeSingle();
+  throwIfError(legacy.error, "Failed to load legacy department settings");
+
+  const template = (legacy.data ?? {}) as Record<string, unknown>;
+  const values = {
+    configKey: organizationId ? `org:${organizationId}` : "primary",
+    organizationId,
+    departmentName: template.departmentName ?? "إدارة الشرطة",
+    unitName: template.unitName ?? "وحدة العمليات",
+    unitChiefRank: template.unitChiefRank ?? "العقيد",
+    unitChiefName: template.unitChiefName ?? "رئيس الوحدة",
+    serialPrefix: template.serialPrefix ?? "POL",
+    serialStart: Number(template.serialStart ?? 1),
+    nextSerial: Number(template.nextSerial ?? 1),
+    timezone: template.timezone ?? "Asia/Damascus",
+    dateFormat: template.dateFormat ?? "dd/MM/yyyy HH:mm:ss",
+    numberSystem: template.numberSystem ?? "latin",
+    logoUrl: template.logoUrl ?? null,
+    updatedByUserId: userId,
+  };
+
   const created = await client
     .from("department_settings")
-    .insert({ configKey: "primary", updatedByUserId: userId })
+    .insert(values)
     .select("*")
     .single();
   throwIfError(created.error, "Failed to create department settings");

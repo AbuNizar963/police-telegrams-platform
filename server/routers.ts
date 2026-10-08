@@ -309,13 +309,14 @@ export const appRouter = router({
 
     context: protectedProcedure.query(async ({ ctx }) => {
       const membership = await getUserOrganizationMembership(ctx.user.id);
-      return membership
-        ? {
-            organizationId: membership.organizationId,
-            role: membership.role,
-            isActive: membership.isActive,
-          }
-        : null;
+      if (!membership) return null;
+      const organization = await getOrganizationById(membership.organizationId);
+      return {
+        organizationId: membership.organizationId,
+        organizationName: organization?.name ?? "الجهة الحالية",
+        role: membership.role,
+        isActive: membership.isActive,
+      };
     }),
 
     routingTargets: protectedProcedure.query(({ ctx }) =>

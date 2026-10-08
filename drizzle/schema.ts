@@ -153,7 +153,10 @@ export const users = pgTable(
 
 export const departmentSettings = pgTable("department_settings", {
   id: serial("id").primaryKey(),
-  configKey: varchar("configKey", { length: 32 })
+  organizationId: uuid("organizationId").references(() => organizations.id, {
+    onDelete: "restrict",
+  }),
+  configKey: varchar("configKey", { length: 80 })
     .default("primary")
     .notNull()
     .unique(),

@@ -1198,7 +1198,10 @@ export default function Home() {
         />
       )}
       {me.data?.role === "admin" && (
-        <DepartmentSettingsModal settings={settings.data} />
+        <DepartmentSettingsModal
+          settings={settings.data}
+          organizationName={organizationContext.data?.organizationName}
+        />
       )}
       {me.data?.role === "admin" && <OwnerUserManagement />}
       {excelImportOpen && (
@@ -4242,6 +4245,7 @@ function Modal({
 
 function DepartmentSettingsModal({
   settings,
+  organizationName,
 }: {
   settings?: {
     id: number;
@@ -4256,6 +4260,7 @@ function DepartmentSettingsModal({
     numberSystem?: NumberSystem;
     logoUrl: string | null;
   };
+  organizationName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [departmentName, setDepartmentName] = useState(
@@ -4316,6 +4321,9 @@ function DepartmentSettingsModal({
     settings?.logoUrl,
     settings?.serialPrefix,
     settings?.serialStart,
+    settings?.timezone,
+    settings?.dateFormat,
+    settings?.numberSystem,
   ]);
 
   const handleLogo = async (file?: File) => {
@@ -4345,10 +4353,20 @@ function DepartmentSettingsModal({
   return (
     <Modal
       title="إعدادات القسم والموقع"
-      subtitle="إعدادات القسم والجهة"
+      subtitle={`إعدادات الجهة: ${organizationName ?? "الجهة الحالية"}`}
       close={() => setOpen(false)}
     >
       <div className="space-y-5">
+        <div className="rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 text-xs dark:bg-[#2d281b]">
+          <p className="font-bold text-[#7a5c1e]">نطاق هذه الإعدادات</p>
+          <p className="mt-1 text-muted-foreground">
+            سيتم تطبيق الشعار واسم الجهة ورئيسها والترقيم والتوقيت على حسابات
+            <strong className="mx-1 text-foreground">
+              {organizationName ?? "الجهة الحالية"}
+            </strong>
+            فقط، ولن تظهر هوية جهة أخرى في برقيات هذه الجهة.
+          </p>
+        </div>
         <div className="rounded-xl border bg-muted/20 p-4">
           <p className="text-xs font-bold text-muted-foreground">
             معاينة ترويسة البرقية

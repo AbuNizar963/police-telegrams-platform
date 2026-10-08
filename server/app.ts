@@ -6,6 +6,7 @@ import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { registerTelegramExportRoutes } from "./telegramExport";
+import { getTelegramSerialCode } from "@shared/telegramSerial";
 
 /**
  * Creates the HTTP application shared by the local server and Vercel.
@@ -43,7 +44,7 @@ export function createApp(
       const { data: telegram, error } = await supabase
         .from("telegrams")
         .select(
-          "serialNumber, creatorName, createdAt, organizationId, archivedAt, status"
+          "serialNumber, serialCode, organizationSerialCode, creatorName, createdAt, organizationId, archivedAt, status"
         )
         .eq("verificationToken", token)
         .maybeSingle();
@@ -65,6 +66,10 @@ export function createApp(
           telegram.status === "archived" || telegram.archivedAt
             ? "archived"
             : "valid",
+        // Match the organization-scoped serial printed in the telegram header.
+        displaySerialCode:
+          getTelegramSerialCode(telegram) ||
+          String(telegram.serialNumber ?? ""),
         serialNumber: telegram.serialNumber,
         createdAt: telegram.createdAt,
         unitName: organization?.name ?? "الوحدة الشرطية",

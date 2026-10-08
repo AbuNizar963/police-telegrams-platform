@@ -7,6 +7,7 @@ import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 type VerificationResult = {
   valid: boolean;
   status?: "valid" | "archived";
+  displaySerialCode?: string;
   serialNumber?: number;
   createdAt?: string;
   unitName?: string;
@@ -135,7 +136,8 @@ export default function VerifyTelegram() {
                   <dt className="text-xs text-slate-500">رقم البرقية</dt>
                   <dd className="mt-1 font-semibold text-slate-900" dir="ltr">
                     {getTelegramDisplayNumber(
-                      String(result.serialNumber ?? "")
+                      result.displaySerialCode ||
+                        String(result.serialNumber ?? "")
                     )}
                   </dd>
                 </div>

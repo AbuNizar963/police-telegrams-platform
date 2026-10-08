@@ -62,6 +62,7 @@ import { LiveArabicWhisperRecorder } from "@/lib/liveArabicWhisperRecorder";
 import { correctArabicText, removeRepeatedSpeech } from "@/lib/arabicSpeech";
 import { showLocalTelegramNotification } from "@/lib/notifications";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
   downloadTelegramWorkbook,
   parseTelegramWorkbook,
@@ -577,9 +578,7 @@ export default function Home() {
     onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: getTelegramDisplayNumber(
-          telegram.organizationSerialCode ?? telegram.serialCode
-        ),
+        serialCode: getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
         subject: telegram.subject,
         telegramId: telegram.id,
       });
@@ -635,9 +634,7 @@ export default function Home() {
       downloadTelegramWorkbook(
         exportRows.map(row => ({
           serial: localizeDigits(
-            getTelegramDisplayNumber(
-              row.organizationSerialCode ?? row.serialCode
-            ),
+            getTelegramDisplayNumber(getTelegramSerialCode(row)),
             numberSystem
           ),
           time: formatConfiguredDate(row.createdAt, settings.data),
@@ -1106,9 +1103,7 @@ export default function Home() {
                   )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
                     {localizeDigits(
-                      getTelegramDisplayNumber(
-                        row.organizationSerialCode ?? row.serialCode
-                      ),
+                      getTelegramDisplayNumber(getTelegramSerialCode(row)),
                       numberSystem
                     )}
                   </span>
@@ -1608,9 +1603,7 @@ function TelegramReportModal({
       header,
       ...rows.map(row => [
         localizeDigits(
-          getTelegramDisplayNumber(
-            row.organizationSerialCode ?? row.serialCode
-          ),
+          getTelegramDisplayNumber(getTelegramSerialCode(row)),
           settings?.numberSystem ?? "latin"
         ),
         row.subject,
@@ -1720,9 +1713,7 @@ function TelegramReportModal({
                 <tr key={row.id} className="border-t">
                   <td className="p-3 font-mono">
                     {localizeDigits(
-                      getTelegramDisplayNumber(
-                        row.organizationSerialCode ?? row.serialCode
-                      ),
+                      getTelegramDisplayNumber(getTelegramSerialCode(row)),
                       settings?.numberSystem ?? "latin"
                     )}
                   </td>
@@ -2998,9 +2989,7 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = localizeDigits(
-      getTelegramDisplayNumber(
-        telegram.organizationSerialCode ?? telegram.serialCode
-      ),
+      getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
       numberSystem
     );
     const logo = settings?.logoUrl
@@ -3642,9 +3631,7 @@ function TelegramDetail({
     <Modal
       title={telegram.subject}
       subtitle={localizeDigits(
-        getTelegramDisplayNumber(
-          telegram.organizationSerialCode ?? telegram.serialCode
-        ),
+        getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
         settings?.numberSystem ?? "latin"
       )}
       close={close}

@@ -4261,11 +4261,11 @@ function Modal({
 }) {
   return (
     <div
-      className={`telegram-print-modal fixed inset-0 z-50 flex justify-center bg-slate-950/60 p-0 backdrop-blur-sm ${fullScreenOnMobile ? "items-start sm:items-center" : "items-end sm:items-center sm:p-6"}`}
+      className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6"
     >
       <div
         dir="rtl"
-        className={`w-full overflow-y-auto bg-background p-5 shadow-2xl sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[94vh] rounded-t-[1.5rem]"}`}
+        className={`my-2 min-h-0 w-full overflow-y-auto bg-background p-5 shadow-2xl sm:my-0 sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-none rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[calc(100dvh-1rem)] rounded-t-[1.5rem]"}`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>

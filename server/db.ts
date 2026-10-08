@@ -266,6 +266,16 @@ export async function getOrCreateSettings(
   const client = getSupabaseAdmin();
   const membership = await getUserOrganizationMembership(userId);
   const organizationId = membership?.organizationId ?? null;
+  const organization = organizationId
+    ? await client
+        .from("organizations")
+        .select("name")
+        .eq("id", organizationId)
+        .maybeSingle()
+    : { data: null, error: null };
+  throwIfError(organization.error, "Failed to load current organization");
+  const organizationName =
+    (organization.data as { name?: string } | null)?.name ?? null;
   let existingQuery = client.from("department_settings").select("*").limit(1);
   existingQuery = organizationId
     ? existingQuery.eq("organizationId", organizationId)
@@ -289,10 +299,10 @@ export async function getOrCreateSettings(
   const values = {
     configKey: organizationId ? `org:${organizationId}` : "primary",
     organizationId,
-    departmentName: template.departmentName ?? "إدارة الشرطة",
-    unitName: template.unitName ?? "وحدة العمليات",
-    unitChiefRank: template.unitChiefRank ?? "العقيد",
-    unitChiefName: template.unitChiefName ?? "رئيس الوحدة",
+    departmentName: organizationName ?? template.departmentName ?? "إدارة الشرطة",
+    unitName: organizationName ?? template.unitName ?? "وحدة العمليات",
+    unitChiefRank: organizationId ? "" : (template.unitChiefRank ?? "العقيد"),
+    unitChiefName: organizationId ? "رئيس الجهة" : (template.unitChiefName ?? "رئيس الوحدة"),
     serialPrefix: template.serialPrefix ?? "POL",
     serialStart: Number(template.serialStart ?? 1),
     nextSerial: Number(template.nextSerial ?? 1),

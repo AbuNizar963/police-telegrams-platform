@@ -45,6 +45,14 @@ function decodeVapidKey(value: string): Uint8Array {
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const organizationContext = trpc.organizations.context.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
+  const canManageOrganizationSettings =
+    user?.role === "admin" ||
+    ["system_admin", "organization_admin"].includes(
+      organizationContext.data?.role ?? ""
+    );
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
   });
@@ -258,6 +266,25 @@ export default function HeaderActions() {
                 : "تفعيل إشعارات البرقيات"}
             </span>
           </DropdownMenuItem>
+          {canManageOrganizationSettings && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-right text-xs font-bold text-[#9b7c3d]">
+                إعدادات الجهة
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onSelect={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("open-department-settings")
+                  )
+                }
+                className="cursor-pointer justify-end gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span>إعدادات الجهة</span>
+              </DropdownMenuItem>
+            </>
+          )}
           {user?.role === "admin" && (
             <>
               <DropdownMenuSeparator />
@@ -274,17 +301,6 @@ export default function HeaderActions() {
               >
                 <Users className="h-4 w-4" />
                 <span>إدارة المستخدمين وإضافة الحسابات</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("open-department-settings")
-                  )
-                }
-                className="cursor-pointer justify-end gap-2"
-              >
-                <Settings className="h-4 w-4" />
-                <span>إعدادات القسم والموقع</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>

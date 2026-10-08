@@ -62,6 +62,13 @@ export const organizationAdminProcedure = t.procedure.use(
       });
     }
 
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "لا تملك صلاحية إدارة الجهة الشرطية",
+      });
+    }
+
     const membership = await getUserOrganizationMembership(ctx.user.id);
     if (
       !membership ||

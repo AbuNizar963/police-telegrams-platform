@@ -576,7 +576,7 @@ export const appRouter = router({
       getOrCreateSettings(ctx.user.id)
     ),
 
-    uploadLogo: adminProcedure
+    uploadLogo: organizationAdminProcedure
       .input(
         z.object({
           fileName: z.string().trim().min(1).max(180),
@@ -600,7 +600,7 @@ export const appRouter = router({
         );
       }),
 
-    update: adminProcedure
+    update: organizationAdminProcedure
       .input(
         z.object({
           departmentName: z.string().trim().min(2).max(255),

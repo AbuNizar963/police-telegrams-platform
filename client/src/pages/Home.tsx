@@ -616,6 +616,7 @@ export default function Home() {
     ["system_admin", "organization_admin"].includes(
       organizationContext.data?.role ?? ""
     );
+  const canManageOrganizationSettings = canManageExcel;
 
   const exportCurrentTable = async () => {
     setExportingExcel(true);
@@ -1237,7 +1238,7 @@ export default function Home() {
           close={() => setSelectedId(null)}
         />
       )}
-      {me.data?.role === "admin" && (
+      {canManageOrganizationSettings && (
         <DepartmentSettingsModal
           settings={settings.data}
           organizationName={organizationContext.data?.organizationName}
@@ -4339,7 +4340,7 @@ function DepartmentSettingsModal({
       setLogoUrl(result?.logoUrl ?? null);
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
     },
-    onError: error => toast.error(error.message || "تعذر تحديث إعدادات القسم"),
+    onError: error => toast.error(error.message || "تعذر تحديث إعدادات الجهة"),
   });
   const upload = trpc.settings.uploadLogo.useMutation();
 
@@ -4399,7 +4400,7 @@ function DepartmentSettingsModal({
   if (!open) return null;
   return (
     <Modal
-      title="إعدادات القسم والموقع"
+      title="إعدادات الجهة"
       subtitle={`إعدادات الجهة: ${organizationName ?? "الجهة الحالية"}`}
       close={() => setOpen(false)}
     >
@@ -4653,8 +4654,9 @@ function DepartmentSettingsModal({
         <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
           <Shield className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            هذه الإعدادات متاحة للمالك أو المدير فقط، وتُحفظ في الخادم وتظهر في
-            ترويسة البرقية عند العرض والطباعة.
+            هذه الإعدادات خاصة بالجهة الحالية، ومتاحة للمالك أو مدير الجهة
+            المخول، وتُحفظ في الخادم وتظهر في ترويسة برقيات هذه الجهة فقط عند
+            العرض والطباعة.
           </span>
         </div>
       </div>
@@ -4693,7 +4695,7 @@ function DepartmentSettingsModal({
           className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
         >
           <Save className="ml-2 h-4 w-4" />
-          {update.isPending ? "جارٍ الحفظ..." : "حفظ إعدادات القسم"}
+          {update.isPending ? "جارٍ الحفظ..." : "حفظ إعدادات الجهة"}
         </Button>
       </div>
     </Modal>

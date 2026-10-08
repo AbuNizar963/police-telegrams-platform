@@ -4346,10 +4346,6 @@ function DepartmentSettingsModal({
   const [incomingSerialPrefix, setIncomingSerialPrefix] = useState(
     settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
   );
-  const [serialStart, setSerialStart] = useState(settings?.serialStart ?? 1);
-  const [incomingSerialStart, setIncomingSerialStart] = useState(
-    settings?.incomingSerialStart ?? settings?.serialStart ?? 1
-  );
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("dd/MM/yyyy HH:mm:ss");
   const [numberSystem, setNumberSystem] = useState<
@@ -4382,10 +4378,6 @@ function DepartmentSettingsModal({
     setIncomingSerialPrefix(
       settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
     );
-    setSerialStart(settings?.serialStart ?? 1);
-    setIncomingSerialStart(
-      settings?.incomingSerialStart ?? settings?.serialStart ?? 1
-    );
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
     setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss");
     setNumberSystem(settings?.numberSystem ?? "latin");
@@ -4398,8 +4390,6 @@ function DepartmentSettingsModal({
     settings?.logoUrl,
     settings?.serialPrefix,
     settings?.incomingSerialPrefix,
-    settings?.serialStart,
-    settings?.incomingSerialStart,
     settings?.timezone,
     settings?.dateFormat,
     settings?.numberSystem,
@@ -4537,8 +4527,7 @@ function DepartmentSettingsModal({
             className="h-11 rounded-lg font-mono uppercase"
           />
           <span className="text-[11px] font-normal text-muted-foreground">
-            سيُحفظ الرقم الكامل داخليًا للتدقيق، ويظهر في الواجهة مثل: 1، بينما
-            يُعرض التاريخ في خانة مستقلة.
+            تُضاف هذه البادئة إلى الرقم التسلسلي للبرقيات الصادرة.
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">
@@ -4556,32 +4545,6 @@ function DepartmentSettingsModal({
           <span className="text-[11px] font-normal text-muted-foreground">
             ستُستخدم هذه البادئة في رقم الوارد لدى الجهة المستقبلة.
           </span>
-        </label>
-        <label className="grid gap-1.5 text-xs font-bold">
-          رقم بداية برقية صادرة
-          <Input
-            type="number"
-            min={1}
-            value={serialStart}
-            onChange={event =>
-              setSerialStart(Math.max(1, Number(event.target.value) || 1))
-            }
-            className="h-11 rounded-lg"
-          />
-        </label>
-        <label className="grid gap-1.5 text-xs font-bold">
-          رقم بداية برقية واردة
-          <Input
-            type="number"
-            min={1}
-            value={incomingSerialStart}
-            onChange={event =>
-              setIncomingSerialStart(
-                Math.max(1, Number(event.target.value) || 1)
-              )
-            }
-            className="h-11 rounded-lg"
-          />
         </label>
         <div className="grid gap-3 rounded-xl border p-4">
           <p className="text-xs font-bold">التوقيت والتاريخ والأرقام</p>
@@ -4736,9 +4699,7 @@ function DepartmentSettingsModal({
             !settings ||
             departmentName.trim().length < 2 ||
             serialPrefix.length < 1 ||
-            incomingSerialPrefix.length < 1 ||
-            serialStart < 1 ||
-            incomingSerialStart < 1
+            incomingSerialPrefix.length < 1
           }
           onClick={() =>
             settings &&
@@ -4749,8 +4710,8 @@ function DepartmentSettingsModal({
               unitChiefName: unitChiefName.trim(),
               serialPrefix,
               incomingSerialPrefix,
-              serialStart,
-              incomingSerialStart,
+              serialStart: settings.serialStart,
+              incomingSerialStart: settings.incomingSerialStart,
               timezone,
               dateFormat,
               numberSystem,

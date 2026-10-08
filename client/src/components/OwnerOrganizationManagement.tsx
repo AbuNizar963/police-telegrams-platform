@@ -204,8 +204,8 @@ export default function OwnerOrganizationManagement() {
         return (
           <div key={item.id}>
             <div
-              className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${selected ? "border-primary bg-primary/5" : ""}`}
-              style={{ marginRight: `${depth * 18}px` }}
+              className={`flex min-w-0 max-w-full items-center justify-between gap-2 overflow-hidden rounded-lg border px-2.5 py-2 sm:px-3 ${selected ? "border-primary bg-primary/5" : ""}`}
+              style={{ marginRight: `${Math.min(depth * 12, 48)}px` }}
             >
               <button
                 type="button"
@@ -261,17 +261,17 @@ export default function OwnerOrganizationManagement() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="owner-org-title"
-        className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-t-2xl bg-background p-5 shadow-2xl sm:rounded-2xl sm:p-7"
+        className="max-h-[94vh] min-w-0 w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-t-2xl bg-background p-3 shadow-2xl sm:rounded-2xl sm:p-7"
       >
-        <header className="flex items-start justify-between gap-4">
-          <div>
+        <header className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold tracking-wide text-[#9b7c3d]">
               الهيكل التنظيمي للجهات الشرطية
             </p>
             <h2 id="owner-org-title" className="mt-1 text-xl font-bold">
               إدارة المناطق والأقسام والمخافر
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 break-words text-sm text-muted-foreground">
               القيادة المركزية ← قيادة الأمن الداخلي في المحافظة ← قيادة المنطقة
               ← مديرية الأمن الداخلي ← القسم ← المخفر.
             </p>
@@ -287,7 +287,7 @@ export default function OwnerOrganizationManagement() {
           </Button>
         </header>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
           {createdAccount && (
             <div className="lg:col-span-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
               <div className="flex items-start justify-between gap-3">
@@ -313,7 +313,10 @@ export default function OwnerOrganizationManagement() {
               </div>
             </div>
           )}
-          <form onSubmit={submit} className="space-y-3 rounded-xl border p-4">
+          <form
+            onSubmit={submit}
+            className="min-w-0 space-y-3 rounded-xl border p-3 sm:p-4"
+          >
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-[#9b7c3d]" />
               <h3 className="font-bold">
@@ -385,7 +388,7 @@ export default function OwnerOrganizationManagement() {
             <label className="grid gap-1 text-sm font-medium">
               المستوى
               <select
-                className="h-10 rounded-md border bg-background px-3 text-sm"
+                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
                 value={form.type}
                 onChange={event =>
                   setForm(current => ({
@@ -404,7 +407,7 @@ export default function OwnerOrganizationManagement() {
             <label className="grid gap-1 text-sm font-medium">
               الجهة الأب
               <select
-                className="h-10 rounded-md border bg-background px-3 text-sm"
+                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
                 value={form.parentOrganizationId}
                 onChange={event =>
                   setForm(current => ({
@@ -426,7 +429,7 @@ export default function OwnerOrganizationManagement() {
             <label className="grid gap-1 text-sm font-medium">
               الجهة التابع لها (مستلم البرقيات)
               <select
-                className="h-10 rounded-md border bg-background px-3 text-sm"
+                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
                 value={form.telegramDestinationOrganizationId}
                 onChange={event =>
                   setForm(current => ({
@@ -481,7 +484,7 @@ export default function OwnerOrganizationManagement() {
             </div>
           </form>
 
-          <section className="rounded-xl border p-4">
+          <section className="min-w-0 rounded-xl border p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Building2 className="h-4 w-4 text-[#9b7c3d]" />
               <h3 className="font-bold">الهيكل التنظيمي</h3>

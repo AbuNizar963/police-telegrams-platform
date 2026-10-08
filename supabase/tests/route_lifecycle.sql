@@ -34,6 +34,18 @@ from (
 ) as route_org(code, name, type, parent_code)
 join public.organizations as parent on parent.code = route_org.parent_code;
 
+insert into public.department_settings (
+  "configKey",
+  "organizationId",
+  "departmentName"
+)
+select
+  'route-test:' || organization.code,
+  organization.id,
+  organization.name
+from public.organizations as organization
+where organization.code in ('TEST-ROUTE-GOV-A', 'TEST-ROUTE-GOV-B');
+
 insert into public.organizations (
   code,
   name,

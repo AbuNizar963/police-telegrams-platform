@@ -3,7 +3,8 @@ begin;
 select plan(5);
 
 create temporary table organization_serial_test_context (
-  organization_id uuid not null
+  organization_id uuid not null,
+  user_id integer
 ) on commit drop;
 
 with organization_row as (
@@ -25,6 +26,26 @@ with organization_row as (
 )
 insert into organization_serial_test_context (organization_id)
 select "organizationId" from settings_row;
+
+WITH test_user AS (
+  INSERT INTO public.users (
+    "authUserId",
+    name,
+    "loginMethod",
+    "organizationId"
+  )
+  SELECT
+    gen_random_uuid(),
+    'PGTAP Serial Allocator',
+    'organization-serial-test',
+    organization_id
+  FROM organization_serial_test_context
+  RETURNING id, "organizationId"
+)
+UPDATE organization_serial_test_context AS context
+SET user_id = test_user.id
+FROM test_user
+WHERE context.organization_id = test_user."organizationId";
 
 select results_eq(
   $$
@@ -59,7 +80,7 @@ select
   coalesce((select max("serialNumber") from public.telegrams), 0) + 100000,
   'PGTAP-SERIAL-47000',
   gen_random_uuid(),
-  1,
+  (select user_id from organization_serial_test_context),
   organization_id,
   organization_id,
   47000,
@@ -107,7 +128,7 @@ select
   coalesce((select max("serialNumber") from public.telegrams), 0) + 100000,
   'PGTAP-SERIAL-47001',
   gen_random_uuid(),
-  1,
+  (select user_id from organization_serial_test_context),
   organization_id,
   organization_id,
   47001,

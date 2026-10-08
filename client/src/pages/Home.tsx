@@ -2434,7 +2434,7 @@ function TelegramComposer({
 
   return (
     <Modal title="إنشاء برقية جديدة" close={close} fullScreenOnMobile wide>
-      <div className="grid gap-4">
+      <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden">
         {!online && (
           <div
             role="alert"
@@ -2459,7 +2459,7 @@ function TelegramComposer({
                   ""
               );
             }}
-            className="h-11 rounded-lg border bg-background px-3 text-sm"
+            className="h-11 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm"
           >
             <option value="">
               {routingTargets.some(target => target.isConfiguredDestination)
@@ -2478,14 +2478,14 @@ function TelegramComposer({
 
         <div className="grid gap-1.5 text-xs font-bold">
           <span>درجة السرية</span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
             {(Object.keys(classificationLabels) as Classification[]).map(
               item => (
                 <button
                   type="button"
                   key={item}
                   onClick={() => setClassification(item)}
-                  className={`rounded-lg border p-2.5 text-xs ${
+                  className={`min-w-0 rounded-lg border p-2.5 text-xs ${
                     classification === item
                       ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
                       : "hover:bg-muted"
@@ -2500,13 +2500,13 @@ function TelegramComposer({
 
         <div className="grid gap-1.5 text-xs font-bold">
           <span>درجة الأولوية</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid min-w-0 grid-cols-3 gap-2">
             {(Object.keys(priorityLabels) as Priority[]).map(item => (
               <button
                 type="button"
                 key={item}
                 onClick={() => setPriority(item)}
-                className={`rounded-lg border p-2.5 text-xs ${
+                className={`min-w-0 rounded-lg border p-2.5 text-xs ${
                   priority === item
                     ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
                     : "hover:bg-muted"
@@ -2523,7 +2523,7 @@ function TelegramComposer({
           <select
             value={category}
             onChange={event => setCategory(event.target.value as Category)}
-            className="h-11 rounded-lg border bg-background px-3 text-sm font-normal"
+            className="h-11 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm font-normal"
           >
             {(Object.keys(categoryLabels) as Category[]).map(item => (
               <option key={item} value={item}>
@@ -2539,7 +2539,7 @@ function TelegramComposer({
             value={subject}
             onChange={event => setSubject(event.target.value)}
             placeholder="عنوان مختصر ودقيق للبلاغ"
-            className="h-11 rounded-lg"
+            className="h-11 w-full min-w-0 max-w-full rounded-lg"
           />
         </label>
 
@@ -2552,11 +2552,11 @@ function TelegramComposer({
             autoCapitalize="off"
             onChange={event => setBody(event.target.value)}
             placeholder="اكتب تفاصيل البلاغ أو استخدم الكاميرا أو الميكروفون..."
-            className="min-h-[30vh] rounded-lg leading-7 sm:min-h-36"
+            className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg leading-7 sm:min-h-36"
           />
         </label>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap gap-2">
           <div className="relative">
             <Button
               type="button"
@@ -2647,7 +2647,7 @@ function TelegramComposer({
                 setSpeechEngine(event.target.value as "browser" | "local")
               }
               disabled={recording || processingInput}
-              className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+              className="h-10 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm font-normal"
               aria-label="محرك الكتابة الصوتية"
             >
               <option value="browser">مباشر عبر المتصفح</option>
@@ -4274,19 +4274,21 @@ function Modal({
   wide?: boolean;
 }) {
   return (
-    <div className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6">
+    <div className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-x-hidden overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6">
       <div
         dir="rtl"
-        className={`my-2 min-h-0 w-full overflow-y-auto bg-background p-5 shadow-2xl sm:my-0 sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-none rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[calc(100dvh-1rem)] rounded-t-[1.5rem]"}`}
+        className={`my-2 min-h-0 w-full max-w-[100vw] overflow-x-hidden overflow-y-auto bg-background p-3 shadow-2xl sm:my-0 sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-none rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[calc(100dvh-1rem)] rounded-t-[1.5rem]"}`}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             {subtitle && (
               <p className="font-mono text-xs font-bold text-[#9b7c3d]">
                 {subtitle}
               </p>
             )}
-            <h2 className={`${subtitle ? "mt-1" : ""} text-xl font-bold`}>
+            <h2
+              className={`${subtitle ? "mt-1" : ""} break-words text-xl font-bold`}
+            >
               {title}
             </h2>
           </div>

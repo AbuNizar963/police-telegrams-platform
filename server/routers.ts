@@ -337,6 +337,7 @@ export const appRouter = router({
       .query(({ input }) =>
         listOrganizationAccountSummaries(input.organizationId)
       ),
+    allAccounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
       listPendingRouteApprovals(ctx.user.id, ctx.user.role === "admin")
     ),

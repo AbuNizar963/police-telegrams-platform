@@ -65,6 +65,9 @@ export default function OwnerOrganizationManagement() {
       enabled: open && Boolean(selectedOrganizationId),
     }
   );
+  const allAccounts = trpc.organizations.allAccounts.useQuery(undefined, {
+    enabled: open,
+  });
   const pendingApprovals = trpc.organizations.pendingApprovals.useQuery(
     undefined,
     {
@@ -180,6 +183,19 @@ export default function OwnerOrganizationManagement() {
   const directChildren = (organizations.data ?? []).filter(
     item => item.parentOrganizationId === selectedOrganizationId
   );
+  const selectedAccounts = (allAccounts.data ?? []).filter(
+    account => account.organizationId === selectedOrganizationId
+  );
+  const accountCountByOrganization = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const account of allAccounts.data ?? []) {
+      counts.set(
+        account.organizationId,
+        (counts.get(account.organizationId) ?? 0) + 1
+      );
+    }
+    return counts;
+  }, [allAccounts.data]);
   const toggleOrganization = (id: string) => {
     setExpandedIds(current => {
       const next = new Set(current);
@@ -223,6 +239,13 @@ export default function OwnerOrganizationManagement() {
                   <span className="block text-[11px] text-muted-foreground">
                     {typeLabels[item.type as OrganizationType] ?? item.type} ·{" "}
                     {item.code}
+                  </span>
+                  <span className="block text-[10px] text-emerald-700 dark:text-emerald-300">
+                    {allAccounts.isLoading
+                      ? "جارٍ تحميل الحسابات..."
+                      : accountCountByOrganization.get(item.id)
+                        ? `${accountCountByOrganization.get(item.id)} حساب جهة`
+                        : "لا يوجد حساب جهة"}
                   </span>
                 </span>
               </button>
@@ -561,12 +584,12 @@ export default function OwnerOrganizationManagement() {
                     <p className="text-xs font-semibold text-muted-foreground">
                       حسابات هذه الجهة فقط
                     </p>
-                    {accounts.isLoading ? (
+                    {accounts.isLoading || allAccounts.isLoading ? (
                       <p className="mt-1 text-xs text-muted-foreground">
                         جارٍ التحميل...
                       </p>
-                    ) : accounts.data?.length ? (
-                      accounts.data.map(account => (
+                    ) : selectedAccounts.length ? (
+                      selectedAccounts.map(account => (
                         <p
                           key={account.userId}
                           className="mt-1 font-mono text-xs"

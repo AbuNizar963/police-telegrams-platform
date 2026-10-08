@@ -73,7 +73,6 @@ import {
   listRoutingTargets,
   receiveTelegramRoute,
   routeTelegram,
-  seedSyrianGovernorates,
   updateOrganization,
   updateOrganizationAccount,
 } from "./organization";
@@ -426,9 +425,6 @@ export const appRouter = router({
         return { organization, account };
       }),
 
-    seedSyrianGovernorates: adminProcedure.mutation(() =>
-      seedSyrianGovernorates()
-    ),
     ensureAccounts: adminProcedure.mutation(({ ctx }) =>
       ensureOrganizationAccounts({ actorUserId: ctx.user.id })
     ),

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Database, Plus, RefreshCw, X } from "lucide-react";
+import { Building2, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { organizationTypeLabels } from "@/lib/uiLabels";
@@ -112,13 +112,6 @@ export default function OwnerOrganizationManagement() {
       ]);
     },
     onError: error => toast.error(error.message || "تعذر تحديث الجهة"),
-  });
-  const seed = trpc.organizations.seedSyrianGovernorates.useMutation({
-    onSuccess: async result => {
-      toast.success(`تم تجهيز ${result.length} قيادة محافظة سورية`);
-      await utils.organizations.all.invalidate();
-    },
-    onError: error => toast.error(error.message || "تعذر تجهيز المحافظات"),
   });
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
@@ -279,8 +272,8 @@ export default function OwnerOrganizationManagement() {
               إدارة المناطق والأقسام والمخافر
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              القيادة المركزية ← قيادة المحافظة ← قيادة المنطقة ← مديرية الشرطة
-              ← القسم ← المخفر.
+              القيادة المركزية ← قيادة الأمن الداخلي في المحافظة ← قيادة المنطقة
+              ← مديرية الأمن الداخلي ← القسم ← المخفر.
             </p>
           </div>
           <Button
@@ -351,7 +344,7 @@ export default function OwnerOrganizationManagement() {
                 required
                 minLength={2}
                 maxLength={255}
-                placeholder="قيادة شرطة محافظة دمشق"
+                placeholder="قيادة الأمن الداخلي في محافظة دمشق"
               />
             </label>
             {editingId && accountManagedTypes.has(form.type) && (
@@ -500,15 +493,6 @@ export default function OwnerOrganizationManagement() {
                 onClick={() => void organizations.refetch()}
               >
                 <RefreshCw className="ml-1 h-3.5 w-3.5" /> تحديث
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => seed.mutate()}
-                disabled={seed.isPending}
-              >
-                <Database className="ml-1 h-3.5 w-3.5" /> تجهيز محافظات سوريا
               </Button>
             </div>
             {organizations.isLoading && (

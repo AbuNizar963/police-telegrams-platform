@@ -599,7 +599,7 @@ export async function seedSyrianGovernorates(): Promise<Organization[]> {
         {
           parentOrganizationId: central.id,
           code: `GOV-${code}`,
-          name: `قيادة شرطة محافظة ${name}`,
+          name: `قيادة الأمن الداخلي في محافظة ${name}`,
           type: "governorate",
           isActive: true,
         },

@@ -19,6 +19,7 @@ import {
   getPrimaryOrganization,
   getUserOrganizationMembership,
 } from "./organization";
+import { resolveOrganizationLetterhead } from "./organizationLetterhead";
 
 const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
@@ -83,6 +84,65 @@ async function mapSettingsView(
     ...settings,
     logoUrl,
     logoKey,
+  };
+}
+
+type OrganizationIdentity = {
+  name: string;
+  parentName: string | null;
+};
+
+async function getOrganizationIdentity(
+  organizationId: string | null
+): Promise<OrganizationIdentity | null> {
+  if (!organizationId) return null;
+
+  const client = getSupabaseAdmin();
+  const { data, error } = await client
+    .from("organizations")
+    .select("name, parentOrganizationId")
+    .eq("id", organizationId)
+    .maybeSingle();
+  throwIfError(error, "Failed to load current organization");
+  if (!data) return null;
+
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  if (!name) return null;
+
+  const parentOrganizationId =
+    typeof data.parentOrganizationId === "string"
+      ? data.parentOrganizationId
+      : null;
+  if (!parentOrganizationId) return { name, parentName: null };
+
+  const { data: parent, error: parentError } = await client
+    .from("organizations")
+    .select("name")
+    .eq("id", parentOrganizationId)
+    .maybeSingle();
+  throwIfError(parentError, "Failed to load parent organization");
+
+  return {
+    name,
+    parentName:
+      typeof parent?.name === "string" ? parent.name.trim() || null : null,
+  };
+}
+
+async function mapOrganizationSettingsView(
+  row: Record<string, unknown>,
+  identity: OrganizationIdentity | null
+): Promise<DepartmentSettingsView> {
+  const settings = await mapSettingsView(row);
+  if (!identity) return settings;
+
+  return {
+    ...settings,
+    ...resolveOrganizationLetterhead(
+      settings,
+      identity.name,
+      identity.parentName
+    ),
   };
 }
 
@@ -272,16 +332,8 @@ export async function getOrCreateSettings(
   const client = getSupabaseAdmin();
   const membership = await getUserOrganizationMembership(userId);
   const organizationId = membership?.organizationId ?? null;
-  const organization = organizationId
-    ? await client
-        .from("organizations")
-        .select("name")
-        .eq("id", organizationId)
-        .maybeSingle()
-    : { data: null, error: null };
-  throwIfError(organization.error, "Failed to load current organization");
-  const organizationName =
-    (organization.data as { name?: string } | null)?.name ?? null;
+  const organizationIdentity = await getOrganizationIdentity(organizationId);
+  const organizationName = organizationIdentity?.name ?? null;
   let existingQuery = client.from("department_settings").select("*").limit(1);
   existingQuery = organizationId
     ? existingQuery.eq("organizationId", organizationId)
@@ -290,7 +342,10 @@ export async function getOrCreateSettings(
   throwIfError(existing.error, "Failed to load department settings");
 
   if (existing.data) {
-    return mapSettingsView(existing.data as Record<string, unknown>);
+    return mapOrganizationSettingsView(
+      existing.data as Record<string, unknown>,
+      organizationIdentity
+    );
   }
 
   const legacy = await client
@@ -342,7 +397,10 @@ export async function getOrCreateSettings(
     .select("*")
     .single();
   throwIfError(created.error, "Failed to create department settings");
-  return mapSettingsView(created.data as Record<string, unknown>);
+  return mapOrganizationSettingsView(
+    created.data as Record<string, unknown>,
+    organizationIdentity
+  );
 }
 
 export async function getMaxSerialNumber(): Promise<number> {
@@ -401,13 +459,19 @@ export async function allocateOrganizationSerialNumber(
 export async function getOrganizationSettings(
   organizationId: string
 ): Promise<DepartmentSettingsView | undefined> {
+  const organizationIdentity = await getOrganizationIdentity(organizationId);
   const { data, error } = await getSupabaseAdmin()
     .from("department_settings")
     .select("*")
     .eq("organizationId", organizationId)
     .maybeSingle();
   throwIfError(error, "Failed to load organization settings");
-  return data ? mapSettingsView(data as Record<string, unknown>) : undefined;
+  return data
+    ? mapOrganizationSettingsView(
+        data as Record<string, unknown>,
+        organizationIdentity
+      )
+    : undefined;
 }
 
 export async function updateRouteIncomingSerial(input: {

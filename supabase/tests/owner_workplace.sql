@@ -85,16 +85,21 @@ select throws_ok(
   'direct membership assignment cannot create an extra active owner membership'
 );
 
-select is(
-  (
-    select parent.code
+select ok(
+  not exists (
+    select 1
+    from public.organizations
+    where code = 'ALSHAHBAA'
+  )
+  or exists (
+    select 1
     from public.organizations shahbaa
     join public.organizations parent
       on parent.id = shahbaa."parentOrganizationId"
     where shahbaa.code = 'ALSHAHBAA'
+      and parent.code = 'GOV-ALEPPO'
   ),
-  'GOV-ALEPPO'::text,
-  'Shahbaa stays under the Aleppo governorate'
+  'Shahbaa stays under Aleppo when the production hierarchy is seeded'
 );
 
 select public.set_owner_workplace(

@@ -177,6 +177,8 @@ export const departmentSettings = pgTable("department_settings", {
     .notNull(),
   serialStart: integer("serialStart").default(1).notNull(),
   nextSerial: integer("nextSerial").default(1).notNull(),
+  nextOutgoingSerial: integer("nextOutgoingSerial").default(1).notNull(),
+  nextIncomingSerial: integer("nextIncomingSerial").default(1).notNull(),
   timezone: varchar("timezone", { length: 64 })
     .default("Asia/Damascus")
     .notNull(),
@@ -243,6 +245,8 @@ export const telegrams = pgTable(
     currentOrganizationId: uuid("currentOrganizationId")
       .notNull()
       .references(() => organizations.id),
+    organizationSerialNumber: integer("organizationSerialNumber"),
+    organizationSerialCode: varchar("organizationSerialCode", { length: 48 }),
     creatorName: varchar("creatorName", { length: 255 }).notNull(),
     creatorEmail: varchar("creatorEmail", { length: 320 }),
     creatorBadgeId: varchar("creatorBadgeId", { length: 80 }),
@@ -393,6 +397,8 @@ export const telegramRoutes = pgTable(
     receiverDecisionReason: text("receiverDecisionReason"),
     routeSerialNumber: integer("routeSerialNumber"),
     routeSerialCode: varchar("routeSerialCode", { length: 48 }),
+    incomingSerialNumber: integer("incomingSerialNumber"),
+    incomingSerialCode: varchar("incomingSerialCode", { length: 48 }),
     note: text("note"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()

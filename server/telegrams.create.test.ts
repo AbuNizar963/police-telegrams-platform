@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
+  allocateOrganizationSerialNumber: vi.fn(),
   createTelegram: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
@@ -55,6 +56,7 @@ describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
+    mocked.allocateOrganizationSerialNumber.mockResolvedValue(1);
     mocked.getUserOrganizationId.mockResolvedValue(
       "00000000-0000-0000-0000-000000000001"
     );

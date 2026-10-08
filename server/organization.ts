@@ -683,6 +683,40 @@ export async function listRoutingTargets(
     }));
 }
 
+export async function listOrganizationDescendants(
+  userId: number
+): Promise<Organization[]> {
+  const membership = await getUserOrganizationMembership(userId);
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("*")
+    .eq("isActive", true)
+    .order("name", { ascending: true });
+  throwIfError(error, "Failed to load child organizations");
+
+  const organizations = (data ?? []).map(row =>
+    mapOrganization(row as Record<string, unknown>)
+  );
+  const descendants = new Set<string>();
+  let frontier = [membership.organizationId];
+  while (frontier.length > 0) {
+    const next = organizations
+      .filter(
+        organization =>
+          organization.parentOrganizationId !== null &&
+          frontier.includes(organization.parentOrganizationId)
+      )
+      .map(organization => organization.id)
+      .filter(id => !descendants.has(id));
+    next.forEach(id => descendants.add(id));
+    frontier = next;
+  }
+  return organizations.filter(organization => descendants.has(organization.id));
+}
+
 export async function routeTelegram(input: {
   telegramId: number;
   toOrganizationId: string;

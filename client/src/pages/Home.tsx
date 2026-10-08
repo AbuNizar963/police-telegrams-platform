@@ -383,6 +383,7 @@ export default function Home() {
   const [priority, setPriority] = useState<"all" | Priority>("all");
   const [status, setStatus] = useState<"all" | Status>("all");
   const [category, setCategory] = useState<"all" | Category>("all");
+  const [organizationScope, setOrganizationScope] = useState("current");
   const [telegramView, setTelegramView] = useState<
     "all" | "outgoing" | "incoming"
   >("all");
@@ -512,12 +513,24 @@ export default function Home() {
       priority: priority === "all" ? undefined : priority,
       status: status === "all" ? undefined : status,
       category: category === "all" ? undefined : category,
+      organizationScope:
+        organizationScope === "current" ? undefined : organizationScope,
       from: dateFrom,
       to: dateTo,
       page,
       pageSize: TELEGRAMS_PER_PAGE,
     }),
-    [search, severity, priority, status, category, dateFrom, dateTo, page]
+    [
+      search,
+      severity,
+      priority,
+      status,
+      category,
+      organizationScope,
+      dateFrom,
+      dateTo,
+      page,
+    ]
   );
   useEffect(() => {
     setPage(1);
@@ -525,6 +538,7 @@ export default function Home() {
   const settings = trpc.settings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
+  const organizationDescendants = trpc.organizations.descendants.useQuery();
   const stats = trpc.dashboard.stats.useQuery(undefined, {
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: true,
@@ -565,7 +579,9 @@ export default function Home() {
     onSuccess: telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: getTelegramDisplayNumber(telegram.serialCode),
+        serialCode: getTelegramDisplayNumber(
+          telegram.organizationSerialCode ?? telegram.serialCode
+        ),
         subject: telegram.subject,
         telegramId: telegram.id,
       });
@@ -620,7 +636,9 @@ export default function Home() {
       downloadTelegramWorkbook(
         exportRows.map(row => ({
           serial: localizeDigits(
-            getTelegramDisplayNumber(row.serialCode),
+            getTelegramDisplayNumber(
+              row.organizationSerialCode ?? row.serialCode
+            ),
             numberSystem
           ),
           time: formatConfiguredDate(row.createdAt, settings.data),
@@ -775,7 +793,8 @@ export default function Home() {
             {(severity !== "all" ||
               priority !== "all" ||
               status !== "all" ||
-              category !== "all") && (
+              category !== "all" ||
+              organizationScope !== "current") && (
               <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10233f] px-1.5 text-[10px] text-white">
                 {
                   [
@@ -783,6 +802,7 @@ export default function Home() {
                     priority !== "all",
                     status !== "all",
                     category !== "all",
+                    organizationScope !== "current",
                   ].filter(Boolean).length
                 }
               </span>
@@ -954,6 +974,23 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
               <select
+                value={organizationScope}
+                onChange={event => setOrganizationScope(event.target.value)}
+                className="rounded-md border bg-background px-2.5 py-1.5 text-xs"
+              >
+                <option value="current">جهتي الحالية فقط</option>
+                {organizationDescendants.data?.length ? (
+                  <>
+                    <option value="children">جهتي والجهات التابعة</option>
+                    {organizationDescendants.data.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </>
+                ) : null}
+              </select>
+              <select
                 value={severity}
                 onChange={event =>
                   setSeverity(event.target.value as "all" | Classification)
@@ -1017,6 +1054,7 @@ export default function Home() {
                   setPriority("all");
                   setStatus("all");
                   setCategory("all");
+                  setOrganizationScope("current");
                 }}
                 className="mr-auto text-xs text-muted-foreground hover:text-foreground"
               >
@@ -1069,7 +1107,9 @@ export default function Home() {
                   )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
                     {localizeDigits(
-                      getTelegramDisplayNumber(row.serialCode),
+                      getTelegramDisplayNumber(
+                        row.organizationSerialCode ?? row.serialCode
+                      ),
                       numberSystem
                     )}
                   </span>
@@ -1569,7 +1609,9 @@ function TelegramReportModal({
       header,
       ...rows.map(row => [
         localizeDigits(
-          getTelegramDisplayNumber(row.serialCode),
+          getTelegramDisplayNumber(
+            row.organizationSerialCode ?? row.serialCode
+          ),
           settings?.numberSystem ?? "latin"
         ),
         row.subject,
@@ -1679,7 +1721,9 @@ function TelegramReportModal({
                 <tr key={row.id} className="border-t">
                   <td className="p-3 font-mono">
                     {localizeDigits(
-                      getTelegramDisplayNumber(row.serialCode),
+                      getTelegramDisplayNumber(
+                        row.organizationSerialCode ?? row.serialCode
+                      ),
                       settings?.numberSystem ?? "latin"
                     )}
                   </td>
@@ -2723,6 +2767,7 @@ function TelegramDetail({
   telegram: {
     id: number;
     serialCode: string;
+    organizationSerialCode?: string | null;
     verificationToken: string;
     subject: string;
     recipient: string;
@@ -2945,7 +2990,9 @@ function TelegramDetail({
       telegram.gpsLatitude != null && telegram.gpsLongitude != null
         ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
         : "غير محدد";
-    const displaySerial = getTelegramDisplayNumber(telegram.serialCode);
+    const displaySerial = getTelegramDisplayNumber(
+      telegram.organizationSerialCode ?? telegram.serialCode
+    );
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;

@@ -22,12 +22,14 @@ import { profileRouter } from "./profileRouter";
 import { userManagementRouter } from "./userManagementRouter";
 import {
   allocateSerialNumber,
+  allocateOrganizationSerialNumber,
   createTelegram,
   createTelegramAttachment,
   updateTelegram,
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
+  getOrganizationSettings,
   getTelegramById,
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
@@ -39,6 +41,7 @@ import {
   recordTelegramVersion,
   transitionTelegram,
   updateDepartmentSettings,
+  updateRouteIncomingSerial,
   writeAuditLog,
   createLocalOwnerUser,
   getUserByUsername,
@@ -61,6 +64,7 @@ import {
   getUserOrganizationMembership,
   listAllOrganizations,
   listOrganizationAccountSummaries,
+  listOrganizationDescendants,
   provisionOrganizationAccount,
   listIncomingTelegramRoutes,
   listOrganizationsForUser,
@@ -318,6 +322,10 @@ export const appRouter = router({
         isActive: membership.isActive,
       };
     }),
+
+    descendants: protectedProcedure.query(({ ctx }) =>
+      listOrganizationDescendants(ctx.user.id)
+    ),
 
     routingTargets: protectedProcedure.query(({ ctx }) =>
       listRoutingTargets(ctx.user.id)
@@ -861,6 +869,9 @@ export const appRouter = router({
             status: statusSchema.optional(),
             from: z.string().datetime().optional(),
             to: z.string().datetime().optional(),
+            organizationScope: z
+              .union([z.string().uuid(), z.literal("children")])
+              .optional(),
             page: z.number().int().min(1).max(100000).default(1),
             pageSize: z.number().int().min(1).max(100).default(50),
           })
@@ -871,6 +882,16 @@ export const appRouter = router({
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
+        const descendants = input?.organizationScope
+          ? await listOrganizationDescendants(ctx.user.id)
+          : [];
+        const organizationScopeIds = input?.organizationScope
+          ? input.organizationScope === "children"
+            ? [organizationId!, ...descendants.map(item => item.id)]
+            : descendants.some(item => item.id === input.organizationScope)
+              ? [input.organizationScope]
+              : [organizationId!]
+          : null;
 
         return listTelegrams(
           ctx.user.id,
@@ -884,7 +905,8 @@ export const appRouter = router({
           input?.from,
           input?.to,
           input?.page,
-          input?.pageSize
+          input?.pageSize,
+          organizationScopeIds
         );
       }),
 
@@ -1186,6 +1208,30 @@ export const appRouter = router({
         const routedTelegram = await getTelegramById(route.telegramId);
         if (routedTelegram) {
           if (route.approvalStatus === "approved") {
+            const destinationSettings = await getOrganizationSettings(
+              route.toOrganizationId
+            );
+            if (destinationSettings) {
+              const incomingSerialNumber =
+                await allocateOrganizationSerialNumber(
+                  route.toOrganizationId,
+                  "incoming"
+                );
+              const dateParts = new Intl.DateTimeFormat("en-CA", {
+                timeZone: destinationSettings.timezone,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }).formatToParts(new Date());
+              const dateValues = Object.fromEntries(
+                dateParts.map(part => [part.type, part.value])
+              );
+              await updateRouteIncomingSerial({
+                routeId: route.id,
+                serialNumber: incomingSerialNumber,
+                serialCode: `${destinationSettings.serialPrefix}-${dateValues.year}-${dateValues.month}-${dateValues.day}-${String(incomingSerialNumber).padStart(5, "0")}`,
+              });
+            }
             await notifyUser({
               userId: route.forwardedByUserId,
               organizationId: route.fromOrganizationId,
@@ -1404,8 +1450,13 @@ export const appRouter = router({
           if (existing) return existing;
         }
 
-        const serialNumber = await allocateSerialNumber();
+        const organizationId = await getUserOrganizationId(ctx.user.id);
         const numbering = await getOrCreateSettings(ctx.user.id);
+        const serialNumber = await allocateSerialNumber();
+        const organizationSerialNumber = await allocateOrganizationSerialNumber(
+          organizationId,
+          "outgoing"
+        );
         const dateParts = new Intl.DateTimeFormat("en-CA", {
           timeZone: numbering.timezone,
           year: "numeric",
@@ -1417,7 +1468,7 @@ export const appRouter = router({
         );
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(organizationSerialNumber).padStart(5, "0")}`;
         const selectedDestination = input.recipientOrganizationId
           ? (await listRoutingTargets(ctx.user.id)).find(
               target => target.id === input.recipientOrganizationId
@@ -1449,6 +1500,8 @@ export const appRouter = router({
             ...telegramInput,
             serialNumber,
             serialCode,
+            organizationSerialNumber,
+            organizationSerialCode,
             idempotencyKey: input.idempotencyKey ?? null,
             status: "draft",
             verificationToken: randomUUID(),

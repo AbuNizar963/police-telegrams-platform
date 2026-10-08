@@ -296,6 +296,12 @@ export async function getOrCreateSettings(
     serialPrefix: template.serialPrefix ?? "POL",
     serialStart: Number(template.serialStart ?? 1),
     nextSerial: Number(template.nextSerial ?? 1),
+    nextOutgoingSerial: Number(
+      template.nextOutgoingSerial ?? template.serialStart ?? 1
+    ),
+    nextIncomingSerial: Number(
+      template.nextIncomingSerial ?? template.serialStart ?? 1
+    ),
     timezone: template.timezone ?? "Asia/Damascus",
     dateFormat: template.dateFormat ?? "dd/MM/yyyy HH:mm:ss",
     numberSystem: template.numberSystem ?? "latin",
@@ -349,6 +355,49 @@ export async function allocateSerialNumber(): Promise<number> {
   return serial;
 }
 
+export async function allocateOrganizationSerialNumber(
+  organizationId: string,
+  direction: "outgoing" | "incoming"
+): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "allocate_organization_serial",
+    { p_organization_id: organizationId, p_direction: direction }
+  );
+  throwIfError(error, "Organization serial allocation failed");
+  const serial = Number(data);
+  if (!Number.isInteger(serial) || serial < 1) {
+    throw new Error("Organization serial allocation returned an invalid value");
+  }
+  return serial;
+}
+
+export async function getOrganizationSettings(
+  organizationId: string
+): Promise<DepartmentSettingsView | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("department_settings")
+    .select("*")
+    .eq("organizationId", organizationId)
+    .maybeSingle();
+  throwIfError(error, "Failed to load organization settings");
+  return data ? mapSettingsView(data as Record<string, unknown>) : undefined;
+}
+
+export async function updateRouteIncomingSerial(input: {
+  routeId: number;
+  serialNumber: number;
+  serialCode: string;
+}): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .update({
+      incomingSerialNumber: input.serialNumber,
+      incomingSerialCode: input.serialCode,
+    })
+    .eq("id", input.routeId);
+  throwIfError(error, "Failed to save incoming organization serial");
+}
+
 export async function listTelegrams(
   _userId: number,
   canViewAll: boolean,
@@ -386,7 +435,8 @@ export async function listTelegrams(
   from?: string,
   to?: string,
   page = 1,
-  pageSize = 50
+  pageSize = 50,
+  organizationScopeIds: string[] | null = null
 ): Promise<Telegram[]> {
   const safePage = Math.max(1, Math.floor(page));
   const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
@@ -400,8 +450,12 @@ export async function listTelegrams(
     if (!organizationId) {
       throw new Error("Organization scope is required to list telegrams");
     }
+    const scopeIds = organizationScopeIds?.length
+      ? organizationScopeIds
+      : [organizationId];
+    const ids = scopeIds.join(",");
     query = query.or(
-      `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`
+      `organizationId.in.(${ids}),currentOrganizationId.in.(${ids})`
     );
   }
   if (classification) query = query.eq("classification", classification);

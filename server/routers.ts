@@ -10,6 +10,7 @@ import {
 } from "./_core/auth";
 import { ENV } from "./_core/env";
 import { z } from "zod";
+import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
 import {
   adminProcedure,
   protectedProcedure,
@@ -628,7 +629,7 @@ export const appRouter = router({
             .min(4)
             .max(32)
             .default("dd/MM/yyyy HH:mm:ss"),
-          numberSystem: z.enum(["latin", "arabic", "hindi"]).default("latin"),
+          numberSystem: z.enum(["latin", "arabic"]).default("latin"),
           logoUrl: z.string().url().max(2000).nullable().optional(),
         })
       )
@@ -638,10 +639,19 @@ export const appRouter = router({
         const safeNextSerial = Math.max(input.serialStart, maxSerial + 1);
 
         await updateDepartmentSettings(dbSettings.id, {
-          departmentName: input.departmentName,
-          unitName: input.unitName,
-          unitChiefRank: input.unitChiefRank,
-          unitChiefName: input.unitChiefName,
+          departmentName: localizeDigits(
+            input.departmentName,
+            input.numberSystem
+          ),
+          unitName: localizeDigits(input.unitName, input.numberSystem),
+          unitChiefRank: localizeDigits(
+            input.unitChiefRank,
+            input.numberSystem
+          ),
+          unitChiefName: localizeDigits(
+            input.unitChiefName,
+            input.numberSystem
+          ),
           serialPrefix: input.serialPrefix,
           incomingSerialPrefix: input.incomingSerialPrefix,
           serialStart: input.serialStart,
@@ -1019,8 +1029,17 @@ export const appRouter = router({
           });
         }
 
+        const organizationSettings = existing.organizationId
+          ? await getOrganizationSettings(existing.organizationId)
+          : undefined;
+        const numberSystem = normalizeNumberSystem(
+          organizationSettings?.numberSystem
+        );
         const updated = await updateTelegram(id, {
           ...values,
+          subject: localizeDigits(values.subject, numberSystem),
+          recipient: localizeDigits(values.recipient, numberSystem),
+          body: localizeDigits(values.body, numberSystem),
           ...(values.attachmentManifest !== undefined
             ? { attachmentManifest: values.attachmentManifest }
             : {}),
@@ -1493,6 +1512,7 @@ export const appRouter = router({
 
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const numbering = await getOrCreateSettings(ctx.user.id);
+        const numberSystem = normalizeNumberSystem(numbering.numberSystem);
         const serialNumber = await allocateSerialNumber();
         const organizationSerialNumber = await allocateOrganizationSerialNumber(
           organizationId,
@@ -1534,6 +1554,15 @@ export const appRouter = router({
           recipientOrganizationId: _recipientOrganizationId,
           ...telegramInput
         } = input;
+        telegramInput.subject = localizeDigits(
+          telegramInput.subject,
+          numberSystem
+        );
+        telegramInput.recipient = localizeDigits(
+          telegramInput.recipient,
+          numberSystem
+        );
+        telegramInput.body = localizeDigits(telegramInput.body, numberSystem);
 
         let telegram: Awaited<ReturnType<typeof createTelegram>>;
         try {
@@ -1715,6 +1744,11 @@ export const appRouter = router({
             ]
               .filter(Boolean)
               .join("\n");
+            const subject =
+              row.sender?.trim() ||
+              `سجل مستورد من Excel رقم ${row.originalSerial || index + 1}`;
+            const recipient =
+              row.recipient?.trim() || "غير محدد في السجل الأصلي";
             const telegram = await createTelegram({
               serialNumber,
               serialCode,
@@ -1729,11 +1763,9 @@ export const appRouter = router({
               creatorBadgeId: ctx.user.badgeNumber ?? null,
               creatorIp: null,
               creatorFingerprint: ctx.user.authUserId,
-              subject:
-                row.sender?.trim() ||
-                `سجل مستورد من Excel رقم ${row.originalSerial || index + 1}`,
-              recipient: row.recipient?.trim() || "غير محدد في السجل الأصلي",
-              body: importedBody,
+              subject: localizeDigits(subject, settings.numberSystem),
+              recipient: localizeDigits(recipient, settings.numberSystem),
+              body: localizeDigits(importedBody, settings.numberSystem),
               classification: "normal",
               priority: "normal",
               category: "administrative",

@@ -10,6 +10,7 @@ const mocked = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
   getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
+  getOrganizationSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
   updateDepartmentSettings: vi.fn(),
@@ -93,6 +94,7 @@ describe("telegram administration permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.getTelegramById.mockResolvedValue(telegram);
+    mocked.getOrganizationSettings.mockResolvedValue(undefined);
     mocked.updateTelegram.mockImplementation(async (id, values) => ({
       ...telegram,
       ...values,
@@ -149,6 +151,32 @@ describe("telegram administration permissions", () => {
         metadata: expect.stringContaining('"serialNumber":1001'),
       })
     );
+  });
+
+  it("normalizes edited telegram text to its organization's number system", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000007";
+    mocked.getTelegramById.mockResolvedValue({ ...telegram, organizationId });
+    mocked.getOrganizationSettings.mockResolvedValue({
+      numberSystem: "arabic",
+    });
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await caller.telegrams.update({
+      ...updateInput,
+      subject: "موضوع 123",
+      recipient: "غرفة 4",
+      body: "رقم البلاغ ٥٦",
+    });
+
+    expect(mocked.updateTelegram).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        subject: "موضوع ١٢٣",
+        recipient: "غرفة ٤",
+        body: "رقم البلاغ ٥٦",
+      })
+    );
+    expect(mocked.getOrganizationSettings).toHaveBeenCalledWith(organizationId);
   });
 
   it("permanently removes a telegram for administrators and records its original identity", async () => {

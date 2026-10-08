@@ -77,6 +77,11 @@ import {
 } from "@/lib/uiLabels";
 import qrcode from "@/lib/qrcode-generator";
 import { stringToBytes as utf8StringToBytes } from "@/lib/qrcode-utf8";
+import {
+  localizeDigits,
+  normalizeNumberSystem,
+  type NumberSystem as SupportedNumberSystem,
+} from "@shared/numberSystem";
 
 qrcode.stringToBytes = utf8StringToBytes;
 
@@ -178,7 +183,7 @@ type Classification = keyof typeof classificationLabels;
 type Priority = keyof typeof priorityLabels;
 type Category = keyof typeof categoryLabels;
 type Status = keyof typeof statusLabels;
-type NumberSystem = "latin" | "arabic" | "hindi";
+type NumberSystem = SupportedNumberSystem | "hindi";
 type DisplayColumn = "category" | "priority" | "creator";
 const DEFAULT_DISPLAY_COLUMNS: Record<DisplayColumn, boolean> = {
   category: true,
@@ -186,13 +191,6 @@ const DEFAULT_DISPLAY_COLUMNS: Record<DisplayColumn, boolean> = {
   creator: true,
 };
 
-const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
-const hindiDigits = "०१२३४५६७८९";
-function localizeDigits(value: string, system: NumberSystem) {
-  if (system === "latin") return value;
-  const digits = system === "arabic" ? arabicIndicDigits : hindiDigits;
-  return value.replace(/[0-9]/g, digit => digits[Number(digit)] ?? digit);
-}
 function formatCount(value: number, system: NumberSystem) {
   return localizeDigits(numberFormatter.format(value), system);
 }
@@ -2979,19 +2977,31 @@ function TelegramDetail({
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
 
-    const departmentName = settings?.departmentName ?? "قسم العمليات";
-    const unitName = settings?.unitName ?? "قيادة الأمن الداخلي";
+    const numberSystem = normalizeNumberSystem(settings?.numberSystem);
+    const departmentName = localizeDigits(
+      settings?.departmentName ?? "قسم العمليات",
+      numberSystem
+    );
+    const unitName = localizeDigits(
+      settings?.unitName ?? "قيادة الأمن الداخلي",
+      numberSystem
+    );
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,
       settings
     );
-    const location =
+    const location = localizeDigits(
       telegram.gpsLatitude != null && telegram.gpsLongitude != null
         ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
-        : "غير محدد";
-    const displaySerial = getTelegramDisplayNumber(
-      telegram.organizationSerialCode ?? telegram.serialCode
+        : "غير محدد",
+      numberSystem
+    );
+    const displaySerial = localizeDigits(
+      getTelegramDisplayNumber(
+        telegram.organizationSerialCode ?? telegram.serialCode
+      ),
+      numberSystem
     );
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
@@ -3256,21 +3266,21 @@ function TelegramDetail({
             <div class="routing-layout">
               <div class="routing-details">
                 <p><strong>من:</strong> ${escapeHtml(departmentName)}</p>
-                <p><strong>إلى:</strong> ${escapeHtml(telegram.recipient)}</p>
-                <p><strong>الموضوع:</strong> ${escapeHtml(telegram.subject)}</p>
+                <p><strong>إلى:</strong> ${escapeHtml(localizeDigits(telegram.recipient, numberSystem))}</p>
+                <p><strong>الموضوع:</strong> ${escapeHtml(localizeDigits(telegram.subject, numberSystem))}</p>
               </div>
               <div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>
             </div>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
-          <div class="telegram-body">${escapeHtml(telegram.body)}</div>
+          <div class="telegram-body">${escapeHtml(localizeDigits(telegram.body, numberSystem))}</div>
           <section class="signature">
-            <p><strong>${escapeHtml(settings?.unitChiefRank ?? "رئيس الوحدة")} ${escapeHtml(settings?.unitChiefName ?? "")}</strong></p>
+            <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
             <p>رئيس ${escapeHtml(departmentName)}</p>
           </section>
         </main>
         <footer class="document-footer">
-          <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(telegram.creatorName)}</p>
+          <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
           <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
         </footer>
@@ -4348,14 +4358,18 @@ function DepartmentSettingsModal({
   );
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("dd/MM/yyyy HH:mm:ss");
-  const [numberSystem, setNumberSystem] = useState<
-    "latin" | "arabic" | "hindi"
-  >("latin");
+  const [numberSystem, setNumberSystem] =
+    useState<SupportedNumberSystem>("latin");
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const update = trpc.settings.update.useMutation({
     onSuccess: result => {
       setOpen(false);
+      setDepartmentName(result.departmentName);
+      setUnitName(result.unitName);
+      setUnitChiefRank(result.unitChiefRank);
+      setUnitChiefName(result.unitChiefName);
+      setNumberSystem(normalizeNumberSystem(result.numberSystem));
       setLogoUrl(result?.logoUrl ?? null);
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
     },
@@ -4380,7 +4394,7 @@ function DepartmentSettingsModal({
     );
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
     setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss");
-    setNumberSystem(settings?.numberSystem ?? "latin");
+    setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
     settings?.departmentName,
@@ -4458,13 +4472,20 @@ function DepartmentSettingsModal({
                   برقية رسمية
                 </p>
                 <p className="text-xs font-semibold text-[#9b7c3d]">
-                  {unitChiefRank} {unitChiefName}
+                  {localizeDigits(unitChiefRank, numberSystem)}{" "}
+                  {localizeDigits(unitChiefName, numberSystem)}
                 </p>
                 <h3 className="mt-1 text-lg font-bold">
-                  {unitName || "اسم الوحدة التابعة"}
+                  {localizeDigits(
+                    unitName || "اسم الوحدة التابعة",
+                    numberSystem
+                  )}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {departmentName || "اسم القسم أو المخفر"}
+                  {localizeDigits(
+                    departmentName || "اسم القسم أو المخفر",
+                    numberSystem
+                  )}
                 </p>
               </div>
             </div>
@@ -4627,19 +4648,16 @@ function DepartmentSettingsModal({
             <select
               value={numberSystem}
               onChange={event =>
-                setNumberSystem(
-                  event.target.value as "latin" | "arabic" | "hindi"
-                )
+                setNumberSystem(event.target.value as SupportedNumberSystem)
               }
               className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
             >
-              <option value="latin">لاتينية: 123456789</option>
-              <option value="arabic">عربية: ١٢٣٤٥٦٧٨٩</option>
-              <option value="hindi">هندية: १२३४५६७८९</option>
+              <option value="latin">لاتينية: 0123456789</option>
+              <option value="arabic">عربية: ٠١٢٣٤٥٦٧٨٩</option>
             </select>
             <span className="text-[10px] font-normal text-muted-foreground">
-              سيتم تطبيق هذا الاختيار على أرقام البرقيات والتقارير المعروضة
-              للمدير.
+              تُحوّل الأرقام المكتوبة في نص البرقية ورأسها عند الحفظ إلى النمط
+              المحدد.
             </span>
           </label>
         </div>
@@ -4704,10 +4722,13 @@ function DepartmentSettingsModal({
           onClick={() =>
             settings &&
             update.mutate({
-              departmentName: departmentName.trim(),
-              unitName: unitName.trim(),
-              unitChiefRank: unitChiefRank.trim(),
-              unitChiefName: unitChiefName.trim(),
+              departmentName: localizeDigits(
+                departmentName.trim(),
+                numberSystem
+              ),
+              unitName: localizeDigits(unitName.trim(), numberSystem),
+              unitChiefRank: localizeDigits(unitChiefRank.trim(), numberSystem),
+              unitChiefName: localizeDigits(unitChiefName.trim(), numberSystem),
               serialPrefix,
               incomingSerialPrefix,
               serialStart: settings.serialStart,

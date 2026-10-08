@@ -64,6 +64,7 @@ describe("telegrams.create", () => {
       serialPrefix: "OUT",
       incomingSerialPrefix: "IN",
       timezone: "Asia/Riyadh",
+      numberSystem: "latin",
     });
     mocked.createTelegram.mockImplementation(async input => ({
       id: 7,
@@ -117,6 +118,33 @@ describe("telegrams.create", () => {
       })
     );
     expect(mocked.routeTelegram).not.toHaveBeenCalled();
+  });
+
+  it("converts telegram text digits to the organization's configured system before saving", async () => {
+    mocked.getOrCreateSettings.mockResolvedValue({
+      serialPrefix: "OUT",
+      incomingSerialPrefix: "IN",
+      timezone: "Asia/Riyadh",
+      numberSystem: "arabic",
+    });
+    const caller = appRouter.createCaller(createContext());
+
+    await caller.telegrams.create({
+      subject: "بلاغ 123/٤",
+      recipient: "الوحدة 7",
+      body: "تحركت الدورية 12 إلى الموقع ٣",
+      classification: "normal",
+      priority: "normal",
+      category: "security",
+    });
+
+    expect(mocked.createTelegram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "بلاغ ١٢٣/٤",
+        recipient: "الوحدة ٧",
+        body: "تحركت الدورية ١٢ إلى الموقع ٣",
+      })
+    );
   });
 
   it("accepts every supported police telegram category", async () => {

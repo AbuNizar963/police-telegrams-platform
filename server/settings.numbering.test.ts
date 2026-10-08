@@ -100,4 +100,34 @@ describe("department telegram serial prefixes", () => {
       })
     );
   });
+
+  it("normalizes numeric text in the saved telegram header to the selected system", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await caller.settings.update({
+      departmentName: "قسم 12",
+      unitName: "وحدة ٣",
+      unitChiefRank: "عميد 4",
+      unitChiefName: "رئيس ٥",
+      serialPrefix: "OUT",
+      incomingSerialPrefix: "IN",
+      serialStart: 1,
+      incomingSerialStart: 1,
+      timezone: "Asia/Riyadh",
+      dateFormat: "dd/MM/yyyy HH:mm:ss",
+      numberSystem: "arabic",
+      logoUrl: null,
+    });
+
+    expect(mocked.updateDepartmentSettings).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        departmentName: "قسم ١٢",
+        unitName: "وحدة ٣",
+        unitChiefRank: "عميد ٤",
+        unitChiefName: "رئيس ٥",
+        numberSystem: "arabic",
+      })
+    );
+  });
 });

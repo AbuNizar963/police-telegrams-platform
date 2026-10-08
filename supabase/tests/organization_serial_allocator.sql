@@ -1,6 +1,6 @@
 begin;
 
-select plan(5);
+select plan(6);
 
 create temporary table organization_serial_test_context (
   organization_id uuid not null,
@@ -16,11 +16,12 @@ with organization_row as (
     "configKey",
     "organizationId",
     "serialStart",
+    "incomingSerialStart",
     "nextSerial",
     "nextOutgoingSerial",
     "nextIncomingSerial"
   )
-  select 'pgtap-serial-reclaim', id, 47000, 47000, 1, 1
+  select 'pgtap-serial-reclaim', id, 47000, 53000, 47000, 1, 1
   from organization_row
   returning "organizationId"
 )
@@ -46,6 +47,17 @@ UPDATE organization_serial_test_context AS context
 SET user_id = test_user.id
 FROM test_user
 WHERE context.organization_id = test_user."organizationId";
+
+select results_eq(
+  $$
+    select public.allocate_organization_serial(
+      (select organization_id from organization_serial_test_context),
+      'incoming'
+    )
+  $$,
+  $$ values (53000::integer) $$,
+  'incoming allocation uses its own configured starting number'
+);
 
 select results_eq(
   $$

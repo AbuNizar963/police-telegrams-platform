@@ -4319,6 +4319,7 @@ function DepartmentSettingsModal({
     serialPrefix: string;
     incomingSerialPrefix: string;
     serialStart: number;
+    incomingSerialStart: number;
     timezone?: string;
     dateFormat?: string;
     numberSystem?: NumberSystem;
@@ -4346,6 +4347,9 @@ function DepartmentSettingsModal({
     settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
   );
   const [serialStart, setSerialStart] = useState(settings?.serialStart ?? 1);
+  const [incomingSerialStart, setIncomingSerialStart] = useState(
+    settings?.incomingSerialStart ?? settings?.serialStart ?? 1
+  );
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("dd/MM/yyyy HH:mm:ss");
   const [numberSystem, setNumberSystem] = useState<
@@ -4379,6 +4383,9 @@ function DepartmentSettingsModal({
       settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
     );
     setSerialStart(settings?.serialStart ?? 1);
+    setIncomingSerialStart(
+      settings?.incomingSerialStart ?? settings?.serialStart ?? 1
+    );
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
     setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss");
     setNumberSystem(settings?.numberSystem ?? "latin");
@@ -4392,6 +4399,7 @@ function DepartmentSettingsModal({
     settings?.serialPrefix,
     settings?.incomingSerialPrefix,
     settings?.serialStart,
+    settings?.incomingSerialStart,
     settings?.timezone,
     settings?.dateFormat,
     settings?.numberSystem,
@@ -4550,13 +4558,27 @@ function DepartmentSettingsModal({
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">
-          رقم البداية
+          رقم بداية برقية صادرة
           <Input
             type="number"
             min={1}
             value={serialStart}
             onChange={event =>
               setSerialStart(Math.max(1, Number(event.target.value) || 1))
+            }
+            className="h-11 rounded-lg"
+          />
+        </label>
+        <label className="grid gap-1.5 text-xs font-bold">
+          رقم بداية برقية واردة
+          <Input
+            type="number"
+            min={1}
+            value={incomingSerialStart}
+            onChange={event =>
+              setIncomingSerialStart(
+                Math.max(1, Number(event.target.value) || 1)
+              )
             }
             className="h-11 rounded-lg"
           />
@@ -4715,7 +4737,8 @@ function DepartmentSettingsModal({
             departmentName.trim().length < 2 ||
             serialPrefix.length < 1 ||
             incomingSerialPrefix.length < 1 ||
-            serialStart < 1
+            serialStart < 1 ||
+            incomingSerialStart < 1
           }
           onClick={() =>
             settings &&
@@ -4727,6 +4750,7 @@ function DepartmentSettingsModal({
               serialPrefix,
               incomingSerialPrefix,
               serialStart,
+              incomingSerialStart,
               timezone,
               dateFormat,
               numberSystem,

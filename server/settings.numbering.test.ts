@@ -47,6 +47,7 @@ const settings = {
   serialPrefix: "OUT",
   incomingSerialPrefix: "IN",
   serialStart: 1,
+  incomingSerialStart: 1,
   nextSerial: 1,
   nextOutgoingSerial: 1,
   nextIncomingSerial: 1,
@@ -82,6 +83,7 @@ describe("department telegram serial prefixes", () => {
       serialPrefix: "OUT",
       incomingSerialPrefix: "IN",
       serialStart: 50,
+      incomingSerialStart: 900,
       timezone: "Asia/Riyadh",
       dateFormat: "dd/MM/yyyy HH:mm:ss",
       numberSystem: "latin",
@@ -94,6 +96,7 @@ describe("department telegram serial prefixes", () => {
         serialPrefix: "OUT",
         incomingSerialPrefix: "IN",
         serialStart: 50,
+        incomingSerialStart: 900,
       })
     );
   });

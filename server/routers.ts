@@ -620,6 +620,7 @@ export const appRouter = router({
             .max(24)
             .regex(/^[A-Z0-9-]+$/),
           serialStart: z.number().int().min(1).max(999999999),
+          incomingSerialStart: z.number().int().min(1).max(999999999),
           timezone: z.string().trim().min(3).max(64).default("Asia/Riyadh"),
           dateFormat: z
             .string()
@@ -644,12 +645,13 @@ export const appRouter = router({
           serialPrefix: input.serialPrefix,
           incomingSerialPrefix: input.incomingSerialPrefix,
           serialStart: input.serialStart,
+          incomingSerialStart: input.incomingSerialStart,
           nextSerial: safeNextSerial,
           // The global serial remains an internal unique identifier. Reset the
           // organization-facing cursors so the SQL allocator begins from the
           // configured local start and fills any number freed by deletion.
           nextOutgoingSerial: input.serialStart,
-          nextIncomingSerial: input.serialStart,
+          nextIncomingSerial: input.incomingSerialStart,
           timezone: input.timezone,
           dateFormat: input.dateFormat,
           numberSystem: input.numberSystem,

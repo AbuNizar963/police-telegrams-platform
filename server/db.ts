@@ -310,12 +310,18 @@ export async function getOrCreateSettings(
     incomingSerialPrefix:
       template.incomingSerialPrefix ?? template.serialPrefix ?? "POL",
     serialStart: Number(template.serialStart ?? 1),
+    incomingSerialStart: Number(
+      template.incomingSerialStart ?? template.serialStart ?? 1
+    ),
     nextSerial: Number(template.nextSerial ?? 1),
     nextOutgoingSerial: Number(
       template.nextOutgoingSerial ?? template.serialStart ?? 1
     ),
     nextIncomingSerial: Number(
-      template.nextIncomingSerial ?? template.serialStart ?? 1
+      template.nextIncomingSerial ??
+        template.incomingSerialStart ??
+        template.serialStart ??
+        1
     ),
     timezone: template.timezone ?? "Asia/Damascus",
     dateFormat: template.dateFormat ?? "dd/MM/yyyy HH:mm:ss",

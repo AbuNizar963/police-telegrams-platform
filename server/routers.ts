@@ -723,8 +723,37 @@ export const appRouter = router({
           });
         }
 
+        const startFromPrefix = (
+          prefix: string,
+          configuredStart: number,
+          direction: string
+        ) => {
+          if (!/^\d+$/.test(prefix)) return configuredStart;
+          const numericPrefix = Number(prefix);
+          if (
+            !Number.isSafeInteger(numericPrefix) ||
+            numericPrefix < 1 ||
+            numericPrefix > 999_999_999
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `البادئة الرقمية للبرقيات ${direction} يجب أن تكون بين 1 و999999999`,
+            });
+          }
+          return numericPrefix;
+        };
+        const outgoingStart = startFromPrefix(
+          input.serialPrefix,
+          input.serialStart,
+          "الصادرة"
+        );
+        const incomingStart = startFromPrefix(
+          input.incomingSerialPrefix,
+          input.incomingSerialStart,
+          "الواردة"
+        );
         const maxSerial = await getMaxSerialNumber();
-        const safeNextSerial = Math.max(input.serialStart, maxSerial + 1);
+        const safeNextSerial = Math.max(outgoingStart, maxSerial + 1);
 
         await updateDepartmentSettings(dbSettings.id, {
           departmentName: localizeDigits(
@@ -742,14 +771,14 @@ export const appRouter = router({
           ),
           serialPrefix: input.serialPrefix,
           incomingSerialPrefix: input.incomingSerialPrefix,
-          serialStart: input.serialStart,
-          incomingSerialStart: input.incomingSerialStart,
+          serialStart: outgoingStart,
+          incomingSerialStart: incomingStart,
           nextSerial: safeNextSerial,
-          // The global serial remains an internal unique identifier. Reset the
-          // organization-facing cursors so the SQL allocator begins from the
-          // configured local start and fills any number freed by deletion.
-          nextOutgoingSerial: input.serialStart,
-          nextIncomingSerial: input.incomingSerialStart,
+          // Numeric prefixes become that direction's start; nonnumeric prefixes
+          // preserve its configured start. The two organization counters remain
+          // independent, while the global serial remains an internal identifier.
+          nextOutgoingSerial: outgoingStart,
+          nextIncomingSerial: incomingStart,
           timezone: input.timezone,
           dateFormat: input.dateFormat,
           numberSystem: input.numberSystem,
@@ -763,7 +792,13 @@ export const appRouter = router({
           action: "settings.update",
           entityType: "department_settings",
           entityId: String(dbSettings.id),
-          metadata: JSON.stringify(input),
+          metadata: JSON.stringify({
+            ...input,
+            serialStart: outgoingStart,
+            incomingSerialStart: incomingStart,
+            nextOutgoingSerial: outgoingStart,
+            nextIncomingSerial: incomingStart,
+          }),
         });
 
         return getOrCreateSettings(ctx.user.id);

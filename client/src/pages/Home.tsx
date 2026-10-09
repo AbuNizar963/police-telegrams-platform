@@ -4668,7 +4668,8 @@ function DepartmentSettingsModal({
             className="h-11 rounded-lg font-mono uppercase"
           />
           <span className="text-[11px] font-normal text-muted-foreground">
-            تُضاف هذه البادئة إلى الرقم التسلسلي للبرقيات الصادرة.
+            إذا كانت البادئة أرقامًا فقط مثل 718، يبدأ تسلسل الصادر من الرقم
+            نفسه؛ أما البادئة النصية فتُضاف دون تغيير العداد.
           </span>
         </label>
         <label className="grid gap-1.5 text-xs font-bold">
@@ -4684,7 +4685,8 @@ function DepartmentSettingsModal({
             className="h-11 rounded-lg font-mono uppercase"
           />
           <span className="text-[11px] font-normal text-muted-foreground">
-            ستُستخدم هذه البادئة في رقم الوارد لدى الجهة المستقبلة.
+            تُضاف إلى رقم الوارد، وإذا كانت أرقامًا فقط تضبط بداية الوارد وحده
+            دون تغيير تسلسل الصادر.
           </span>
         </label>
         <div className="grid gap-3 rounded-xl border p-4">

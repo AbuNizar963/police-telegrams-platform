@@ -99,8 +99,104 @@ describe("department telegram serial prefixes", () => {
         incomingSerialPrefix: "IN",
         serialStart: 50,
         incomingSerialStart: 900,
+        nextOutgoingSerial: 50,
+        nextIncomingSerial: 900,
       })
     );
+  });
+
+  it("uses a numeric outgoing prefix as its start without changing incoming numbering", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await caller.settings.update({
+      organizationId: settings.organizationId,
+      departmentName: "قسم الاختبار",
+      unitName: "وحدة العمليات",
+      unitChiefRank: "العقيد",
+      unitChiefName: "رئيس الوحدة",
+      serialPrefix: "718",
+      incomingSerialPrefix: "IN",
+      serialStart: 710,
+      incomingSerialStart: 900,
+      timezone: "Asia/Riyadh",
+      dateFormat: "dd/MM/yyyy HH:mm:ss",
+      numberSystem: "latin",
+      logoUrl: null,
+    });
+
+    expect(mocked.updateDepartmentSettings).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        serialPrefix: "718",
+        serialStart: 718,
+        nextOutgoingSerial: 718,
+        incomingSerialPrefix: "IN",
+        incomingSerialStart: 900,
+        nextIncomingSerial: 900,
+      })
+    );
+    const auditMetadata = mocked.writeAuditLog.mock.calls[0]?.[0]?.metadata;
+    expect(JSON.parse(String(auditMetadata))).toMatchObject({
+      serialStart: 718,
+      nextOutgoingSerial: 718,
+      incomingSerialStart: 900,
+      nextIncomingSerial: 900,
+    });
+  });
+
+  it("uses a numeric incoming prefix only for the incoming start", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await caller.settings.update({
+      organizationId: settings.organizationId,
+      departmentName: "قسم الاختبار",
+      unitName: "وحدة العمليات",
+      unitChiefRank: "العقيد",
+      unitChiefName: "رئيس الوحدة",
+      serialPrefix: "OUT",
+      incomingSerialPrefix: "53000",
+      serialStart: 47000,
+      incomingSerialStart: 710,
+      timezone: "Asia/Riyadh",
+      dateFormat: "dd/MM/yyyy HH:mm:ss",
+      numberSystem: "latin",
+      logoUrl: null,
+    });
+
+    expect(mocked.updateDepartmentSettings).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        serialStart: 47000,
+        nextOutgoingSerial: 47000,
+        incomingSerialStart: 53000,
+        nextIncomingSerial: 53000,
+      })
+    );
+  });
+
+  it("rejects numeric prefixes outside the supported serial range", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await expect(
+      caller.settings.update({
+        organizationId: settings.organizationId,
+        departmentName: "قسم الاختبار",
+        unitName: "وحدة العمليات",
+        unitChiefRank: "العقيد",
+        unitChiefName: "رئيس الوحدة",
+        serialPrefix: "1000000000",
+        incomingSerialPrefix: "IN",
+        serialStart: 710,
+        incomingSerialStart: 900,
+        timezone: "Asia/Riyadh",
+        dateFormat: "dd/MM/yyyy HH:mm:ss",
+        numberSystem: "latin",
+        logoUrl: null,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mocked.updateDepartmentSettings).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
   });
 
   it("normalizes numeric text in the saved telegram header to the selected system", async () => {

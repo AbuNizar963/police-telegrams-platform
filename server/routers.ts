@@ -97,16 +97,6 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
-import {
-  AiInputConfigurationError,
-  AiInputUpstreamError,
-  COHERE_ARABIC_TRANSCRIBE_MODEL,
-  MAX_AUDIO_BYTES,
-  MAX_IMAGE_BYTES,
-  extractTextWithPaddleOcr,
-  getAiInputCapabilities,
-  transcribeArabicAudio,
-} from "./aiInput";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -242,30 +232,6 @@ async function assertOwnerOrganizationScope(
   }
 }
 
-const base64MaxLength = (bytes: number) => Math.ceil(bytes / 3) * 4;
-
-function toAiInputTrpcError(error: unknown): TRPCError {
-  if (error instanceof AiInputConfigurationError) {
-    return new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "ميزة الإدخال الذكي غير مهيأة لدى مسؤول النظام",
-    });
-  }
-
-  if (error instanceof AiInputUpstreamError) {
-    return new TRPCError({
-      code: "BAD_GATEWAY",
-      message: "تعذر إتمام معالجة الإدخال الذكي حاليًا",
-    });
-  }
-
-  console.error("AI input processing failed", error);
-  return new TRPCError({
-    code: "INTERNAL_SERVER_ERROR",
-    message: "تعذر إتمام معالجة الإدخال الذكي حاليًا",
-  });
-}
-
 function parseImportedDate(value?: string, time?: string): Date | undefined {
   const normalized = (value ?? "")
     .trim()
@@ -297,45 +263,6 @@ export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
   userManagement: userManagementRouter,
-
-  aiInput: router({
-    capabilities: protectedProcedure.query(() => getAiInputCapabilities()),
-
-    transcribe: protectedProcedure
-      .input(
-        z.object({
-          audioBase64: z.string().min(4).max(base64MaxLength(MAX_AUDIO_BYTES)),
-        })
-      )
-      .mutation(async ({ input }) => {
-        try {
-          return {
-            text: await transcribeArabicAudio(input),
-            engine: COHERE_ARABIC_TRANSCRIBE_MODEL,
-          };
-        } catch (error) {
-          throw toAiInputTrpcError(error);
-        }
-      }),
-
-    extractText: protectedProcedure
-      .input(
-        z.object({
-          imageBase64: z.string().min(4).max(base64MaxLength(MAX_IMAGE_BYTES)),
-          contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-        })
-      )
-      .mutation(async ({ input }) => {
-        try {
-          return {
-            text: await extractTextWithPaddleOcr(input),
-            engine: "paddleocr-vl" as const,
-          };
-        } catch (error) {
-          throw toAiInputTrpcError(error);
-        }
-      }),
-  }),
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

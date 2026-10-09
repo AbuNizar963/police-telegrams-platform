@@ -25,6 +25,8 @@ import { userManagementRouter } from "./userManagementRouter";
 import {
   allocateSerialNumber,
   allocateOrganizationSerialNumber,
+  getSuggestedOrganizationSerialNumber,
+  reserveOrganizationSerialNumber,
   createTelegram,
   createTelegramAttachment,
   updateTelegram,
@@ -1662,6 +1664,12 @@ export const appRouter = router({
           attachmentManifest: z.string().max(10000).optional(),
           gpsLatitude: z.string().max(40).optional(),
           gpsLongitude: z.string().max(40).optional(),
+          requestedOrganizationSerialNumber: z
+            .number()
+            .int()
+            .min(1)
+            .max(999999999)
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -1675,11 +1683,34 @@ export const appRouter = router({
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const numbering = await getOrCreateSettings(ctx.user.id);
         const numberSystem = normalizeNumberSystem(numbering.numberSystem);
+        let organizationSerialNumber: number;
+        if (input.requestedOrganizationSerialNumber === undefined) {
+          organizationSerialNumber = await allocateOrganizationSerialNumber(
+            organizationId,
+            "outgoing"
+          );
+        } else {
+          try {
+            organizationSerialNumber = await reserveOrganizationSerialNumber(
+              organizationId,
+              input.requestedOrganizationSerialNumber
+            );
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              error.message.includes("رقم البرقية مستخدم بالفعل")
+            ) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message:
+                  "رقم البرقية المحدد مستخدم بالفعل لهذه الجهة. اختر رقمًا آخر.",
+                cause: error,
+              });
+            }
+            throw error;
+          }
+        }
         const serialNumber = await allocateSerialNumber();
-        const organizationSerialNumber = await allocateOrganizationSerialNumber(
-          organizationId,
-          "outgoing"
-        );
         const dateParts = new Intl.DateTimeFormat("en-CA", {
           timeZone: numbering.timezone,
           year: "numeric",
@@ -1714,6 +1745,7 @@ export const appRouter = router({
             : null;
         const {
           recipientOrganizationId: _recipientOrganizationId,
+          requestedOrganizationSerialNumber: _requestedOrganizationSerialNumber,
           ...telegramInput
         } = input;
         telegramInput.subject = localizeDigits(
@@ -1838,6 +1870,12 @@ export const appRouter = router({
 
         return telegram;
       }),
+    nextOutgoingSerial: protectedProcedure.query(async ({ ctx }) => {
+      const organizationId = await getUserOrganizationId(ctx.user.id);
+      return {
+        number: await getSuggestedOrganizationSerialNumber(organizationId),
+      };
+    }),
     importRows: organizationAdminProcedure
       .input(
         z.object({

@@ -1248,6 +1248,7 @@ export default function Home() {
         <TelegramComposer
           pending={create.isPending}
           routingTargets={routingTargets.data ?? []}
+          numberSystem={numberSystem}
           close={() => setComposerOpen(false)}
           submit={values => create.mutate(values)}
         />
@@ -1832,6 +1833,7 @@ function TelegramViewButton({
 function TelegramComposer({
   pending,
   routingTargets,
+  numberSystem,
   close,
   submit,
 }: {
@@ -1843,6 +1845,7 @@ function TelegramComposer({
     type: string;
     isConfiguredDestination?: boolean;
   }>;
+  numberSystem: NumberSystem;
   close: () => void;
   submit: (values: {
     subject: string;
@@ -1852,6 +1855,7 @@ function TelegramComposer({
     classification: Classification;
     priority: Priority;
     category: Category;
+    requestedOrganizationSerialNumber: number;
   }) => void;
 }) {
   const [subject, setSubject] = useState("");
@@ -1862,6 +1866,8 @@ function TelegramComposer({
     useState<Classification>("normal");
   const [priority, setPriority] = useState<Priority>("normal");
   const [category, setCategory] = useState<Category>("administrative");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [serialNumberEdited, setSerialNumberEdited] = useState(false);
   const [recording, setRecording] = useState(false);
   const [processingInput, setProcessingInput] = useState(false);
   const [speechEngine, setSpeechEngine] = useState<"browser" | "local">(
@@ -1883,8 +1889,14 @@ function TelegramComposer({
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  const suggestedSerial = trpc.telegrams.nextOutgoingSerial.useQuery();
   const highAccuracyTranscription = trpc.aiInput.transcribe.useMutation();
   const highAccuracyOcr = trpc.aiInput.extractText.useMutation();
+
+  useEffect(() => {
+    if (serialNumberEdited || !suggestedSerial.data?.number) return;
+    setSerialNumber(String(suggestedSerial.data.number));
+  }, [serialNumberEdited, suggestedSerial.data?.number]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -2453,6 +2465,11 @@ function TelegramComposer({
       return;
     }
 
+    if (!/^[1-9]\d{0,8}$/.test(serialNumber)) {
+      toast.error("أدخل رقم برقية صحيحًا");
+      return;
+    }
+
     submit({
       subject: subject.trim(),
       recipient: recipient.trim(),
@@ -2461,6 +2478,7 @@ function TelegramComposer({
       classification,
       priority,
       category,
+      requestedOrganizationSerialNumber: Number(serialNumber),
     });
   };
 
@@ -2476,6 +2494,34 @@ function TelegramComposer({
             جهاز آخر حتى ينجح الحفظ.
           </div>
         )}
+        <label className="grid gap-1.5 text-xs font-bold">
+          رقم البرقية
+          <Input
+            value={localizeDigits(serialNumber, numberSystem)}
+            onChange={event => {
+              const normalized = localizeDigits(event.target.value, "latin")
+                .replace(/\D/g, "")
+                .slice(0, 9);
+              setSerialNumber(normalized);
+              setSerialNumberEdited(true);
+            }}
+            inputMode="numeric"
+            dir="ltr"
+            placeholder={
+              suggestedSerial.isLoading ? "جارٍ اقتراح الرقم..." : "رقم البرقية"
+            }
+            aria-describedby="telegram-serial-help"
+            className="h-11 w-full min-w-0 max-w-full rounded-lg font-mono tracking-wide"
+          />
+          <span
+            id="telegram-serial-help"
+            className="text-[11px] font-normal leading-5 text-muted-foreground"
+          >
+            {suggestedSerial.isError
+              ? "تعذر اقتراح الرقم تلقائيًا؛ أدخل رقمًا غير مستخدم يدويًا."
+              : "يوضع الرقم التالي تلقائيًا، ويمكن تعديله قبل الحفظ. يمنع النظام تكرار الرقم داخل الجهة."}
+          </span>
+        </label>
         <label className="grid gap-1.5 text-xs font-bold">
           الجهة الموجهة إليها
           <select

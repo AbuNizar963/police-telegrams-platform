@@ -456,6 +456,42 @@ export async function allocateOrganizationSerialNumber(
   return serial;
 }
 
+export async function getSuggestedOrganizationSerialNumber(
+  organizationId: string
+): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "preview_organization_outgoing_serial",
+    { p_organization_id: organizationId }
+  );
+  throwIfError(error, "Organization serial preview failed");
+  const serial = Number(data);
+  if (!Number.isInteger(serial) || serial < 1) {
+    throw new Error("Organization serial preview returned an invalid value");
+  }
+  return serial;
+}
+
+export async function reserveOrganizationSerialNumber(
+  organizationId: string,
+  serialNumber: number
+): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "reserve_organization_outgoing_serial",
+    {
+      p_organization_id: organizationId,
+      p_serial_number: serialNumber,
+    }
+  );
+  throwIfError(error, "Organization serial reservation failed");
+  const serial = Number(data);
+  if (!Number.isInteger(serial) || serial < 1) {
+    throw new Error(
+      "Organization serial reservation returned an invalid value"
+    );
+  }
+  return serial;
+}
+
 export async function getOrganizationSettings(
   organizationId: string
 ): Promise<DepartmentSettingsView | undefined> {

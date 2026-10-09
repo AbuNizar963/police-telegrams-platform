@@ -5,6 +5,8 @@ import type { TrpcContext } from "./_core/context";
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
   allocateOrganizationSerialNumber: vi.fn(),
+  getSuggestedOrganizationSerialNumber: vi.fn(),
+  reserveOrganizationSerialNumber: vi.fn(),
   createTelegram: vi.fn(),
   writeAuditLog: vi.fn(),
   getDashboardStats: vi.fn(),
@@ -57,6 +59,8 @@ describe("telegrams.create", () => {
     vi.clearAllMocks();
     mocked.allocateSerialNumber.mockResolvedValue(1001);
     mocked.allocateOrganizationSerialNumber.mockResolvedValue(1);
+    mocked.getSuggestedOrganizationSerialNumber.mockResolvedValue(1);
+    mocked.reserveOrganizationSerialNumber.mockResolvedValue(77);
     mocked.getUserOrganizationId.mockResolvedValue(
       "00000000-0000-0000-0000-000000000001"
     );
@@ -118,6 +122,70 @@ describe("telegrams.create", () => {
       })
     );
     expect(mocked.routeTelegram).not.toHaveBeenCalled();
+  });
+
+  it("uses a caller-selected telegram number while keeping the global serial internal", async () => {
+    const caller = appRouter.createCaller(createContext());
+
+    await caller.telegrams.create({
+      subject: "تنبيه أمني",
+      recipient: "غرفة العمليات",
+      body: "محتوى البرقية للاختبار",
+      classification: "normal",
+      priority: "urgent",
+      category: "security",
+      requestedOrganizationSerialNumber: 77,
+    });
+
+    expect(mocked.reserveOrganizationSerialNumber).toHaveBeenCalledWith(
+      "00000000-0000-0000-0000-000000000001",
+      77
+    );
+    expect(mocked.allocateOrganizationSerialNumber).not.toHaveBeenCalled();
+    expect(mocked.createTelegram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serialNumber: 1001,
+        organizationSerialNumber: 77,
+        organizationSerialCode: expect.stringMatching(
+          /^OUT-\d{4}-\d{2}-\d{2}-00077$/
+        ),
+      })
+    );
+  });
+
+  it("rejects an unavailable caller-selected number before allocating a global serial", async () => {
+    mocked.reserveOrganizationSerialNumber.mockRejectedValue(
+      new Error(
+        "Organization serial reservation failed: رقم البرقية مستخدم بالفعل لهذه الجهة"
+      )
+    );
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تنبيه أمني",
+        recipient: "غرفة العمليات",
+        body: "محتوى البرقية للاختبار",
+        classification: "normal",
+        priority: "urgent",
+        category: "security",
+        requestedOrganizationSerialNumber: 77,
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocked.allocateSerialNumber).not.toHaveBeenCalled();
+    expect(mocked.createTelegram).not.toHaveBeenCalled();
+  });
+
+  it("returns the next outgoing number for the active organization", async () => {
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(caller.telegrams.nextOutgoingSerial()).resolves.toEqual({
+      number: 1,
+    });
+    expect(mocked.getSuggestedOrganizationSerialNumber).toHaveBeenCalledWith(
+      "00000000-0000-0000-0000-000000000001"
+    );
   });
 
   it("converts telegram text digits to the organization's configured system before saving", async () => {

@@ -37,6 +37,7 @@ const workerScope = self as unknown as {
 };
 
 let transcriber: WhisperPipeline | null = null;
+let activeBackend: Backend | null = null;
 let loadPromise: Promise<{
   pipeline: WhisperPipeline;
   backend: Backend;
@@ -62,6 +63,16 @@ async function hasWebGpuAdapter(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function isMobileDevice(): boolean {
+  const navigatorWithHints = workerScope.navigator as Navigator & {
+    userAgentData?: { mobile?: boolean };
+  };
+  return (
+    navigatorWithHints.userAgentData?.mobile === true ||
+    /Android|iPhone|iPad|iPod/i.test(navigatorWithHints.userAgent ?? "")
+  );
 }
 
 async function createPipeline(
@@ -99,7 +110,7 @@ async function loadModel(requestId: number) {
   if (!loadPromise) {
     loadPromise = (async () => {
       postProgress(requestId, null, "فحص تسريع الجهاز");
-      const useWebGpu = await hasWebGpuAdapter();
+      const useWebGpu = !isMobileDevice() && (await hasWebGpuAdapter());
       if (useWebGpu) {
         try {
           const model = await createPipeline("webgpu", requestId);
@@ -123,7 +134,54 @@ async function loadModel(requestId: number) {
 
   const loaded = await loadPromise;
   transcriber = loaded.pipeline;
+  activeBackend = loaded.backend;
   return loaded;
+}
+
+const transcriptionOptions = {
+  language: "arabic",
+  task: "transcribe",
+  chunk_length_s: 30,
+  stride_length_s: 5,
+};
+
+async function transcribe(samples: Float32Array, requestId: number) {
+  if (!transcriber) throw new Error("لم يتم تجهيز نموذج Whisper بعد");
+
+  try {
+    return await transcriber(samples, transcriptionOptions);
+  } catch (webGpuError) {
+    if (activeBackend !== "webgpu") throw webGpuError;
+
+    postProgress(
+      requestId,
+      null,
+      "انقطع تسريع الجهاز؛ جارٍ التحويل إلى WASM وإعادة التفريغ"
+    );
+
+    try {
+      const wasmTranscriber = await createPipeline("wasm", requestId);
+      transcriber = wasmTranscriber;
+      activeBackend = "wasm";
+      loadPromise = Promise.resolve({
+        pipeline: wasmTranscriber,
+        backend: "wasm",
+      });
+      return await wasmTranscriber(samples, transcriptionOptions);
+    } catch (fallbackError) {
+      transcriber = null;
+      activeBackend = null;
+      loadPromise = null;
+      const details =
+        fallbackError instanceof Error
+          ? fallbackError.message
+          : "خطأ غير معروف";
+      throw new Error(
+        `تعذر التفريغ عبر WebGPU، كما تعذر تشغيل البديل WASM: ${details}`,
+        { cause: fallbackError ?? webGpuError }
+      );
+    }
+  }
 }
 
 workerScope.onmessage = event => {
@@ -148,12 +206,7 @@ workerScope.onmessage = event => {
 
       postProgress(request.id, null, "تحويل التسجيل محليًا إلى نص عربي");
       const samples = new Float32Array(request.audio);
-      const result = await transcriber!(samples, {
-        language: "arabic",
-        task: "transcribe",
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      });
+      const result = await transcribe(samples, request.id);
       workerScope.postMessage({
         id: request.id,
         type: "transcript",

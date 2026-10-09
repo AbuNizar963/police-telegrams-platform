@@ -77,6 +77,7 @@ import {
   listIncomingTelegramRoutes,
   listOrganizationsForUser,
   listPendingRouteApprovals,
+  listRoutingDirectory,
   listRoutingTargets,
   receiveTelegramRoute,
   routeTelegram,
@@ -386,6 +387,10 @@ export const appRouter = router({
 
     routingTargets: protectedProcedure.query(({ ctx }) =>
       listRoutingTargets(ctx.user.id)
+    ),
+
+    routingDirectory: protectedProcedure.query(({ ctx }) =>
+      listRoutingDirectory(ctx.user.id)
     ),
 
     all: adminProcedure.query(() => listAllOrganizations()),

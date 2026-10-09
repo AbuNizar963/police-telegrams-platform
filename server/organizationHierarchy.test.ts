@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canOrganizationHaveParent,
+  getOrganizationTreeVisibleIds,
   wouldCreateOrganizationCycle,
   type OrganizationParentLink,
 } from "../shared/organizationHierarchy";
@@ -43,5 +44,21 @@ describe("organization hierarchy defaults and cycle protection", () => {
       { id: "b", parentOrganizationId: "a" },
     ];
     expect(wouldCreateOrganizationCycle(broken, null, "a")).toBe(true);
+  });
+
+  it("keeps the command path when showing a selected organization in a tree", () => {
+    expect(getOrganizationTreeVisibleIds(organizations, ["unit"])).toEqual(
+      new Set(["ministry", "governorate", "city-section", "station", "unit"])
+    );
+  });
+
+  it("does not loop when preparing a tree from malformed cyclic hierarchy data", () => {
+    const broken: OrganizationParentLink[] = [
+      { id: "a", parentOrganizationId: "b" },
+      { id: "b", parentOrganizationId: "a" },
+    ];
+    expect(getOrganizationTreeVisibleIds(broken, ["a"])).toEqual(
+      new Set(["a", "b"])
+    );
   });
 });

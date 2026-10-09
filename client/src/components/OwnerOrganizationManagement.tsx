@@ -4,6 +4,7 @@ import { Building2, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { organizationTypeLabels } from "@/lib/uiLabels";
+import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import {
   canOrganizationHaveParent,
   getAllowedOrganizationChildTypes,
@@ -278,12 +279,23 @@ export default function OwnerOrganizationManagement() {
       ),
     [eligibleParents, form.type]
   );
-  const customParents = useMemo(
+  const selectableParentIds = useMemo(
     () =>
-      eligibleParents.filter(
-        item => !canOrganizationHaveParent(form.type, item.type)
+      new Set(
+        (form.allowHierarchyOverride ? eligibleParents : defaultParents).map(
+          item => item.id
+        )
       ),
-    [eligibleParents, form.type]
+    [defaultParents, eligibleParents, form.allowHierarchyOverride]
+  );
+  const selectableDestinationIds = useMemo(
+    () =>
+      new Set(
+        (organizations.data ?? [])
+          .filter(item => item.isActive && item.id !== editingId)
+          .map(item => item.id)
+      ),
+    [editingId, organizations.data]
   );
   const settingsLoadedForEditor =
     !editingId ||
@@ -303,6 +315,17 @@ export default function OwnerOrganizationManagement() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (form.type !== "central" && !form.parentOrganizationId) {
+      toast.error("اختر الجهة الأب من الهيكل التنظيمي قبل الحفظ");
+      return;
+    }
+    if (
+      (form.type === "police_department" || form.type === "station") &&
+      !form.telegramDestinationOrganizationId
+    ) {
+      toast.error("اختر الجهة المستلمة للبرقيات قبل الحفظ");
+      return;
+    }
     const input = {
       code: form.code.trim().toUpperCase(),
       name: form.name.trim(),
@@ -719,76 +742,64 @@ export default function OwnerOrganizationManagement() {
                 </p>
               </div>
             )}
-            <label className="grid gap-1 text-sm font-medium">
-              الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
-              <select
-                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
+            <div className="grid gap-1 text-sm font-medium">
+              <span>
+                الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
+              </span>
+              <OrganizationTreePicker
+                options={(organizations.data ?? []).map(item => ({
+                  ...item,
+                  isSelectable: selectableParentIds.has(item.id),
+                }))}
                 value={form.parentOrganizationId}
                 disabled={form.type === "central"}
-                onChange={event =>
+                onValueChange={parentOrganizationId =>
                   setForm(current => ({
                     ...current,
-                    parentOrganizationId: event.target.value,
+                    parentOrganizationId,
                   }))
                 }
-                required={form.type !== "central"}
-              >
-                <option value="">
-                  {form.type === "central"
+                placeholder={
+                  form.type === "central"
                     ? "لا تحتاج وزارة الداخلية إلى جهة أب"
-                    : "اختر الجهة الأب"}
-                </option>
-                {defaultParents.map(item => (
-                  <option key={item.id} value={item.id}>
-                    {typeLabels[item.type as OrganizationType] ?? item.type} —{" "}
-                    {item.name}
-                  </option>
-                ))}
-                {form.allowHierarchyOverride && customParents.length > 0 && (
-                  <optgroup label="تجاوز التسلسل الافتراضي">
-                    {customParents.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {typeLabels[item.type as OrganizationType] ?? item.type}{" "}
-                        — {item.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-medium">
-              الجهة التابع لها (مستلم البرقيات)
-              <select
-                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
+                    : "اختر الجهة الأب من الهيكل التنظيمي"
+                }
+                ariaLabel="اختيار الجهة الأب"
+                emptyMessage="لا توجد جهة أب متاحة لهذا المستوى حاليًا."
+                className="h-10 text-sm"
+              />
+            </div>
+            <div className="grid gap-1 text-sm font-medium">
+              <span>الجهة التابع لها (مستلم البرقيات)</span>
+              <OrganizationTreePicker
+                options={(organizations.data ?? []).map(item => ({
+                  ...item,
+                  isSelectable: selectableDestinationIds.has(item.id),
+                }))}
                 value={form.telegramDestinationOrganizationId}
-                onChange={event =>
+                onValueChange={telegramDestinationOrganizationId =>
                   setForm(current => ({
                     ...current,
-                    telegramDestinationOrganizationId: event.target.value,
+                    telegramDestinationOrganizationId,
                   }))
                 }
-                required={
+                placeholder={
                   form.type === "police_department" || form.type === "station"
-                }
-              >
-                <option value="">
-                  {form.type === "police_department" || form.type === "station"
                     ? "اختر الجهة التي تستقبل برقيات هذه الجهة"
-                    : "بدون وجهة تلقائية"}
-                </option>
-                {(organizations.data ?? [])
-                  .filter(item => item.isActive && item.id !== editingId)
-                  .map(item => (
-                    <option key={item.id} value={item.id}>
-                      {typeLabels[item.type as OrganizationType] ?? item.type} —{" "}
-                      {item.name}
-                    </option>
-                  ))}
-              </select>
+                    : "بدون وجهة تلقائية"
+                }
+                ariaLabel="اختيار الجهة المستلمة للبرقيات"
+                allowClear={
+                  form.type !== "police_department" && form.type !== "station"
+                }
+                clearLabel="إزالة الوجهة التلقائية"
+                emptyMessage="لا توجد جهة مفعّلة يمكن اختيارها كوجهة."
+                className="h-10 text-sm"
+              />
               <span className="text-xs font-normal text-muted-foreground">
                 عند إرسال برقية من هذه الجهة ستنتقل تلقائيًا إلى الاختيار هنا.
               </span>
-            </label>
+            </div>
             {editingId && (
               <label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium">
                 <input

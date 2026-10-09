@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { getQueryKey } from "@trpc/react-query";
 import OwnerUserManagement from "@/components/OwnerUserManagement";
+import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,7 +57,6 @@ import {
 import {
   categoryLabels,
   classificationLabels,
-  organizationTypeLabels,
   priorityLabels,
   statusLabels,
 } from "@/lib/uiLabels";
@@ -536,7 +536,7 @@ export default function Home() {
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
-  const routingTargets = trpc.organizations.routingTargets.useQuery();
+  const routingDirectory = trpc.organizations.routingDirectory.useQuery();
   const list = trpc.telegrams.list.useQuery(input, {
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: true,
@@ -1236,7 +1236,7 @@ export default function Home() {
       {composerOpen && (
         <TelegramComposer
           pending={create.isPending}
-          routingTargets={routingTargets.data ?? []}
+          routingDirectory={routingDirectory.data ?? []}
           numberSystem={numberSystem}
           close={() => setComposerOpen(false)}
           submit={values => create.mutate(values)}
@@ -1256,7 +1256,7 @@ export default function Home() {
               "dispatcher",
             ].includes(organizationContext.data?.role ?? "")
           }
-          routingTargets={routingTargets.data ?? []}
+          routingDirectory={routingDirectory.data ?? []}
           close={() => setSelectedId(null)}
         />
       )}
@@ -1821,17 +1821,19 @@ function TelegramViewButton({
 
 function TelegramComposer({
   pending,
-  routingTargets,
+  routingDirectory,
   numberSystem,
   close,
   submit,
 }: {
   pending: boolean;
-  routingTargets: Array<{
+  routingDirectory: Array<{
     id: string;
     code: string;
     name: string;
     type: string;
+    parentOrganizationId: string | null;
+    isSelectable: boolean;
     isConfiguredDestination?: boolean;
   }>;
   numberSystem: NumberSystem;
@@ -1879,13 +1881,13 @@ function TelegramComposer({
   }, []);
 
   useEffect(() => {
-    const configuredTarget = routingTargets.find(
+    const configuredTarget = routingDirectory.find(
       target => target.isConfiguredDestination
     );
     if (configuredTarget && !recipientOrganizationId) {
       setRecipient(configuredTarget.name);
     }
-  }, [recipientOrganizationId, routingTargets]);
+  }, [recipientOrganizationId, routingDirectory]);
 
   const save = () => {
     if (!online) {
@@ -1960,36 +1962,38 @@ function TelegramComposer({
               : "يوضع الرقم التالي تلقائيًا، ويمكن تعديله قبل الحفظ. يمنع النظام تكرار الرقم داخل الجهة."}
           </span>
         </label>
-        <label className="grid gap-1.5 text-xs font-bold">
-          الجهة الموجهة إليها
-          <select
+        <div className="grid gap-1.5 text-xs font-bold">
+          <span>الجهة الموجهة إليها</span>
+          <OrganizationTreePicker
+            options={routingDirectory}
             value={recipientOrganizationId}
-            onChange={event => {
-              const targetId = event.target.value;
-              const target = routingTargets.find(item => item.id === targetId);
+            onValueChange={targetId => {
+              const target = routingDirectory.find(
+                item => item.id === targetId
+              );
               setRecipientOrganizationId(targetId);
               setRecipient(
                 target?.name ??
-                  routingTargets.find(item => item.isConfiguredDestination)
+                  routingDirectory.find(item => item.isConfiguredDestination)
                     ?.name ??
                   ""
               );
             }}
-            className="h-11 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm"
-          >
-            <option value="">
-              {routingTargets.some(target => target.isConfiguredDestination)
+            placeholder={
+              routingDirectory.some(target => target.isConfiguredDestination)
                 ? "التوجيه الافتراضي حسب إعداد الجهة"
-                : "اختر القيادة أو المديرية أو الجهة المستقبلة"}
-            </option>
-            {routingTargets.map(target => (
-              <option key={target.id} value={target.id}>
-                {target.name}
-                {target.isConfiguredDestination ? " (افتراضي)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+                : "اختر القيادة أو المديرية أو الجهة المستقبلة"
+            }
+            ariaLabel="اختيار الجهة الموجهة إليها"
+            allowClear={Boolean(recipientOrganizationId)}
+            clearLabel={
+              routingDirectory.some(target => target.isConfiguredDestination)
+                ? "استخدام التوجيه الافتراضي"
+                : "إلغاء اختيار الوجهة"
+            }
+            emptyMessage="لا توجد جهات مسموحة للإرسال من جهة العمل الحالية."
+          />
+        </div>
 
         <div className="grid gap-1.5 text-xs font-bold">
           <span>درجة السرية</span>
@@ -2093,7 +2097,7 @@ function TelegramDetail({
   settings,
   isAdmin,
   canOperate,
-  routingTargets,
+  routingDirectory,
   close,
 }: {
   telegram: {
@@ -2126,7 +2130,14 @@ function TelegramDetail({
   };
   isAdmin: boolean;
   canOperate: boolean;
-  routingTargets: Array<{ id: string; code: string; name: string }>;
+  routingDirectory: Array<{
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    parentOrganizationId: string | null;
+    isSelectable: boolean;
+  }>;
   close: () => void;
 }) {
   const paperRef = useRef<HTMLDivElement>(null);
@@ -2179,6 +2190,9 @@ function TelegramDetail({
   });
   const [routeTarget, setRouteTarget] = useState("");
   const [routeNote, setRouteNote] = useState("");
+  const routeableTargets = routingDirectory.filter(
+    target => target.isSelectable
+  );
   const routeTelegram = trpc.telegrams.route.useMutation({
     onSuccess: async route => {
       toast.success(
@@ -3367,25 +3381,21 @@ function TelegramDetail({
           )}
         </div>
       )}
-      {routingTargets.length > 0 &&
+      {routeableTargets.length > 0 &&
         ["approved", "in_progress", "forwarded"].includes(telegram.status) && (
           <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden">
             <p className="text-xs font-bold text-[#7a5c1e]">
               طلب إحالة عبر السلطة الأعلى
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-              <select
+              <OrganizationTreePicker
+                options={routingDirectory}
                 value={routeTarget}
-                onChange={event => setRouteTarget(event.target.value)}
-                className="h-10 rounded-lg border bg-background px-3 text-xs"
-              >
-                <option value="">اختر الوحدة المستلمة</option>
-                {routingTargets.map(target => (
-                  <option key={target.id} value={target.id}>
-                    {target.name} ({target.code})
-                  </option>
-                ))}
-              </select>
+                onValueChange={setRouteTarget}
+                placeholder="اختر الجهة المستلمة"
+                ariaLabel="اختيار الجهة المستلمة للإحالة"
+                className="h-10 text-xs"
+              />
               <Input
                 value={routeNote}
                 onChange={event => setRouteNote(event.target.value)}
@@ -3410,7 +3420,8 @@ function TelegramDetail({
               </Button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              لا تظهر إلا الوحدات المرتبطة تنظيميًا، ويُحفظ المسار كاملًا في سجل
+              تُعرض الجهات ضمن تسلسلها التنظيمي، ولا يمكن اختيار إلا الجهات
+              المرتبطة والمسموح بالإحالة إليها. يُحفظ المسار كاملًا في سجل
               التدقيق.
             </p>
           </div>
@@ -3651,20 +3662,6 @@ function Modal({
   );
 }
 
-function organizationTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    central: "قيادة مركزية",
-    governorate: "قيادة محافظة",
-    region: "قيادة منطقة",
-    command: "قيادة",
-    police_department: "قيادة شرطة",
-    department: "قسم",
-    station: "مخفر",
-    unit: "وحدة",
-  };
-  return labels[type] ?? "جهة";
-}
-
 function DepartmentSettingsModal({
   settings,
   organizationName,
@@ -3696,6 +3693,8 @@ function DepartmentSettingsModal({
     id: string;
     name: string;
     type: string;
+    code: string;
+    parentOrganizationId: string | null;
     isActive: boolean;
   }>;
   onWorkplaceChanged: () => void;
@@ -3831,14 +3830,18 @@ function DepartmentSettingsModal({
       <div className="space-y-5">
         {isOwner && (
           <div className="rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b]">
-            <label className="grid gap-1.5 text-xs font-bold">
-              جهة العمل الحالية للمالك
-              <select
-                aria-label="جهة العمل الحالية للمالك"
+            <div className="grid gap-1.5 text-xs font-bold">
+              <span>جهة العمل الحالية للمالك</span>
+              <OrganizationTreePicker
+                options={organizations
+                  .filter(organization => organization.isActive)
+                  .map(organization => ({
+                    ...organization,
+                    isSelectable: true,
+                  }))}
                 value={selectedWorkplaceId || activeOrganizationId || ""}
                 disabled={selectWorkplace.isPending}
-                onChange={event => {
-                  const organizationId = event.currentTarget.value;
+                onValueChange={organizationId => {
                   setSelectedWorkplaceId(organizationId);
                   if (
                     organizationId &&
@@ -3847,18 +3850,11 @@ function DepartmentSettingsModal({
                     selectWorkplace.mutate({ organizationId });
                   }
                 }}
-                className="h-11 rounded-lg border bg-background px-3 text-sm font-normal"
-              >
-                {organizations
-                  .filter(organization => organization.isActive)
-                  .map(organization => (
-                    <option key={organization.id} value={organization.id}>
-                      {organization.name} —{" "}
-                      {organizationTypeLabel(organization.type)}
-                    </option>
-                  ))}
-              </select>
-            </label>
+                placeholder="اختر جهة العمل"
+                ariaLabel="جهة العمل الحالية للمالك"
+                emptyMessage="لا توجد جهات عمل مفعّلة حاليًا."
+              />
+            </div>
             <p className="mt-2 text-[11px] font-normal text-muted-foreground">
               يحدد هذا الاختيار الجهة المستخدمة في إعدادات العمل والترقيم
               والبرقيات الجديدة، مع بقاء صلاحية المالك لإدارة جميع الجهات.

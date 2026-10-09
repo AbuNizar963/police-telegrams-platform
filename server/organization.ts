@@ -768,6 +768,62 @@ export async function listRoutingTargets(
     }));
 }
 
+export type RoutingDirectoryOrganization = Pick<
+  Organization,
+  "id" | "code" | "name" | "type" | "parentOrganizationId"
+> & {
+  isSelectable: boolean;
+  isConfiguredDestination: boolean;
+};
+
+export function buildRoutingDirectory(
+  organizations: readonly Organization[],
+  routingTargets: readonly (Organization & {
+    isConfiguredDestination: boolean;
+  })[]
+): RoutingDirectoryOrganization[] {
+  const targetsById = new Map(
+    routingTargets.map(target => [target.id, target])
+  );
+  return organizations
+    .filter(organization => organization.isActive)
+    .sort((left, right) => left.name.localeCompare(right.name, "ar"))
+    .map(organization => {
+      const target = targetsById.get(organization.id);
+      return {
+        id: organization.id,
+        code: organization.code,
+        name: organization.name,
+        type: organization.type,
+        parentOrganizationId: organization.parentOrganizationId,
+        isSelectable: Boolean(target),
+        isConfiguredDestination: target?.isConfiguredDestination === true,
+      };
+    });
+}
+
+/**
+ * Provides a navigation-only hierarchy while retaining the routing target list
+ * as the sole authority for which nodes can be selected.
+ */
+export async function listRoutingDirectory(
+  userId: number
+): Promise<RoutingDirectoryOrganization[]> {
+  const [routingTargets, result] = await Promise.all([
+    listRoutingTargets(userId),
+    getSupabaseAdmin()
+      .from("organizations")
+      .select("*")
+      .eq("isActive", true)
+      .order("name", { ascending: true }),
+  ]);
+  throwIfError(result.error, "Failed to load routing directory");
+  const organizations = (result.data ?? []).map(row =>
+    mapOrganization(row as Record<string, unknown>)
+  );
+  return buildRoutingDirectory(organizations, routingTargets);
+}
+
 export async function listOrganizationDescendants(
   userId: number
 ): Promise<Organization[]> {

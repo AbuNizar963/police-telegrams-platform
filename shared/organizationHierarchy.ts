@@ -21,6 +21,37 @@ export type OrganizationParentLink = {
   parentOrganizationId: string | null;
 };
 
+/**
+ * Returns selected organizations together with every known ancestor needed to
+ * present them in a drill-down tree. Broken links and cycles are tolerated so
+ * that a malformed legacy record cannot lock the picker UI in a loop.
+ */
+export function getOrganizationTreeVisibleIds(
+  organizations: readonly OrganizationParentLink[],
+  selectedIds: Iterable<string>
+): Set<string> {
+  const parentById = new Map(
+    organizations.map(organization => [
+      organization.id,
+      organization.parentOrganizationId,
+    ])
+  );
+  const visible = new Set<string>();
+
+  for (const selectedId of Array.from(selectedIds)) {
+    let currentId: string | null = selectedId;
+    const visited = new Set<string>();
+    while (currentId && !visited.has(currentId)) {
+      if (!parentById.has(currentId)) break;
+      visible.add(currentId);
+      visited.add(currentId);
+      currentId = parentById.get(currentId) ?? null;
+    }
+  }
+
+  return visible;
+}
+
 export function canOrganizationHaveParent(
   childType: string,
   parentType: string

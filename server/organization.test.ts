@@ -14,9 +14,9 @@ const mocks = vi.hoisted(() => {
   const rpc = vi.fn();
 
   from.mockReturnValue({ select, insert, upsert, update });
-  select.mockReturnValue({ eq, single });
+  select.mockReturnValue({ eq, single, order });
   eq.mockReturnValue({ eq, order, limit, maybeSingle, select });
-  order.mockReturnValue({ limit });
+  order.mockReturnValue({ order, limit, maybeSingle });
   limit.mockReturnValue({ maybeSingle });
   insert.mockReturnValue({ select });
   upsert.mockReturnValue({ select });

@@ -1,9 +1,7 @@
 /**
- * Strict organization hierarchy:
- * central -> governorate -> (rural police department | city department)
- * -> station -> unit.
- * Legacy `region` and `command` levels are retained as display types only and
- * cannot be used to create a new path in the approved hierarchy.
+ * Default organization hierarchy. The platform owner may explicitly override a
+ * parent relationship for an individual organization; server validation still
+ * rejects self-parenting and cycles.
  */
 export const organizationParentTypes = {
   central: [],
@@ -17,6 +15,11 @@ export const organizationParentTypes = {
 } as const;
 
 export type OrganizationHierarchyType = keyof typeof organizationParentTypes;
+
+export type OrganizationParentLink = {
+  id: string;
+  parentOrganizationId: string | null;
+};
 
 export function canOrganizationHaveParent(
   childType: string,
@@ -39,4 +42,36 @@ export function getAllowedOrganizationChildTypes(
   )
     .filter(([, allowedParents]) => allowedParents.includes(parentType))
     .map(([childType]) => childType);
+}
+
+/**
+ * Returns true if assigning `parentOrganizationId` to `organizationId` would
+ * make a cycle. A null child ID is used for a not-yet-created organization and
+ * still detects a pre-existing cycle in the proposed parent's ancestry.
+ */
+export function wouldCreateOrganizationCycle(
+  organizations: readonly OrganizationParentLink[],
+  organizationId: string | null,
+  parentOrganizationId: string
+): boolean {
+  if (organizationId !== null && organizationId === parentOrganizationId) {
+    return true;
+  }
+
+  const parentById = new Map(
+    organizations.map(organization => [
+      organization.id,
+      organization.parentOrganizationId,
+    ])
+  );
+  const visited = new Set<string>();
+  let currentId: string | null = parentOrganizationId;
+
+  while (currentId !== null) {
+    if (currentId === organizationId || visited.has(currentId)) return true;
+    visited.add(currentId);
+    currentId = parentById.get(currentId) ?? null;
+  }
+
+  return false;
 }

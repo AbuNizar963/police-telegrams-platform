@@ -64,6 +64,13 @@ jobs:
       - name: Run database tests
         run: supabase test db
 
+      - name: Verify concurrent organization and settings writes
+        run: |
+          set -a
+          eval "$(supabase status --output env)"
+          set +a
+          node scripts/test-organization-management-concurrency.mjs
+
       - name: Production build
         run: pnpm build
 

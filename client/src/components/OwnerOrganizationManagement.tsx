@@ -28,6 +28,8 @@ const organizationTypeOptions: OrganizationType[] = [
   "department",
   "station",
   "unit",
+  "region",
+  "command",
 ];
 const accountManagedTypes = new Set<OrganizationType>([
   "governorate",
@@ -38,6 +40,41 @@ const accountManagedTypes = new Set<OrganizationType>([
   "department",
   "unit",
 ]);
+
+type OrganizationSettingsDraft = {
+  departmentName: string;
+  unitName: string;
+  unitChiefRank: string;
+  unitChiefName: string;
+  serialPrefix: string;
+  incomingSerialPrefix: string;
+  serialStart: number;
+  incomingSerialStart: number;
+  timezone: string;
+  dateFormat:
+    | "dd/MM/yyyy HH:mm:ss"
+    | "yyyy-MM-dd HH:mm:ss"
+    | "dd MMM yyyy HH:mm";
+  numberSystem: "latin" | "arabic";
+  logoUrl: string;
+};
+
+const emptyOrganizationSettings = (
+  departmentName = ""
+): OrganizationSettingsDraft => ({
+  departmentName,
+  unitName: "وحدة العمليات",
+  unitChiefRank: "العقيد",
+  unitChiefName: "رئيس الوحدة",
+  serialPrefix: "POL",
+  incomingSerialPrefix: "POL",
+  serialStart: 1,
+  incomingSerialStart: 1,
+  timezone: "Asia/Damascus",
+  dateFormat: "dd/MM/yyyy HH:mm:ss",
+  numberSystem: "latin",
+  logoUrl: "",
+});
 
 export default function OwnerOrganizationManagement() {
   const [open, setOpen] = useState(false);
@@ -57,15 +94,30 @@ export default function OwnerOrganizationManagement() {
     type: OrganizationType;
     parentOrganizationId: string;
     telegramDestinationOrganizationId: string;
+    isActive: boolean;
+    allowHierarchyOverride: boolean;
+    createAccount: boolean;
   }>({
     code: "",
     name: "",
     type: "governorate" as OrganizationType,
     parentOrganizationId: "",
     telegramDestinationOrganizationId: "",
+    isActive: true,
+    allowHierarchyOverride: false,
+    createAccount: true,
   });
+  const [settingsDraft, setSettingsDraft] = useState<OrganizationSettingsDraft>(
+    () => emptyOrganizationSettings()
+  );
+  const [settingsQueryOrgId, setSettingsQueryOrgId] = useState<string | null>(
+    null
+  );
   const [accountUsername, setAccountUsername] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
+  const [settingsSaveFailedForId, setSettingsSaveFailedForId] = useState<
+    string | null
+  >(null);
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -81,6 +133,17 @@ export default function OwnerOrganizationManagement() {
   const allAccounts = trpc.organizations.allAccounts.useQuery(undefined, {
     enabled: open,
   });
+  const organizationSettings = trpc.organizations.settings.get.useQuery(
+    {
+      organizationId:
+        settingsQueryOrgId ?? "00000000-0000-0000-0000-000000000000",
+    },
+    {
+      enabled: open && Boolean(settingsQueryOrgId),
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+    }
+  );
   const pendingApprovals = trpc.organizations.pendingApprovals.useQuery(
     undefined,
     {
@@ -98,37 +161,29 @@ export default function OwnerOrganizationManagement() {
     onError: error => toast.error(error.message || "تعذر تسجيل قرار الإحالة"),
   });
   const create = trpc.organizations.create.useMutation({
-    onSuccess: async result => {
+    onSuccess: result => {
       if (result.account) {
         setCreatedAccount({
           organizationName: result.organization.name,
           username: result.account.username,
           password: result.account.password,
         });
-        toast.success("تمت إضافة الجهة وإنشاء حسابها الافتراضي");
       } else {
-        toast.success("تمت إضافة الجهة إلى الهيكل الشرطي");
+        setCreatedAccount(null);
       }
-      resetForm();
-      await utils.organizations.all.invalidate();
+      void utils.organizations.all.invalidate();
+      void utils.organizations.allAccounts.invalidate();
     },
-    onError: error => toast.error(error.message || "تعذر إضافة الجهة"),
   });
   const update = trpc.organizations.update.useMutation({
-    onSuccess: async result => {
-      toast.success(
-        result.account?.passwordChanged
-          ? "تم تحديث الجهة وبيانات الدخول؛ كلمة المرور الجديدة مؤقتة"
-          : "تم تحديث الجهة واسم المستخدم"
-      );
-      resetForm();
-      await Promise.all([
-        utils.organizations.all.invalidate(),
-        utils.organizations.accounts.invalidate(),
-      ]);
+    onSuccess: () => {
+      void utils.organizations.all.invalidate();
+      void utils.organizations.accounts.invalidate();
+      void utils.organizations.allAccounts.invalidate();
     },
-    onError: error => toast.error(error.message || "تعذر تحديث الجهة"),
   });
+  const saveOrganizationSettings =
+    trpc.organizations.settings.update.useMutation();
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
       setCreatedAccount(result);
@@ -149,48 +204,190 @@ export default function OwnerOrganizationManagement() {
     setAccountUsername(accounts.data[0]?.username ?? "");
   }, [accounts.data, editingId, selectedOrganizationId]);
 
+  useEffect(() => {
+    const saved = organizationSettings.data;
+    if (!settingsQueryOrgId || !saved) return;
+    if (saved.organizationId !== settingsQueryOrgId) return;
+    setSettingsDraft({
+      departmentName: saved.departmentName,
+      unitName: saved.unitName,
+      unitChiefRank: saved.unitChiefRank,
+      unitChiefName: saved.unitChiefName,
+      serialPrefix: saved.serialPrefix,
+      incomingSerialPrefix: saved.incomingSerialPrefix,
+      serialStart: saved.serialStart,
+      incomingSerialStart: saved.incomingSerialStart,
+      timezone: saved.timezone,
+      dateFormat: [
+        "dd/MM/yyyy HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ss",
+        "dd MMM yyyy HH:mm",
+      ].includes(saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
+        ? (saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
+        : "dd/MM/yyyy HH:mm:ss",
+      numberSystem: saved.numberSystem === "arabic" ? "arabic" : "latin",
+      logoUrl: saved.logoUrl ?? "",
+    });
+  }, [organizationSettings.data, settingsQueryOrgId]);
+
   const resetForm = () => {
     setEditingId(null);
+    setSettingsQueryOrgId(null);
     setForm({
       code: "",
       name: "",
       type: "governorate",
       parentOrganizationId: "",
       telegramDestinationOrganizationId: "",
+      isActive: true,
+      allowHierarchyOverride: false,
+      createAccount: true,
     });
+    setSettingsDraft(emptyOrganizationSettings());
     setAccountUsername("");
     setAccountPassword("");
   };
-  const parents = useMemo(
+  const excludedParentIds = useMemo(() => {
+    const excluded = new Set<string>();
+    if (!editingId) return excluded;
+    const allOrganizations = organizations.data ?? [];
+    const frontier = [editingId];
+    excluded.add(editingId);
+    while (frontier.length > 0) {
+      const parentId = frontier.shift();
+      for (const item of allOrganizations) {
+        if (item.parentOrganizationId === parentId && !excluded.has(item.id)) {
+          excluded.add(item.id);
+          frontier.push(item.id);
+        }
+      }
+    }
+    return excluded;
+  }, [organizations.data, editingId]);
+  const eligibleParents = useMemo(
     () =>
       (organizations.data ?? []).filter(
-        item =>
-          item.isActive &&
-          item.id !== editingId &&
-          canOrganizationHaveParent(form.type, item.type)
+        item => item.isActive && !excludedParentIds.has(item.id)
       ),
-    [organizations.data, editingId, form.type]
+    [organizations.data, excludedParentIds]
   );
-  const submit = (event: React.FormEvent) => {
+  const defaultParents = useMemo(
+    () =>
+      eligibleParents.filter(item =>
+        canOrganizationHaveParent(form.type, item.type)
+      ),
+    [eligibleParents, form.type]
+  );
+  const customParents = useMemo(
+    () =>
+      eligibleParents.filter(
+        item => !canOrganizationHaveParent(form.type, item.type)
+      ),
+    [eligibleParents, form.type]
+  );
+  const settingsLoadedForEditor =
+    !editingId ||
+    settingsQueryOrgId !== editingId ||
+    (organizationSettings.isSuccess &&
+      organizationSettings.data?.organizationId === editingId);
+  const settingsRecordMissing = Boolean(
+    editingId &&
+      settingsQueryOrgId === editingId &&
+      organizationSettings.isSuccess &&
+      organizationSettings.data?.settingsExists === false
+  );
+  const showSettingsNotSavedWarning = Boolean(
+    editingId &&
+      (settingsSaveFailedForId === editingId || settingsRecordMissing)
+  );
+
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const input = {
-      id: editingId ?? undefined,
       code: form.code.trim().toUpperCase(),
       name: form.name.trim(),
       type: form.type,
       parentOrganizationId: form.parentOrganizationId || null,
       telegramDestinationOrganizationId:
         form.telegramDestinationOrganizationId || null,
+      allowHierarchyOverride: form.allowHierarchyOverride,
     };
-    if (editingId)
-      update.mutate({
-        ...input,
-        id: editingId,
-        isActive: true,
-        accountUsername,
-        accountPassword,
+    const settingsInput = {
+      departmentName: settingsDraft.departmentName.trim() || form.name.trim(),
+      unitName: settingsDraft.unitName.trim(),
+      unitChiefRank: settingsDraft.unitChiefRank.trim(),
+      unitChiefName: settingsDraft.unitChiefName.trim(),
+      serialPrefix: settingsDraft.serialPrefix.trim().toUpperCase(),
+      incomingSerialPrefix: settingsDraft.incomingSerialPrefix
+        .trim()
+        .toUpperCase(),
+      serialStart: settingsDraft.serialStart,
+      incomingSerialStart: settingsDraft.incomingSerialStart,
+      timezone: settingsDraft.timezone.trim(),
+      dateFormat: settingsDraft.dateFormat,
+      numberSystem: settingsDraft.numberSystem,
+      logoUrl: settingsDraft.logoUrl.trim() || null,
+    };
+
+    let organizationId = editingId;
+    let organizationSaved = false;
+    try {
+      if (editingId) {
+        const result = await update.mutateAsync({
+          ...input,
+          id: editingId,
+          isActive: form.isActive,
+          accountUsername,
+          accountPassword,
+        });
+        organizationId = result.organization.id;
+      } else {
+        const result = await create.mutateAsync({
+          ...input,
+          createAccount: form.createAccount,
+        });
+        organizationId = result.organization.id;
+        setEditingId(organizationId);
+        setSelectedOrganizationId(organizationId);
+        setAccountUsername(result.account?.username ?? "");
+        setForm(current => ({
+          ...current,
+          code: result.organization.code,
+          name: result.organization.name,
+          type: result.organization.type as OrganizationType,
+          parentOrganizationId: result.organization.parentOrganizationId ?? "",
+          telegramDestinationOrganizationId:
+            result.organization.telegramDestinationOrganizationId ?? "",
+        }));
+      }
+      organizationSaved = true;
+      if (!organizationId) {
+        throw new Error("تعذر تحديد الجهة لحفظ إعداداتها");
+      }
+      await saveOrganizationSettings.mutateAsync({
+        organizationId,
+        ...settingsInput,
       });
-    else create.mutate(input);
+      await utils.organizations.settings.get.invalidate({ organizationId });
+      setSettingsSaveFailedForId(null);
+      toast.success(
+        editingId
+          ? "تم حفظ الجهة وإعداداتها المستقلة"
+          : "تمت إضافة الجهة وحفظ إعداداتها المستقلة"
+      );
+      resetForm();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "حدث خطأ غير متوقع";
+      if (organizationSaved && organizationId) {
+        setSettingsSaveFailedForId(organizationId);
+      }
+      toast.error(
+        organizationSaved
+          ? `تم حفظ بيانات الجهة، لكن تعذر حفظ إعداداتها: ${message}`
+          : message
+      );
+    }
   };
 
   const selectedOrganization = (organizations.data ?? []).find(
@@ -270,8 +467,13 @@ export default function OwnerOrganizationManagement() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  const parent = (organizations.data ?? []).find(
+                    candidate => candidate.id === item.parentOrganizationId
+                  );
                   setSelectedOrganizationId(item.id);
                   setEditingId(item.id);
+                  setSettingsQueryOrgId(item.id);
+                  setSettingsDraft(emptyOrganizationSettings(item.name));
                   setAccountUsername("");
                   setAccountPassword("");
                   setForm({
@@ -281,6 +483,12 @@ export default function OwnerOrganizationManagement() {
                     parentOrganizationId: item.parentOrganizationId ?? "",
                     telegramDestinationOrganizationId:
                       item.telegramDestinationOrganizationId ?? "",
+                    isActive: item.isActive,
+                    allowHierarchyOverride: Boolean(
+                      parent &&
+                        !canOrganizationHaveParent(item.type, parent.type)
+                    ),
+                    createAccount: true,
                   });
                 }}
               >
@@ -311,8 +519,8 @@ export default function OwnerOrganizationManagement() {
               إدارة المناطق والأقسام والمخافر
             </h2>
             <p className="mt-1 break-words text-sm text-muted-foreground">
-              القيادة المركزية ← قيادة الأمن الداخلي في المحافظة ← قيادة المنطقة
-              ← مديرية الأمن الداخلي ← القسم ← المخفر.
+              الافتراضي: وزارة الداخلية ← المحافظة ← مديرية الريف أو قسم المدينة
+              ← المخفر ← الوحدة. يستطيع المالك تخصيص علاقة الأب لكل جهة.
             </p>
           </div>
           <Button
@@ -389,41 +597,64 @@ export default function OwnerOrganizationManagement() {
                 placeholder="قيادة الأمن الداخلي في محافظة دمشق"
               />
             </label>
-            {editingId && accountManagedTypes.has(form.type) && (
-              <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
-                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
-                  بيانات حساب الجهة
-                </p>
-                <label className="grid gap-1 text-sm font-medium">
-                  اسم المستخدم
-                  <Input
-                    dir="ltr"
-                    value={accountUsername}
-                    onChange={event => setAccountUsername(event.target.value)}
-                    required
-                    minLength={3}
-                    maxLength={120}
-                    pattern="[a-zA-Z0-9._-]+"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  كلمة المرور الجديدة
-                  <Input
-                    dir="ltr"
-                    type="password"
-                    value={accountPassword}
-                    onChange={event => setAccountPassword(event.target.value)}
-                    minLength={12}
-                    maxLength={256}
-                    placeholder="اتركها فارغة دون تغيير"
-                  />
-                  <span className="text-xs font-normal text-muted-foreground">
-                    اتركها فارغة للإبقاء على كلمة المرور الحالية. عند تغييرها
-                    سيُطلب من الجهة تغييرها عند أول دخول.
-                  </span>
-                </label>
-              </div>
-            )}
+            {editingId &&
+              accountManagedTypes.has(form.type) &&
+              (accounts.data?.length ?? 0) > 0 && (
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                    بيانات حساب الجهة
+                  </p>
+                  <label className="grid gap-1 text-sm font-medium">
+                    اسم المستخدم
+                    <Input
+                      dir="ltr"
+                      value={accountUsername}
+                      onChange={event => setAccountUsername(event.target.value)}
+                      required
+                      minLength={3}
+                      maxLength={120}
+                      pattern="[a-zA-Z0-9._-]+"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">
+                    كلمة المرور الجديدة
+                    <Input
+                      dir="ltr"
+                      type="password"
+                      value={accountPassword}
+                      onChange={event => setAccountPassword(event.target.value)}
+                      minLength={12}
+                      maxLength={256}
+                      placeholder="اتركها فارغة دون تغيير"
+                    />
+                    <span className="text-xs font-normal text-muted-foreground">
+                      اتركها فارغة للإبقاء على كلمة المرور الحالية. عند تغييرها
+                      سيُطلب من الجهة تغييرها عند أول دخول.
+                    </span>
+                  </label>
+                </div>
+              )}
+            {editingId &&
+              accountManagedTypes.has(form.type) &&
+              accounts.isSuccess &&
+              (accounts.data?.length ?? 0) === 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+                  <span>لا يوجد حساب دخول مباشر لهذه الجهة.</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={provisionAccount.isPending}
+                    onClick={() =>
+                      provisionAccount.mutate({ organizationId: editingId })
+                    }
+                  >
+                    {provisionAccount.isPending
+                      ? "جارٍ الإنشاء..."
+                      : "إنشاء حساب الجهة"}
+                  </Button>
+                </div>
+              )}
             <label className="grid gap-1 text-sm font-medium">
               المستوى
               <select
@@ -441,7 +672,8 @@ export default function OwnerOrganizationManagement() {
                       parentOrganizationId:
                         type === "central" ||
                         !currentParentType ||
-                        !canOrganizationHaveParent(type, currentParentType)
+                        (!current.allowHierarchyOverride &&
+                          !canOrganizationHaveParent(type, currentParentType))
                           ? ""
                           : current.parentOrganizationId,
                     };
@@ -455,6 +687,38 @@ export default function OwnerOrganizationManagement() {
                 ))}
               </select>
             </label>
+            {form.type !== "central" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={form.allowHierarchyOverride}
+                    onChange={event =>
+                      setForm(current => {
+                        const parentType = (organizations.data ?? []).find(
+                          item => item.id === current.parentOrganizationId
+                        )?.type;
+                        return {
+                          ...current,
+                          allowHierarchyOverride: event.target.checked,
+                          parentOrganizationId:
+                            !event.target.checked &&
+                            parentType &&
+                            !canOrganizationHaveParent(current.type, parentType)
+                              ? ""
+                              : current.parentOrganizationId,
+                        };
+                      })
+                    }
+                  />
+                  تجاوز التسلسل الافتراضي لهذه الجهة
+                </label>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  يتيح اختيار أي جهة أب نشطة. تبقى وزارة الداخلية جذرًا بلا أب،
+                  ويمنع النظام ربط الجهة بنفسها أو بأحد أبنائها.
+                </p>
+              </div>
+            )}
             <label className="grid gap-1 text-sm font-medium">
               الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
               <select
@@ -474,12 +738,22 @@ export default function OwnerOrganizationManagement() {
                     ? "لا تحتاج وزارة الداخلية إلى جهة أب"
                     : "اختر الجهة الأب"}
                 </option>
-                {parents.map(item => (
+                {defaultParents.map(item => (
                   <option key={item.id} value={item.id}>
                     {typeLabels[item.type as OrganizationType] ?? item.type} —{" "}
                     {item.name}
                   </option>
                 ))}
+                {form.allowHierarchyOverride && customParents.length > 0 && (
+                  <optgroup label="تجاوز التسلسل الافتراضي">
+                    {customParents.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {typeLabels[item.type as OrganizationType] ?? item.type}{" "}
+                        — {item.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
@@ -515,22 +789,317 @@ export default function OwnerOrganizationManagement() {
                 عند إرسال برقية من هذه الجهة ستنتقل تلقائيًا إلى الاختيار هنا.
               </span>
             </label>
-            <div className="rounded-lg bg-blue-500/10 p-3 text-xs leading-5 text-blue-800 dark:text-blue-200">
-              يمنع الخادم اختيار جهة أب غير متوافقة مع المستوى التنظيمي، ولا
-              يمكن تجاوز قيادة المحافظة في الإحالات العابرة للمناطق.
-            </div>
-            {!editingId && (
-              <div className="rounded-lg bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
-                عند إنشاء قيادة أو قسم أو مخفر أو وحدة، يُنشأ لها حساب تلقائيًا
-                باسم وكلمة مرور باللغة الإنجليزية مشتقين من اسم الجهة.
+            {editingId && (
+              <label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={event =>
+                    setForm(current => ({
+                      ...current,
+                      isActive: event.target.checked,
+                    }))
+                  }
+                />
+                الجهة مفعلة ومتاحة للاستخدام
+              </label>
+            )}
+            {!editingId && accountManagedTypes.has(form.type) && (
+              <label className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/20">
+                <input
+                  type="checkbox"
+                  checked={form.createAccount}
+                  onChange={event =>
+                    setForm(current => ({
+                      ...current,
+                      createAccount: event.target.checked,
+                    }))
+                  }
+                />
+                <span>
+                  إنشاء حساب دخول لهذه الجهة الآن
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    يمكن إنشاء الحساب لاحقًا من بطاقة الجهة إذا أزلت هذا الخيار.
+                  </span>
+                </span>
+              </label>
+            )}
+            {editingId &&
+              settingsQueryOrgId === editingId &&
+              organizationSettings.isError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                  <p>
+                    تعذر تحميل إعدادات هذه الجهة؛ لن يُسمح بالحفظ حتى لا تُستبدل
+                    بقيم افتراضية.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => void organizationSettings.refetch()}
+                  >
+                    إعادة تحميل الإعدادات
+                  </Button>
+                </div>
+              )}
+            {showSettingsNotSavedWarning && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                {settingsSaveFailedForId === editingId ? (
+                  <p>
+                    بيانات الجهة محفوظة، لكن حفظ إعداداتها لم يكتمل. لا تعتبر
+                    القيم الحالية محفوظة؛ أعد الحفظ وتحقق من رسالة النجاح.
+                  </p>
+                ) : (
+                  <p>
+                    لا يوجد سجل إعدادات محفوظ لهذه الجهة بعد. القيم المعروضة
+                    افتراضية مؤقتة، وسيُنشأ سجلها المستقل عند الحفظ.
+                  </p>
+                )}
               </div>
             )}
+            <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/10">
+              <div>
+                <h4 className="text-sm font-bold">إعدادات مستقلة لهذه الجهة</h4>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  تُحفظ على معرّف الجهة نفسها ولا تتغير بتبديل مكان عمل المالك.
+                  البادئة الرقمية تحدد بداية عداد اتجاهها فقط.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs font-semibold">
+                  اسم الجهة في رأس البرقية
+                  <Input
+                    value={settingsDraft.departmentName}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        departmentName: event.target.value,
+                      }))
+                    }
+                    maxLength={255}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  اسم الوحدة
+                  <Input
+                    value={settingsDraft.unitName}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        unitName: event.target.value,
+                      }))
+                    }
+                    maxLength={255}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  رتبة رئيس الوحدة
+                  <Input
+                    value={settingsDraft.unitChiefRank}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        unitChiefRank: event.target.value,
+                      }))
+                    }
+                    maxLength={120}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  اسم رئيس الوحدة
+                  <Input
+                    value={settingsDraft.unitChiefName}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        unitChiefName: event.target.value,
+                      }))
+                    }
+                    maxLength={255}
+                  />
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs font-semibold">
+                  بادئة البرقية الصادرة
+                  <Input
+                    dir="ltr"
+                    value={settingsDraft.serialPrefix}
+                    onChange={event => {
+                      const serialPrefix = event.target.value.toUpperCase();
+                      setSettingsDraft(current => ({
+                        ...current,
+                        serialPrefix,
+                        serialStart: /^\d+$/.test(serialPrefix)
+                          ? Number(serialPrefix)
+                          : current.serialStart,
+                      }));
+                    }}
+                    required
+                    minLength={1}
+                    maxLength={24}
+                    pattern="[A-Z0-9-]+"
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  بادئة البرقية الواردة
+                  <Input
+                    dir="ltr"
+                    value={settingsDraft.incomingSerialPrefix}
+                    onChange={event => {
+                      const incomingSerialPrefix =
+                        event.target.value.toUpperCase();
+                      setSettingsDraft(current => ({
+                        ...current,
+                        incomingSerialPrefix,
+                        incomingSerialStart: /^\d+$/.test(incomingSerialPrefix)
+                          ? Number(incomingSerialPrefix)
+                          : current.incomingSerialStart,
+                      }));
+                    }}
+                    required
+                    minLength={1}
+                    maxLength={24}
+                    pattern="[A-Z0-9-]+"
+                  />
+                </label>
+              </div>
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                يمكن ضبط البداية بكتابة رقم فقط في البادئة، مثل 718. بادئتا
+                الصادر والوارد وعدّاداهما مستقلان.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs font-semibold">
+                  رقم بداية تسلسل الصادر
+                  <Input
+                    type="number"
+                    min={1}
+                    max={999999999}
+                    disabled={/^\d+$/.test(settingsDraft.serialPrefix)}
+                    value={settingsDraft.serialStart}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        serialStart: Number(event.target.value),
+                      }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  رقم بداية تسلسل الوارد
+                  <Input
+                    type="number"
+                    min={1}
+                    max={999999999}
+                    disabled={/^\d+$/.test(settingsDraft.incomingSerialPrefix)}
+                    value={settingsDraft.incomingSerialStart}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        incomingSerialStart: Number(event.target.value),
+                      }))
+                    }
+                    required
+                  />
+                </label>
+              </div>
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                عند إدخال بادئة رقمية تُستخدم هي كبداية لتسلسل الاتجاه نفسه؛
+                وإلا تُستخدم قيمة رقم البداية هنا.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs font-semibold">
+                  المنطقة الزمنية (IANA)
+                  <Input
+                    dir="ltr"
+                    value={settingsDraft.timezone}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        timezone: event.target.value,
+                      }))
+                    }
+                    required
+                    minLength={3}
+                    maxLength={64}
+                    placeholder="Asia/Damascus"
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  تنسيق التاريخ والوقت
+                  <select
+                    className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                    value={settingsDraft.dateFormat}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        dateFormat: event.target
+                          .value as OrganizationSettingsDraft["dateFormat"],
+                      }))
+                    }
+                  >
+                    <option value="dd/MM/yyyy HH:mm:ss">
+                      22/09/2026 14:30:00
+                    </option>
+                    <option value="yyyy-MM-dd HH:mm:ss">
+                      2026-09-22 14:30:00
+                    </option>
+                    <option value="dd MMM yyyy HH:mm">
+                      22 سبتمبر 2026 14:30
+                    </option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  نظام الأرقام
+                  <select
+                    className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                    value={settingsDraft.numberSystem}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        numberSystem: event.target.value as "latin" | "arabic",
+                      }))
+                    }
+                  >
+                    <option value="latin">لاتينية: 0123456789</option>
+                    <option value="arabic">عربية: ٠١٢٣٤٥٦٧٨٩</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  رابط شعار الجهة
+                  <Input
+                    dir="ltr"
+                    type="url"
+                    value={settingsDraft.logoUrl}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        logoUrl: event.target.value,
+                      }))
+                    }
+                    maxLength={2000}
+                    placeholder="https://..."
+                  />
+                </label>
+              </div>
+            </section>
             <div className="flex gap-2">
               <Button
                 type="submit"
-                disabled={create.isPending || update.isPending}
+                disabled={
+                  create.isPending ||
+                  update.isPending ||
+                  saveOrganizationSettings.isPending ||
+                  !settingsLoadedForEditor
+                }
               >
-                {editingId ? "حفظ التعديل" : "إضافة الجهة"}
+                {saveOrganizationSettings.isPending
+                  ? "جارٍ حفظ الإعدادات..."
+                  : editingId
+                    ? "حفظ الجهة وإعداداتها"
+                    : "إضافة الجهة وإعداداتها"}
               </Button>
               {editingId && (
                 <Button type="button" variant="outline" onClick={resetForm}>
@@ -626,6 +1195,22 @@ export default function OwnerOrganizationManagement() {
                       {typeLabels[childType]}
                     </Button>
                   ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      resetForm();
+                      setForm(current => ({
+                        ...current,
+                        type: "department",
+                        parentOrganizationId: selectedOrganization.id,
+                        allowHierarchyOverride: true,
+                      }));
+                    }}
+                  >
+                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة فرعية مخصصة
+                  </Button>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3">

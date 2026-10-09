@@ -4,7 +4,10 @@ import type {
   OrganizationMemberRole,
   TelegramRoute,
 } from "../drizzle/schema";
-import { canOrganizationHaveParent } from "../shared/organizationHierarchy";
+import {
+  canOrganizationHaveParent,
+  wouldCreateOrganizationCycle,
+} from "../shared/organizationHierarchy";
 import { randomBytes, randomUUID } from "node:crypto";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
@@ -375,6 +378,8 @@ export async function provisionOrganizationAccount(input: {
 export async function createOrganization(input: {
   parentOrganizationId?: string | null;
   telegramDestinationOrganizationId?: string | null;
+  allowHierarchyOverride?: boolean;
+  createAccount?: boolean;
   code: string;
   name: string;
   type: Organization["type"];
@@ -385,7 +390,8 @@ export async function createOrganization(input: {
 }> {
   await validateOrganizationParent(
     input.parentOrganizationId ?? null,
-    input.type
+    input.type,
+    { allowHierarchyOverride: input.allowHierarchyOverride }
   );
   await validateTelegramDestination(
     input.telegramDestinationOrganizationId ?? null,
@@ -407,7 +413,10 @@ export async function createOrganization(input: {
   throwIfError(error, "Failed to create organization");
   const organization = mapOrganization(data as Record<string, unknown>);
   let account = null;
-  if (ACCOUNT_ORGANIZATION_TYPES.has(organization.type)) {
+  if (
+    input.createAccount !== false &&
+    ACCOUNT_ORGANIZATION_TYPES.has(organization.type)
+  ) {
     try {
       account = await createOrganizationAccount({
         organization,
@@ -426,18 +435,62 @@ export async function createOrganization(input: {
 
 async function validateOrganizationParent(
   parentOrganizationId: string | null,
-  type: Organization["type"]
+  type: Organization["type"],
+  options: {
+    organizationId?: string;
+    allowHierarchyOverride?: boolean;
+  } = {}
 ): Promise<void> {
-  const parent = parentOrganizationId
-    ? await getOrganizationById(parentOrganizationId)
-    : null;
-  if (type === "central" && !parentOrganizationId) return;
+  if (type === "central") {
+    if (parentOrganizationId) {
+      throw new Error("وزارة الداخلية هي الجذر ولا يمكن تعيين جهة أب لها");
+    }
+    const existingCentral = (await listAllOrganizations()).find(
+      organization =>
+        organization.type === "central" &&
+        organization.id !== options.organizationId
+    );
+    if (existingCentral) {
+      throw new Error(
+        "يوجد جذر مركزي بالفعل؛ عدّل وزارة الداخلية بدل إنشاء جذر آخر"
+      );
+    }
+    return;
+  }
+
+  if (!parentOrganizationId) {
+    throw new Error("يجب تحديد الجهة الأب");
+  }
+
+  const parent =
+    await getOrganizationByIdIncludingInactive(parentOrganizationId);
+  if (!parent) throw new Error("الجهة الأب غير موجودة");
+  if (!parent.isActive) {
+    const currentOrganization = options.organizationId
+      ? await getOrganizationByIdIncludingInactive(options.organizationId)
+      : null;
+    if (currentOrganization?.parentOrganizationId !== parentOrganizationId) {
+      throw new Error("لا يمكن ربط الجهة بجهة أب غير مفعّلة");
+    }
+  }
   if (
-    !parentOrganizationId ||
-    !parent ||
+    !options.allowHierarchyOverride &&
     !canOrganizationHaveParent(type, parent.type)
   ) {
-    throw new Error("الجهة الأب لا تتوافق مع المستوى التنظيمي المحدد");
+    throw new Error("الجهة الأب لا تتوافق مع التسلسل الافتراضي");
+  }
+
+  const organizations = await listAllOrganizations();
+  if (
+    wouldCreateOrganizationCycle(
+      organizations,
+      options.organizationId ?? null,
+      parentOrganizationId
+    )
+  ) {
+    throw new Error(
+      "لا يمكن ربط الجهة بنفسها أو بأحد أبنائها؛ سيؤدي ذلك إلى دورة"
+    );
   }
 }
 
@@ -475,10 +528,23 @@ export async function listAllOrganizations(): Promise<Organization[]> {
   );
 }
 
+export async function getOrganizationByIdIncludingInactive(
+  organizationId: string
+): Promise<Organization | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("*")
+    .eq("id", organizationId)
+    .maybeSingle();
+  throwIfError(error, "Failed to load organization for management");
+  return data ? mapOrganization(data as Record<string, unknown>) : null;
+}
+
 export async function updateOrganization(input: {
   id: string;
   parentOrganizationId?: string | null;
   telegramDestinationOrganizationId?: string | null;
+  allowHierarchyOverride?: boolean;
   code: string;
   name: string;
   type: Organization["type"];
@@ -486,7 +552,11 @@ export async function updateOrganization(input: {
 }): Promise<Organization> {
   await validateOrganizationParent(
     input.parentOrganizationId ?? null,
-    input.type
+    input.type,
+    {
+      organizationId: input.id,
+      allowHierarchyOverride: input.allowHierarchyOverride,
+    }
   );
   await validateTelegramDestination(
     input.telegramDestinationOrganizationId ?? null,

@@ -43,6 +43,7 @@ import {
   recordTelegramVersion,
   transitionTelegram,
   updateDepartmentSettings,
+  upsertOrganizationSettingsForOrganization,
   updateRouteIncomingSerial,
   updateRouteOutgoingSerial,
   writeAuditLog,
@@ -64,6 +65,7 @@ import {
   ensureOrganizationAccounts,
   getConfiguredTelegramDestination,
   getOrganizationById,
+  getOrganizationByIdIncludingInactive,
   getUserOrganizationMembership,
   getTelegramRouteById,
   listAllOrganizations,
@@ -135,6 +137,66 @@ const statusSchema = z.enum([
   "completed",
   "archived",
 ]);
+
+const organizationSettingsPayloadSchema = z.object({
+  departmentName: z.string().trim().min(2).max(255),
+  unitName: z.string().trim().max(255),
+  unitChiefRank: z.string().trim().max(120),
+  unitChiefName: z.string().trim().max(255),
+  serialPrefix: z
+    .string()
+    .trim()
+    .min(1)
+    .max(24)
+    .regex(/^[A-Z0-9-]+$/),
+  incomingSerialPrefix: z
+    .string()
+    .trim()
+    .min(1)
+    .max(24)
+    .regex(/^[A-Z0-9-]+$/),
+  serialStart: z.number().int().min(1).max(999999999),
+  incomingSerialStart: z.number().int().min(1).max(999999999),
+  timezone: z.string().trim().min(3).max(64),
+  dateFormat: z.enum([
+    "dd/MM/yyyy HH:mm:ss",
+    "yyyy-MM-dd HH:mm:ss",
+    "dd MMM yyyy HH:mm",
+  ]),
+  numberSystem: z.enum(["latin", "arabic"]),
+  logoUrl: z.string().url().max(2000).nullable(),
+});
+
+function getStartingNumberFromPrefix(
+  prefix: string,
+  configuredStart: number,
+  direction: string
+): number {
+  if (!/^\d+$/.test(prefix)) return configuredStart;
+  const numericPrefix = Number(prefix);
+  if (
+    !Number.isSafeInteger(numericPrefix) ||
+    numericPrefix < 1 ||
+    numericPrefix > 999_999_999
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `البادئة الرقمية للبرقيات ${direction} يجب أن تكون بين 1 و999999999`,
+    });
+  }
+  return numericPrefix;
+}
+
+function assertSupportedTimezone(timezone: string): void {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(0);
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "المنطقة الزمنية غير صالحة",
+    });
+  }
+}
 
 type TelegramScopeUser = {
   id: number;
@@ -404,6 +466,139 @@ export const appRouter = router({
         listOrganizationAccountSummaries(input.organizationId)
       ),
     allAccounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
+    settings: router({
+      get: adminProcedure
+        .input(z.object({ organizationId: z.string().uuid() }))
+        .query(async ({ ctx, input }) => {
+          if (!isPlatformOwner(ctx.user)) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "إعدادات الجهات متاحة لمالك النظام فقط",
+            });
+          }
+          const organization = await getOrganizationByIdIncludingInactive(
+            input.organizationId
+          );
+          if (!organization) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "الجهة غير موجودة",
+            });
+          }
+          const settings = await getOrganizationSettings(input.organizationId);
+          if (settings) return { ...settings, settingsExists: true };
+          return {
+            organizationId: organization.id,
+            departmentName: organization.name,
+            unitName: "وحدة العمليات",
+            unitChiefRank: "العقيد",
+            unitChiefName: "رئيس الوحدة",
+            serialPrefix: "POL",
+            incomingSerialPrefix: "POL",
+            serialStart: 1,
+            incomingSerialStart: 1,
+            nextOutgoingSerial: 1,
+            nextIncomingSerial: 1,
+            timezone: "Asia/Damascus",
+            dateFormat: "dd/MM/yyyy HH:mm:ss",
+            numberSystem: "latin" as const,
+            logoUrl: null,
+            logoKey: null,
+            settingsExists: false,
+          };
+        }),
+
+      update: adminProcedure
+        .input(
+          organizationSettingsPayloadSchema.extend({
+            organizationId: z.string().uuid(),
+          })
+        )
+        .mutation(async ({ ctx, input }) => {
+          if (!isPlatformOwner(ctx.user)) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "إعدادات الجهات متاحة لمالك النظام فقط",
+            });
+          }
+          const organization = await getOrganizationByIdIncludingInactive(
+            input.organizationId
+          );
+          if (!organization) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "الجهة غير موجودة",
+            });
+          }
+
+          assertSupportedTimezone(input.timezone);
+          const outgoingStart = getStartingNumberFromPrefix(
+            input.serialPrefix,
+            input.serialStart,
+            "الصادرة"
+          );
+          const incomingStart = getStartingNumberFromPrefix(
+            input.incomingSerialPrefix,
+            input.incomingSerialStart,
+            "الواردة"
+          );
+          const saved = await upsertOrganizationSettingsForOrganization(
+            organization.id,
+            {
+              departmentName: localizeDigits(
+                input.departmentName,
+                input.numberSystem
+              ),
+              unitName: localizeDigits(input.unitName, input.numberSystem),
+              unitChiefRank: localizeDigits(
+                input.unitChiefRank,
+                input.numberSystem
+              ),
+              unitChiefName: localizeDigits(
+                input.unitChiefName,
+                input.numberSystem
+              ),
+              serialPrefix: input.serialPrefix,
+              incomingSerialPrefix: input.incomingSerialPrefix,
+              serialStart: outgoingStart,
+              incomingSerialStart: incomingStart,
+              nextOutgoingSerial: outgoingStart,
+              nextIncomingSerial: incomingStart,
+              timezone: input.timezone,
+              dateFormat: input.dateFormat,
+              numberSystem: input.numberSystem,
+              logoUrl: input.logoUrl,
+              updatedByUserId: ctx.user.id,
+            }
+          );
+
+          await writeAuditLog({
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+            action: "organization.settings.update",
+            entityType: "department_settings",
+            entityId: String(saved.id),
+            metadata: JSON.stringify({
+              organizationId: organization.id,
+              organizationCode: organization.code,
+              organizationName: organization.name,
+              departmentName: input.departmentName,
+              unitName: input.unitName,
+              unitChiefRank: input.unitChiefRank,
+              unitChiefName: input.unitChiefName,
+              serialPrefix: input.serialPrefix,
+              incomingSerialPrefix: input.incomingSerialPrefix,
+              serialStart: outgoingStart,
+              incomingSerialStart: incomingStart,
+              timezone: input.timezone,
+              dateFormat: input.dateFormat,
+              numberSystem: input.numberSystem,
+            }),
+          });
+
+          return saved;
+        }),
+    }),
     pendingApprovals: protectedProcedure.query(({ ctx }) =>
       listPendingRouteApprovals(ctx.user.id, canViewAllTelegrams(ctx.user))
     ),
@@ -424,6 +619,8 @@ export const appRouter = router({
             .max(64)
             .regex(/^[A-Z0-9_-]+$/i),
           name: z.string().trim().min(2).max(255),
+          allowHierarchyOverride: z.boolean().default(false),
+          createAccount: z.boolean().default(true),
           type: z.enum([
             "central",
             "governorate",
@@ -436,9 +633,37 @@ export const appRouter = router({
           ]),
         })
       )
-      .mutation(({ ctx, input }) =>
-        createOrganization({ ...input, createdByUserId: ctx.user.id })
-      ),
+      .mutation(async ({ ctx, input }) => {
+        if (input.allowHierarchyOverride && !isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "تجاوز التسلسل الافتراضي متاح لمالك النظام فقط",
+          });
+        }
+        const result = await createOrganization({
+          ...input,
+          createdByUserId: ctx.user.id,
+        });
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+          action: input.allowHierarchyOverride
+            ? "organization.created_with_hierarchy_override"
+            : "organization.created",
+          entityType: "organization",
+          entityId: result.organization.id,
+          metadata: JSON.stringify({
+            organizationId: result.organization.id,
+            code: result.organization.code,
+            name: result.organization.name,
+            type: result.organization.type,
+            parentOrganizationId: result.organization.parentOrganizationId,
+            allowHierarchyOverride: input.allowHierarchyOverride,
+            accountCreated: Boolean(result.account),
+          }),
+        });
+        return result;
+      }),
 
     update: adminProcedure
       .input(
@@ -465,6 +690,7 @@ export const appRouter = router({
             .max(256)
             .optional()
             .or(z.literal("")),
+          allowHierarchyOverride: z.boolean().default(false),
           type: z.enum([
             "central",
             "governorate",
@@ -478,10 +704,52 @@ export const appRouter = router({
           isActive: z.boolean(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        if (input.allowHierarchyOverride && !isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "تجاوز التسلسل الافتراضي متاح لمالك النظام فقط",
+          });
+        }
+        const previousOrganization = await getOrganizationByIdIncludingInactive(
+          input.id
+        );
+        if (!previousOrganization) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "الجهة غير موجودة",
+          });
+        }
         const { accountUsername, accountPassword, ...organizationInput } =
           input;
         const organization = await updateOrganization(organizationInput);
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
+          action: input.allowHierarchyOverride
+            ? "organization.hierarchy.override"
+            : "organization.updated",
+          entityType: "organization",
+          entityId: organization.id,
+          metadata: JSON.stringify({
+            organizationId: organization.id,
+            before: {
+              name: previousOrganization.name,
+              type: previousOrganization.type,
+              parentOrganizationId: previousOrganization.parentOrganizationId,
+              telegramDestinationOrganizationId:
+                previousOrganization.telegramDestinationOrganizationId,
+            },
+            after: {
+              name: organization.name,
+              type: organization.type,
+              parentOrganizationId: organization.parentOrganizationId,
+              telegramDestinationOrganizationId:
+                organization.telegramDestinationOrganizationId,
+            },
+            allowHierarchyOverride: input.allowHierarchyOverride,
+          }),
+        });
         const account = accountUsername
           ? await updateOrganizationAccount({
               organizationId: organization.id,

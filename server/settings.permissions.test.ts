@@ -11,6 +11,7 @@ function contextFor(role: "admin" | "user"): TrpcContext {
       badgeNumber: null,
       email: "officer@example.com",
       loginMethod: "google",
+      username: role === "admin" ? "nonowner-admin" : null,
       role,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -38,6 +39,44 @@ describe("department branding permissions", () => {
         dateFormat: "dd/MM/yyyy HH:mm:ss",
         numberSystem: "arabic",
         logoUrl: null,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects organization settings and hierarchy overrides from a non-owner admin", async () => {
+    const caller = appRouter.createCaller(contextFor("admin"));
+    const organizationId = "00000000-0000-4000-8000-000000000009";
+
+    await expect(
+      caller.organizations.settings.get({ organizationId })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      caller.organizations.settings.update({
+        organizationId,
+        departmentName: "قسم الاختبار",
+        unitName: "وحدة العمليات",
+        unitChiefRank: "العقيد",
+        unitChiefName: "رئيس الوحدة",
+        serialPrefix: "718",
+        incomingSerialPrefix: "IN",
+        serialStart: 718,
+        incomingSerialStart: 1,
+        timezone: "Asia/Damascus",
+        dateFormat: "dd/MM/yyyy HH:mm:ss",
+        numberSystem: "arabic",
+        logoUrl: null,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      caller.organizations.create({
+        code: "CUSTOM-UNIT",
+        name: "وحدة اختبار",
+        type: "unit",
+        parentOrganizationId: organizationId,
+        allowHierarchyOverride: true,
+        createAccount: false,
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });

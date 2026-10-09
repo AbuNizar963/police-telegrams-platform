@@ -1280,7 +1280,14 @@ export const appRouter = router({
           "لا تملك صلاحية عرض هذه البرقية"
         );
 
-        return telegram;
+        const senderOrganization = await getOrganizationByIdIncludingInactive(
+          telegram.organizationId
+        );
+
+        return {
+          ...telegram,
+          senderOrganizationName: senderOrganization?.name ?? null,
+        };
       }),
 
     update: adminProcedure

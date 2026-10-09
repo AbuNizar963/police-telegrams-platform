@@ -50,7 +50,10 @@ BEGIN
       "receiverDecisionByUserId" = p_receiver_user_id,
       "receiverDecisionAt" = now(),
       "receiverDecisionReason" = reason_value,
-      status = CASE WHEN p_accepted THEN 'received' ELSE 'rejected' END,
+      status = CASE
+        WHEN p_accepted THEN 'received'::public.telegram_route_status
+        ELSE 'rejected'::public.telegram_route_status
+      END,
       "receivedAt" = CASE WHEN p_accepted THEN now() ELSE NULL END
   WHERE id = p_route_id
   RETURNING * INTO route_row;

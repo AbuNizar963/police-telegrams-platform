@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(19);
 
 select has_function(
   'public',
@@ -493,15 +493,19 @@ select ok(
       and route."receiverDecisionStatus" = 'accepted'
       and route.status = 'received'
       and route."receivedAt" is not null
-  )
-  and exists (
+  ),
+  'receiver acceptance persists the route decision and receipt time'
+);
+
+select ok(
+  exists (
     select 1
     from public.telegram_actions as action
     join public.telegrams as telegram on telegram.id = action."telegramId"
     where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
       and action.action = 'telegram.route.receiver_accept'
   ),
-  'receiver acceptance persists receipt state and an audit action'
+  'receiver acceptance persists its audit action'
 );
 
 select * from finish();

@@ -30,6 +30,6 @@ Copy the variables from `.env.example` into Vercel. Required for the core applic
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ADMIN_EMAILS`
 
-OCR and voice transcription additionally require `OPENAI_API_KEY`. Maps require `VITE_GOOGLE_MAPS_API_KEY`.
+Maps require `VITE_GOOGLE_MAPS_API_KEY`.
 
 Never commit service-role keys, OAuth client secrets, database passwords, officer data, or OpenAI API keys.

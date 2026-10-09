@@ -1,7 +1,0 @@
-# Install a PaddlePaddle runtime suitable for the target (GPU is recommended)
-# before this file. The Dockerfile installs the CUDA 12.6 build.
-fastapi>=0.115,<1
-uvicorn[standard]>=0.34,<1
-python-multipart>=0.0.20,<1
-Pillow>=10.4,<12
-paddleocr[doc-parser]>=3.4.0

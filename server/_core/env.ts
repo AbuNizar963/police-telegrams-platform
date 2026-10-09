@@ -18,10 +18,5 @@ export const ENV = {
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
-  // AI credentials and private companion-service endpoints are server-only.
-  // Never mirror them through a VITE_ variable.
-  cohereApiKey: process.env.COHERE_API_KEY ?? "",
-  paddleOcrVlUrl: process.env.PADDLEOCR_VL_URL ?? "",
-  aiInputServiceToken: process.env.AI_INPUT_SERVICE_TOKEN ?? "",
   isProduction: process.env.NODE_ENV === "production",
 };

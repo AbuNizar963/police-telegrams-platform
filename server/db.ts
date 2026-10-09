@@ -418,14 +418,59 @@ export async function updateDepartmentSettings(
   id: number,
   values: Record<string, unknown>
 ): Promise<DepartmentSettings> {
-  const { data, error } = await getSupabaseAdmin()
+  const client = getSupabaseAdmin();
+  const current = await client
     .from("department_settings")
-    .update({ ...values, updatedAt: new Date().toISOString() })
+    .select("organizationId")
     .eq("id", id)
+    .limit(1)
+    .maybeSingle();
+  throwIfError(current.error, "Failed to inspect department settings");
+  if (!current.data) throw new Error("Department settings row was not found");
+
+  const { data: savedId, error: saveError } = await client.rpc(
+    "save_department_settings_atomic",
+    {
+      p_settings_id: id,
+      p_organization_id:
+        typeof current.data.organizationId === "string"
+          ? current.data.organizationId
+          : null,
+      p_settings: values,
+    }
+  );
+  throwIfError(saveError, "Failed to update department settings atomically");
+  if (Number(savedId) !== id) {
+    throw new Error("Atomic settings save returned an unexpected row");
+  }
+
+  const { data, error } = await client
+    .from("department_settings")
     .select("*")
+    .eq("id", id)
     .single();
-  throwIfError(error, "Failed to update department settings");
+  throwIfError(error, "Failed to reload department settings");
   return mapSettings(data as Record<string, unknown>);
+}
+
+async function saveNewOrExistingOrganizationSettings(
+  organizationId: string,
+  values: Record<string, unknown>
+): Promise<number> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "save_department_settings_atomic",
+    {
+      p_settings_id: null,
+      p_organization_id: organizationId,
+      p_settings: values,
+    }
+  );
+  throwIfError(error, "Failed to save organization settings atomically");
+  const id = Number(data);
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error("Atomic settings save returned an invalid row");
+  }
+  return id;
 }
 
 export async function allocateSerialNumber(): Promise<number> {
@@ -508,6 +553,17 @@ export async function getOrganizationSettings(
         organizationIdentity
       )
     : undefined;
+}
+
+export async function upsertOrganizationSettingsForOrganization(
+  organizationId: string,
+  values: Record<string, unknown>
+): Promise<DepartmentSettingsView> {
+  await saveNewOrExistingOrganizationSettings(organizationId, values);
+
+  const saved = await getOrganizationSettings(organizationId);
+  if (!saved) throw new Error("Organization settings could not be reloaded");
+  return saved;
 }
 
 export async function updateRouteIncomingSerial(input: {

@@ -109,6 +109,9 @@ export const organizations = pgTable(
       table.telegramDestinationOrganizationId
     ),
     index("organizations_active_idx").on(table.isActive),
+    uniqueIndex("organizations_single_central_root_idx")
+      .on(table.type)
+      .where(sql`${table.type} = 'central'`),
   ]
 );
 
@@ -152,54 +155,62 @@ export const users = pgTable(
   ]
 );
 
-export const departmentSettings = pgTable("department_settings", {
-  id: serial("id").primaryKey(),
-  organizationId: uuid("organizationId").references(() => organizations.id, {
-    onDelete: "restrict",
-  }),
-  configKey: varchar("configKey", { length: 80 })
-    .default("primary")
-    .notNull()
-    .unique(),
-  departmentName: varchar("departmentName", { length: 255 })
-    .default("إدارة الشرطة")
-    .notNull(),
-  unitName: varchar("unitName", { length: 255 })
-    .default("وحدة العمليات")
-    .notNull(),
-  unitChiefRank: varchar("unitChiefRank", { length: 120 })
-    .default("العقيد")
-    .notNull(),
-  unitChiefName: varchar("unitChiefName", { length: 255 })
-    .default("رئيس الوحدة")
-    .notNull(),
-  serialPrefix: varchar("serialPrefix", { length: 24 })
-    .default("POL")
-    .notNull(),
-  incomingSerialPrefix: varchar("incomingSerialPrefix", { length: 24 })
-    .default("POL")
-    .notNull(),
-  serialStart: integer("serialStart").default(1).notNull(),
-  incomingSerialStart: integer("incomingSerialStart").default(1).notNull(),
-  nextSerial: integer("nextSerial").default(1).notNull(),
-  nextOutgoingSerial: integer("nextOutgoingSerial").default(1).notNull(),
-  nextIncomingSerial: integer("nextIncomingSerial").default(1).notNull(),
-  timezone: varchar("timezone", { length: 64 })
-    .default("Asia/Damascus")
-    .notNull(),
-  dateFormat: varchar("dateFormat", { length: 32 })
-    .default("dd/MM/yyyy HH:mm:ss")
-    .notNull(),
-  numberSystem: numberSystem("numberSystem").default("latin").notNull(),
-  logoUrl: text("logoUrl"),
-  updatedByUserId: integer("updatedByUserId"),
-  createdAt: timestamp("createdAt", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const departmentSettings = pgTable(
+  "department_settings",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: uuid("organizationId").references(() => organizations.id, {
+      onDelete: "restrict",
+    }),
+    configKey: varchar("configKey", { length: 80 })
+      .default("primary")
+      .notNull()
+      .unique(),
+    departmentName: varchar("departmentName", { length: 255 })
+      .default("إدارة الشرطة")
+      .notNull(),
+    unitName: varchar("unitName", { length: 255 })
+      .default("وحدة العمليات")
+      .notNull(),
+    unitChiefRank: varchar("unitChiefRank", { length: 120 })
+      .default("العقيد")
+      .notNull(),
+    unitChiefName: varchar("unitChiefName", { length: 255 })
+      .default("رئيس الوحدة")
+      .notNull(),
+    serialPrefix: varchar("serialPrefix", { length: 24 })
+      .default("POL")
+      .notNull(),
+    incomingSerialPrefix: varchar("incomingSerialPrefix", { length: 24 })
+      .default("POL")
+      .notNull(),
+    serialStart: integer("serialStart").default(1).notNull(),
+    incomingSerialStart: integer("incomingSerialStart").default(1).notNull(),
+    nextSerial: integer("nextSerial").default(1).notNull(),
+    nextOutgoingSerial: integer("nextOutgoingSerial").default(1).notNull(),
+    nextIncomingSerial: integer("nextIncomingSerial").default(1).notNull(),
+    timezone: varchar("timezone", { length: 64 })
+      .default("Asia/Damascus")
+      .notNull(),
+    dateFormat: varchar("dateFormat", { length: 32 })
+      .default("dd/MM/yyyy HH:mm:ss")
+      .notNull(),
+    numberSystem: numberSystem("numberSystem").default("latin").notNull(),
+    logoUrl: text("logoUrl"),
+    updatedByUserId: integer("updatedByUserId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  table => [
+    uniqueIndex("department_settings_organization_unique_idx").on(
+      table.organizationId
+    ),
+  ]
+);
 
 export const organizationMemberships = pgTable(
   "organization_memberships",

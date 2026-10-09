@@ -27,6 +27,7 @@ const organizationMocks = vi.hoisted(() => ({
   getUserOrganizationMembership: vi.fn(),
   getTelegramRouteById: vi.fn(),
   getOrganizationById: vi.fn(),
+  getOrganizationByIdIncludingInactive: vi.fn(),
   approveTelegramRoute: vi.fn(),
   receiveTelegramRoute: vi.fn(),
   decideTelegramRouteAsReceiver: vi.fn(),
@@ -42,6 +43,8 @@ vi.mock("./organization", async importOriginal => {
       organizationMocks.getUserOrganizationMembership,
     getTelegramRouteById: organizationMocks.getTelegramRouteById,
     getOrganizationById: organizationMocks.getOrganizationById,
+    getOrganizationByIdIncludingInactive:
+      organizationMocks.getOrganizationByIdIncludingInactive,
     approveTelegramRoute: organizationMocks.approveTelegramRoute,
     receiveTelegramRoute: organizationMocks.receiveTelegramRoute,
     decideTelegramRouteAsReceiver:
@@ -357,6 +360,29 @@ describe("telegram administration permissions", () => {
     expect(mocked.updateTelegram).not.toHaveBeenCalled();
     expect(mocked.purgeTelegramPermanently).not.toHaveBeenCalled();
     expect(storageMocks.storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("returns the telegram's actual source organization when viewed from its receiving workplace", async () => {
+    const senderOrganizationId = "00000000-0000-4000-8000-000000000008";
+    const receivingOrganizationId = "00000000-0000-4000-8000-000000000099";
+    mocked.getTelegramById.mockResolvedValue({
+      ...telegram,
+      organizationId: senderOrganizationId,
+      currentOrganizationId: receivingOrganizationId,
+    });
+    mocked.getUserOrganizationId.mockResolvedValue(receivingOrganizationId);
+    organizationMocks.getOrganizationByIdIncludingInactive.mockResolvedValue({
+      id: senderOrganizationId,
+      name: "قسم شرطة المرسل الفعلي",
+    });
+
+    const caller = appRouter.createCaller(ownerContextForTest());
+    const result = await caller.telegrams.get({ id: 7 });
+
+    expect(result.senderOrganizationName).toBe("قسم شرطة المرسل الفعلي");
+    expect(
+      organizationMocks.getOrganizationByIdIncludingInactive
+    ).toHaveBeenCalledWith(senderOrganizationId);
   });
 
   it("normalizes edited telegram text to its organization's number system", async () => {

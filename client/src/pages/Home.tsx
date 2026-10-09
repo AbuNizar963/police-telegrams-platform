@@ -2100,6 +2100,7 @@ function TelegramDetail({
     id: number;
     serialCode: string;
     organizationSerialCode?: string | null;
+    senderOrganizationName?: string | null;
     verificationToken: string;
     subject: string;
     recipient: string;
@@ -2314,6 +2315,10 @@ function TelegramDetail({
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const departmentName = localizeDigits(
       settings?.departmentName ?? "قسم العمليات",
+      numberSystem
+    );
+    const senderOrganizationName = localizeDigits(
+      telegram.senderOrganizationName?.trim() || "الجهة المرسلة",
       numberSystem
     );
     const unitName = localizeDigits(
@@ -2597,7 +2602,7 @@ function TelegramDetail({
           <section class="routing">
             <div class="routing-layout">
               <div class="routing-details">
-                <p><strong>من:</strong> ${escapeHtml(departmentName)}</p>
+                <p><strong>من:</strong> ${escapeHtml(senderOrganizationName)}</p>
                 <p><strong>إلى:</strong> ${escapeHtml(localizeDigits(telegram.recipient, numberSystem))}</p>
                 <p><strong>الموضوع:</strong> ${escapeHtml(localizeDigits(telegram.subject, numberSystem))}</p>
               </div>

@@ -2484,7 +2484,7 @@ function TelegramComposer({
 
   return (
     <Modal title="إنشاء برقية جديدة" close={close} fullScreenOnMobile compact>
-      <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden">
+      <div className="grid min-w-0 max-w-full gap-4">
         {!online && (
           <div
             role="alert"
@@ -2506,12 +2506,12 @@ function TelegramComposer({
               setSerialNumberEdited(true);
             }}
             inputMode="numeric"
-            dir="ltr"
+            dir="rtl"
             placeholder={
               suggestedSerial.isLoading ? "جارٍ اقتراح الرقم..." : "رقم البرقية"
             }
             aria-describedby="telegram-serial-help"
-            className="h-11 w-full min-w-0 max-w-full rounded-lg font-mono tracking-wide"
+            className="h-11 w-full min-w-0 max-w-full rounded-lg text-right font-mono tracking-wide"
           />
           <span
             id="telegram-serial-help"

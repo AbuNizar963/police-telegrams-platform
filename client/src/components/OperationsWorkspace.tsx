@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   Building2,
-  CheckCircle2,
   ChevronLeft,
   Clock3,
-  Compass,
   FileSearch,
   MapPinned,
-  RefreshCw,
   Shield,
   Users,
   X,
@@ -22,10 +19,17 @@ import { MapView, type MapMarker } from "@/components/Map";
 type WorkspaceTab = "locations" | "units" | "resources" | "archive";
 
 const tabLabels: Record<WorkspaceTab, string> = {
-  locations: "خريطة البلاغات والمواقع",
+  locations: "مواقع البلاغات",
   units: "الوحدات الميدانية",
-  resources: "إدارة الموارد",
-  archive: "الأرشيف والسجلات المغلقة",
+  resources: "متابعة العمل",
+  archive: "الأرشيف",
+};
+
+const tabDescriptions: Record<WorkspaceTab, string> = {
+  locations: "عرض المواقع المسجلة في البرقيات وفتحها على الخريطة.",
+  units: "عرض الجهات المتاحة وعدد البرقيات المفتوحة لديها.",
+  resources: "ملخص توزيع البرقيات المفتوحة على الجهات.",
+  archive: "البحث في البرقيات المغلقة المحفوظة للتدقيق.",
 };
 
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
@@ -111,22 +115,19 @@ export default function OperationsWorkspace() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="operations-workspace-title"
-        className="flex max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden rounded-t-2xl bg-background shadow-2xl sm:rounded-2xl"
+        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-background shadow-2xl sm:h-[90vh] sm:max-h-[95vh] sm:rounded-2xl"
       >
-        <header className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7">
-          <div>
-            <p className="text-xs font-bold tracking-wide text-[#9b7c3d]">
-              OPERATIONS CONTROL ROOM
-            </p>
+        <header className="flex items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-7 sm:py-4">
+          <div className="min-w-0">
             <h2
               id="operations-workspace-title"
-              className="mt-1 text-xl font-bold"
+              className="text-lg font-bold sm:text-xl"
             >
-              مركز التشغيل الميداني والسجلات
+              متابعة العمل الميداني
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              بيانات تشغيلية موحّدة للمواقع والجهات والموارد والأرشيف، دون تتبع
-              حي للأفراد.
+            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
+              اختر قسمًا أدناه. هذه شاشة متابعة للبرقيات والمواقع المسجلة، وليست
+              لتتبع الأشخاص.
             </p>
           </div>
           <Button
@@ -140,7 +141,7 @@ export default function OperationsWorkspace() {
           </Button>
         </header>
         <nav
-          className="flex gap-1 overflow-x-auto border-b bg-muted/20 px-4 py-2"
+          className="grid grid-cols-2 gap-2 border-b bg-muted/20 p-3 sm:flex sm:flex-wrap sm:gap-1 sm:px-4 sm:py-2"
           aria-label="وحدات التشغيل"
         >
           {(Object.keys(tabLabels) as WorkspaceTab[]).map(item => (
@@ -148,13 +149,30 @@ export default function OperationsWorkspace() {
               key={item}
               type="button"
               onClick={() => setTab(item)}
-              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition ${tab === item ? "bg-[#10233f] text-white" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+              aria-current={tab === item ? "page" : undefined}
+              className={`flex min-h-12 flex-col items-start justify-center gap-0.5 rounded-lg px-3 py-2 text-right transition sm:min-h-0 sm:flex-row sm:items-center sm:gap-2 sm:whitespace-nowrap sm:text-sm ${tab === item ? "bg-[#10233f] text-white" : "text-foreground hover:bg-background"}`}
             >
-              {tabLabels[item]}
+              <span className="text-xs font-bold sm:text-sm">
+                {tabLabels[item]}
+              </span>
+              <span
+                className={`text-[10px] leading-4 sm:hidden ${tab === item ? "text-white/75" : "text-muted-foreground"}`}
+              >
+                {item === "locations"
+                  ? "الخريطة والسجل"
+                  : item === "units"
+                    ? "الجهات والإحالات"
+                    : item === "resources"
+                      ? "توزيع البرقيات"
+                      : "البرقيات المغلقة"}
+              </span>
             </button>
           ))}
         </nav>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-7">
+          <p className="mb-4 rounded-lg border bg-muted/20 px-3 py-2 text-xs leading-5 text-muted-foreground sm:text-sm">
+            {tabDescriptions[tab]}
+          </p>
           {tab === "locations" && (
             <LocationsPanel
               locations={locations}
@@ -201,12 +219,12 @@ function LocationsPanel({
 }) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <SummaryCard
           icon={MapPinned}
           label="مواقع مسجلة"
           value={locations.length}
-          detail="إحداثيات موثقة في البرقيات"
+          detail="مضافة إلى البرقيات"
         />
         <SummaryCard
           icon={FileSearch}
@@ -214,36 +232,38 @@ function LocationsPanel({
           value={locations.filter(row => row.priority === "urgent").length}
           detail="تحتاج مراجعة تشغيلية"
         />
-        <SummaryCard
-          icon={Compass}
-          label="إحداثيات محفوظة"
-          value={locations.length}
-          detail="مرتبطة بسجل البرقية"
-        />
       </div>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)]">
-        <div className="overflow-hidden rounded-2xl border bg-muted/20">
+        <div className="min-w-0 overflow-hidden rounded-2xl border bg-muted/20">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div>
               <h3 className="font-bold">الخريطة التشغيلية</h3>
               <p className="text-xs text-muted-foreground">
-                تعرض المواقع المسجلة فقط، ولا تعرض حركة الأفراد.
+                تعرض المواقع المضافة إلى البرقيات فقط.
               </p>
             </div>
             <MapPinned className="h-5 w-5 text-[#9b7c3d]" />
           </div>
-          {markers.length > 0 && import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
-            <MapView markers={markers} className="h-[420px]" />
+          {loading ? (
+            <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground sm:min-h-64">
+              جارٍ تحميل مواقع البرقيات...
+            </div>
+          ) : markers.length > 0 && import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
+            <MapView markers={markers} className="h-72 sm:h-[420px]" />
           ) : markers.length > 0 ? (
-            <div className="flex h-[420px] items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              تم حفظ الإحداثيات، لكن مفتاح الخريطة غير مفعّل في بيئة التشغيل.
-              استخدم سجل المواقع لفتحها على الخريطة الخارجية، أو فعّل{" "}
-              <code dir="ltr">VITE_GOOGLE_MAPS_API_KEY</code>.
+            <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm leading-6 text-muted-foreground sm:min-h-64">
+              الإحداثيات محفوظة. افتح أحد المواقع من «سجل المواقع» لعرضه على
+              خرائط Google.
             </div>
           ) : (
-            <div className="flex h-[420px] items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              لا توجد إحداثيات مسجلة بعد. أضف موقع البلاغ من نموذج البرقية لتظهر
-              هنا.
+            <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-6 text-center sm:min-h-64">
+              <MapPinned className="h-8 w-8 text-[#9b7c3d]" />
+              <p className="font-semibold">لا توجد مواقع مسجلة بعد</p>
+              <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                لا توجد إحداثيات مرتبطة بالبرقيات المعروضة حاليًا. عند توفر موقع
+                مسجل سيظهر هنا وفي سجل المواقع. لا تُعرض حركة الأشخاص في هذه
+                الخريطة.
+              </p>
             </div>
           )}
         </div>
@@ -302,6 +322,7 @@ function UnitsPanel({
   currentUnit?: string;
   loading: boolean;
 }) {
+  const currentUnitName = units.find(unit => unit.id === currentUnit)?.name;
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border bg-[#10233f] p-5 text-white">
@@ -310,13 +331,23 @@ function UnitsPanel({
           <span className="text-sm font-bold">لوحة الوحدات الميدانية</span>
         </div>
         <p className="mt-2 text-sm text-slate-200">
-          الوحدة الحالية: {currentUnit ?? "غير محددة"}. الحالات المعروضة تعتمد
-          على الإحالات والمهام المسجلة، وليس على تتبع GPS.
+          {currentUnitName
+            ? `جهتك الحالية: ${currentUnitName}. `
+            : "تعرض هذه الصفحة الجهات المتاحة للإحالة. "}
+          الأعداد مبنية على البرقيات المفتوحة، ولا تتبع مواقع الأشخاص.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {loading && (
           <p className="text-sm text-muted-foreground">جارٍ تحميل الوحدات...</p>
+        )}
+        {!loading && units.length === 0 && (
+          <div className="rounded-xl border bg-muted/20 p-5 text-sm leading-6">
+            <p className="font-semibold">لا توجد جهات متاحة للإحالة بعد</p>
+            <p className="mt-1 text-muted-foreground">
+              أضف الجهات واربطها في إعدادات الهيكل التنظيمي لتظهر هنا.
+            </p>
+          </div>
         )}
         {units.map(unit => (
           <div key={unit.id} className="rounded-xl border p-4">
@@ -356,31 +387,32 @@ function ResourcesPanel({
     .slice(0, 5);
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         <SummaryCard
           icon={Users}
-          label="جهات قابلة للإحالة"
+          label="الجهات"
           value={units.length}
-          detail="من الهيكل التنظيمي الحالي"
+          detail="جاهزة لاستقبال الإحالات"
         />
         <SummaryCard
           icon={Clock3}
-          label="العمل المفتوح"
+          label="البرقيات المفتوحة"
           value={openCount}
           detail="برقيات غير مؤرشفة"
         />
         <SummaryCard
           icon={MapPinned}
-          label="نقاط تشغيلية"
+          label="المواقع المسجلة"
           value={locationsCount}
           detail="مواقع مسجلة"
         />
       </div>
       <section className="rounded-2xl border">
         <div className="border-b px-5 py-4">
-          <h3 className="font-bold">توزيع الحمل التشغيلي</h3>
+          <h3 className="font-bold">توزيع البرقيات المفتوحة</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            مؤشر مساعدة للمدير والموزع، ولا يستبدل قرار الإحالة البشري.
+            يوضح عدد البرقيات غير المؤرشفة في كل جهة لمساعدة المسؤول على متابعة
+            العمل؛ ولا ينشئ إحالات تلقائيًا.
           </p>
         </div>
         <div className="divide-y">
@@ -403,9 +435,9 @@ function ResourcesPanel({
               </div>
             </div>
           ))}
-          {busiest.length === 0 && (
+          {!units.length && (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              لا توجد جهات مرتبطة بعد.
+              ستظهر هنا الجهات وأعداد البرقيات بعد إضافتها إلى الهيكل التنظيمي.
             </p>
           )}
         </div>
@@ -431,7 +463,7 @@ function ArchivePanel({
         <div>
           <div className="flex items-center gap-2">
             <Archive className="h-5 w-5 text-[#9b7c3d]" />
-            <h3 className="font-bold">الأرشيف والسجلات المغلقة</h3>
+            <h3 className="font-bold">البرقيات المغلقة</h3>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             السجل مغلق تشغيليًا ومحفوظ للتدقيق، ولا يعني الحذف.
@@ -447,7 +479,7 @@ function ArchivePanel({
         </div>
       </div>
       <div className="rounded-2xl border">
-        <div className="grid grid-cols-[130px_minmax(0,1fr)_140px_120px] gap-3 border-b bg-muted/30 px-4 py-3 text-xs font-bold text-muted-foreground">
+        <div className="hidden grid-cols-[110px_minmax(0,1fr)_130px_100px] gap-3 border-b bg-muted/30 px-4 py-3 text-xs font-bold text-muted-foreground md:grid">
           <span>الرقم</span>
           <span>الموضوع</span>
           <span>المستلم</span>
@@ -467,7 +499,7 @@ function ArchivePanel({
           {rows.map(row => (
             <div
               key={row.id}
-              className="grid grid-cols-[130px_minmax(0,1fr)_140px_120px] items-center gap-3 px-4 py-3 text-sm"
+              className="hidden grid-cols-[110px_minmax(0,1fr)_130px_100px] items-center gap-3 px-4 py-3 text-sm md:grid"
             >
               <span className="font-mono text-xs font-bold text-[#9b7c3d]">
                 {getTelegramDisplayNumber(row.serialCode)}
@@ -482,6 +514,30 @@ function ArchivePanel({
                 )}
               </span>
             </div>
+          ))}
+          {rows.map(row => (
+            <article
+              key={`${row.id}-mobile`}
+              className="space-y-1.5 p-3 md:hidden"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 break-words text-sm font-semibold">
+                  {row.subject}
+                </p>
+                <span className="shrink-0 font-mono text-xs font-bold text-[#9b7c3d]">
+                  {getTelegramDisplayNumber(row.serialCode)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                المستلم: {row.recipient}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                تاريخ الإغلاق:{" "}
+                {new Date(row.closedAt ?? row.updatedAt).toLocaleDateString(
+                  "ar-SY"
+                )}
+              </p>
+            </article>
           ))}
         </div>
       </div>

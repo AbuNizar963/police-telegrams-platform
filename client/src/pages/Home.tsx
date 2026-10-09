@@ -1111,17 +1111,23 @@ export default function Home() {
                 onClick={() => setSelectedId(row.id)}
                 className={`group ${desktopGridClass} px-4 py-4`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col items-start gap-1.5">
                   {row.organizationId === row.currentOrganizationId ? (
-                    <Send
-                      className="h-3.5 w-3.5 text-blue-600"
-                      aria-label="صادرة"
-                    />
+                    <span
+                      aria-label="برقية صادرة"
+                      className="inline-flex w-fit items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                    >
+                      <Send aria-hidden="true" className="h-3 w-3" />
+                      صادرة
+                    </span>
                   ) : (
-                    <Inbox
-                      className="h-3.5 w-3.5 text-emerald-600"
-                      aria-label="واردة"
-                    />
+                    <span
+                      aria-label="برقية واردة"
+                      className="inline-flex w-fit items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    >
+                      <Inbox aria-hidden="true" className="h-3 w-3" />
+                      واردة
+                    </span>
                   )}
                   <span className="font-mono text-xs font-bold text-[#9b7c3d]">
                     {localizeDigits(

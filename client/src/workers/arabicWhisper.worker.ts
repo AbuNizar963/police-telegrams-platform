@@ -1,11 +1,11 @@
-import { pipeline, RawAudio } from "@huggingface/transformers";
+import { pipeline } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/whisper-small";
 const SAMPLE_RATE = 16_000;
 
 type Backend = "webgpu" | "wasm";
 type WhisperPipeline = (
-  audio: RawAudio,
+  audio: Float32Array,
   options: {
     language: string;
     task: string;
@@ -148,7 +148,7 @@ workerScope.onmessage = event => {
 
       postProgress(request.id, null, "تحويل التسجيل محليًا إلى نص عربي");
       const samples = new Float32Array(request.audio);
-      const result = await transcriber!(new RawAudio(samples, SAMPLE_RATE), {
+      const result = await transcriber!(samples, {
         language: "arabic",
         task: "transcribe",
         chunk_length_s: 30,

@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(18);
 
 select has_function(
   'public',
@@ -322,6 +322,24 @@ select throws_ok(
   'the governorate ancestor cannot approve a station route owned by its direct parent section'
 );
 
+select throws_ok(
+  $$
+    select public.decide_telegram_route_receiver(
+      route.id,
+      receiver.id,
+      true,
+      null
+    )
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    join public.users as receiver on receiver.name = 'Test Route Receiver'
+    where telegram."serialCode" = 'TEST-ROUTE-APPROVAL-9100002'
+  $$,
+  '22023',
+  'Route is not awaiting receiver decision',
+  'receiver cannot decide while higher-authority approval is pending'
+);
+
 select lives_ok(
   $$
     select public.approve_telegram_route(
@@ -380,6 +398,110 @@ select ok(
       and action.action = 'telegram.route.received'
   ),
   'receipt records both route state and an immutable action'
+);
+
+insert into public.telegrams (
+  "serialNumber",
+  "serialCode",
+  "createdByUserId",
+  "creatorName",
+  subject,
+  recipient,
+  body,
+  classification,
+  priority,
+  category,
+  status,
+  "organizationId",
+  "currentOrganizationId"
+)
+select
+  9100003,
+  'TEST-ROUTE-NOT-REQUIRED-9100003',
+  actor.id,
+  actor.name,
+  'Legacy direct route',
+  'Test Station A',
+  'Legacy direct route awaiting receiver confirmation',
+  'normal',
+  'normal',
+  'administrative',
+  'forwarded',
+  unit_a.id,
+  station_a.id
+from public.users as actor
+join public.organizations as unit_a on unit_a.code = 'TEST-ROUTE-UNIT-A'
+join public.organizations as station_a on station_a.code = 'TEST-ROUTE-STATION-A'
+where actor.name = 'Test Route Actor';
+
+insert into public.telegram_routes (
+  "telegramId",
+  "fromOrganizationId",
+  "toOrganizationId",
+  "forwardedByUserId",
+  status,
+  "approvalStatus"
+)
+select
+  telegram.id,
+  unit_a.id,
+  station_a.id,
+  actor.id,
+  'sent',
+  'not_required'
+from public.telegrams as telegram
+join public.organizations as unit_a on unit_a.code = 'TEST-ROUTE-UNIT-A'
+join public.organizations as station_a on station_a.code = 'TEST-ROUTE-STATION-A'
+join public.users as actor on actor.name = 'Test Route Actor'
+where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003';
+
+select ok(
+  exists (
+    select 1
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
+      and route."approvalStatus" = 'not_required'
+      and route."receiverDecisionStatus" = 'pending'
+      and route.status = 'sent'
+  ),
+  'legacy direct route awaits receiver decision without authority approval'
+);
+
+select lives_ok(
+  $$
+    select public.decide_telegram_route_receiver(
+      route.id,
+      receiver.id,
+      true,
+      null
+    )
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    join public.users as receiver on receiver.name = 'Test Route Station Actor'
+    where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
+  $$,
+  'receiving organization can accept a not-required legacy route'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.telegram_routes as route
+    join public.telegrams as telegram on telegram.id = route."telegramId"
+    where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
+      and route."receiverDecisionStatus" = 'accepted'
+      and route.status = 'received'
+      and route."receivedAt" is not null
+  )
+  and exists (
+    select 1
+    from public.telegram_actions as action
+    join public.telegrams as telegram on telegram.id = action."telegramId"
+    where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
+      and action.action = 'telegram.route.receiver_accept'
+  ),
+  'receiver acceptance persists receipt state and an audit action'
 );
 
 select * from finish();

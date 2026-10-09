@@ -414,10 +414,15 @@ export default function OwnerOrganizationManagement() {
                 className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
                 value={form.type}
                 onChange={event =>
-                  setForm(current => ({
-                    ...current,
-                    type: event.target.value as OrganizationType,
-                  }))
+                  setForm(current => {
+                    const type = event.target.value as OrganizationType;
+                    return {
+                      ...current,
+                      type,
+                      parentOrganizationId:
+                        type === "central" ? "" : current.parentOrganizationId,
+                    };
+                  })
                 }
               >
                 {Object.entries(typeLabels).map(([value, label]) => (
@@ -428,19 +433,24 @@ export default function OwnerOrganizationManagement() {
               </select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              الجهة الأب
+              الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
               <select
                 className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
                 value={form.parentOrganizationId}
+                disabled={form.type === "central"}
                 onChange={event =>
                   setForm(current => ({
                     ...current,
                     parentOrganizationId: event.target.value,
                   }))
                 }
-                required
+                required={form.type !== "central"}
               >
-                <option value="">اختر الجهة الأب</option>
+                <option value="">
+                  {form.type === "central"
+                    ? "لا تحتاج القيادة المركزية إلى جهة أب"
+                    : "اختر الجهة الأب"}
+                </option>
                 {parents.map(item => (
                   <option key={item.id} value={item.id}>
                     {typeLabels[item.type as OrganizationType] ?? item.type} —{" "}

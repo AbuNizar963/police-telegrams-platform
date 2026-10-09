@@ -9,16 +9,18 @@ const mocks = vi.hoisted(() => {
   const maybeSingle = vi.fn();
   const insert = vi.fn();
   const upsert = vi.fn();
+  const update = vi.fn();
   const single = vi.fn();
   const rpc = vi.fn();
 
-  from.mockReturnValue({ select, insert, upsert });
+  from.mockReturnValue({ select, insert, upsert, update });
   select.mockReturnValue({ eq, single });
-  eq.mockReturnValue({ eq, order, limit, maybeSingle });
+  eq.mockReturnValue({ eq, order, limit, maybeSingle, select });
   order.mockReturnValue({ limit });
   limit.mockReturnValue({ maybeSingle });
   insert.mockReturnValue({ select });
   upsert.mockReturnValue({ select });
+  update.mockReturnValue({ eq });
 
   return {
     from,
@@ -29,6 +31,7 @@ const mocks = vi.hoisted(() => {
     maybeSingle,
     insert,
     upsert,
+    update,
     single,
     rpc,
   };
@@ -46,6 +49,7 @@ import {
   getUserOrganizationMembership,
   routeTelegram,
   selectPlatformOwnerWorkplace,
+  updateOrganization,
 } from "./organization";
 import { ENV } from "./_core/env";
 
@@ -177,6 +181,45 @@ describe("organization repository", () => {
       p_user_id: 1,
       p_organization_id: organizationId,
     });
+  });
+
+  it("allows updating the root central organization without a parent", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000010";
+    mocks.single.mockResolvedValueOnce({
+      data: {
+        id: organizationId,
+        code: "CENTRAL",
+        name: "القيادة المركزية المحدثة",
+        type: "central",
+        parentOrganizationId: null,
+        telegramDestinationOrganizationId: null,
+        isActive: true,
+        createdAt: "2026-10-01T00:00:00.000Z",
+        updatedAt: "2026-10-09T00:00:00.000Z",
+      },
+      error: null,
+    });
+
+    await expect(
+      updateOrganization({
+        id: organizationId,
+        code: "CENTRAL",
+        name: "القيادة المركزية المحدثة",
+        type: "central",
+        parentOrganizationId: null,
+        telegramDestinationOrganizationId: null,
+        isActive: true,
+      })
+    ).resolves.toMatchObject({
+      id: organizationId,
+      name: "القيادة المركزية المحدثة",
+      type: "central",
+      parentOrganizationId: null,
+    });
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ parentOrganizationId: null })
+    );
   });
 
   it("rejects workplace selection for a non-owner before touching the database", async () => {

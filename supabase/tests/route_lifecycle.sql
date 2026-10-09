@@ -478,7 +478,7 @@ select lives_ok(
     )
     from public.telegram_routes as route
     join public.telegrams as telegram on telegram.id = route."telegramId"
-    join public.users as receiver on receiver.name = 'Test Route Station Actor'
+    join public.users as receiver on receiver.name = 'Test Station Actor'
     where telegram."serialCode" = 'TEST-ROUTE-NOT-REQUIRED-9100003'
   $$,
   'receiving organization can accept a not-required legacy route'

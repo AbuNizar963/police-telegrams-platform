@@ -64,6 +64,32 @@ from (
 ) as route_org(code, name, type, parent_code)
 join public.organizations as parent on parent.code = route_org.parent_code;
 
+insert into public.organizations (
+  code,
+  name,
+  type,
+  "parentOrganizationId"
+)
+select route_org.code,
+       route_org.name,
+       route_org.type::public.organization_type,
+       parent.id
+from (
+  values ('TEST-ROUTE-STATION-A', 'Test Station A', 'station', 'TEST-ROUTE-UNIT-A')
+) as route_org(code, name, type, parent_code)
+join public.organizations as parent on parent.code = route_org.parent_code;
+
+insert into public.department_settings (
+  "configKey",
+  "organizationId",
+  "departmentName"
+)
+select 'route-test:' || organization.code,
+       organization.id,
+       organization.name
+from public.organizations as organization
+where organization.code = 'TEST-ROUTE-UNIT-A';
+
 insert into public.users (
   "authUserId",
   name,
@@ -78,6 +104,8 @@ select
 from (
   values
     ('TEST-ROUTE-ACTOR', 'Test Route Actor', 'TEST-ROUTE-UNIT-A'),
+    ('TEST-ROUTE-STATION-ACTOR', 'Test Station Actor', 'TEST-ROUTE-STATION-A'),
+    ('TEST-ROUTE-SECTION-APPROVER', 'Test Department A Approver', 'TEST-ROUTE-UNIT-A'),
     ('TEST-ROUTE-APPROVER-A', 'Test Governorate A Approver', 'TEST-ROUTE-GOV-A'),
     ('TEST-ROUTE-APPROVER-B', 'Test Governorate B Approver', 'TEST-ROUTE-GOV-B'),
     ('TEST-ROUTE-RECEIVER-B', 'Test Route Receiver', 'TEST-ROUTE-UNIT-B')
@@ -96,6 +124,8 @@ select
 from (
   values
     ('Test Route Actor', 'TEST-ROUTE-UNIT-A', 'dispatcher'),
+    ('Test Station Actor', 'TEST-ROUTE-STATION-A', 'dispatcher'),
+    ('Test Department A Approver', 'TEST-ROUTE-UNIT-A', 'reviewer'),
     ('Test Governorate A Approver', 'TEST-ROUTE-GOV-A', 'reviewer'),
     ('Test Governorate B Approver', 'TEST-ROUTE-GOV-B', 'reviewer'),
     ('Test Route Receiver', 'TEST-ROUTE-UNIT-B', 'dispatcher')
@@ -235,25 +265,25 @@ select
   'urgent',
   'security',
   'approved',
-  unit_a.id,
-  unit_a.id
+  station_a.id,
+  station_a.id
 from public.users as actor
-join public.organizations as unit_a on unit_a.code = 'TEST-ROUTE-UNIT-A'
-where actor.name = 'Test Route Actor';
+join public.organizations as station_a on station_a.code = 'TEST-ROUTE-STATION-A'
+where actor.name = 'Test Station Actor';
 
 select lives_ok(
   $$
     select public.route_telegram(
       telegram.id,
-      unit_a.id,
+      station_a.id,
       unit_b.id,
       actor.id,
-      'requires governorate approval'
+      'requires immediate-parent approval'
     )
     from public.telegrams as telegram
-    join public.organizations as unit_a on unit_a.code = 'TEST-ROUTE-UNIT-A'
+    join public.organizations as station_a on station_a.code = 'TEST-ROUTE-STATION-A'
     join public.organizations as unit_b on unit_b.code = 'TEST-ROUTE-UNIT-B'
-    join public.users as actor on actor.name = 'Test Route Actor'
+    join public.users as actor on actor.name = 'Test Station Actor'
     where telegram."serialCode" = 'TEST-ROUTE-APPROVAL-9100002'
   $$,
   'cross-governorate route creates an approval request'
@@ -269,7 +299,7 @@ select results_eq(
   $$
     select 'pending:approved:' || id::text
     from public.organizations
-    where code = 'TEST-ROUTE-UNIT-A'
+    where code = 'TEST-ROUTE-STATION-A'
   $$,
   'pending approval leaves the telegram at its source without a status change'
 );
@@ -284,12 +314,12 @@ select throws_ok(
     )
     from public.telegram_routes as route
     join public.telegrams as telegram on telegram.id = route."telegramId"
-    join public.users as wrong_approver on wrong_approver.name = 'Test Governorate B Approver'
+    join public.users as wrong_approver on wrong_approver.name = 'Test Governorate A Approver'
     where telegram."serialCode" = 'TEST-ROUTE-APPROVAL-9100002'
   $$,
   '42501',
   'Only the immediate higher authority may decide this route',
-  'a governorate outside the source hierarchy cannot approve the route'
+  'the governorate ancestor cannot approve a station route owned by its direct parent section'
 );
 
 select lives_ok(
@@ -298,14 +328,14 @@ select lives_ok(
       route.id,
       approver.id,
       true,
-      'approved by source governorate command'
+      'approved by the direct-parent city section'
     )
     from public.telegram_routes as route
     join public.telegrams as telegram on telegram.id = route."telegramId"
-    join public.users as approver on approver.name = 'Test Governorate A Approver'
+    join public.users as approver on approver.name = 'Test Department A Approver'
     where telegram."serialCode" = 'TEST-ROUTE-APPROVAL-9100002'
   $$,
-  'source governorate approval is accepted'
+  'immediate-parent department approval is accepted'
 );
 
 select ok(

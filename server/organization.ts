@@ -4,6 +4,7 @@ import type {
   OrganizationMemberRole,
   TelegramRoute,
 } from "../drizzle/schema";
+import { canOrganizationHaveParent } from "../shared/organizationHierarchy";
 import { randomBytes, randomUUID } from "node:crypto";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
@@ -143,6 +144,7 @@ const ACCOUNT_ORGANIZATION_TYPES = new Set<Organization["type"]>([
   "command",
   "police_department",
   "station",
+  "department",
   "unit",
 ]);
 
@@ -204,6 +206,7 @@ function organizationAccountPrefix(type: Organization["type"]): string {
     command: "hq",
     police_department: "pd",
     station: "st",
+    department: "dept",
     unit: "unit",
   };
   return prefixes[type] ?? "unit";
@@ -428,21 +431,11 @@ async function validateOrganizationParent(
   const parent = parentOrganizationId
     ? await getOrganizationById(parentOrganizationId)
     : null;
-  const allowedParents: Record<Organization["type"], Organization["type"][]> = {
-    central: [],
-    governorate: ["central"],
-    region: ["governorate"],
-    police_department: ["region"],
-    station: ["police_department", "region"],
-    command: ["central", "governorate"],
-    department: ["command", "governorate", "region"],
-    unit: ["department", "station", "region"],
-  };
   if (type === "central" && !parentOrganizationId) return;
   if (
     !parentOrganizationId ||
     !parent ||
-    !allowedParents[type].includes(parent.type)
+    !canOrganizationHaveParent(type, parent.type)
   ) {
     throw new Error("الجهة الأب لا تتوافق مع المستوى التنظيمي المحدد");
   }

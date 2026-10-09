@@ -41,13 +41,13 @@ export const statusLabels = {
 } as const;
 
 export const organizationTypeLabels: Record<string, string> = {
-  central: "القيادة المركزية",
+  central: "وزارة الداخلية",
   governorate: "قيادة الأمن الداخلي في المحافظة",
   region: "قيادة المنطقة",
-  police_department: "مديرية الأمن الداخلي",
-  station: "مخفر الأمن الداخلي",
+  police_department: "مديرية الأمن الداخلي بالريف",
+  station: "المخفر",
   command: "القيادة",
-  department: "القسم",
+  department: "القسم داخل المدينة",
   unit: "الوحدة",
 };
 

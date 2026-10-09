@@ -4,6 +4,10 @@ import { Building2, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { organizationTypeLabels } from "@/lib/uiLabels";
+import {
+  canOrganizationHaveParent,
+  getAllowedOrganizationChildTypes,
+} from "../../../shared/organizationHierarchy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,12 +21,21 @@ type OrganizationType =
   | "command"
   | "department"
   | "unit";
+const organizationTypeOptions: OrganizationType[] = [
+  "central",
+  "governorate",
+  "police_department",
+  "department",
+  "station",
+  "unit",
+];
 const accountManagedTypes = new Set<OrganizationType>([
   "governorate",
   "region",
   "command",
   "police_department",
   "station",
+  "department",
   "unit",
 ]);
 
@@ -151,9 +164,12 @@ export default function OwnerOrganizationManagement() {
   const parents = useMemo(
     () =>
       (organizations.data ?? []).filter(
-        item => item.isActive && item.id !== editingId
+        item =>
+          item.isActive &&
+          item.id !== editingId &&
+          canOrganizationHaveParent(form.type, item.type)
       ),
-    [organizations.data, editingId]
+    [organizations.data, editingId, form.type]
   );
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -416,18 +432,25 @@ export default function OwnerOrganizationManagement() {
                 onChange={event =>
                   setForm(current => {
                     const type = event.target.value as OrganizationType;
+                    const currentParentType = (organizations.data ?? []).find(
+                      item => item.id === current.parentOrganizationId
+                    )?.type;
                     return {
                       ...current,
                       type,
                       parentOrganizationId:
-                        type === "central" ? "" : current.parentOrganizationId,
+                        type === "central" ||
+                        !currentParentType ||
+                        !canOrganizationHaveParent(type, currentParentType)
+                          ? ""
+                          : current.parentOrganizationId,
                     };
                   })
                 }
               >
-                {Object.entries(typeLabels).map(([value, label]) => (
+                {organizationTypeOptions.map(value => (
                   <option key={value} value={value}>
-                    {label}
+                    {typeLabels[value]}
                   </option>
                 ))}
               </select>
@@ -448,7 +471,7 @@ export default function OwnerOrganizationManagement() {
               >
                 <option value="">
                   {form.type === "central"
-                    ? "لا تحتاج القيادة المركزية إلى جهة أب"
+                    ? "لا تحتاج وزارة الداخلية إلى جهة أب"
                     : "اختر الجهة الأب"}
                 </option>
                 {parents.map(item => (
@@ -583,28 +606,26 @@ export default function OwnerOrganizationManagement() {
                       · {selectedOrganization.code}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      resetForm();
-                      setForm(current => ({
-                        ...current,
-                        type:
-                          selectedOrganization.type === "governorate"
-                            ? "region"
-                            : selectedOrganization.type === "region"
-                              ? "police_department"
-                              : selectedOrganization.type ===
-                                  "police_department"
-                                ? "station"
-                                : "unit",
-                        parentOrganizationId: selectedOrganization.id,
-                      }));
-                    }}
-                  >
-                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة داخلها
-                  </Button>
+                  {getAllowedOrganizationChildTypes(
+                    selectedOrganization.type
+                  ).map(childType => (
+                    <Button
+                      key={childType}
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        resetForm();
+                        setForm(current => ({
+                          ...current,
+                          type: childType,
+                          parentOrganizationId: selectedOrganization.id,
+                        }));
+                      }}
+                    >
+                      <Plus className="ml-1 h-4 w-4" /> إضافة{" "}
+                      {typeLabels[childType]}
+                    </Button>
+                  ))}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3">

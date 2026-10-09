@@ -51,6 +51,10 @@ import {
   selectPlatformOwnerWorkplace,
   updateOrganization,
 } from "./organization";
+import {
+  canOrganizationHaveParent,
+  getAllowedOrganizationChildTypes,
+} from "../shared/organizationHierarchy";
 import { ENV } from "./_core/env";
 
 describe("organization repository", () => {
@@ -76,6 +80,38 @@ describe("organization repository", () => {
       organizationId: "00000000-0000-0000-0000-000000000001",
       role: "dispatcher",
     });
+  });
+
+  it("supports the ministry, governorate, rural or city branch, station, and unit hierarchy", () => {
+    expect(canOrganizationHaveParent("governorate", "central")).toBe(true);
+    expect(canOrganizationHaveParent("police_department", "governorate")).toBe(
+      true
+    );
+    expect(canOrganizationHaveParent("department", "governorate")).toBe(true);
+    expect(canOrganizationHaveParent("station", "police_department")).toBe(
+      true
+    );
+    expect(canOrganizationHaveParent("station", "department")).toBe(true);
+    expect(canOrganizationHaveParent("unit", "station")).toBe(true);
+    expect(canOrganizationHaveParent("police_department", "central")).toBe(
+      false
+    );
+    expect(canOrganizationHaveParent("region", "governorate")).toBe(false);
+    expect(canOrganizationHaveParent("station", "region")).toBe(false);
+    expect(canOrganizationHaveParent("unit", "department")).toBe(false);
+    expect(getAllowedOrganizationChildTypes("central")).toEqual([
+      "governorate",
+    ]);
+    expect(getAllowedOrganizationChildTypes("governorate")).toEqual([
+      "police_department",
+      "department",
+    ]);
+    expect(getAllowedOrganizationChildTypes("police_department")).toEqual([
+      "station",
+    ]);
+    expect(getAllowedOrganizationChildTypes("department")).toEqual(["station"]);
+    expect(getAllowedOrganizationChildTypes("station")).toEqual(["unit"]);
+    expect(getAllowedOrganizationChildTypes("region")).toEqual([]);
   });
 
   it("writes a membership with an active role", async () => {

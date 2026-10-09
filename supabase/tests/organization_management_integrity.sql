@@ -75,7 +75,7 @@ select lives_ok(
         "dateFormat":"dd/MM/yyyy HH:mm:ss",
         "numberSystem":"latin",
         "logoUrl":null,
-        "updatedByUserId":9000000
+        "updatedByUserId":null
       }'::jsonb
     )
     from public.organizations as organization
@@ -129,7 +129,7 @@ select lives_ok(
         "dateFormat":"dd/MM/yyyy HH:mm:ss",
         "numberSystem":"latin",
         "logoUrl":null,
-        "updatedByUserId":9000000
+        "updatedByUserId":null
       }'::jsonb
     )
     from public.organizations as organization
@@ -185,7 +185,7 @@ select lives_ok(
         "dateFormat":"dd/MM/yyyy HH:mm:ss",
         "numberSystem":"latin",
         "logoUrl":null,
-        "updatedByUserId":9000000
+        "updatedByUserId":null
       }'::jsonb
     )
     from public.organizations as organization
@@ -252,7 +252,7 @@ select lives_ok(
         "dateFormat":"dd/MM/yyyy HH:mm:ss",
         "numberSystem":"latin",
         "logoUrl":null,
-        "updatedByUserId":9000000
+        "updatedByUserId":null
       }'::jsonb
     )
     from public.organizations as organization

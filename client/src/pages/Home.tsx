@@ -607,6 +607,7 @@ export default function Home() {
     total: 0,
     today: 0,
     urgent: 0,
+    urgentAwaitingReceipt: 0,
     secret: 0,
     pending: 0,
     inProgress: 0,
@@ -822,7 +823,7 @@ export default function Home() {
         </div>
       </div>
 
-      {data.urgent > 0 && (
+      {data.urgentAwaitingReceipt > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500 text-white">
@@ -831,8 +832,8 @@ export default function Home() {
             <div>
               <p className="text-sm font-bold">تنبيه أمني يحتاج إلى متابعة</p>
               <p className="text-xs opacity-80">
-                يوجد {formatCount(data.urgent, numberSystem)} برقية ذات أولوية
-                عاجلة ضمن نطاق صلاحيتك.
+                يوجد {formatCount(data.urgentAwaitingReceipt, numberSystem)}{" "}
+                برقية ذات أولوية عاجلة ضمن نطاق صلاحيتك.
               </p>
             </div>
           </div>

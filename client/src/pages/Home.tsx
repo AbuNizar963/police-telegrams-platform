@@ -1098,7 +1098,7 @@ export default function Home() {
                   {row.organizationId === row.currentOrganizationId ? (
                     <span
                       aria-label="برقية صادرة"
-                      className="inline-flex w-fit items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                      className="order-last inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
                     >
                       <Send aria-hidden="true" className="h-3 w-3" />
                       صادرة
@@ -1106,7 +1106,7 @@ export default function Home() {
                   ) : (
                     <span
                       aria-label="برقية واردة"
-                      className="inline-flex w-fit items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      className="order-last inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                     >
                       <Inbox aria-hidden="true" className="h-3 w-3" />
                       واردة
@@ -1119,7 +1119,6 @@ export default function Home() {
                       numberSystem
                     )}
                   </span>
-                  <StatusBadge value={row.status} />
                 </div>
                 <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:gap-x-6">
                   <p className="truncate">
@@ -1147,6 +1146,7 @@ export default function Home() {
                   {displayColumns.priority && (
                     <SeverityBadge value={row.classification} />
                   )}
+                  <StatusBadge value={row.status} />
                 </div>
                 {displayColumns.creator && (
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">

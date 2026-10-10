@@ -230,7 +230,8 @@ export default function OwnerUserManagement() {
                 placeholder="12 محرفًا على الأقل"
               />
               <span className="text-xs font-normal text-muted-foreground">
-                يجب أن تكون كلمة المرور 12 محرفًا على الأقل، وسيُطلب تغييرها عند الدخول.
+                يجب أن تكون كلمة المرور 12 محرفًا على الأقل، وسيُطلب تغييرها عند
+                الدخول.
               </span>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">

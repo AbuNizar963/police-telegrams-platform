@@ -36,50 +36,38 @@ describe("profile router", () => {
     ).resolves.toEqual(context.user);
   });
 
-  it(
-    "allows temporary-password users to access the password-change profile",
-    async () => {
-      const context = contextFor({ mustChangePassword: true });
-      await expect(
-        appRouter.createCaller(context).profile.get()
-      ).resolves.toEqual(context.user);
-    }
-  );
+  it("allows temporary-password users to access the password-change profile", async () => {
+    const context = contextFor({ mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).profile.get()
+    ).resolves.toEqual(context.user);
+  });
 
-  it(
-    "blocks protected data until the temporary password is changed",
-    async () => {
-      const context = contextFor({ mustChangePassword: true });
-      await expect(
-        appRouter.createCaller(context).dashboard.stats()
-      ).rejects.toMatchObject({ code: "FORBIDDEN" });
-    }
-  );
+  it("blocks protected data until the temporary password is changed", async () => {
+    const context = contextFor({ mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).dashboard.stats()
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 
-  it(
-    "blocks administrative actions while a temporary password is active",
-    async () => {
-      const context = contextFor({ role: "admin", mustChangePassword: true });
-      await expect(
-        appRouter.createCaller(context).userManagement.list()
-      ).rejects.toMatchObject({ code: "FORBIDDEN" });
-    }
-  );
+  it("blocks administrative actions while a temporary password is active", async () => {
+    const context = contextFor({ role: "admin", mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).userManagement.list()
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 
-  it(
-    "rejects managed-account passwords shorter than twelve characters",
-    async () => {
-      await expect(
-        appRouter
-          .createCaller(contextFor({ role: "admin" }))
-          .userManagement.create({
-            name: "Test Officer",
-            username: "test-officer",
-            password: "short",
-          })
-      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    }
-  );
+  it("rejects managed-account passwords shorter than twelve characters", async () => {
+    await expect(
+      appRouter
+        .createCaller(contextFor({ role: "admin" }))
+        .userManagement.create({
+          name: "Test Officer",
+          username: "test-officer",
+          password: "short",
+        })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 
   it("rejects names shorter than two characters", async () => {
     await expect(

@@ -2402,8 +2402,21 @@ function TelegramDetail({
     // organization trees include "وزارة الداخلية" as a parent node, so omit
     // fixed headings from the dynamic hierarchy to avoid displaying them twice.
     const hierarchyCandidates = hierarchyNames.length
-      ? hierarchyNames
+      ? [...hierarchyNames]
       : [unitName, departmentName];
+    const senderOrganizationNameRaw = telegram.senderOrganizationName?.trim();
+    if (
+      senderOrganizationNameRaw &&
+      !hierarchyCandidates.some(
+        name =>
+          localizeDigits(name, numberSystem).trim() ===
+          senderOrganizationName.trim()
+      )
+    ) {
+      // The hierarchy above ends at the current command in some telegram
+      // records. Include the actual sending unit as the final header line.
+      hierarchyCandidates.push(senderOrganizationNameRaw);
+    }
     const fixedHeaderNames = new Set([
       "الجمهورية العربية السورية",
       "وزارة الداخلية",

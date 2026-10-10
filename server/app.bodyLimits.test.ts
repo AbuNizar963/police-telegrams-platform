@@ -15,15 +15,12 @@ async function postUnauthenticated(path: string): Promise<number> {
   }
 
   try {
-    const response = await fetch(
-      `http://127.0.0.1:${address.port}${path}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Invalid JSON proves the auth gate runs before the JSON parser.
-        body: "{",
-      }
-    );
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Invalid JSON proves the auth gate runs before the JSON parser.
+      body: "{",
+    });
     return response.status;
   } finally {
     await new Promise<void>((resolve, reject) => {

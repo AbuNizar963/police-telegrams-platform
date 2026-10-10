@@ -2077,7 +2077,7 @@ export const appRouter = router({
               creatorIp,
               creatorFingerprint: ctx.user.authUserId,
             });
-            const progress = { telegramId: copy.id, organizationId: target.id, status: "created" as const };
+            const progress: (typeof broadcastProgress)[number] = { telegramId: copy.id, organizationId: target.id, status: "created" };
             broadcastProgress.push(progress);
             await routeTelegram({
               telegramId: copy.id,

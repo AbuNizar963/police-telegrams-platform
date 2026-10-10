@@ -1863,6 +1863,7 @@ export const appRouter = router({
           subject: z.string().trim().min(2).max(255),
           recipient: z.string().trim().min(2).max(255),
           recipientOrganizationId: z.string().uuid().optional(),
+          broadcastToDescendants: z.boolean().optional(),
           body: z.string().trim().min(3).max(20000),
           classification: classificationSchema,
           priority: prioritySchema,
@@ -1930,6 +1931,17 @@ export const appRouter = router({
         const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
         const serialCode = `${numbering.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
         const organizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(organizationSerialNumber).padStart(5, "0")}`;
+        const broadcastTargets = input.broadcastToDescendants
+          ? (await listOrganizationDescendants(ctx.user.id)).filter(
+              target => target.parentOrganizationId === organizationId
+            )
+          : [];
+        if (input.broadcastToDescendants && broadcastTargets.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا توجد جهات تابعة مباشرة لإرسال البرقية إليها",
+          });
+        }
         const selectedDestination = input.recipientOrganizationId
           ? (await listRoutingTargets(ctx.user.id)).find(
               target => target.id === input.recipientOrganizationId
@@ -1943,7 +1955,8 @@ export const appRouter = router({
         }
         const configuredDestination = selectedDestination
           ? selectedDestination
-          : await getConfiguredTelegramDestination(ctx.user.id);
+          : (broadcastTargets[0] ??
+            (await getConfiguredTelegramDestination(ctx.user.id)));
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const creatorIpHeader = ctx.req.headers["x-forwarded-for"];
         const creatorIp =
@@ -1952,6 +1965,7 @@ export const appRouter = router({
             : null;
         const {
           recipientOrganizationId: _recipientOrganizationId,
+          broadcastToDescendants: _broadcastToDescendants,
           requestedOrganizationSerialNumber: _requestedOrganizationSerialNumber,
           ...telegramInput
         } = input;
@@ -2026,6 +2040,41 @@ export const appRouter = router({
           }
           const routedTelegram = await getTelegramById(telegram.id);
           if (routedTelegram) telegram = routedTelegram;
+        }
+
+        // A telegram has one active destination, so a broadcast is represented
+        // by one independently routed copy for each direct child organization.
+        for (const target of broadcastTargets.slice(1)) {
+          const targetOrganizationSerialNumber =
+            await allocateOrganizationSerialNumber(organizationId, "outgoing");
+          const targetSerialNumber = await allocateSerialNumber();
+          const targetSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
+          const targetOrganizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
+          const copy = await createTelegram({
+            ...telegramInput,
+            idempotencyKey: null,
+            serialNumber: targetSerialNumber,
+            serialCode: targetSerialCode,
+            organizationSerialNumber: targetOrganizationSerialNumber,
+            organizationSerialCode: targetOrganizationSerialCode,
+            status: "draft",
+            verificationToken: randomUUID(),
+            createdByUserId: ctx.user.id,
+            organizationId,
+            currentOrganizationId: organizationId,
+            creatorName,
+            creatorEmail: ctx.user.email ?? null,
+            creatorBadgeId: ctx.user.badgeNumber ?? null,
+            creatorIp,
+            creatorFingerprint: ctx.user.authUserId,
+          });
+          await routeTelegram({
+            telegramId: copy.id,
+            toOrganizationId: target.id,
+            forwardedByUserId: ctx.user.id,
+            allowDraft: true,
+            note: "إرسال جماعي إلى الوحدات التابعة مباشرة",
+          });
         }
 
         await writeAuditLog({

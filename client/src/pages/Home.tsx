@@ -1250,6 +1250,7 @@ export default function Home() {
         <TelegramComposer
           pending={create.isPending}
           routingDirectory={routingDirectory.data ?? []}
+          descendants={organizationDescendants.data ?? []}
           numberSystem={numberSystem}
           close={() => setComposerOpen(false)}
           submit={values => create.mutate(values)}
@@ -1835,6 +1836,7 @@ function TelegramViewButton({
 function TelegramComposer({
   pending,
   routingDirectory,
+  descendants,
   numberSystem,
   close,
   submit,
@@ -1849,12 +1851,18 @@ function TelegramComposer({
     isSelectable: boolean;
     isConfiguredDestination?: boolean;
   }>;
+  descendants: Array<{
+    id: string;
+    name: string;
+    parentOrganizationId: string | null;
+  }>;
   numberSystem: NumberSystem;
   close: () => void;
   submit: (values: {
     subject: string;
     recipient: string;
     recipientOrganizationId?: string;
+    broadcastToDescendants?: boolean;
     body: string;
     classification: Classification;
     priority: Priority;
@@ -1865,6 +1873,7 @@ function TelegramComposer({
   const [subject, setSubject] = useState("");
   const [recipient, setRecipient] = useState("");
   const [recipientOrganizationId, setRecipientOrganizationId] = useState("");
+  const [broadcastToDescendants, setBroadcastToDescendants] = useState(false);
   const [body, setBody] = useState("");
   const [classification, setClassification] =
     useState<Classification>("normal");
@@ -1927,6 +1936,7 @@ function TelegramComposer({
       subject: subject.trim(),
       recipient: recipient.trim(),
       ...(recipientOrganizationId ? { recipientOrganizationId } : {}),
+      ...(broadcastToDescendants ? { broadcastToDescendants: true } : {}),
       body: body.trim(),
       classification,
       priority,
@@ -1985,6 +1995,7 @@ function TelegramComposer({
                 item => item.id === targetId
               );
               setRecipientOrganizationId(targetId);
+              setBroadcastToDescendants(false);
               setRecipient(
                 target?.name ??
                   routingDirectory.find(item => item.isConfiguredDestination)
@@ -2006,6 +2017,26 @@ function TelegramComposer({
             }
             emptyMessage="لا توجد جهات مسموحة للإرسال من جهة العمل الحالية."
           />
+          {descendants.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setBroadcastToDescendants(true);
+                setRecipientOrganizationId("");
+                setRecipient("كافة الوحدات");
+              }}
+              className={`rounded-lg border px-3 py-2 text-right text-xs transition-colors ${
+                broadcastToDescendants
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "bg-muted/30 text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <span className="font-bold">كافة الوحدات</span>
+              <span className="mr-2">
+                إرسال نسخة إلى الجهات التابعة مباشرة ({descendants.length})
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="grid gap-1.5 text-xs font-bold">
@@ -2118,6 +2149,8 @@ function TelegramDetail({
     serialCode: string;
     organizationSerialCode?: string | null;
     senderOrganizationName?: string | null;
+    organizationId?: string | null;
+    currentOrganizationId?: string | null;
     verificationToken: string;
     subject: string;
     recipient: string;
@@ -2352,6 +2385,22 @@ function TelegramDetail({
       settings?.unitName ?? "قيادة الأمن الداخلي",
       numberSystem
     );
+    const organizationById = new Map(
+      routingDirectory.map(organization => [organization.id, organization])
+    );
+    const hierarchyNames: string[] = [];
+    let hierarchyId = telegram.currentOrganizationId ?? telegram.organizationId;
+    const visited = new Set<string>();
+    while (hierarchyId && !visited.has(hierarchyId)) {
+      const organization = organizationById.get(hierarchyId);
+      if (!organization) break;
+      hierarchyNames.unshift(organization.name);
+      visited.add(hierarchyId);
+      hierarchyId = organization.parentOrganizationId;
+    }
+    const organizationHierarchy = hierarchyNames.length
+      ? hierarchyNames
+      : [unitName, departmentName];
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,
@@ -2609,8 +2658,7 @@ function TelegramDetail({
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>
             <p class="government-subtitle">وزارة الداخلية</p>
-            <p>${escapeHtml(unitName)}</p>
-            <p>${escapeHtml(departmentName)}</p>
+            ${organizationHierarchy.map(name => `<p>${escapeHtml(localizeDigits(name, numberSystem))}</p>`).join("")}
           </div>
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">

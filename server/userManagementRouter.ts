@@ -77,7 +77,7 @@ export const userManagementRouter = router({
           ),
         password: z
           .string()
-          .min(4, "يجب أن تتكون كلمة المرور من 4 أحرف على الأقل")
+          .min(12, "كلمة المرور المؤقتة يجب ألا تقل عن 12 محرفًا")
           .max(256),
         badgeNumber: z.string().trim().max(80).nullable().optional(),
         phone: z.string().trim().max(32).nullable().optional(),
@@ -120,6 +120,7 @@ export const userManagementRouter = router({
           unit: input.unit?.trim() || null,
           email: null,
           loginMethod: "password",
+          mustChangePassword: true,
           role: "user",
           createdAt: now,
           updatedAt: now,
@@ -177,7 +178,7 @@ export const userManagementRouter = router({
         phone: z.string().trim().max(32).nullable(),
         rank: z.string().trim().max(120).nullable(),
         unit: z.string().trim().max(255).nullable(),
-        password: z.string().min(4).max(256).optional().or(z.literal("")),
+        password: z.string().min(12).max(256).optional().or(z.literal("")),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -266,7 +267,7 @@ export const userManagementRouter = router({
     .input(
       z.object({
         id: z.number().int().positive(),
-        password: z.string().min(4).max(256),
+        password: z.string().min(12).max(256),
       })
     )
     .mutation(async ({ ctx, input }) => {

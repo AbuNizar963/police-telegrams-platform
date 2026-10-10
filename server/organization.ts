@@ -885,6 +885,84 @@ export async function routeTelegram(input: {
   return mapRoute(data as Record<string, unknown>);
 }
 
+export type AtomicBroadcastCopyInput = {
+  targetOrganizationId: string;
+  serialNumber: number;
+  serialCode: string;
+  organizationSerialNumber: number;
+  organizationSerialCode: string;
+  verificationToken: string;
+  creatorName: string;
+  creatorEmail: string | null;
+  creatorBadgeId: string | null;
+  creatorIp: string | null;
+  creatorFingerprint: string;
+  subject: string;
+  recipient: string;
+  body: string;
+  classification: string;
+  priority: string;
+  category: string;
+  workflowReason?: string | null;
+  attachmentManifest?: string | null;
+  gpsLatitude?: string | null;
+  gpsLongitude?: string | null;
+};
+
+export async function routeTelegramBroadcastAtomic(input: {
+  telegramId: number;
+  toOrganizationId: string;
+  forwardedByUserId: number;
+  note: string;
+  copies: AtomicBroadcastCopyInput[];
+}): Promise<{
+  primaryRoute: TelegramRoute;
+  copies: Array<{
+    telegramId: number;
+    routeId: number;
+    targetOrganizationId: string;
+  }>;
+}> {
+  const membership = await getUserOrganizationMembership(
+    input.forwardedByUserId
+  );
+  if (!membership) {
+    throw new Error("User is not assigned to an active organization");
+  }
+
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "route_telegram_broadcast_atomic",
+    {
+      p_primary_telegram_id: input.telegramId,
+      p_from_organization_id: membership.organizationId,
+      p_primary_to_organization_id: input.toOrganizationId,
+      p_forwarded_by_user_id: input.forwardedByUserId,
+      p_primary_note: input.note,
+      p_copies: input.copies as never,
+    }
+  );
+
+  throwIfError(error, "Failed to route telegram broadcast atomically");
+
+  const result = data as {
+    primaryRoute?: Record<string, unknown>;
+    copies?: Array<Record<string, unknown>>;
+  } | null;
+
+  if (!result?.primaryRoute || !Array.isArray(result.copies)) {
+    throw new Error("Invalid response from atomic telegram broadcast");
+  }
+
+  return {
+    primaryRoute: mapRoute(result.primaryRoute),
+    copies: result.copies.map(copy => ({
+      telegramId: Number(copy.telegramId),
+      routeId: Number(copy.routeId),
+      targetOrganizationId: String(copy.targetOrganizationId),
+    })),
+  };
+}
+
 export async function getTelegramRouteById(
   routeId: number
 ): Promise<TelegramRoute | null> {
@@ -895,6 +973,15 @@ export async function getTelegramRouteById(
     .maybeSingle();
   throwIfError(error, "Failed to load telegram route");
   return data ? mapRoute(data as Record<string, unknown>) : null;
+}
+
+export async function hasTelegramRoute(telegramId: number): Promise<boolean> {
+  const { count, error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .select("id", { count: "exact", head: true })
+    .eq("telegramId", telegramId);
+  throwIfError(error, "Failed to check telegram routes");
+  return (count ?? 0) > 0;
 }
 
 export async function approveTelegramRoute(input: {

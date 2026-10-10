@@ -1,4 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./organization", async importOriginal => {
+  const actual = await importOriginal<typeof import("./organization")>();
+  return {
+    ...actual,
+    getUserOrganizationMembership: vi.fn().mockResolvedValue({
+      id: 1,
+      organizationId: "00000000-0000-4000-8000-000000000001",
+      userId: 9,
+      role: "dispatcher",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }),
+  };
+});
+
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 

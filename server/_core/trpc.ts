@@ -29,63 +29,81 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+const requirePasswordChange = t.middleware(async opts => {
+  const { ctx, next } = opts;
 
-export const adminProcedure = t.procedure.use(
-  t.middleware(async opts => {
-    const { ctx, next } = opts;
-
-    if (!ctx.user || ctx.user.role !== "admin") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: NOT_ADMIN_ERR_MSG,
-      });
-    }
-
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
+  if (ctx.user?.mustChangePassword) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "يجب تغيير كلمة المرور المؤقتة قبل استخدام النظام",
     });
-  })
+  }
+
+  return next();
+});
+
+export const authenticatedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = authenticatedProcedure.use(
+  requirePasswordChange
 );
 
-export const organizationAdminProcedure = t.procedure.use(
-  t.middleware(async opts => {
-    const { ctx, next } = opts;
+export const adminProcedure = t.procedure
+  .use(requireUser)
+  .use(requirePasswordChange)
+  .use(
+    t.middleware(async opts => {
+      const { ctx, next } = opts;
 
-    if (!ctx.user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: UNAUTHED_ERR_MSG,
+      if (!ctx.user || ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: NOT_ADMIN_ERR_MSG,
+        });
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user: ctx.user,
+        },
       });
-    }
+    })
+  );
 
-    if (ctx.user.role !== "admin") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "لا تملك صلاحية إدارة الجهة الشرطية",
+export const organizationAdminProcedure = t.procedure
+  .use(requireUser)
+  .use(requirePasswordChange)
+  .use(
+    t.middleware(async opts => {
+      const { ctx, next } = opts;
+
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: UNAUTHED_ERR_MSG,
+        });
+      }
+
+      // Organization privileges come from the active membership, not the
+      // platform-wide user role. Provisioned organization administrators use
+      // role="user" and receive organization_admin membership for their unit.
+      const membership = await getUserOrganizationMembership(ctx.user.id);
+      if (
+        !membership ||
+        !["system_admin", "organization_admin"].includes(membership.role)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا تملك صلاحية إدارة الجهة الشرطية",
+        });
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user: ctx.user,
+          organizationMembership: membership,
+        },
       });
-    }
-
-    const membership = await getUserOrganizationMembership(ctx.user.id);
-    if (
-      !membership ||
-      !["system_admin", "organization_admin"].includes(membership.role)
-    ) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "لا تملك صلاحية إدارة الجهة الشرطية",
-      });
-    }
-
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-        organizationMembership: membership,
-      },
-    });
-  })
-);
+    })
+  );

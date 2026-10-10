@@ -7,13 +7,14 @@ const MAX_HTML_BYTES = 8_000_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 
 export function isSafeExportHtml(html: string): boolean {
-  // The client sends a complete, already-rendered document. Validate executable
-  // markup and URL-bearing attributes, not visible text: a legitimate telegram
-  // may contain words such as "javascript:" or "data:" in its body.
+  // Validate executable markup and URL-bearing attributes, not visible text:
+  // a legitimate telegram may contain words such as "javascript:" or "data:".
+  // Cairo fonts and logos are intentionally embedded as safe data URLs by the
+  // authenticated client before this document reaches Chromium.
   const unsafeUrl =
-    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']\s*(?:javascript|vbscript):/i;
+    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']?\s*(?:javascript|vbscript):/i;
   const unsafeDataUrl =
-    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']\s*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,])/i;
+    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']?\s*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)/i;
   const eventHandler = /\bon[a-z][\w:-]*\s*=\s*["']/i;
   return (
     html.length > 0 &&
@@ -24,6 +25,14 @@ export function isSafeExportHtml(html: string): boolean {
     !eventHandler.test(html) &&
     !unsafeUrl.test(html) &&
     !unsafeDataUrl.test(html)
+  );
+}
+
+export function isAllowedExportResourceUrl(url: string): boolean {
+  return (
+    url === "about:blank" ||
+    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url) ||
+    /^data:font\/ttf;base64,/i.test(url)
   );
 }
 
@@ -57,6 +66,17 @@ export async function renderTelegramDocument(
     const page = await browser.newPage({
       viewport: { width: 794, height: 1123 },
       deviceScaleFactor: format === "png" ? 3 : 1,
+      javaScriptEnabled: false,
+    });
+
+    // Never allow untrusted export HTML to access localhost, cloud metadata,
+    // the application API, or arbitrary external hosts while rendering.
+    await page.route("**/*", async route => {
+      if (isAllowedExportResourceUrl(route.request().url())) {
+        await route.continue();
+        return;
+      }
+      await route.abort("blockedbyclient");
     });
 
     await page.emulateMedia({ media: "print" });

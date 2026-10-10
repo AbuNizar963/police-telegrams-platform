@@ -2398,9 +2398,32 @@ function TelegramDetail({
       visited.add(hierarchyId);
       hierarchyId = organization.parentOrganizationId;
     }
-    const organizationHierarchy = hierarchyNames.length
-      ? hierarchyNames
+    // The first two header lines are fixed institutional headings. Some
+    // organization trees include "وزارة الداخلية" as a parent node, so omit
+    // fixed headings from the dynamic hierarchy to avoid displaying them twice.
+    const hierarchyCandidates = hierarchyNames.length
+      ? [...hierarchyNames]
       : [unitName, departmentName];
+    const senderOrganizationNameRaw = telegram.senderOrganizationName?.trim();
+    if (
+      senderOrganizationNameRaw &&
+      !hierarchyCandidates.some(
+        name =>
+          localizeDigits(name, numberSystem).trim() ===
+          senderOrganizationName.trim()
+      )
+    ) {
+      // The hierarchy above ends at the current command in some telegram
+      // records. Include the actual sending unit as the final header line.
+      hierarchyCandidates.push(senderOrganizationNameRaw);
+    }
+    const fixedHeaderNames = new Set([
+      "الجمهورية العربية السورية",
+      "وزارة الداخلية",
+    ]);
+    const organizationHierarchy = hierarchyCandidates.filter(
+      name => !fixedHeaderNames.has(name.trim())
+    );
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,
@@ -2814,6 +2837,66 @@ function TelegramDetail({
         }
       )
     );
+
+    // Chromium renders this document from about:blank with all network
+    // requests disabled. Inline the same bundled Cairo fonts used by the
+    // preview so Arabic glyphs never depend on a relative URL resolving.
+    const fontWeights = ["400", "500", "600", "700"] as const;
+    const fontDataUrls = new Map<string, string>(
+      await Promise.all(
+        fontWeights.map(async weight => {
+          const response = await fetch(`/fonts/cairo-${weight}.ttf`, {
+            credentials: "same-origin",
+          });
+          if (!response.ok) {
+            throw new Error(`تعذر تحميل خط الوثيقة Cairo (${weight})`);
+          }
+
+          const fontBlob = await response.blob();
+          if (fontBlob.size === 0) {
+            throw new Error(`ملف خط الوثيقة Cairo (${weight}) فارغ`);
+          }
+
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (typeof reader.result === "string") {
+                resolve(reader.result);
+              } else {
+                reject(new Error("تعذر تجهيز خط الوثيقة للتصدير"));
+              }
+            };
+            reader.onerror = () =>
+              reject(reader.error ?? new Error("تعذر قراءة خط الوثيقة"));
+            reader.readAsDataURL(fontBlob);
+          });
+
+          return [`cairo-${weight}.ttf`, dataUrl] as const;
+        })
+      )
+    );
+
+    const exportStyles = Array.from(wrapper.querySelectorAll("style"));
+    for (const style of exportStyles) {
+      let css = style.textContent ?? "";
+      for (const weight of fontWeights) {
+        const fontName = `cairo-${weight}.ttf`;
+        const dataUrl = fontDataUrls.get(fontName);
+        if (!dataUrl) {
+          throw new Error(`خط الوثيقة Cairo (${weight}) غير جاهز`);
+        }
+        css = css.replaceAll(`url("/fonts/${fontName}")`, `url("${dataUrl}")`);
+      }
+      style.textContent = css;
+    }
+
+    if (
+      exportStyles.some(style =>
+        /url\(["']?\/fonts\/cairo-\d+\.ttf/.test(style.textContent ?? "")
+      )
+    ) {
+      throw new Error("تعذر تضمين خطوط العربية في الوثيقة");
+    }
 
     const html = `<!doctype html>
 <html lang="ar" dir="rtl">

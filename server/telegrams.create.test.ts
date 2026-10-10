@@ -61,8 +61,14 @@ function createContext(): TrpcContext {
 describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocked.allocateSerialNumber.mockResolvedValue(1001);
-    mocked.allocateOrganizationSerialNumber.mockResolvedValue(1);
+    let allocatedSerialNumber = 1000;
+    let allocatedOrganizationSerialNumber = 0;
+    mocked.allocateSerialNumber.mockImplementation(
+      async () => ++allocatedSerialNumber
+    );
+    mocked.allocateOrganizationSerialNumber.mockImplementation(
+      async () => ++allocatedOrganizationSerialNumber
+    );
     mocked.getSuggestedOrganizationSerialNumber.mockResolvedValue(1);
     mocked.reserveOrganizationSerialNumber.mockResolvedValue(77);
     mocked.getUserOrganizationId.mockResolvedValue(
@@ -488,8 +494,8 @@ describe("telegrams.create", () => {
         copies: [
           expect.objectContaining({
             targetOrganizationId: targets[1].id,
-            serialNumber: 1001,
-            organizationSerialNumber: 1,
+            serialNumber: 1002,
+            organizationSerialNumber: 2,
             subject: "تعميم اختبار",
             recipient: "الجهات التابعة",
             body: "محتوى التعميم",

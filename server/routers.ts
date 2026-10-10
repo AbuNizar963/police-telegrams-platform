@@ -2009,16 +2009,89 @@ export const appRouter = router({
           throw error;
         }
 
-        if (configuredDestination) {
-          const route = await routeTelegram({
-            telegramId: telegram.id,
-            toOrganizationId: configuredDestination.id,
-            forwardedByUserId: ctx.user.id,
-            allowDraft: true,
-            note: input.recipientOrganizationId
-              ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
-              : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+        // A telegram has one active destination, so a broadcast is represented
+        // by one independently routed copy for each direct child organization.
+        // Track the primary telegram before routing so failures there are visible too.
+        const broadcastProgress: Array<{
+          telegramId: number;
+          organizationId: string;
+          status: "created" | "routed";
+        }> =
+          configuredDestination && broadcastTargets.length > 0
+            ? [
+                {
+                  telegramId: telegram.id,
+                  organizationId: configuredDestination.id,
+                  status: "created",
+                },
+              ]
+            : [];
+
+        const reportBroadcastFailure = async (error: unknown): Promise<never> => {
+          const failure =
+            error instanceof Error ? error.message : String(error);
+          let auditRecorded = false;
+
+          try {
+            await recordTelegramAction({
+              telegramId: telegram.id,
+              actorUserId: ctx.user.id,
+              action: "telegram.broadcast.partial_failure",
+              fromStatus: telegram.status,
+              toStatus: "partial_failure",
+              reason:
+                "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
+              metadata: {
+                failure,
+                targets: broadcastTargets.map(target => ({
+                  organizationId: target.id,
+                  name: target.name,
+                })),
+                progress: broadcastProgress,
+              },
+            });
+            auditRecorded = true;
+          } catch (auditError) {
+            console.error(
+              "[Telegram broadcast] Failed to persist partial-failure audit",
+              auditError
+            );
+          }
+
+          const auditMessage = auditRecorded
+            ? "سُجّلت حالة الإرسال الجزئي للمراجعة."
+            : "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا؛ يلزم فحص السجلات والنسخ يدويًا.";
+
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `تعذر إكمال الإرسال الجماعي للبرقية ${telegram.serialCode}. ${auditMessage} معرّف البرقية الأساسية: ${telegram.id}.`,
+            cause: error,
           });
+        };
+
+        if (configuredDestination) {
+          let route: Awaited<ReturnType<typeof routeTelegram>>;
+          try {
+            route = await routeTelegram({
+              telegramId: telegram.id,
+              toOrganizationId: configuredDestination.id,
+              forwardedByUserId: ctx.user.id,
+              allowDraft: true,
+              note: input.recipientOrganizationId
+                ? "إحالة إلى الجهة المختارة عند إنشاء البرقية"
+                : "إحالة تلقائية إلى الجهة المحددة للقسم أو المخفر",
+            });
+          } catch (error) {
+            if (broadcastTargets.length > 0) {
+              await reportBroadcastFailure(error);
+            }
+            throw error;
+          }
+
+          if (broadcastProgress.length > 0) {
+            broadcastProgress[0].status = "routed";
+          }
+
           try {
             const sourceOrganization =
               await getOrganizationById(organizationId);
@@ -2042,22 +2115,6 @@ export const appRouter = router({
           if (routedTelegram) telegram = routedTelegram;
         }
 
-        // A telegram has one active destination, so a broadcast is represented
-        // by one independently routed copy for each direct child organization.
-        // Record partial progress durably if creating or routing a copy fails.
-        const broadcastProgress: Array<{
-          telegramId: number;
-          organizationId: string;
-          status: "created" | "routed";
-        }> = configuredDestination
-          ? [
-              {
-                telegramId: telegram.id,
-                organizationId: configuredDestination.id,
-                status: "routed",
-              },
-            ]
-          : [];
         try {
           for (const target of broadcastTargets.slice(1)) {
             const targetOrganizationSerialNumber =
@@ -2102,45 +2159,7 @@ export const appRouter = router({
             progress.status = "routed";
           }
         } catch (error) {
-          const failure =
-            error instanceof Error ? error.message : String(error);
-          let auditRecorded = false;
-
-          try {
-            await recordTelegramAction({
-              telegramId: telegram.id,
-              actorUserId: ctx.user.id,
-              action: "telegram.broadcast.partial_failure",
-              fromStatus: telegram.status,
-              toStatus: "partial_failure",
-              reason:
-                "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
-              metadata: {
-                failure,
-                targets: broadcastTargets.map(target => ({
-                  organizationId: target.id,
-                  name: target.name,
-                })),
-                progress: broadcastProgress,
-              },
-            });
-            auditRecorded = true;
-          } catch (auditError) {
-            console.error(
-              "[Telegram broadcast] Failed to persist partial-failure audit",
-              auditError
-            );
-          }
-
-          const auditMessage = auditRecorded
-            ? "سُجّلت حالة الإرسال الجزئي للمراجعة."
-            : "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا؛ يلزم فحص السجلات والنسخ يدويًا.";
-
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: `تعذر إكمال الإرسال الجماعي للبرقية ${telegram.serialCode}. ${auditMessage} معرّف البرقية الأساسية: ${telegram.id}.`,
-            cause: error,
-          });
+          await reportBroadcastFailure(error);
         }
 
         await writeAuditLog({

@@ -21,7 +21,10 @@ const mocked = vi.hoisted(() => ({
   recordTelegramVersion: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
   listRoutingTargets: vi.fn(),
+  listOrganizationDescendants: vi.fn(),
   routeTelegram: vi.fn(),
+  routeTelegramBroadcastAtomic: vi.fn(),
+  hasTelegramRoute: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -31,7 +34,10 @@ vi.mock("./organization", async importOriginal => {
     ...actual,
     getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
     listRoutingTargets: mocked.listRoutingTargets,
+    listOrganizationDescendants: mocked.listOrganizationDescendants,
     routeTelegram: mocked.routeTelegram,
+    routeTelegramBroadcastAtomic: mocked.routeTelegramBroadcastAtomic,
+    hasTelegramRoute: mocked.hasTelegramRoute,
   };
 });
 
@@ -57,8 +63,14 @@ function createContext(): TrpcContext {
 describe("telegrams.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocked.allocateSerialNumber.mockResolvedValue(1001);
-    mocked.allocateOrganizationSerialNumber.mockResolvedValue(1);
+    let allocatedSerialNumber = 1000;
+    let allocatedOrganizationSerialNumber = 0;
+    mocked.allocateSerialNumber.mockImplementation(
+      async () => ++allocatedSerialNumber
+    );
+    mocked.allocateOrganizationSerialNumber.mockImplementation(
+      async () => ++allocatedOrganizationSerialNumber
+    );
     mocked.getSuggestedOrganizationSerialNumber.mockResolvedValue(1);
     mocked.reserveOrganizationSerialNumber.mockResolvedValue(77);
     mocked.getUserOrganizationId.mockResolvedValue(
@@ -81,7 +93,13 @@ describe("telegrams.create", () => {
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
     mocked.listRoutingTargets.mockResolvedValue([]);
+    mocked.listOrganizationDescendants.mockResolvedValue([]);
     mocked.routeTelegram.mockResolvedValue(undefined);
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValue({
+      primaryRoute: { id: 11 },
+      copies: [],
+    });
+    mocked.hasTelegramRoute.mockResolvedValue(false);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -279,6 +297,67 @@ describe("telegrams.create", () => {
     expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
   });
 
+  it("does not return an unrouted failed broadcast as an idempotent success", async () => {
+    const existingDraft = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "OUT-2026-10-10-01001",
+      status: "draft",
+    };
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(existingDraft);
+    mocked.hasTelegramRoute.mockResolvedValue(false);
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+        idempotencyKey: "failed-broadcast-0001",
+      })
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("لم تُعتبر المحاولة السابقة ناجحة"),
+    });
+
+    expect(mocked.hasTelegramRoute).toHaveBeenCalledWith(existingDraft.id);
+    expect(mocked.getUserOrganizationId).not.toHaveBeenCalled();
+  });
+
+  it("returns an already-routed broadcast for a repeated idempotency key", async () => {
+    const existingDraft = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "OUT-2026-10-10-01001",
+      status: "draft",
+    };
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(existingDraft);
+    mocked.hasTelegramRoute.mockResolvedValue(true);
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+        idempotencyKey: "successful-broadcast-0001",
+      })
+    ).resolves.toEqual(existingDraft);
+
+    expect(mocked.hasTelegramRoute).toHaveBeenCalledWith(existingDraft.id);
+    expect(mocked.getUserOrganizationId).not.toHaveBeenCalled();
+  });
+
   it("routes a new telegram to the organization configured for the source unit", async () => {
     const destination = {
       id: "00000000-0000-0000-0000-000000000002",
@@ -350,5 +429,264 @@ describe("telegrams.create", () => {
       allowDraft: true,
       note: "إحالة إلى الجهة المختارة عند إنشاء البرقية",
     });
+  });
+
+  it("reports an atomic broadcast failure without claiming that copies were committed", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000004",
+        name: "الجهة التابعة الثالثة",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegramBroadcastAtomic.mockRejectedValueOnce(
+      new Error("routing copy failed")
+    );
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+      })
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: expect.stringContaining(
+        "تراجعت مسارات الإرسال ونسخه ذريًا، وسُجّل الفشل للمراجعة."
+      ),
+    });
+
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        toOrganizationId: targets[0].id,
+        copies: expect.arrayContaining([
+          expect.objectContaining({
+            targetOrganizationId: targets[1].id,
+          }),
+          expect.objectContaining({
+            targetOrganizationId: targets[2].id,
+          }),
+        ]),
+      })
+    );
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        action: "telegram.broadcast.atomic_failure",
+        fromStatus: "draft",
+        toStatus: "draft",
+        metadata: expect.objectContaining({
+          failure: "routing copy failed",
+          rollbackGuaranteed: true,
+          progress: [
+            {
+              telegramId: 7,
+              organizationId: targets[0].id,
+              status: "created",
+            },
+          ],
+        }),
+      })
+    );
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
+  });
+
+  it("routes the primary telegram and every copy through one atomic RPC", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValueOnce({
+      primaryRoute: { id: 11 },
+      copies: [
+        {
+          telegramId: 8,
+          routeId: 12,
+          targetOrganizationId: targets[1].id,
+        },
+      ],
+    });
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+      })
+    ).resolves.toMatchObject({ id: 7 });
+
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        toOrganizationId: targets[0].id,
+        forwardedByUserId: 42,
+        copies: [
+          expect.objectContaining({
+            targetOrganizationId: targets[1].id,
+            serialNumber: 1002,
+            organizationSerialNumber: 2,
+            subject: "تعميم اختبار",
+            recipient: "الجهات التابعة",
+            body: "محتوى التعميم",
+          }),
+        ],
+      })
+    );
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "telegram.broadcast.atomic_failure",
+      })
+    );
+  });
+
+  it("does not misreport a committed broadcast when refreshing the primary telegram fails", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValueOnce({
+      primaryRoute: { id: 11 },
+      copies: [
+        {
+          telegramId: 8,
+          routeId: 12,
+          targetOrganizationId: targets[1].id,
+        },
+      ],
+    });
+    mocked.getTelegramById.mockRejectedValueOnce(
+      new Error("primary telegram refresh failed")
+    );
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+
+    try {
+      const caller = appRouter.createCaller(createContext());
+
+      await expect(
+        caller.telegrams.create({
+          subject: "تعميم اختبار",
+          recipient: "الجهات التابعة",
+          body: "محتوى التعميم",
+          classification: "normal",
+          priority: "normal",
+          category: "administrative",
+          broadcastToDescendants: true,
+        })
+      ).resolves.toMatchObject({ id: 7 });
+
+      expect(mocked.recordTelegramAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "telegram.broadcast.atomic_failure",
+        })
+      );
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "[Telegram broadcast] Primary telegram refresh failed after commit",
+        expect.any(Error)
+      );
+    } finally {
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it("reports manual review if the atomic broadcast failure cannot be audited", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegramBroadcastAtomic.mockRejectedValueOnce(
+      new Error("copy creation failed")
+    );
+    mocked.recordTelegramAction.mockRejectedValueOnce(
+      new Error("audit persistence failed")
+    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const caller = appRouter.createCaller(createContext());
+
+      await expect(
+        caller.telegrams.create({
+          subject: "تعميم اختبار",
+          recipient: "الجهات التابعة",
+          body: "محتوى التعميم",
+          classification: "normal",
+          priority: "normal",
+          category: "administrative",
+          broadcastToDescendants: true,
+        })
+      ).rejects.toMatchObject({
+        code: "INTERNAL_SERVER_ERROR",
+        message: expect.stringContaining(
+          "تراجعت مسارات الإرسال ونسخه ذريًا، لكن تعذّر حفظ سجل التدقيق؛ يلزم مراجعة السجلات يدويًا."
+        ),
+      });
+
+      expect(mocked.recordTelegramAction).toHaveBeenCalledTimes(1);
+      expect(consoleError).toHaveBeenCalledWith(
+        "[Telegram broadcast] Failed to persist partial-failure audit",
+        expect.any(Error)
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

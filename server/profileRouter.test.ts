@@ -46,7 +46,9 @@ describe("profile router", () => {
     }
   );
 
-  it("blocks protected data until the temporary password is changed", async () => {
+  it(
+    "blocks protected data until the temporary password is changed",
+    async () => {
     const context = contextFor({ mustChangePassword: true });
     await expect(
       appRouter.createCaller(context).dashboard.stats()

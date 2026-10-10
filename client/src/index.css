@@ -186,11 +186,11 @@
   }
 
   .app-modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-5;
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-0 backdrop-blur-sm;
   }
 
   .app-modal-shell {
-    @apply h-[calc(100dvh-1rem)] max-h-none min-h-0 w-full max-w-6xl overflow-x-hidden overflow-y-auto rounded-2xl bg-background shadow-2xl sm:h-auto sm:max-h-[94vh];
+    @apply h-screen max-h-screen min-h-0 w-full max-w-none overflow-x-hidden overflow-y-auto rounded-2xl bg-background shadow-2xl;
   }
 }
 

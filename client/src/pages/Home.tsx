@@ -3631,11 +3631,8 @@ function Modal({
   compact?: boolean;
 }) {
   return (
-    <div className="telegram-print-modal app-modal-overlay overflow-x-hidden overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:overflow-hidden sm:p-6">
-      <div
-        dir="rtl"
-        className={`app-modal-shell p-3 sm:p-7 ${wide ? "sm:max-w-5xl" : compact ? "sm:max-w-3xl" : "sm:max-w-2xl"}`}
-      >
+    <div className="telegram-print-modal app-modal-overlay overflow-x-hidden overflow-y-auto sm:overflow-hidden sm:p-6">
+      <div dir="rtl" className="app-modal-shell p-3 sm:p-7">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {subtitle && (

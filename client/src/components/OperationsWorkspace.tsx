@@ -115,7 +115,7 @@ export default function OperationsWorkspace() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="operations-workspace-title"
-        className="app-modal-shell flex max-w-7xl flex-col overflow-hidden"
+        className="app-modal-shell flex flex-col overflow-hidden"
       >
         <header className="flex items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-7 sm:py-4">
           <div className="min-w-0">

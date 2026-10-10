@@ -467,6 +467,65 @@ describe("telegrams.create", () => {
     expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
   });
 
+  it("records partial progress when creating a broadcast copy fails", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.createTelegram
+      .mockImplementationOnce(async input => ({
+        id: 7,
+        createdAt: new Date(),
+        ...input,
+      }))
+      .mockRejectedValueOnce(new Error("copy creation failed"));
+    mocked.routeTelegram.mockResolvedValueOnce({ id: 11 });
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+      })
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
+    });
+
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        action: "telegram.broadcast.partial_failure",
+        metadata: expect.objectContaining({
+          failure: "copy creation failed",
+          progress: [
+            {
+              telegramId: 7,
+              organizationId: targets[0].id,
+              status: "routed",
+            },
+          ],
+        }),
+      })
+    );
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(2);
+  });
+
   it("warns that manual review is required when partial-failure audit persistence fails", async () => {
     const targets = [
       {

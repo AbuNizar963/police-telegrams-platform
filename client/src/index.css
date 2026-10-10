@@ -199,6 +199,47 @@
     height: 100%;
     max-height: 100%;
   }
+
+  [data-sonner-toaster].toaster {
+    font-family: "Cairo", sans-serif;
+  }
+
+  [data-sonner-toaster].toaster [data-sonner-toast] {
+    min-height: 58px;
+    padding: 13px 16px;
+    border-width: 1px;
+    box-shadow:
+      0 18px 40px rgb(16 35 63 / 0.14),
+      0 2px 8px rgb(16 35 63 / 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  [data-sonner-toaster].toaster [data-sonner-toast] [data-description] {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
+    width: 20px;
+    height: 20px;
+  }
+
+  [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
+    width: 21px;
+    height: 21px;
+  }
+
+  .dark [data-sonner-toaster].toaster [data-sonner-toast] {
+    box-shadow:
+      0 18px 40px rgb(0 0 0 / 0.3),
+      0 2px 8px rgb(0 0 0 / 0.18);
+  }
 }
 
 @supports (height: 100dvh) {

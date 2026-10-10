@@ -2050,15 +2050,21 @@ export const appRouter = router({
           organizationId: string;
           status: "created" | "routed";
         }> = configuredDestination
-          ? [{ telegramId: telegram.id, organizationId: configuredDestination.id, status: "routed" }]
+          ? [
+              {
+                telegramId: telegram.id,
+                organizationId: configuredDestination.id,
+                status: "routed",
+              },
+            ]
           : [];
         try {
           for (const target of broadcastTargets.slice(1)) {
             const targetOrganizationSerialNumber =
               await allocateOrganizationSerialNumber(organizationId, "outgoing");
             const targetSerialNumber = await allocateSerialNumber();
-            const targetSerialCode = numbering.serialPrefix + "-" + dateCode + "-" + String(targetSerialNumber).padStart(5, "0");
-            const targetOrganizationSerialCode = numbering.serialPrefix + "-" + dateCode + "-" + String(targetOrganizationSerialNumber).padStart(5, "0");
+            const targetSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
+            const targetOrganizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
             const copy = await createTelegram({
               ...telegramInput,
               idempotencyKey: null,
@@ -2077,7 +2083,11 @@ export const appRouter = router({
               creatorIp,
               creatorFingerprint: ctx.user.authUserId,
             });
-            const progress: (typeof broadcastProgress)[number] = { telegramId: copy.id, organizationId: target.id, status: "created" };
+            const progress: (typeof broadcastProgress)[number] = {
+              telegramId: copy.id,
+              organizationId: target.id,
+              status: "created",
+            };
             broadcastProgress.push(progress);
             await routeTelegram({
               telegramId: copy.id,
@@ -2100,12 +2110,18 @@ export const appRouter = router({
               reason: "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
               metadata: {
                 failure,
-                targets: broadcastTargets.map(target => ({ organizationId: target.id, name: target.name })),
+                targets: broadcastTargets.map(target => ({
+                  organizationId: target.id,
+                  name: target.name,
+                })),
                 progress: broadcastProgress,
               },
             });
           } catch (auditError) {
-            console.error("[Telegram broadcast] Failed to persist partial-failure audit", auditError);
+            console.error(
+              "[Telegram broadcast] Failed to persist partial-failure audit",
+              auditError
+            );
           }
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",

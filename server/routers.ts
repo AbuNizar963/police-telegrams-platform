@@ -8,6 +8,10 @@ import {
   setAuthenticatedSession,
   verifyPassword,
 } from "./_core/auth";
+import {
+  clearSuccessfulLoginRateLimit,
+  enforceLoginRateLimit,
+} from "./_core/loginRateLimit";
 import { ENV } from "./_core/env";
 import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
@@ -281,6 +285,11 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const normalizedUsername = input.username.trim();
+        const loginRateLimitKey = await enforceLoginRateLimit(
+          ctx.req,
+          ctx.res,
+          normalizedUsername
+        );
 
         let user = await authenticateLocalUser(
           normalizedUsername,
@@ -336,6 +345,15 @@ export const appRouter = router({
             code: "UNAUTHORIZED",
             message: "اسم المستخدم أو كلمة المرور غير صحيحة",
           });
+        }
+
+        try {
+          await clearSuccessfulLoginRateLimit(loginRateLimitKey);
+        } catch (error) {
+          console.warn(
+            "[Auth] Failed to clear successful login rate limit",
+            error
+          );
         }
 
         await setAuthenticatedSession(ctx.res, user);

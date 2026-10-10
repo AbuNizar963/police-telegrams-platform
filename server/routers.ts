@@ -9,6 +9,7 @@ import {
   verifyPassword,
 } from "./_core/auth";
 import { ENV } from "./_core/env";
+import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
 import { z } from "zod";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
@@ -784,6 +785,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (!isAllowedPushEndpoint(input.endpoint)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "عنوان الإشعار لا ينتمي إلى مزوّد إشعارات موثوق",
+          });
+        }
+
         const organizationId = await getUserOrganizationId(ctx.user.id);
         await upsertPushSubscription({
           userId: ctx.user.id,

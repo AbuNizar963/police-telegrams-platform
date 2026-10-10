@@ -540,7 +540,7 @@ export default function OwnerOrganizationManagement() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="owner-org-title"
-        className="max-h-[94vh] min-w-0 w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-t-2xl bg-background p-3 shadow-2xl sm:rounded-2xl sm:p-7"
+        className="h-screen max-h-screen min-h-0 min-w-0 w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-none bg-background p-3 shadow-2xl sm:h-auto sm:max-h-[94vh] sm:rounded-2xl sm:p-7"
       >
         <header className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

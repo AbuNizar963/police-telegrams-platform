@@ -24,6 +24,7 @@ const mocked = vi.hoisted(() => ({
   listOrganizationDescendants: vi.fn(),
   routeTelegram: vi.fn(),
   routeTelegramBroadcastAtomic: vi.fn(),
+  hasTelegramRoute: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -36,6 +37,7 @@ vi.mock("./organization", async importOriginal => {
     listOrganizationDescendants: mocked.listOrganizationDescendants,
     routeTelegram: mocked.routeTelegram,
     routeTelegramBroadcastAtomic: mocked.routeTelegramBroadcastAtomic,
+    hasTelegramRoute: mocked.hasTelegramRoute,
   };
 });
 
@@ -97,6 +99,7 @@ describe("telegrams.create", () => {
       primaryRoute: { id: 11 },
       copies: [],
     });
+    mocked.hasTelegramRoute.mockResolvedValue(false);
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
@@ -292,6 +295,67 @@ describe("telegrams.create", () => {
     expect(mocked.writeAuditLog).not.toHaveBeenCalled();
     expect(mocked.recordTelegramAction).not.toHaveBeenCalled();
     expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
+  });
+
+  it("does not return an unrouted failed broadcast as an idempotent success", async () => {
+    const existingDraft = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "OUT-2026-10-10-01001",
+      status: "draft",
+    };
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(existingDraft);
+    mocked.hasTelegramRoute.mockResolvedValue(false);
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+        idempotencyKey: "failed-broadcast-0001",
+      })
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("لم تُعتبر المحاولة السابقة ناجحة"),
+    });
+
+    expect(mocked.hasTelegramRoute).toHaveBeenCalledWith(existingDraft.id);
+    expect(mocked.getUserOrganizationId).not.toHaveBeenCalled();
+  });
+
+  it("returns an already-routed broadcast for a repeated idempotency key", async () => {
+    const existingDraft = {
+      id: 7,
+      serialNumber: 1001,
+      serialCode: "OUT-2026-10-10-01001",
+      status: "draft",
+    };
+    mocked.getTelegramByIdempotencyKey.mockResolvedValue(existingDraft);
+    mocked.hasTelegramRoute.mockResolvedValue(true);
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+        idempotencyKey: "successful-broadcast-0001",
+      })
+    ).resolves.toEqual(existingDraft);
+
+    expect(mocked.hasTelegramRoute).toHaveBeenCalledWith(existingDraft.id);
+    expect(mocked.getUserOrganizationId).not.toHaveBeenCalled();
   });
 
   it("routes a new telegram to the organization configured for the source unit", async () => {

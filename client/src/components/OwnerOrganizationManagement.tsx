@@ -54,6 +54,7 @@ type OrganizationSettingsDraft = {
   dateFormat:
     | "dd/MM/yyyy HH:mm:ss"
     | "yyyy-MM-dd HH:mm:ss"
+    | "yyyy/MM/dd HH:mm:ss"
     | "dd MMM yyyy HH:mm";
   numberSystem: "latin" | "arabic";
   logoUrl: string;
@@ -71,7 +72,7 @@ const emptyOrganizationSettings = (
   serialStart: 1,
   incomingSerialStart: 1,
   timezone: "Asia/Damascus",
-  dateFormat: "dd/MM/yyyy HH:mm:ss",
+  dateFormat: "yyyy/MM/dd HH:mm:ss",
   numberSystem: "latin",
   logoUrl: "",
 });
@@ -207,10 +208,11 @@ export default function OwnerOrganizationManagement() {
       dateFormat: [
         "dd/MM/yyyy HH:mm:ss",
         "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
         "dd MMM yyyy HH:mm",
       ].includes(saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
         ? (saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
-        : "dd/MM/yyyy HH:mm:ss",
+        : "yyyy/MM/dd HH:mm:ss",
       numberSystem: saved.numberSystem === "arabic" ? "arabic" : "latin",
       logoUrl: saved.logoUrl ?? "",
     });
@@ -1093,6 +1095,9 @@ export default function OwnerOrganizationManagement() {
                       </option>
                       <option value="yyyy-MM-dd HH:mm:ss">
                         2026-09-22 14:30:00
+                      </option>
+                      <option value="yyyy/MM/dd HH:mm:ss">
+                        2026/09/22 14:30:00
                       </option>
                       <option value="dd MMM yyyy HH:mm">
                         22 سبتمبر 2026 14:30

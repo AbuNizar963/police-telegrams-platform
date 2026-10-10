@@ -390,7 +390,7 @@ export async function getOrCreateSettings(
         1
     ),
     timezone: template.timezone ?? "Asia/Damascus",
-    dateFormat: template.dateFormat ?? "dd/MM/yyyy HH:mm:ss",
+    dateFormat: template.dateFormat ?? "yyyy/MM/dd HH:mm:ss",
     numberSystem: template.numberSystem ?? "latin",
     logoUrl: template.logoUrl ?? null,
     updatedByUserId: userId,

@@ -162,6 +162,7 @@ const organizationSettingsPayloadSchema = z.object({
   dateFormat: z.enum([
     "dd/MM/yyyy HH:mm:ss",
     "yyyy-MM-dd HH:mm:ss",
+    "yyyy/MM/dd HH:mm:ss",
     "dd MMM yyyy HH:mm",
   ]),
   numberSystem: z.enum(["latin", "arabic"]),
@@ -456,7 +457,7 @@ export const appRouter = router({
             nextOutgoingSerial: 1,
             nextIncomingSerial: 1,
             timezone: "Asia/Damascus",
-            dateFormat: "dd/MM/yyyy HH:mm:ss",
+            dateFormat: "yyyy/MM/dd HH:mm:ss",
             numberSystem: "latin" as const,
             logoUrl: null,
             logoKey: null,
@@ -937,7 +938,7 @@ export const appRouter = router({
             .trim()
             .min(4)
             .max(32)
-            .default("dd/MM/yyyy HH:mm:ss"),
+            .default("yyyy/MM/dd HH:mm:ss"),
           numberSystem: z.enum(["latin", "arabic"]).default("latin"),
           logoUrl: z.string().url().max(2000).nullable().optional(),
         })

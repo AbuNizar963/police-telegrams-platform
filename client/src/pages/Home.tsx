@@ -221,7 +221,9 @@ function formatConfiguredDate(
   const text =
     settings?.dateFormat === "yyyy-MM-dd HH:mm:ss"
       ? `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
-      : `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
+      : settings?.dateFormat === "yyyy/MM/dd HH:mm:ss"
+        ? `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+        : `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
   return localizeDigits(text, settings?.numberSystem ?? "latin");
 }
 
@@ -3975,7 +3977,7 @@ function DepartmentSettingsModal({
     settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
   );
   const [timezone, setTimezone] = useState("Asia/Riyadh");
-  const [dateFormat, setDateFormat] = useState("dd/MM/yyyy HH:mm:ss");
+  const [dateFormat, setDateFormat] = useState("yyyy/MM/dd HH:mm:ss");
   const [numberSystem, setNumberSystem] =
     useState<SupportedNumberSystem>("latin");
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
@@ -4030,7 +4032,7 @@ function DepartmentSettingsModal({
       settings?.incomingSerialPrefix ?? settings?.serialPrefix ?? "POL"
     );
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
-    setDateFormat(settings?.dateFormat ?? "dd/MM/yyyy HH:mm:ss");
+    setDateFormat(settings?.dateFormat ?? "yyyy/MM/dd HH:mm:ss");
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
@@ -4315,6 +4317,7 @@ function DepartmentSettingsModal({
               >
                 <option value="dd/MM/yyyy HH:mm:ss">22/09/2026 14:30:00</option>
                 <option value="yyyy-MM-dd HH:mm:ss">2026-09-22 14:30:00</option>
+                <option value="yyyy/MM/dd HH:mm:ss">2026/09/22 14:30:00</option>
                 <option value="dd MMM yyyy HH:mm">22 سبتمبر 2026 14:30</option>
               </select>
             </label>

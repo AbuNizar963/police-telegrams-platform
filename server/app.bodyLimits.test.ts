@@ -51,19 +51,13 @@ describe("request body limits", () => {
     ).toBe("50mb");
   });
 
-  it(
-    "allows the HTML export limit plus JSON overhead without applying it globally",
-    () => {
-      expect(getJsonBodyLimit("/api/telegram-render")).toBe("3mb");
-    }
-  );
+  it("allows the HTML export limit plus JSON overhead without applying it globally", () => {
+    expect(getJsonBodyLimit("/api/telegram-render")).toBe("3mb");
+  });
 
-  it(
-    "rejects unauthenticated large-payload requests before parsing their bodies",
-    async () => {
-      await expect(
-        postUnauthenticated("/api/trpc/telegrams.uploadAttachment")
-      ).resolves.toBe(401);
-    }
-  );
+  it("rejects unauthenticated uploads before parsing JSON", async () => {
+    await expect(
+      postUnauthenticated("/api/trpc/telegrams.uploadAttachment")
+    ).resolves.toBe(401);
+  });
 });

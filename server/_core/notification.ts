@@ -6,6 +6,7 @@ import {
   type PushSubscriptionRecord,
 } from "../db";
 import { ENV } from "./env";
+import { isAllowedPushEndpoint } from "./pushEndpoint";
 
 export type NotificationPayload = {
   title: string;
@@ -101,6 +102,15 @@ export async function notifyOrganizationTelegramCreated(input: {
   let removed = 0;
   await Promise.all(
     subscriptions.map(async (subscription: PushSubscriptionRecord) => {
+      if (!isAllowedPushEndpoint(subscription.endpoint)) {
+        try {
+          await deletePushSubscription(subscription.userId, subscription.endpoint);
+        } catch (error) {
+          console.warn("[Notification] Rejected push endpoint cleanup failed", error);
+        }
+        removed += 1;
+        return;
+      }
       try {
         await webpush.sendNotification(
           {
@@ -158,6 +168,15 @@ export async function notifyOrganizationRouteEvent(input: {
   let removed = 0;
   await Promise.all(
     subscriptions.map(async subscription => {
+      if (!isAllowedPushEndpoint(subscription.endpoint)) {
+        try {
+          await deletePushSubscription(subscription.userId, subscription.endpoint);
+        } catch (error) {
+          console.warn("[Notification] Rejected push endpoint cleanup failed", error);
+        }
+        removed += 1;
+        return;
+      }
       try {
         await webpush.sendNotification(
           {

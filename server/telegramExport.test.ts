@@ -24,14 +24,14 @@ describe("telegram export HTML validation", () => {
 
   it("continues rejecting executable markup and unsupported data URLs", () => {
     expect(
-      isSafeExportHtml("<html><script>alert(1)</script></html>")
+      isSafeExportHtml("<html><script>alert(1)</script></html>"),
     ).toBe(false);
     expect(
-      isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>')
+      isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>'),
     ).toBe(false);
     expect(
       isSafeExportHtml(
-        '<style>@font-face{src:url("data:font/ttf,raw")}</style>'
+        '<style>@font-face{src:url("data:font/ttf,raw")}</style>',
       )
     ).toBe(false);
     expect(isSafeExportHtml("")).toBe(false);
@@ -42,13 +42,13 @@ describe("telegram export resource isolation", () => {
   it("allows the blank origin, inline images, and embedded TTF fonts", () => {
     expect(isAllowedExportResourceUrl("about:blank")).toBe(true);
     expect(
-      isAllowedExportResourceUrl("data:image/png;base64,iVBORw0KGgo=")
+      isAllowedExportResourceUrl("data:image/png;base64,iVBORw0KGgo="),
     ).toBe(true);
     expect(
-      isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E")
+      isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E"),
     ).toBe(true);
     expect(
-      isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")
+      isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw=="),
     ).toBe(true);
   });
 
@@ -60,11 +60,11 @@ describe("telegram export resource isolation", () => {
       false
     );
     expect(
-      isAllowedExportResourceUrl("http://169.254.169.254/latest/meta-data/")
+      isAllowedExportResourceUrl("http://169.254.169.254/latest/meta-data/"),
     ).toBe(false);
     expect(isAllowedExportResourceUrl("file:///etc/passwd")).toBe(false);
     expect(
-      isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>")
+      isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>"),
     ).toBe(false);
     expect(isAllowedExportResourceUrl("data:font/ttf,raw-font-data")).toBe(
       false

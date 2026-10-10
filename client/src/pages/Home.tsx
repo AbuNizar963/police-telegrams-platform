@@ -2646,8 +2646,11 @@ function TelegramDetail({
         .telegram-export-page .signature {
           display: flex;
           flex-direction: column;
-          align-items: center;
+          align-items: stretch;
+          width: min(48%, 320px);
           margin-top: auto;
+          margin-right: auto;
+          margin-left: 0;
           padding-top: 26px;
           text-align: center;
           line-height: 1.9;

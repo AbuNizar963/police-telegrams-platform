@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createApp, getJsonBodyLimit } from "./app";
+import { ENV } from "./_core/env";
 
 async function postUnauthenticated(path: string): Promise<number> {
   const server = createApp().listen(0);
@@ -56,5 +57,12 @@ describe("request body limits", () => {
     await expect(
       postUnauthenticated("/api/trpc/telegrams.uploadAttachment")
     ).resolves.toBe(401);
+  });
+});
+
+
+describe("proxy trust configuration", () => {
+  it("trusts only the production proxy hop and never trusts forwarded headers in tests", () => {
+    expect(createApp().get("trust proxy")).toBe(ENV.isProduction ? 1 : false);
   });
 });

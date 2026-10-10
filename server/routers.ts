@@ -2027,7 +2027,9 @@ export const appRouter = router({
               ]
             : [];
 
-        const reportBroadcastFailure = async (error: unknown): Promise<never> => {
+        const reportBroadcastFailure = async (
+          error: unknown
+        ): Promise<never> => {
           const failure =
             error instanceof Error ? error.message : String(error);
           let auditRecorded = false;

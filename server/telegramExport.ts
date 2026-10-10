@@ -6,8 +6,10 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 const MAX_HTML_BYTES = 2_500_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 
-function isSafeExportHtml(html: string): boolean {
-  const unsafeDataUri = /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,])/i;
+export function isSafeExportHtml(html: string): boolean {
+  // Export HTML may embed the bundled Cairo TTF fonts as base64 data URLs.
+  // Keep all other non-image data URLs blocked to preserve the security boundary.
+  const unsafeDataUri = /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)/i;
   return (
     html.length > 0 &&
     Buffer.byteLength(html, "utf8") <= MAX_HTML_BYTES &&
@@ -21,7 +23,8 @@ function isSafeExportHtml(html: string): boolean {
 export function isAllowedExportResourceUrl(url: string): boolean {
   return (
     url === "about:blank" ||
-    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url)
+    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url) ||
+    /^data:font\/ttf;base64,/i.test(url)
   );
 }
 

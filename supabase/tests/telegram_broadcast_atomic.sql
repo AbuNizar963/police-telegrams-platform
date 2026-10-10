@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(8);
+SELECT plan(9);
 
 SELECT has_function(
   'public',
@@ -293,6 +293,18 @@ SELECT is(
   ),
   0,
   'failed broadcast leaves no route on the primary telegram'
+);
+
+SELECT is(
+  (
+    SELECT count(*)::integer
+    FROM public.telegram_actions AS action
+    JOIN public.telegrams AS telegram ON telegram.id = action."telegramId"
+    WHERE telegram."serialCode" = 'TEST-BROADCAST-ROLLBACK-9300010'
+      AND action.action = 'telegram.route.requested'
+  ),
+  0,
+  'failed broadcast rolls back route audit actions from the transaction'
 );
 
 SELECT is(

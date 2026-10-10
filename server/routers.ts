@@ -2061,7 +2061,10 @@ export const appRouter = router({
         try {
           for (const target of broadcastTargets.slice(1)) {
             const targetOrganizationSerialNumber =
-              await allocateOrganizationSerialNumber(organizationId, "outgoing");
+              await allocateOrganizationSerialNumber(
+                organizationId,
+                "outgoing"
+              );
             const targetSerialNumber = await allocateSerialNumber();
             const targetSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
             const targetOrganizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
@@ -2099,7 +2102,8 @@ export const appRouter = router({
             progress.status = "routed";
           }
         } catch (error) {
-          const failure = error instanceof Error ? error.message : String(error);
+          const failure =
+            error instanceof Error ? error.message : String(error);
           try {
             await recordTelegramAction({
               telegramId: telegram.id,

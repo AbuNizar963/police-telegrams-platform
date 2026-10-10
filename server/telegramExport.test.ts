@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-// Regression coverage for secure embedded-font export resources.
 import {
   isAllowedExportResourceUrl,
   isSafeExportHtml,

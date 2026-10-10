@@ -60,7 +60,6 @@ describe("request body limits", () => {
   });
 });
 
-
 describe("proxy trust configuration", () => {
   it("trusts only the production proxy hop and never trusts forwarded headers in tests", () => {
     expect(createApp().get("trust proxy")).toBe(ENV.isProduction ? 1 : false);

@@ -12,10 +12,11 @@ import {
 
 export const userManagementRouter = router({
   list: adminProcedure.query(async () => {
-    const { data, error } = await getSupabaseAdmin()
+    const client = getSupabaseAdmin();
+    const { data, error } = await client
       .from("users")
       .select(
-        "id, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn"
+        "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn"
       )
       .order("createdAt", { ascending: false });
     if (error)
@@ -23,7 +24,42 @@ export const userManagementRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "تعذر تحميل حسابات المستخدمين",
       });
-    return data ?? [];
+    const users = data ?? [];
+    const organizationIds = Array.from(
+      new Set(
+        users
+          .map(user => user.organizationId)
+          .filter((id): id is string => typeof id === "string")
+      )
+    );
+    const organizationNames = new Map<string, string>();
+    if (organizationIds.length > 0) {
+      const organizations = await client
+        .from("organizations")
+        .select("id, name")
+        .in("id", organizationIds);
+      if (organizations.error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "تعذر تحميل جهات حسابات المستخدمين",
+        });
+      }
+      for (const organization of organizations.data ?? []) {
+        if (
+          typeof organization.id === "string" &&
+          typeof organization.name === "string"
+        ) {
+          organizationNames.set(organization.id, organization.name);
+        }
+      }
+    }
+    return users.map(user => ({
+      ...user,
+      organizationName:
+        typeof user.organizationId === "string"
+          ? (organizationNames.get(user.organizationId) ?? null)
+          : null,
+    }));
   }),
 
   create: adminProcedure

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,25 @@ export default function OwnerUserManagement() {
     enabled: open,
     refetchOnWindowFocus: false,
   });
+  const userGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { id: string; name: string; users: NonNullable<typeof users.data> }
+    >();
+    for (const user of users.data ?? []) {
+      const id = user.organizationId ?? "unassigned";
+      const name = user.organizationName || "جهة غير محددة";
+      const group = groups.get(id);
+      if (group) {
+        group.users.push(user);
+      } else {
+        groups.set(id, { id, name, users: [user] });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "ar")
+    );
+  }, [users.data]);
   const utils = trpc.useUtils();
   const createUser = trpc.userManagement.create.useMutation({
     onSuccess: async () => {
@@ -285,136 +304,158 @@ export default function OwnerUserManagement() {
                 لا توجد حسابات مسجلة بعد.
               </p>
             )}
-            <ul className="max-h-[440px] divide-y overflow-y-auto">
-              {users.data?.map(user => (
-                <li key={user.id} className="py-3 first:pt-1">
-                  <div className="flex items-start justify-between gap-2">
+            <div className="max-h-[440px] space-y-3 overflow-y-auto">
+              {userGroups.map(group => (
+                <section
+                  key={group.id}
+                  className="overflow-hidden rounded-xl border bg-muted/10"
+                >
+                  <header className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {user.name}
-                      </p>
-                      <p
-                        dir="ltr"
-                        className="mt-0.5 truncate text-right font-mono text-xs text-muted-foreground"
-                      >
-                        @{user.username}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {[
-                          user.rank,
-                          user.badgeNumber
-                            ? `الرقم الوظيفي: ${user.badgeNumber}`
-                            : null,
-                          user.phone ? `الهاتف: ${user.phone}` : null,
-                          user.unit,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ") || "لم تُضف تفاصيل وظيفية"}
+                      <h4 className="truncate text-sm font-bold">
+                        {group.name}
+                      </h4>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        حسابات هذه الجهة
                       </p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <span
-                        className={
-                          user.role === "admin"
-                            ? "rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
-                            : "rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
-                        }
-                      >
-                        {user.role === "admin" ? "مالك" : "شرطي"}
-                      </span>
-                      {user.loginMethod === "disabled" && (
-                        <span className="rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-600">
-                          معطّل
-                        </span>
-                      )}
-                      {user.role !== "admin" && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-emerald-600 hover:bg-emerald-500/10"
-                            title="تعديل الحساب"
-                            aria-label={`تعديل حساب ${user.name}`}
-                            onClick={() => {
-                              setEditing(user);
-                              setEditForm({
-                                name: user.name ?? "",
-                                username: user.username ?? "",
-                                badgeNumber: user.badgeNumber ?? "",
-                                phone: user.phone ?? "",
-                                rank: user.rank ?? "",
-                                unit: user.unit ?? "",
-                                password: "",
-                              });
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {user.loginMethod === "disabled" ? (
-                            <div className="flex items-center gap-1">
-                              <Input
-                                aria-label={`كلمة مرور جديدة لـ ${user.name}`}
-                                type="password"
-                                className="h-8 w-28"
-                                placeholder="كلمة مرور جديدة"
-                                value={enablePassword[user.id] ?? ""}
-                                onChange={e =>
-                                  setEnablePassword(v => ({
-                                    ...v,
-                                    [user.id]: e.target.value,
-                                  }))
-                                }
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600"
-                                title="إعادة تفعيل الحساب"
-                                aria-label={`إعادة تفعيل ${user.name}`}
-                                disabled={
-                                  (enablePassword[user.id] ?? "").length < 4 ||
-                                  enableUser.isPending
-                                }
-                                onClick={() =>
-                                  enableUser.mutate({
-                                    id: user.id,
-                                    password: enablePassword[user.id],
-                                  })
-                                }
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-600 hover:bg-red-500/10"
-                              title="تعطيل الحساب"
-                              aria-label={`تعطيل حساب ${user.name}`}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `هل تريد تعطيل حساب ${user.name}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
-                                  )
-                                )
-                                  disableUser.mutate({ id: user.id });
-                              }}
-                              disabled={disableUser.isPending}
+                    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums">
+                      {group.users.length}
+                    </span>
+                  </header>
+                  <ul className="divide-y px-3">
+                    {group.users.map(user => (
+                      <li key={user.id} className="py-3 first:pt-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {user.name}
+                            </p>
+                            <p
+                              dir="ltr"
+                              className="mt-0.5 truncate text-right font-mono text-xs text-muted-foreground"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                              @{user.username}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {[
+                                user.rank,
+                                user.badgeNumber
+                                  ? `الرقم الوظيفي: ${user.badgeNumber}`
+                                  : null,
+                                user.phone ? `الهاتف: ${user.phone}` : null,
+                                user.unit,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ") || "لم تُضف تفاصيل وظيفية"}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span
+                              className={
+                                user.role === "admin"
+                                  ? "rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
+                                  : "rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                              }
+                            >
+                              {user.role === "admin" ? "مالك" : "شرطي"}
+                            </span>
+                            {user.loginMethod === "disabled" && (
+                              <span className="rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-600">
+                                معطّل
+                              </span>
+                            )}
+                            {user.role !== "admin" && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-600 hover:bg-emerald-500/10"
+                                  title="تعديل الحساب"
+                                  aria-label={`تعديل حساب ${user.name}`}
+                                  onClick={() => {
+                                    setEditing(user);
+                                    setEditForm({
+                                      name: user.name ?? "",
+                                      username: user.username ?? "",
+                                      badgeNumber: user.badgeNumber ?? "",
+                                      phone: user.phone ?? "",
+                                      rank: user.rank ?? "",
+                                      unit: user.unit ?? "",
+                                      password: "",
+                                    });
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                {user.loginMethod === "disabled" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      aria-label={`كلمة مرور جديدة لـ ${user.name}`}
+                                      type="password"
+                                      className="h-8 w-28"
+                                      placeholder="كلمة مرور جديدة"
+                                      value={enablePassword[user.id] ?? ""}
+                                      onChange={e =>
+                                        setEnablePassword(v => ({
+                                          ...v,
+                                          [user.id]: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-blue-600"
+                                      title="إعادة تفعيل الحساب"
+                                      aria-label={`إعادة تفعيل ${user.name}`}
+                                      disabled={
+                                        (enablePassword[user.id] ?? "").length <
+                                          4 || enableUser.isPending
+                                      }
+                                      onClick={() =>
+                                        enableUser.mutate({
+                                          id: user.id,
+                                          password: enablePassword[user.id],
+                                        })
+                                      }
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:bg-red-500/10"
+                                    title="تعطيل الحساب"
+                                    aria-label={`تعطيل حساب ${user.name}`}
+                                    onClick={() => {
+                                      if (
+                                        window.confirm(
+                                          `هل تريد تعطيل حساب ${user.name}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
+                                        )
+                                      )
+                                        disableUser.mutate({ id: user.id });
+                                    }}
+                                    disabled={disableUser.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </li>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
           </section>
         </div>
         {editing && (

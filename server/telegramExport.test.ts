@@ -32,7 +32,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         '<style>@font-face{src:url("data:font/ttf,raw")}</style>',
-      )
+      ),
     ).toBe(false);
     expect(isSafeExportHtml("")).toBe(false);
   });
@@ -54,7 +54,7 @@ describe("telegram export resource isolation", () => {
 
   it("blocks unsafe network and data resources", () => {
     expect(isAllowedExportResourceUrl("https://example.com/image.png")).toBe(
-      false
+      false,
     );
     expect(isAllowedExportResourceUrl("http://127.0.0.1:3000/admin")).toBe(
       false

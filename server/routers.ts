@@ -98,6 +98,7 @@ import {
   storageCreateSignedUrl,
   storageDelete,
   storageGetSignedUrl,
+  storageKeyFromStoredUrl,
   storagePut,
   storagePutDepartmentLogo,
 } from "./storage";
@@ -160,6 +161,34 @@ const safeLogoUrlSchema = z
       return false;
     }
   }, "رابط الشعار يجب أن يكون مسار تخزين داخليًا أو رابط HTTPS موثوقًا");
+
+const DEPARTMENT_LOGO_KEY_PATTERN =
+  /^department\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
+
+function departmentLogoKeyFromStoredValue(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const trimmed = value.trim();
+  const key = trimmed.startsWith("department/logos/")
+    ? trimmed
+    : storageKeyFromStoredUrl(trimmed, ENV.supabaseStorageBucket);
+  return key && DEPARTMENT_LOGO_KEY_PATTERN.test(key) ? key : null;
+}
+
+async function cleanupReplacedDepartmentLogo(
+  previousValue: unknown,
+  nextValue: unknown
+): Promise<void> {
+  const previousKey = departmentLogoKeyFromStoredValue(previousValue);
+  const nextKey = departmentLogoKeyFromStoredValue(nextValue);
+  if (!previousKey || previousKey === nextKey) return;
+  try {
+    await storageDelete(previousKey);
+  } catch (error) {
+    // A successful settings update must not be rolled back because an old,
+    // already-missing object could not be removed.
+    console.error("[Storage] Replaced department logo cleanup failed", error);
+  }
+}
 const organizationSettingsPayloadSchema = z.object({
   departmentName: z.string().trim().min(2).max(255),
   unitName: z.string().trim().max(255),
@@ -509,6 +538,9 @@ export const appRouter = router({
             });
           }
 
+          const previousSettings = await getOrganizationSettings(
+            input.organizationId
+          );
           assertSupportedTimezone(input.timezone);
           const outgoingStart = getStartingNumberFromPrefix(
             input.serialPrefix,
@@ -548,6 +580,11 @@ export const appRouter = router({
               logoUrl: input.logoUrl,
               updatedByUserId: ctx.user.id,
             }
+          );
+
+          await cleanupReplacedDepartmentLogo(
+            previousSettings?.logoKey ?? previousSettings?.logoUrl,
+            input.logoUrl
           );
 
           await writeAuditLog({
@@ -921,6 +958,12 @@ export const appRouter = router({
             message: "حجم الشعار يتجاوز 5 ميغابايت",
           });
         }
+        validateUploadedFile({
+          bytes,
+          declaredType: input.contentType,
+          fileName: input.fileName,
+          maxBytes: 5 * 1024 * 1024,
+        });
 
         return storagePutDepartmentLogo(
           input.fileName,
@@ -966,6 +1009,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
+        const previousLogoValue = dbSettings.logoKey ?? dbSettings.logoUrl;
         if (
           input.organizationId !== undefined &&
           dbSettings.organizationId !== input.organizationId
@@ -1038,6 +1082,8 @@ export const appRouter = router({
           logoUrl: input.logoUrl ?? null,
           updatedByUserId: ctx.user.id,
         });
+
+        await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
 
         await writeAuditLog({
           actorUserId: ctx.user.id,

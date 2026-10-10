@@ -614,9 +614,28 @@ export default function Home() {
     settings.data as { numberSystem?: NumberSystem } | undefined
   )?.numberSystem ?? "latin") as NumberSystem;
   const allRows = list.data ?? [];
+  const outgoingOrganizationIds =
+    organizationContext.data?.organizationId && organizationScope === "children"
+      ? [
+          organizationContext.data.organizationId,
+          ...(organizationDescendants.data ?? []).map(item => item.id),
+        ]
+      : organizationContext.data?.organizationId &&
+          organizationScope !== "current" &&
+          organizationDescendants.data?.some(
+            item => item.id === organizationScope
+          )
+        ? [organizationScope]
+        : organizationContext.data?.organizationId
+          ? [organizationContext.data.organizationId]
+          : [];
+  const isOutgoingTelegram = (row: (typeof allRows)[number]) =>
+    outgoingOrganizationIds.length > 0
+      ? outgoingOrganizationIds.includes(row.organizationId)
+      : row.organizationId === row.currentOrganizationId;
   const rows = allRows.filter(row => {
     if (telegramView === "all") return true;
-    const isOutgoing = row.organizationId === row.currentOrganizationId;
+    const isOutgoing = isOutgoingTelegram(row);
     return telegramView === "outgoing" ? isOutgoing : !isOutgoing;
   });
   const canManageExcel =
@@ -657,8 +676,7 @@ export default function Home() {
           recipient: row.recipient,
           signature: row.creatorName,
           notes: row.workflowReason ?? "",
-          direction:
-            row.organizationId === row.currentOrganizationId ? "صادر" : "وارد",
+          direction: isOutgoingTelegram(row) ? "صادر" : "وارد",
         })),
         `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`
       );
@@ -1097,7 +1115,7 @@ export default function Home() {
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
                 <div className="relative flex flex-wrap items-center gap-2 pl-16">
-                  {row.organizationId === row.currentOrganizationId ? (
+                  {isOutgoingTelegram(row) ? (
                     <span
                       aria-label="برقية صادرة"
                       className="absolute left-0 top-1/2 inline-flex w-fit -translate-y-1/2 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"

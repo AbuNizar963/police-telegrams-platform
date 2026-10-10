@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Plus, RefreshCw, X } from "lucide-react";
+import { Building2, Pencil, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { organizationTypeLabels } from "@/lib/uiLabels";
@@ -79,6 +79,7 @@ const emptyOrganizationSettings = (
 
 export default function OwnerOrganizationManagement() {
   const [open, setOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     string | null
@@ -232,6 +233,7 @@ export default function OwnerOrganizationManagement() {
   }, [organizationSettings.data, settingsQueryOrgId]);
 
   const resetForm = () => {
+    setEditorOpen(false);
     setEditingId(null);
     setSettingsQueryOrgId(null);
     setForm({
@@ -247,6 +249,45 @@ export default function OwnerOrganizationManagement() {
     setSettingsDraft(emptyOrganizationSettings());
     setAccountUsername("");
     setAccountPassword("");
+  };
+  const openEditorForCreate = (
+    parentOrganizationId = "",
+    type: OrganizationType = "governorate"
+  ) => {
+    resetForm();
+    setEditorOpen(true);
+    setForm(current => ({
+      ...current,
+      type,
+      parentOrganizationId,
+    }));
+  };
+  const openEditorForEdit = (
+    item: NonNullable<typeof organizations.data>[number]
+  ) => {
+    const parent = (organizations.data ?? []).find(
+      candidate => candidate.id === item.parentOrganizationId
+    );
+    setEditorOpen(true);
+    setSelectedOrganizationId(item.id);
+    setEditingId(item.id);
+    setSettingsQueryOrgId(item.id);
+    setSettingsDraft(emptyOrganizationSettings(item.name));
+    setAccountUsername("");
+    setAccountPassword("");
+    setForm({
+      code: item.code,
+      name: item.name,
+      type: item.type as OrganizationType,
+      parentOrganizationId: item.parentOrganizationId ?? "",
+      telegramDestinationOrganizationId:
+        item.telegramDestinationOrganizationId ?? "",
+      isActive: item.isActive,
+      allowHierarchyOverride: Boolean(
+        parent && !canOrganizationHaveParent(item.type, parent.type)
+      ),
+      createAccount: true,
+    });
   };
   const excludedParentIds = useMemo(() => {
     const excluded = new Set<string>();
@@ -456,7 +497,7 @@ export default function OwnerOrganizationManagement() {
         return (
           <div key={item.id}>
             <div
-              className={`flex min-w-0 max-w-full items-center justify-between gap-2 overflow-hidden rounded-lg border px-2.5 py-2 sm:px-3 ${selected ? "border-primary bg-primary/5" : ""}`}
+              className={`flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-lg border px-2.5 py-2 sm:px-3 ${selected ? "border-primary bg-primary/5 shadow-sm" : ""}`}
               style={{ marginRight: `${Math.min(depth * 12, 48)}px` }}
             >
               <button
@@ -485,38 +526,6 @@ export default function OwnerOrganizationManagement() {
                   </span>
                 </span>
               </button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const parent = (organizations.data ?? []).find(
-                    candidate => candidate.id === item.parentOrganizationId
-                  );
-                  setSelectedOrganizationId(item.id);
-                  setEditingId(item.id);
-                  setSettingsQueryOrgId(item.id);
-                  setSettingsDraft(emptyOrganizationSettings(item.name));
-                  setAccountUsername("");
-                  setAccountPassword("");
-                  setForm({
-                    code: item.code,
-                    name: item.name,
-                    type: item.type as OrganizationType,
-                    parentOrganizationId: item.parentOrganizationId ?? "",
-                    telegramDestinationOrganizationId:
-                      item.telegramDestinationOrganizationId ?? "",
-                    isActive: item.isActive,
-                    allowHierarchyOverride: Boolean(
-                      parent &&
-                        !canOrganizationHaveParent(item.type, parent.type)
-                    ),
-                    createAccount: true,
-                  });
-                }}
-              >
-                تعديل
-              </Button>
             </div>
             {expanded && renderOrganizationTree(item.id, depth + 1)}
           </div>
@@ -548,6 +557,14 @@ export default function OwnerOrganizationManagement() {
           </div>
           <Button
             type="button"
+            size="sm"
+            className="shrink-0"
+            onClick={() => openEditorForCreate()}
+          >
+            <Plus className="ml-1 h-4 w-4" /> إضافة جهة
+          </Button>
+          <Button
+            type="button"
             variant="ghost"
             size="icon"
             onClick={() => setOpen(false)}
@@ -557,7 +574,9 @@ export default function OwnerOrganizationManagement() {
           </Button>
         </header>
 
-        <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div
+          className={`mt-5 grid min-w-0 gap-5 ${editorOpen ? "lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]" : "lg:grid-cols-1"}`}
+        >
           {createdAccount && (
             <div className="lg:col-span-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
               <div className="flex items-start justify-between gap-3">
@@ -583,542 +602,581 @@ export default function OwnerOrganizationManagement() {
               </div>
             </div>
           )}
-          <form
-            onSubmit={submit}
-            className="min-w-0 space-y-3 rounded-xl border p-3 sm:p-4"
-          >
-            <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-[#9b7c3d]" />
-              <h3 className="font-bold">
-                {editingId ? "تعديل جهة" : "إضافة جهة شرطية"}
-              </h3>
-            </div>
-            <label className="grid gap-1 text-sm font-medium">
-              الرمز
-              <Input
-                dir="ltr"
-                value={form.code}
-                onChange={event =>
-                  setForm(current => ({ ...current, code: event.target.value }))
-                }
-                required
-                minLength={2}
-                maxLength={64}
-                placeholder="GOV-DAMASCUS"
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-medium">
-              اسم الجهة
-              <Input
-                value={form.name}
-                onChange={event =>
-                  setForm(current => ({ ...current, name: event.target.value }))
-                }
-                required
-                minLength={2}
-                maxLength={255}
-                placeholder="قيادة الأمن الداخلي في محافظة دمشق"
-              />
-            </label>
-            {editingId &&
-              accountManagedTypes.has(form.type) &&
-              (accounts.data?.length ?? 0) > 0 && (
-                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
-                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
-                    بيانات حساب الجهة
-                  </p>
-                  <label className="grid gap-1 text-sm font-medium">
-                    اسم المستخدم
-                    <Input
-                      dir="ltr"
-                      value={accountUsername}
-                      onChange={event => setAccountUsername(event.target.value)}
-                      required
-                      minLength={3}
-                      maxLength={120}
-                      pattern="[a-zA-Z0-9._-]+"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    كلمة المرور الجديدة
-                    <Input
-                      dir="ltr"
-                      type="password"
-                      value={accountPassword}
-                      onChange={event => setAccountPassword(event.target.value)}
-                      minLength={12}
-                      maxLength={256}
-                      placeholder="اتركها فارغة دون تغيير"
-                    />
-                    <span className="text-xs font-normal text-muted-foreground">
-                      اتركها فارغة للإبقاء على كلمة المرور الحالية. عند تغييرها
-                      سيُطلب من الجهة تغييرها عند أول دخول.
-                    </span>
-                  </label>
+          {editorOpen && (
+            <form
+              onSubmit={submit}
+              className="min-w-0 space-y-3 rounded-xl border border-primary/20 bg-primary/[0.025] p-3 shadow-sm sm:p-4"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {editingId ? (
+                    <Pencil className="h-4 w-4 text-[#9b7c3d]" />
+                  ) : (
+                    <Plus className="h-4 w-4 text-[#9b7c3d]" />
+                  )}
+                  <h3 className="font-bold">
+                    {editingId ? "تعديل الجهة" : "إضافة جهة شرطية"}
+                  </h3>
                 </div>
-              )}
-            {editingId &&
-              accountManagedTypes.has(form.type) &&
-              accounts.isSuccess &&
-              (accounts.data?.length ?? 0) === 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
-                  <span>لا يوجد حساب دخول مباشر لهذه الجهة.</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={provisionAccount.isPending}
-                    onClick={() =>
-                      provisionAccount.mutate({ organizationId: editingId })
-                    }
-                  >
-                    {provisionAccount.isPending
-                      ? "جارٍ الإنشاء..."
-                      : "إنشاء حساب الجهة"}
-                  </Button>
-                </div>
-              )}
-            <label className="grid gap-1 text-sm font-medium">
-              المستوى
-              <select
-                className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
-                value={form.type}
-                onChange={event =>
-                  setForm(current => {
-                    const type = event.target.value as OrganizationType;
-                    const currentParentType = (organizations.data ?? []).find(
-                      item => item.id === current.parentOrganizationId
-                    )?.type;
-                    return {
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="إغلاق نموذج الجهة"
+                  onClick={resetForm}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <label className="grid gap-1 text-sm font-medium">
+                الرمز
+                <Input
+                  dir="ltr"
+                  value={form.code}
+                  onChange={event =>
+                    setForm(current => ({
                       ...current,
-                      type,
-                      parentOrganizationId:
-                        type === "central" ||
-                        !currentParentType ||
-                        (!current.allowHierarchyOverride &&
-                          !canOrganizationHaveParent(type, currentParentType))
-                          ? ""
-                          : current.parentOrganizationId,
-                    };
-                  })
-                }
-              >
-                {organizationTypeOptions.map(value => (
-                  <option key={value} value={value}>
-                    {typeLabels[value]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {form.type !== "central" && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/20">
-                <label className="flex items-center gap-2 text-sm font-semibold">
+                      code: event.target.value,
+                    }))
+                  }
+                  required
+                  minLength={2}
+                  maxLength={64}
+                  placeholder="GOV-DAMASCUS"
+                />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                اسم الجهة
+                <Input
+                  value={form.name}
+                  onChange={event =>
+                    setForm(current => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  required
+                  minLength={2}
+                  maxLength={255}
+                  placeholder="قيادة الأمن الداخلي في محافظة دمشق"
+                />
+              </label>
+              {editingId &&
+                accountManagedTypes.has(form.type) &&
+                (accounts.data?.length ?? 0) > 0 && (
+                  <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                      بيانات حساب الجهة
+                    </p>
+                    <label className="grid gap-1 text-sm font-medium">
+                      اسم المستخدم
+                      <Input
+                        dir="ltr"
+                        value={accountUsername}
+                        onChange={event =>
+                          setAccountUsername(event.target.value)
+                        }
+                        required
+                        minLength={3}
+                        maxLength={120}
+                        pattern="[a-zA-Z0-9._-]+"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium">
+                      كلمة المرور الجديدة
+                      <Input
+                        dir="ltr"
+                        type="password"
+                        value={accountPassword}
+                        onChange={event =>
+                          setAccountPassword(event.target.value)
+                        }
+                        minLength={12}
+                        maxLength={256}
+                        placeholder="اتركها فارغة دون تغيير"
+                      />
+                      <span className="text-xs font-normal text-muted-foreground">
+                        اتركها فارغة للإبقاء على كلمة المرور الحالية. عند
+                        تغييرها سيُطلب من الجهة تغييرها عند أول دخول.
+                      </span>
+                    </label>
+                  </div>
+                )}
+              {editingId &&
+                accountManagedTypes.has(form.type) &&
+                accounts.isSuccess &&
+                (accounts.data?.length ?? 0) === 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+                    <span>لا يوجد حساب دخول مباشر لهذه الجهة.</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={provisionAccount.isPending}
+                      onClick={() =>
+                        provisionAccount.mutate({ organizationId: editingId })
+                      }
+                    >
+                      {provisionAccount.isPending
+                        ? "جارٍ الإنشاء..."
+                        : "إنشاء حساب الجهة"}
+                    </Button>
+                  </div>
+                )}
+              <label className="grid gap-1 text-sm font-medium">
+                المستوى
+                <select
+                  className="h-10 w-full min-w-0 max-w-full rounded-md border bg-background px-3 text-sm"
+                  value={form.type}
+                  onChange={event =>
+                    setForm(current => {
+                      const type = event.target.value as OrganizationType;
+                      const currentParentType = (organizations.data ?? []).find(
+                        item => item.id === current.parentOrganizationId
+                      )?.type;
+                      return {
+                        ...current,
+                        type,
+                        parentOrganizationId:
+                          type === "central" ||
+                          !currentParentType ||
+                          (!current.allowHierarchyOverride &&
+                            !canOrganizationHaveParent(type, currentParentType))
+                            ? ""
+                            : current.parentOrganizationId,
+                      };
+                    })
+                  }
+                >
+                  {organizationTypeOptions.map(value => (
+                    <option key={value} value={value}>
+                      {typeLabels[value]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {form.type !== "central" && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+                  <label className="flex items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={form.allowHierarchyOverride}
+                      onChange={event =>
+                        setForm(current => {
+                          const parentType = (organizations.data ?? []).find(
+                            item => item.id === current.parentOrganizationId
+                          )?.type;
+                          return {
+                            ...current,
+                            allowHierarchyOverride: event.target.checked,
+                            parentOrganizationId:
+                              !event.target.checked &&
+                              parentType &&
+                              !canOrganizationHaveParent(
+                                current.type,
+                                parentType
+                              )
+                                ? ""
+                                : current.parentOrganizationId,
+                          };
+                        })
+                      }
+                    />
+                    تجاوز التسلسل الافتراضي لهذه الجهة
+                  </label>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    يتيح اختيار أي جهة أب نشطة. تبقى وزارة الداخلية جذرًا بلا
+                    أب، ويمنع النظام ربط الجهة بنفسها أو بأحد أبنائها.
+                  </p>
+                </div>
+              )}
+              <div className="grid gap-1 text-sm font-medium">
+                <span>
+                  الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
+                </span>
+                <OrganizationTreePicker
+                  options={(organizations.data ?? []).map(item => ({
+                    ...item,
+                    isSelectable: selectableParentIds.has(item.id),
+                  }))}
+                  value={form.parentOrganizationId}
+                  disabled={form.type === "central"}
+                  onValueChange={parentOrganizationId =>
+                    setForm(current => ({
+                      ...current,
+                      parentOrganizationId,
+                    }))
+                  }
+                  placeholder={
+                    form.type === "central"
+                      ? "لا تحتاج وزارة الداخلية إلى جهة أب"
+                      : "اختر الجهة الأب من الهيكل التنظيمي"
+                  }
+                  ariaLabel="اختيار الجهة الأب"
+                  emptyMessage="لا توجد جهة أب متاحة لهذا المستوى حاليًا."
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="grid gap-1 text-sm font-medium">
+                <span>الجهة التابع لها (مستلم البرقيات)</span>
+                <OrganizationTreePicker
+                  options={(organizations.data ?? []).map(item => ({
+                    ...item,
+                    isSelectable: selectableDestinationIds.has(item.id),
+                  }))}
+                  value={form.telegramDestinationOrganizationId}
+                  onValueChange={telegramDestinationOrganizationId =>
+                    setForm(current => ({
+                      ...current,
+                      telegramDestinationOrganizationId,
+                    }))
+                  }
+                  placeholder={
+                    form.type === "police_department" || form.type === "station"
+                      ? "اختر الجهة التي تستقبل برقيات هذه الجهة"
+                      : "بدون وجهة تلقائية"
+                  }
+                  ariaLabel="اختيار الجهة المستلمة للبرقيات"
+                  allowClear={
+                    form.type !== "police_department" && form.type !== "station"
+                  }
+                  clearLabel="إزالة الوجهة التلقائية"
+                  emptyMessage="لا توجد جهة مفعّلة يمكن اختيارها كوجهة."
+                  className="h-10 text-sm"
+                />
+                <span className="text-xs font-normal text-muted-foreground">
+                  عند إرسال برقية من هذه الجهة ستنتقل تلقائيًا إلى الاختيار هنا.
+                </span>
+              </div>
+              {editingId && (
+                <label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium">
                   <input
                     type="checkbox"
-                    checked={form.allowHierarchyOverride}
+                    checked={form.isActive}
                     onChange={event =>
-                      setForm(current => {
-                        const parentType = (organizations.data ?? []).find(
-                          item => item.id === current.parentOrganizationId
-                        )?.type;
-                        return {
-                          ...current,
-                          allowHierarchyOverride: event.target.checked,
-                          parentOrganizationId:
-                            !event.target.checked &&
-                            parentType &&
-                            !canOrganizationHaveParent(current.type, parentType)
-                              ? ""
-                              : current.parentOrganizationId,
-                        };
-                      })
+                      setForm(current => ({
+                        ...current,
+                        isActive: event.target.checked,
+                      }))
                     }
                   />
-                  تجاوز التسلسل الافتراضي لهذه الجهة
+                  الجهة مفعلة ومتاحة للاستخدام
                 </label>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  يتيح اختيار أي جهة أب نشطة. تبقى وزارة الداخلية جذرًا بلا أب،
-                  ويمنع النظام ربط الجهة بنفسها أو بأحد أبنائها.
-                </p>
-              </div>
-            )}
-            <div className="grid gap-1 text-sm font-medium">
-              <span>
-                الجهة الأب{form.type === "central" ? " (جهة جذرية)" : ""}
-              </span>
-              <OrganizationTreePicker
-                options={(organizations.data ?? []).map(item => ({
-                  ...item,
-                  isSelectable: selectableParentIds.has(item.id),
-                }))}
-                value={form.parentOrganizationId}
-                disabled={form.type === "central"}
-                onValueChange={parentOrganizationId =>
-                  setForm(current => ({
-                    ...current,
-                    parentOrganizationId,
-                  }))
-                }
-                placeholder={
-                  form.type === "central"
-                    ? "لا تحتاج وزارة الداخلية إلى جهة أب"
-                    : "اختر الجهة الأب من الهيكل التنظيمي"
-                }
-                ariaLabel="اختيار الجهة الأب"
-                emptyMessage="لا توجد جهة أب متاحة لهذا المستوى حاليًا."
-                className="h-10 text-sm"
-              />
-            </div>
-            <div className="grid gap-1 text-sm font-medium">
-              <span>الجهة التابع لها (مستلم البرقيات)</span>
-              <OrganizationTreePicker
-                options={(organizations.data ?? []).map(item => ({
-                  ...item,
-                  isSelectable: selectableDestinationIds.has(item.id),
-                }))}
-                value={form.telegramDestinationOrganizationId}
-                onValueChange={telegramDestinationOrganizationId =>
-                  setForm(current => ({
-                    ...current,
-                    telegramDestinationOrganizationId,
-                  }))
-                }
-                placeholder={
-                  form.type === "police_department" || form.type === "station"
-                    ? "اختر الجهة التي تستقبل برقيات هذه الجهة"
-                    : "بدون وجهة تلقائية"
-                }
-                ariaLabel="اختيار الجهة المستلمة للبرقيات"
-                allowClear={
-                  form.type !== "police_department" && form.type !== "station"
-                }
-                clearLabel="إزالة الوجهة التلقائية"
-                emptyMessage="لا توجد جهة مفعّلة يمكن اختيارها كوجهة."
-                className="h-10 text-sm"
-              />
-              <span className="text-xs font-normal text-muted-foreground">
-                عند إرسال برقية من هذه الجهة ستنتقل تلقائيًا إلى الاختيار هنا.
-              </span>
-            </div>
-            {editingId && (
-              <label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={event =>
-                    setForm(current => ({
-                      ...current,
-                      isActive: event.target.checked,
-                    }))
-                  }
-                />
-                الجهة مفعلة ومتاحة للاستخدام
-              </label>
-            )}
-            {!editingId && accountManagedTypes.has(form.type) && (
-              <label className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/20">
-                <input
-                  type="checkbox"
-                  checked={form.createAccount}
-                  onChange={event =>
-                    setForm(current => ({
-                      ...current,
-                      createAccount: event.target.checked,
-                    }))
-                  }
-                />
-                <span>
-                  إنشاء حساب دخول لهذه الجهة الآن
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    يمكن إنشاء الحساب لاحقًا من بطاقة الجهة إذا أزلت هذا الخيار.
+              )}
+              {!editingId && accountManagedTypes.has(form.type) && (
+                <label className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/20">
+                  <input
+                    type="checkbox"
+                    checked={form.createAccount}
+                    onChange={event =>
+                      setForm(current => ({
+                        ...current,
+                        createAccount: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    إنشاء حساب دخول لهذه الجهة الآن
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      يمكن إنشاء الحساب لاحقًا من بطاقة الجهة إذا أزلت هذا
+                      الخيار.
+                    </span>
                   </span>
-                </span>
-              </label>
-            )}
-            {editingId &&
-              settingsQueryOrgId === editingId &&
-              organizationSettings.isError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                  <p>
-                    تعذر تحميل إعدادات هذه الجهة؛ لن يُسمح بالحفظ حتى لا تُستبدل
-                    بقيم افتراضية.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => void organizationSettings.refetch()}
-                  >
-                    إعادة تحميل الإعدادات
-                  </Button>
+                </label>
+              )}
+              {editingId &&
+                settingsQueryOrgId === editingId &&
+                organizationSettings.isError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                    <p>
+                      تعذر تحميل إعدادات هذه الجهة؛ لن يُسمح بالحفظ حتى لا
+                      تُستبدل بقيم افتراضية.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => void organizationSettings.refetch()}
+                    >
+                      إعادة تحميل الإعدادات
+                    </Button>
+                  </div>
+                )}
+              {showSettingsNotSavedWarning && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  {settingsSaveFailedForId === editingId ? (
+                    <p>
+                      بيانات الجهة محفوظة، لكن حفظ إعداداتها لم يكتمل. لا تعتبر
+                      القيم الحالية محفوظة؛ أعد الحفظ وتحقق من رسالة النجاح.
+                    </p>
+                  ) : (
+                    <p>
+                      لا يوجد سجل إعدادات محفوظ لهذه الجهة بعد. القيم المعروضة
+                      افتراضية مؤقتة، وسيُنشأ سجلها المستقل عند الحفظ.
+                    </p>
+                  )}
                 </div>
               )}
-            {showSettingsNotSavedWarning && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                {settingsSaveFailedForId === editingId ? (
-                  <p>
-                    بيانات الجهة محفوظة، لكن حفظ إعداداتها لم يكتمل. لا تعتبر
-                    القيم الحالية محفوظة؛ أعد الحفظ وتحقق من رسالة النجاح.
+              <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/10">
+                <div>
+                  <h4 className="text-sm font-bold">
+                    إعدادات مستقلة لهذه الجهة
+                  </h4>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    تُحفظ على معرّف الجهة نفسها ولا تتغير بتبديل مكان عمل
+                    المالك. البادئة الرقمية تحدد بداية عداد اتجاهها فقط.
                   </p>
-                ) : (
-                  <p>
-                    لا يوجد سجل إعدادات محفوظ لهذه الجهة بعد. القيم المعروضة
-                    افتراضية مؤقتة، وسيُنشأ سجلها المستقل عند الحفظ.
-                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1 text-xs font-semibold">
+                    اسم الجهة في رأس البرقية
+                    <Input
+                      value={settingsDraft.departmentName}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          departmentName: event.target.value,
+                        }))
+                      }
+                      maxLength={255}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    اسم الوحدة
+                    <Input
+                      value={settingsDraft.unitName}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          unitName: event.target.value,
+                        }))
+                      }
+                      maxLength={255}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    رتبة رئيس الوحدة
+                    <Input
+                      value={settingsDraft.unitChiefRank}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          unitChiefRank: event.target.value,
+                        }))
+                      }
+                      maxLength={120}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    اسم رئيس الوحدة
+                    <Input
+                      value={settingsDraft.unitChiefName}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          unitChiefName: event.target.value,
+                        }))
+                      }
+                      maxLength={255}
+                    />
+                  </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1 text-xs font-semibold">
+                    بادئة البرقية الصادرة
+                    <Input
+                      dir="ltr"
+                      value={settingsDraft.serialPrefix}
+                      onChange={event => {
+                        const serialPrefix = event.target.value.toUpperCase();
+                        setSettingsDraft(current => ({
+                          ...current,
+                          serialPrefix,
+                          serialStart: /^\d+$/.test(serialPrefix)
+                            ? Number(serialPrefix)
+                            : current.serialStart,
+                        }));
+                      }}
+                      required
+                      minLength={1}
+                      maxLength={24}
+                      pattern="[A-Z0-9-]+"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    بادئة البرقية الواردة
+                    <Input
+                      dir="ltr"
+                      value={settingsDraft.incomingSerialPrefix}
+                      onChange={event => {
+                        const incomingSerialPrefix =
+                          event.target.value.toUpperCase();
+                        setSettingsDraft(current => ({
+                          ...current,
+                          incomingSerialPrefix,
+                          incomingSerialStart: /^\d+$/.test(
+                            incomingSerialPrefix
+                          )
+                            ? Number(incomingSerialPrefix)
+                            : current.incomingSerialStart,
+                        }));
+                      }}
+                      required
+                      minLength={1}
+                      maxLength={24}
+                      pattern="[A-Z0-9-]+"
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] leading-5 text-muted-foreground">
+                  يمكن ضبط البداية بكتابة رقم فقط في البادئة، مثل 718. بادئتا
+                  الصادر والوارد وعدّاداهما مستقلان.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1 text-xs font-semibold">
+                    رقم بداية تسلسل الصادر
+                    <Input
+                      type="number"
+                      min={1}
+                      max={999999999}
+                      disabled={/^\d+$/.test(settingsDraft.serialPrefix)}
+                      value={settingsDraft.serialStart}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          serialStart: Number(event.target.value),
+                        }))
+                      }
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    رقم بداية تسلسل الوارد
+                    <Input
+                      type="number"
+                      min={1}
+                      max={999999999}
+                      disabled={/^\d+$/.test(
+                        settingsDraft.incomingSerialPrefix
+                      )}
+                      value={settingsDraft.incomingSerialStart}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          incomingSerialStart: Number(event.target.value),
+                        }))
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] leading-5 text-muted-foreground">
+                  عند إدخال بادئة رقمية تُستخدم هي كبداية لتسلسل الاتجاه نفسه؛
+                  وإلا تُستخدم قيمة رقم البداية هنا.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1 text-xs font-semibold">
+                    المنطقة الزمنية (IANA)
+                    <Input
+                      dir="ltr"
+                      value={settingsDraft.timezone}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          timezone: event.target.value,
+                        }))
+                      }
+                      required
+                      minLength={3}
+                      maxLength={64}
+                      placeholder="Asia/Damascus"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    تنسيق التاريخ والوقت
+                    <select
+                      className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                      value={settingsDraft.dateFormat}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          dateFormat: event.target
+                            .value as OrganizationSettingsDraft["dateFormat"],
+                        }))
+                      }
+                    >
+                      <option value="dd/MM/yyyy HH:mm:ss">
+                        22/09/2026 14:30:00
+                      </option>
+                      <option value="yyyy-MM-dd HH:mm:ss">
+                        2026-09-22 14:30:00
+                      </option>
+                      <option value="dd MMM yyyy HH:mm">
+                        22 سبتمبر 2026 14:30
+                      </option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    نظام الأرقام
+                    <select
+                      className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                      value={settingsDraft.numberSystem}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          numberSystem: event.target.value as
+                            | "latin"
+                            | "arabic",
+                        }))
+                      }
+                    >
+                      <option value="latin">لاتينية: 0123456789</option>
+                      <option value="arabic">عربية: ٠١٢٣٤٥٦٧٨٩</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    رابط شعار الجهة
+                    <Input
+                      dir="ltr"
+                      type="url"
+                      value={settingsDraft.logoUrl}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          logoUrl: event.target.value,
+                        }))
+                      }
+                      maxLength={2000}
+                      placeholder="https://..."
+                    />
+                  </label>
+                </div>
+              </section>
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={
+                    create.isPending ||
+                    update.isPending ||
+                    saveOrganizationSettings.isPending ||
+                    !settingsLoadedForEditor
+                  }
+                >
+                  {saveOrganizationSettings.isPending
+                    ? "جارٍ حفظ الإعدادات..."
+                    : editingId
+                      ? "حفظ الجهة وإعداداتها"
+                      : "إضافة الجهة وإعداداتها"}
+                </Button>
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    إلغاء
+                  </Button>
                 )}
               </div>
-            )}
-            <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/10">
-              <div>
-                <h4 className="text-sm font-bold">إعدادات مستقلة لهذه الجهة</h4>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  تُحفظ على معرّف الجهة نفسها ولا تتغير بتبديل مكان عمل المالك.
-                  البادئة الرقمية تحدد بداية عداد اتجاهها فقط.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-xs font-semibold">
-                  اسم الجهة في رأس البرقية
-                  <Input
-                    value={settingsDraft.departmentName}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        departmentName: event.target.value,
-                      }))
-                    }
-                    maxLength={255}
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  اسم الوحدة
-                  <Input
-                    value={settingsDraft.unitName}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        unitName: event.target.value,
-                      }))
-                    }
-                    maxLength={255}
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  رتبة رئيس الوحدة
-                  <Input
-                    value={settingsDraft.unitChiefRank}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        unitChiefRank: event.target.value,
-                      }))
-                    }
-                    maxLength={120}
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  اسم رئيس الوحدة
-                  <Input
-                    value={settingsDraft.unitChiefName}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        unitChiefName: event.target.value,
-                      }))
-                    }
-                    maxLength={255}
-                  />
-                </label>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-xs font-semibold">
-                  بادئة البرقية الصادرة
-                  <Input
-                    dir="ltr"
-                    value={settingsDraft.serialPrefix}
-                    onChange={event => {
-                      const serialPrefix = event.target.value.toUpperCase();
-                      setSettingsDraft(current => ({
-                        ...current,
-                        serialPrefix,
-                        serialStart: /^\d+$/.test(serialPrefix)
-                          ? Number(serialPrefix)
-                          : current.serialStart,
-                      }));
-                    }}
-                    required
-                    minLength={1}
-                    maxLength={24}
-                    pattern="[A-Z0-9-]+"
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  بادئة البرقية الواردة
-                  <Input
-                    dir="ltr"
-                    value={settingsDraft.incomingSerialPrefix}
-                    onChange={event => {
-                      const incomingSerialPrefix =
-                        event.target.value.toUpperCase();
-                      setSettingsDraft(current => ({
-                        ...current,
-                        incomingSerialPrefix,
-                        incomingSerialStart: /^\d+$/.test(incomingSerialPrefix)
-                          ? Number(incomingSerialPrefix)
-                          : current.incomingSerialStart,
-                      }));
-                    }}
-                    required
-                    minLength={1}
-                    maxLength={24}
-                    pattern="[A-Z0-9-]+"
-                  />
-                </label>
-              </div>
-              <p className="text-[11px] leading-5 text-muted-foreground">
-                يمكن ضبط البداية بكتابة رقم فقط في البادئة، مثل 718. بادئتا
-                الصادر والوارد وعدّاداهما مستقلان.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-xs font-semibold">
-                  رقم بداية تسلسل الصادر
-                  <Input
-                    type="number"
-                    min={1}
-                    max={999999999}
-                    disabled={/^\d+$/.test(settingsDraft.serialPrefix)}
-                    value={settingsDraft.serialStart}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        serialStart: Number(event.target.value),
-                      }))
-                    }
-                    required
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  رقم بداية تسلسل الوارد
-                  <Input
-                    type="number"
-                    min={1}
-                    max={999999999}
-                    disabled={/^\d+$/.test(settingsDraft.incomingSerialPrefix)}
-                    value={settingsDraft.incomingSerialStart}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        incomingSerialStart: Number(event.target.value),
-                      }))
-                    }
-                    required
-                  />
-                </label>
-              </div>
-              <p className="text-[11px] leading-5 text-muted-foreground">
-                عند إدخال بادئة رقمية تُستخدم هي كبداية لتسلسل الاتجاه نفسه؛
-                وإلا تُستخدم قيمة رقم البداية هنا.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-xs font-semibold">
-                  المنطقة الزمنية (IANA)
-                  <Input
-                    dir="ltr"
-                    value={settingsDraft.timezone}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        timezone: event.target.value,
-                      }))
-                    }
-                    required
-                    minLength={3}
-                    maxLength={64}
-                    placeholder="Asia/Damascus"
-                  />
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  تنسيق التاريخ والوقت
-                  <select
-                    className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
-                    value={settingsDraft.dateFormat}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        dateFormat: event.target
-                          .value as OrganizationSettingsDraft["dateFormat"],
-                      }))
-                    }
-                  >
-                    <option value="dd/MM/yyyy HH:mm:ss">
-                      22/09/2026 14:30:00
-                    </option>
-                    <option value="yyyy-MM-dd HH:mm:ss">
-                      2026-09-22 14:30:00
-                    </option>
-                    <option value="dd MMM yyyy HH:mm">
-                      22 سبتمبر 2026 14:30
-                    </option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  نظام الأرقام
-                  <select
-                    className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
-                    value={settingsDraft.numberSystem}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        numberSystem: event.target.value as "latin" | "arabic",
-                      }))
-                    }
-                  >
-                    <option value="latin">لاتينية: 0123456789</option>
-                    <option value="arabic">عربية: ٠١٢٣٤٥٦٧٨٩</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-semibold">
-                  رابط شعار الجهة
-                  <Input
-                    dir="ltr"
-                    type="url"
-                    value={settingsDraft.logoUrl}
-                    onChange={event =>
-                      setSettingsDraft(current => ({
-                        ...current,
-                        logoUrl: event.target.value,
-                      }))
-                    }
-                    maxLength={2000}
-                    placeholder="https://..."
-                  />
-                </label>
-              </div>
-            </section>
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={
-                  create.isPending ||
-                  update.isPending ||
-                  saveOrganizationSettings.isPending ||
-                  !settingsLoadedForEditor
-                }
-              >
-                {saveOrganizationSettings.isPending
-                  ? "جارٍ حفظ الإعدادات..."
-                  : editingId
-                    ? "حفظ الجهة وإعداداتها"
-                    : "إضافة الجهة وإعداداتها"}
-              </Button>
-              {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  إلغاء
-                </Button>
-              )}
-            </div>
-          </form>
+            </form>
+          )}
 
           <section className="min-w-0 rounded-xl border p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -1186,41 +1244,27 @@ export default function OwnerOrganizationManagement() {
                       · {selectedOrganization.code}
                     </p>
                   </div>
-                  {getAllowedOrganizationChildTypes(
-                    selectedOrganization.type
-                  ).map(childType => (
-                    <Button
-                      key={childType}
-                      type="button"
-                      size="sm"
-                      onClick={() => {
-                        resetForm();
-                        setForm(current => ({
-                          ...current,
-                          type: childType,
-                          parentOrganizationId: selectedOrganization.id,
-                        }));
-                      }}
-                    >
-                      <Plus className="ml-1 h-4 w-4" /> إضافة{" "}
-                      {typeLabels[childType]}
-                    </Button>
-                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() =>
+                      openEditorForCreate(
+                        selectedOrganization.id,
+                        getAllowedOrganizationChildTypes(
+                          selectedOrganization.type
+                        )[0] ?? "department"
+                      )
+                    }
+                  >
+                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة فرعية
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      resetForm();
-                      setForm(current => ({
-                        ...current,
-                        type: "department",
-                        parentOrganizationId: selectedOrganization.id,
-                        allowHierarchyOverride: true,
-                      }));
-                    }}
+                    onClick={() => openEditorForEdit(selectedOrganization)}
                   >
-                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة فرعية مخصصة
+                    <Pencil className="ml-1 h-4 w-4" /> تعديل الجهة
                   </Button>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">

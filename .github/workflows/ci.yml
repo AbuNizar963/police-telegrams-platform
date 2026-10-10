@@ -38,11 +38,6 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose router formatting
-        run: |
-          pnpm exec prettier server/routers.ts > /tmp/routers.formatted.ts
-          diff -u server/routers.ts /tmp/routers.formatted.ts || true
-
       - name: Check formatting
         run: pnpm lint
 

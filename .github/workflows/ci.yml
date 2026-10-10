@@ -38,6 +38,13 @@ jobs:
             exit 1
           fi
 
+      - name: Diagnose formatting differences
+        run: |
+          pnpm exec prettier server/routers.ts > /tmp/routers.formatted.ts
+          pnpm exec prettier server/telegrams.create.test.ts > /tmp/telegrams.create.test.formatted.ts
+          diff -u server/routers.ts /tmp/routers.formatted.ts || true
+          diff -u server/telegrams.create.test.ts /tmp/telegrams.create.test.formatted.ts || true
+
       - name: Check formatting
         run: pnpm lint
 

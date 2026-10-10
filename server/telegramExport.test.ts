@@ -23,16 +23,14 @@ describe("telegram export HTML validation", () => {
   });
 
   it("continues rejecting executable markup and unsupported data URLs", () => {
+    expect(isSafeExportHtml("<html><script>alert(1)</script></html>")).toBe(
+      false,
+    );
+    expect(isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>')).toBe(
+      false,
+    );
     expect(
-      isSafeExportHtml("<html><script>alert(1)</script></html>"),
-    ).toBe(false);
-    expect(
-      isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>'),
-    ).toBe(false);
-    expect(
-      isSafeExportHtml(
-        '<style>@font-face{src:url("data:font/ttf,raw")}</style>',
-      ),
+      isSafeExportHtml('<style>@font-face{src:url("data:font/ttf,raw")}</style>'),
     ).toBe(false);
     expect(isSafeExportHtml("")).toBe(false);
   });
@@ -47,9 +45,9 @@ describe("telegram export resource isolation", () => {
     expect(
       isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E"),
     ).toBe(true);
-    expect(
-      isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw=="),
-    ).toBe(true);
+    expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
+      true,
+    );
   });
 
   it("blocks unsafe network and data resources", () => {

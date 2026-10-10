@@ -3631,10 +3631,10 @@ function Modal({
   compact?: boolean;
 }) {
   return (
-    <div className="telegram-print-modal fixed inset-0 z-50 flex items-start justify-center overflow-x-hidden overflow-y-auto bg-slate-950/60 p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:items-center sm:overflow-hidden sm:p-6">
+    <div className="telegram-print-modal app-modal-overlay overflow-x-hidden overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:overflow-hidden sm:p-6">
       <div
         dir="rtl"
-        className={`my-2 min-h-0 w-full max-w-[100vw] overflow-x-hidden overflow-y-auto bg-background p-3 shadow-2xl sm:my-0 sm:max-h-[94vh] sm:rounded-2xl sm:p-7 ${wide ? "sm:max-w-5xl" : compact ? "sm:max-w-3xl" : "sm:max-w-2xl"} ${fullScreenOnMobile ? "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-none rounded-none sm:h-auto sm:max-h-[94vh]" : "max-h-[calc(100dvh-1rem)] rounded-t-[1.5rem]"}`}
+        className={`app-modal-shell p-3 sm:p-7 ${wide ? "sm:max-w-5xl" : compact ? "sm:max-w-3xl" : "sm:max-w-2xl"}`}
       >
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

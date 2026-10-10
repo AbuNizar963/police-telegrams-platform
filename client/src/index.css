@@ -184,6 +184,14 @@
     border-color: color-mix(in oklch, var(--border) 82%, transparent);
     box-shadow: 0 16px 45px rgb(16 35 63 / 0.07);
   }
+
+  .app-modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-5;
+  }
+
+  .app-modal-shell {
+    @apply h-[calc(100dvh-1rem)] max-h-none min-h-0 w-full max-w-6xl overflow-x-hidden overflow-y-auto rounded-2xl bg-background shadow-2xl sm:h-auto sm:max-h-[94vh];
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

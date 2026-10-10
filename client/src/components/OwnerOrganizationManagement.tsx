@@ -534,13 +534,13 @@ export default function OwnerOrganizationManagement() {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[75] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5">
+    <div className="app-modal-overlay z-[75]">
       <section
         dir="rtl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="owner-org-title"
-        className="h-screen max-h-screen min-h-0 min-w-0 w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-none bg-background p-3 shadow-2xl sm:h-auto sm:max-h-[94vh] sm:rounded-2xl sm:p-7"
+        className="app-modal-shell min-w-0 p-3 sm:p-7"
       >
         <header className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

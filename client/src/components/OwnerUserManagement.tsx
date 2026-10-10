@@ -102,13 +102,13 @@ export default function OwnerUserManagement() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5">
+    <div className="app-modal-overlay z-[70]">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="owner-users-title"
         dir="rtl"
-        className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-background p-5 shadow-2xl sm:rounded-2xl sm:p-7"
+        className="app-modal-shell p-5 sm:p-7"
       >
         <header className="flex items-start justify-between gap-4">
           <div>

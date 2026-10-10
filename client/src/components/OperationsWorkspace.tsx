@@ -109,13 +109,13 @@ export default function OperationsWorkspace() {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[65] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5">
+    <div className="app-modal-overlay z-[65]">
       <section
         dir="rtl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="operations-workspace-title"
-        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-background shadow-2xl sm:h-[90vh] sm:max-h-[95vh] sm:rounded-2xl"
+        className="app-modal-shell flex max-w-7xl flex-col overflow-hidden"
       >
         <header className="flex items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-7 sm:py-4">
           <div className="min-w-0">

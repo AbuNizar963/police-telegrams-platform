@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedExportResourceUrl, isSafeExportHtml } from "./telegramExport";
+import {
+  isAllowedExportResourceUrl,
+  isSafeExportHtml,
+} from "./telegramExport";
 
 describe("telegram export HTML validation", () => {
-  it("accepts embedded Cairo TTF fonts while preserving the HTML size limit", () => {
+  it("accepts embedded Cairo TTF fonts within the HTML size limit", () => {
     const html = `<!doctype html>
       <html lang="ar" dir="rtl">
         <head>
@@ -20,15 +23,23 @@ describe("telegram export HTML validation", () => {
   });
 
   it("continues rejecting executable markup and unsupported data URLs", () => {
-    expect(isSafeExportHtml('<html><script>alert(1)</script></html>')).toBe(false);
-    expect(isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>')).toBe(false);
-    expect(isSafeExportHtml('<style>@font-face{src:url("data:font/ttf,raw")}</style>')).toBe(false);
+    expect(
+      isSafeExportHtml("<html><script>alert(1)</script></html>")
+    ).toBe(false);
+    expect(
+      isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>')
+    ).toBe(false);
+    expect(
+      isSafeExportHtml(
+        '<style>@font-face{src:url("data:font/ttf,raw")}</style>'
+      )
+    ).toBe(false);
     expect(isSafeExportHtml("")).toBe(false);
   });
 });
 
 describe("telegram export resource isolation", () => {
-  it("allows the blank document origin, supported inline images, and embedded TTF fonts", () => {
+  it("allows the blank origin, inline images, and embedded TTF fonts", () => {
     expect(isAllowedExportResourceUrl("about:blank")).toBe(true);
     expect(
       isAllowedExportResourceUrl("data:image/png;base64,iVBORw0KGgo=")
@@ -36,7 +47,9 @@ describe("telegram export resource isolation", () => {
     expect(
       isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E")
     ).toBe(true);
-    expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(true);
+    expect(
+      isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")
+    ).toBe(true);
   });
 
   it("blocks remote, local-network, file, and unsupported data resources", () => {

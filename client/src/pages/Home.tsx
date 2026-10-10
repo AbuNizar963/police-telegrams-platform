@@ -2162,7 +2162,7 @@ function TelegramComposer({
               autoCapitalize="off"
               onChange={event => setBody(event.target.value)}
               placeholder="اكتب تفاصيل البلاغ..."
-              className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg pb-14 leading-7 sm:min-h-36"
+              className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg pb-14 font-medium leading-7 sm:min-h-36"
             />
             <input
               ref={attachmentInputRef}
@@ -2743,6 +2743,7 @@ function TelegramDetail({
           text-align: justify;
           line-height: 2;
           font-size: 20px;
+          font-weight: 500;
         }
         .telegram-export-page .signature {
           display: flex;
@@ -3785,6 +3786,7 @@ function TelegramEditModal({
             rows={8}
             value={body}
             onChange={event => setBody(event.target.value)}
+            className="font-medium"
           />
         </label>
         <div className="grid gap-3 sm:grid-cols-2">

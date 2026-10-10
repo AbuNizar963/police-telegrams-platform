@@ -23,6 +23,7 @@ const mocked = vi.hoisted(() => ({
   listRoutingTargets: vi.fn(),
   listOrganizationDescendants: vi.fn(),
   routeTelegram: vi.fn(),
+  routeTelegramBroadcastAtomic: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -34,6 +35,7 @@ vi.mock("./organization", async importOriginal => {
     listRoutingTargets: mocked.listRoutingTargets,
     listOrganizationDescendants: mocked.listOrganizationDescendants,
     routeTelegram: mocked.routeTelegram,
+    routeTelegramBroadcastAtomic: mocked.routeTelegramBroadcastAtomic,
   };
 });
 
@@ -85,6 +87,10 @@ describe("telegrams.create", () => {
     mocked.listRoutingTargets.mockResolvedValue([]);
     mocked.listOrganizationDescendants.mockResolvedValue([]);
     mocked.routeTelegram.mockResolvedValue(undefined);
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValue({
+      primaryRoute: { id: 11 },
+      copies: [],
+    });
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {

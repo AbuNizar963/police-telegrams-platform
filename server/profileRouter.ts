@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { hashPassword, publicUser, verifyPassword } from "./_core/auth";
-import { protectedProcedure, router } from "./_core/trpc";
+import { authenticatedProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserById, updateUserPassword, updateUserProfile } from "./db";
 
 export const profileRouter = router({
-  get: protectedProcedure.query(({ ctx }) => ctx.user),
+  get: authenticatedProcedure.query(({ ctx }) => ctx.user),
 
   update: protectedProcedure
     .input(
@@ -34,7 +34,7 @@ export const profileRouter = router({
       return publicUser(updated);
     }),
 
-  changePassword: protectedProcedure
+  changePassword: authenticatedProcedure
     .input(
       z.object({
         currentPassword: z.string().min(1).max(256),

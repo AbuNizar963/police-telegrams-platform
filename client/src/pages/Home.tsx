@@ -1132,7 +1132,7 @@ export default function Home() {
                     {row.recipient}
                   </p>
                 </div>
-                <p className="min-w-0 break-words text-sm font-bold leading-7 sm:text-base">
+                <p className="min-w-0 break-words text-sm font-normal leading-7 sm:text-base">
                   <span className="font-semibold text-muted-foreground">
                     الموضوع:
                   </span>{" "}

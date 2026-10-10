@@ -1122,7 +1122,7 @@ export default function Home() {
                     )}
                   </span>
                 </div>
-                <div className="grid gap-1 text-sm leading-6 text-muted-foreground sm:grid-cols-2 sm:gap-x-6">
+                <div className="grid grid-cols-1 gap-1 text-sm leading-6 text-muted-foreground">
                   <p className="break-words">
                     <span className="font-semibold text-foreground">من:</span>{" "}
                     {row.senderOrganizationName || "الجهة المرسلة"}

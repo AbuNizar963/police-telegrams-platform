@@ -2197,9 +2197,9 @@ function TelegramComposer({
               title="إرفاق ملف"
               onClick={() => attachmentInputRef.current?.click()}
               disabled={pending}
-              className="absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#b4945a]/50 bg-background text-[#7a5c1e] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff8e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-[#7a5c1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Paperclip className="h-4 w-4" aria-hidden="true" />
+              <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="sr-only">إرفاق ملف</span>
             </button>
           </div>

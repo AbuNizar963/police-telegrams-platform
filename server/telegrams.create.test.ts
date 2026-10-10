@@ -625,5 +625,4 @@ describe("telegrams.create", () => {
       consoleError.mockRestore();
     }
   });
-
 });

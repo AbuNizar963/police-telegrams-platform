@@ -9,7 +9,8 @@ const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 export function isSafeExportHtml(html: string): boolean {
   // Export HTML may embed the bundled Cairo TTF fonts as base64 data URLs.
   // Keep all other non-image data URLs blocked to preserve the security boundary.
-  const unsafeDataUri = /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)/i;
+  const unsafeDataUri =
+    /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)/i;
   return (
     html.length > 0 &&
     Buffer.byteLength(html, "utf8") <= MAX_HTML_BYTES &&

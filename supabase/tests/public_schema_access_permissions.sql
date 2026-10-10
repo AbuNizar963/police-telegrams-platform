@@ -58,10 +58,7 @@ SELECT ok(
     FROM pg_default_acl AS d
     CROSS JOIN LATERAL aclexplode(d.defaclacl) AS acl
     WHERE d.defaclacl IS NOT NULL
-      AND d.defaclrole IN (
-        SELECT oid FROM pg_roles
-        WHERE rolname IN ('postgres', 'supabase_admin')
-      )
+      AND d.defaclrole = 'postgres'::regrole
       AND (
         d.defaclnamespace = 0
         OR d.defaclnamespace = 'public'::regnamespace
@@ -77,7 +74,7 @@ SELECT ok(
         )
       )
   ),
-  'future objects created by migration owners do not default to browser access'
+  'future objects created by postgres do not default to browser access'
 );
 
 SELECT ok(

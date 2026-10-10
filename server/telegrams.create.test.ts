@@ -361,7 +361,7 @@ describe("telegrams.create", () => {
     });
   });
 
-  it("records partial broadcast progress and returns a clear error when routing a copy fails", async () => {
+  it("reports an atomic broadcast failure without claiming that copies were committed", async () => {
     const targets = [
       {
         id: "00000000-0000-4000-8000-000000000002",
@@ -380,178 +380,8 @@ describe("telegrams.create", () => {
       },
     ];
     mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.routeTelegram
-      .mockResolvedValueOnce({ id: 11 })
-      .mockRejectedValueOnce(new Error("routing copy failed"));
-
-    const caller = appRouter.createCaller(createContext());
-
-    await expect(
-      caller.telegrams.create({
-        subject: "تعميم اختبار",
-        recipient: "الجهات التابعة",
-        body: "محتوى التعميم",
-        classification: "normal",
-        priority: "normal",
-        category: "administrative",
-        broadcastToDescendants: true,
-      })
-    ).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
-    });
-
-    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        telegramId: 7,
-        action: "telegram.broadcast.partial_failure",
-        toStatus: "partial_failure",
-        metadata: expect.objectContaining({
-          failure: "routing copy failed",
-          progress: expect.arrayContaining([
-            expect.objectContaining({
-              organizationId: targets[1].id,
-              status: "created",
-            }),
-          ]),
-        }),
-      })
-    );
-  });
-
-  it("records the primary telegram as created when its initial broadcast route fails", async () => {
-    const targets = [
-      {
-        id: "00000000-0000-4000-8000-000000000002",
-        name: "الجهة التابعة الأولى",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000003",
-        name: "الجهة التابعة الثانية",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-    ];
-    mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.routeTelegram.mockRejectedValueOnce(
-      new Error("primary routing failed")
-    );
-
-    const caller = appRouter.createCaller(createContext());
-
-    await expect(
-      caller.telegrams.create({
-        subject: "تعميم اختبار",
-        recipient: "الجهات التابعة",
-        body: "محتوى التعميم",
-        classification: "normal",
-        priority: "normal",
-        category: "administrative",
-        broadcastToDescendants: true,
-      })
-    ).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
-    });
-
-    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        telegramId: 7,
-        action: "telegram.broadcast.partial_failure",
-        metadata: expect.objectContaining({
-          failure: "primary routing failed",
-          progress: [
-            {
-              telegramId: 7,
-              organizationId: targets[0].id,
-              status: "created",
-            },
-          ],
-        }),
-      })
-    );
-    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
-  });
-
-  it("records partial failure when refreshing the primary telegram after routing succeeds", async () => {
-    const targets = [
-      {
-        id: "00000000-0000-4000-8000-000000000002",
-        name: "الجهة التابعة الأولى",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000003",
-        name: "الجهة التابعة الثانية",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-    ];
-    mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.routeTelegram.mockResolvedValueOnce({ id: 11 });
-    mocked.getTelegramById.mockRejectedValueOnce(
-      new Error("primary telegram refresh failed")
-    );
-
-    const caller = appRouter.createCaller(createContext());
-
-    await expect(
-      caller.telegrams.create({
-        subject: "تعميم اختبار",
-        recipient: "الجهات التابعة",
-        body: "محتوى التعميم",
-        classification: "normal",
-        priority: "normal",
-        category: "administrative",
-        broadcastToDescendants: true,
-      })
-    ).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
-    });
-
-    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        telegramId: 7,
-        action: "telegram.broadcast.partial_failure",
-        metadata: expect.objectContaining({
-          failure: "primary telegram refresh failed",
-          progress: [
-            {
-              telegramId: 7,
-              organizationId: targets[0].id,
-              status: "routed",
-            },
-          ],
-        }),
-      })
-    );
-    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports manual review when partial-failure audit persistence fails", async () => {
-    const targets = [
-      {
-        id: "00000000-0000-4000-8000-000000000002",
-        name: "الجهة التابعة الأولى",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000003",
-        name: "الجهة التابعة الثانية",
-        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
-      },
-    ];
-    mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.createTelegram
-      .mockImplementationOnce(async input => ({
-        id: 7,
-        createdAt: new Date(),
-        ...input,
-      }))
-      .mockRejectedValueOnce(new Error("copy creation failed"));
-    mocked.routeTelegram.mockResolvedValueOnce({ id: 11 });
-    mocked.recordTelegramAction.mockRejectedValueOnce(
-      new Error("audit persistence failed")
+    mocked.routeTelegramBroadcastAtomic.mockRejectedValueOnce(
+      new Error("routing copy failed")
     );
 
     const caller = appRouter.createCaller(createContext());
@@ -569,15 +399,48 @@ describe("telegrams.create", () => {
     ).rejects.toMatchObject({
       code: "INTERNAL_SERVER_ERROR",
       message: expect.stringContaining(
-        "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا؛ يلزم فحص السجلات والنسخ يدويًا."
+        "تراجعت مسارات الإرسال ونسخه ذريًا، وسُجّل الفشل للمراجعة."
       ),
     });
 
-    expect(mocked.recordTelegramAction).toHaveBeenCalledTimes(1);
-    expect(mocked.createTelegram).toHaveBeenCalledTimes(2);
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        toOrganizationId: targets[0].id,
+        copies: expect.arrayContaining([
+          expect.objectContaining({
+            targetOrganizationId: targets[1].id,
+          }),
+          expect.objectContaining({
+            targetOrganizationId: targets[2].id,
+          }),
+        ]),
+      })
+    );
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        action: "telegram.broadcast.atomic_failure",
+        fromStatus: "draft",
+        toStatus: "draft",
+        metadata: expect.objectContaining({
+          failure: "routing copy failed",
+          rollbackGuaranteed: true,
+          progress: [
+            {
+              telegramId: 7,
+              organizationId: targets[0].id,
+              status: "created",
+            },
+          ],
+        }),
+      })
+    );
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
   });
 
-  it("records partial progress when creating a broadcast copy fails", async () => {
+  it("routes the primary telegram and every copy through one atomic RPC", async () => {
     const targets = [
       {
         id: "00000000-0000-4000-8000-000000000002",
@@ -591,14 +454,16 @@ describe("telegrams.create", () => {
       },
     ];
     mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.createTelegram
-      .mockImplementationOnce(async input => ({
-        id: 7,
-        createdAt: new Date(),
-        ...input,
-      }))
-      .mockRejectedValueOnce(new Error("copy creation failed"));
-    mocked.routeTelegram.mockResolvedValueOnce({ id: 11 });
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValueOnce({
+      primaryRoute: { id: 11 },
+      copies: [
+        {
+          telegramId: 8,
+          routeId: 12,
+          targetOrganizationId: targets[1].id,
+        },
+      ],
+    });
 
     const caller = appRouter.createCaller(createContext());
 
@@ -612,41 +477,111 @@ describe("telegrams.create", () => {
         category: "administrative",
         broadcastToDescendants: true,
       })
-    ).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
-    });
+    ).resolves.toMatchObject({ id: 7 });
 
-    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegramBroadcastAtomic).toHaveBeenCalledWith(
       expect.objectContaining({
         telegramId: 7,
-        action: "telegram.broadcast.partial_failure",
-        metadata: expect.objectContaining({
-          failure: "copy creation failed",
-          progress: [
-            {
-              telegramId: 7,
-              organizationId: targets[0].id,
-              status: "routed",
-            },
-          ],
-        }),
+        toOrganizationId: targets[0].id,
+        forwardedByUserId: 42,
+        copies: [
+          expect.objectContaining({
+            targetOrganizationId: targets[1].id,
+            serialNumber: 1001,
+            organizationSerialNumber: 1,
+            subject: "تعميم اختبار",
+            recipient: "الجهات التابعة",
+            body: "محتوى التعميم",
+          }),
+        ],
       })
     );
-    expect(mocked.createTelegram).toHaveBeenCalledTimes(2);
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+    expect(mocked.routeTelegram).not.toHaveBeenCalled();
+    expect(mocked.recordTelegramAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "telegram.broadcast.atomic_failure",
+      })
+    );
   });
 
-  it("warns that manual review is required when partial-failure audit persistence fails", async () => {
+  it("does not misreport a committed broadcast when refreshing the primary telegram fails", async () => {
     const targets = [
       {
         id: "00000000-0000-4000-8000-000000000002",
         name: "الجهة التابعة الأولى",
         parentOrganizationId: "00000000-0000-0000-0000-000000000001",
       },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
     ];
     mocked.listOrganizationDescendants.mockResolvedValue(targets);
-    mocked.routeTelegram.mockRejectedValueOnce(
-      new Error("primary routing failed")
+    mocked.routeTelegramBroadcastAtomic.mockResolvedValueOnce({
+      primaryRoute: { id: 11 },
+      copies: [
+        {
+          telegramId: 8,
+          routeId: 12,
+          targetOrganizationId: targets[1].id,
+        },
+      ],
+    });
+    mocked.getTelegramById.mockRejectedValueOnce(
+      new Error("primary telegram refresh failed")
+    );
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+
+    try {
+      const caller = appRouter.createCaller(createContext());
+
+      await expect(
+        caller.telegrams.create({
+          subject: "تعميم اختبار",
+          recipient: "الجهات التابعة",
+          body: "محتوى التعميم",
+          classification: "normal",
+          priority: "normal",
+          category: "administrative",
+          broadcastToDescendants: true,
+        })
+      ).resolves.toMatchObject({ id: 7 });
+
+      expect(mocked.recordTelegramAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "telegram.broadcast.atomic_failure",
+        })
+      );
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "[Telegram broadcast] Primary telegram refresh failed after commit",
+        expect.any(Error)
+      );
+    } finally {
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it("reports manual review if the atomic broadcast failure cannot be audited", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegramBroadcastAtomic.mockRejectedValueOnce(
+      new Error("copy creation failed")
     );
     mocked.recordTelegramAction.mockRejectedValueOnce(
       new Error("audit persistence failed")
@@ -671,10 +606,11 @@ describe("telegrams.create", () => {
       ).rejects.toMatchObject({
         code: "INTERNAL_SERVER_ERROR",
         message: expect.stringContaining(
-          "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا"
+          "تراجعت مسارات الإرسال ونسخه ذريًا، لكن تعذّر حفظ سجل التدقيق؛ يلزم مراجعة السجلات يدويًا."
         ),
       });
 
+      expect(mocked.recordTelegramAction).toHaveBeenCalledTimes(1);
       expect(consoleError).toHaveBeenCalledWith(
         "[Telegram broadcast] Failed to persist partial-failure audit",
         expect.any(Error)
@@ -683,4 +619,5 @@ describe("telegrams.create", () => {
       consoleError.mockRestore();
     }
   });
+
 });

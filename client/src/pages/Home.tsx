@@ -1924,7 +1924,9 @@ function TelegramComposer({
   const [serialNumber, setSerialNumber] = useState("");
   const [serialNumberEdited, setSerialNumberEdited] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [attachmentPickerOpen, setAttachmentPickerOpen] = useState(false);
+  const attachmentImageInputRef = useRef<HTMLInputElement>(null);
+  const attachmentFileInputRef = useRef<HTMLInputElement>(null);
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
   );
@@ -1955,6 +1957,28 @@ function TelegramComposer({
     }
   }, [recipientOrganizationId, routingDirectory]);
 
+  const selectAttachment = (file?: File) => {
+    if (!file) return;
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+      "audio/mpeg",
+      "audio/wav",
+      "audio/webm",
+    ];
+    if (!allowed.includes(file.type)) {
+      toast.error("نوع الملف غير مسموح");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم المرفق يتجاوز 10 ميغابايت");
+      return;
+    }
+    setAttachment(file);
+    setAttachmentPickerOpen(false);
+  };
   const save = () => {
     if (!online) {
       toast.error(
@@ -2166,39 +2190,60 @@ function TelegramComposer({
               className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg pb-14 font-medium leading-7 sm:min-h-36"
             />
             <input
-              ref={attachmentInputRef}
+              ref={attachmentImageInputRef}
               type="file"
               className="hidden"
-              accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
+              accept="image/*"
               onChange={event => {
                 const file = event.target.files?.[0];
                 event.currentTarget.value = "";
-                if (!file) return;
-                const allowed = [
-                  "image/jpeg",
-                  "image/png",
-                  "image/webp",
-                  "application/pdf",
-                  "audio/mpeg",
-                  "audio/wav",
-                  "audio/webm",
-                ];
-                if (!allowed.includes(file.type)) {
-                  toast.error("نوع الملف غير مسموح");
-                  return;
-                }
-                if (file.size > 10 * 1024 * 1024) {
-                  toast.error("حجم المرفق يتجاوز 10 ميغابايت");
-                  return;
-                }
-                setAttachment(file);
+                selectAttachment(file);
               }}
             />
+            <input
+              ref={attachmentFileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,audio/*"
+              onChange={event => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                selectAttachment(file);
+              }}
+            />
+            {attachmentPickerOpen && (
+              <div className="absolute bottom-11 right-2 z-10 grid min-w-48 gap-1 rounded-xl border bg-background p-1.5 shadow-lg">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs font-semibold transition hover:bg-muted"
+                  onClick={() => {
+                    setAttachmentPickerOpen(false);
+                    attachmentImageInputRef.current?.click();
+                  }}
+                >
+                  <ImagePlus className="h-4 w-4 text-[#9b7c3d]" />
+                  المعرض أو الاستديو
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs font-semibold transition hover:bg-muted"
+                  onClick={() => {
+                    setAttachmentPickerOpen(false);
+                    attachmentFileInputRef.current?.click();
+                  }}
+                >
+                  <FileText className="h-4 w-4 text-[#9b7c3d]" />
+                  ملف PDF أو صوت
+                </button>
+              </div>
+            )}
             <button
               type="button"
               aria-label="إرفاق ملف بالبرقية"
-              title="إرفاق ملف"
-              onClick={() => attachmentInputRef.current?.click()}
+              title="اختيار مرفق من المعرض أو الملفات"
+              onClick={() =>
+                setAttachmentPickerOpen(current => !current)
+              }
               disabled={pending}
               className="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-[#7a5c1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
             >

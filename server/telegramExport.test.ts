@@ -23,14 +23,16 @@ describe("telegram export HTML validation", () => {
   });
 
   it("continues rejecting executable markup and unsupported data URLs", () => {
-    expect(isSafeExportHtml("<html><script>alert(1)</script></html>")).toBe(
-      false,
-    );
-    expect(isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>')).toBe(
-      false,
-    );
     expect(
-      isSafeExportHtml('<style>@font-face{src:url("data:font/ttf,raw")}</style>'),
+      isSafeExportHtml("<html><script>alert(1)</script></html>"),
+    ).toBe(false);
+    expect(
+      isSafeExportHtml('<html><img src="data:text/html,unsafe"></html>'),
+    ).toBe(false);
+    expect(
+      isSafeExportHtml(
+        '<style>@font-face{src:url("data:font/ttf,raw")}</style>',
+      ),
     ).toBe(false);
     expect(isSafeExportHtml("")).toBe(false);
   });
@@ -45,18 +47,18 @@ describe("telegram export resource isolation", () => {
     expect(
       isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E"),
     ).toBe(true);
-    expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
-      true,
-    );
+    expect(
+      isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw=="),
+    ).toBe(true);
   });
 
   it("blocks unsafe network and data resources", () => {
-    expect(isAllowedExportResourceUrl("https://example.com/image.png")).toBe(
-      false,
-    );
-    expect(isAllowedExportResourceUrl("http://127.0.0.1:3000/admin")).toBe(
-      false,
-    );
+    expect(
+      isAllowedExportResourceUrl("https://example.com/image.png"),
+    ).toBe(false);
+    expect(
+      isAllowedExportResourceUrl("http://127.0.0.1:3000/admin"),
+    ).toBe(false);
     expect(
       isAllowedExportResourceUrl("http://169.254.169.254/latest/meta-data/"),
     ).toBe(false);
@@ -64,11 +66,11 @@ describe("telegram export resource isolation", () => {
     expect(
       isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>"),
     ).toBe(false);
-    expect(isAllowedExportResourceUrl("data:font/ttf,raw-font-data")).toBe(
-      false,
-    );
-    expect(isAllowedExportResourceUrl("blob:https://example.com/id")).toBe(
-      false,
-    );
+    expect(
+      isAllowedExportResourceUrl("data:font/ttf,raw-font-data"),
+    ).toBe(false);
+    expect(
+      isAllowedExportResourceUrl("blob:https://example.com/id"),
+    ).toBe(false);
   });
 });

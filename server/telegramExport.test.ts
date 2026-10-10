@@ -27,7 +27,8 @@ describe("telegram export HTML validation", () => {
     const scriptHtml = "<html><script>alert(1)</script></html>";
     const unsupportedImageHtml =
       '<html><img src="data:text/html,unsafe"></html>';
-    const rawFontHtml = '<style>@font-face{src:url("data:font/ttf,raw")}</style>';
+    const rawFontHtml =
+      '<style>@font-face{src:url("data:font/ttf,raw")}</style>';
 
     expect(isSafeExportHtml(scriptHtml)).toBe(false);
     expect(isSafeExportHtml(unsupportedImageHtml)).toBe(false);

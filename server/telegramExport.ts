@@ -3,18 +3,27 @@ import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
-const MAX_HTML_BYTES = 2_500_000;
+const MAX_HTML_BYTES = 8_000_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 
-function isSafeExportHtml(html: string): boolean {
-  const unsafeDataUri = /data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,])/i;
+export function isSafeExportHtml(html: string): boolean {
+  // The client sends a complete, already-rendered document. Validate executable
+  // markup and URL-bearing attributes, not visible text: a legitimate telegram
+  // may contain words such as "javascript:" or "data:" in its body.
+  const unsafeUrl =
+    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']\s*(?:javascript|vbscript):/i;
+  const unsafeDataUrl =
+    /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']\s*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,])/i;
+  const eventHandler = /\bon[a-z][\w:-]*\s*=\s*["']/i;
   return (
     html.length > 0 &&
     Buffer.byteLength(html, "utf8") <= MAX_HTML_BYTES &&
     !/<\s*script\b/i.test(html) &&
     !/<\s*(iframe|object|embed)\b/i.test(html) &&
-    !/\b(?:javascript|vbscript):/i.test(html) &&
-    !unsafeDataUri.test(html)
+    !/<\s*(?:meta|link)\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(html) &&
+    !eventHandler.test(html) &&
+    !unsafeUrl.test(html) &&
+    !unsafeDataUrl.test(html)
   );
 }
 

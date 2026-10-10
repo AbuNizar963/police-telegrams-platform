@@ -2044,36 +2044,73 @@ export const appRouter = router({
 
         // A telegram has one active destination, so a broadcast is represented
         // by one independently routed copy for each direct child organization.
-        for (const target of broadcastTargets.slice(1)) {
-          const targetOrganizationSerialNumber =
-            await allocateOrganizationSerialNumber(organizationId, "outgoing");
-          const targetSerialNumber = await allocateSerialNumber();
-          const targetSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
-          const targetOrganizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
-          const copy = await createTelegram({
-            ...telegramInput,
-            idempotencyKey: null,
-            serialNumber: targetSerialNumber,
-            serialCode: targetSerialCode,
-            organizationSerialNumber: targetOrganizationSerialNumber,
-            organizationSerialCode: targetOrganizationSerialCode,
-            status: "draft",
-            verificationToken: randomUUID(),
-            createdByUserId: ctx.user.id,
-            organizationId,
-            currentOrganizationId: organizationId,
-            creatorName,
-            creatorEmail: ctx.user.email ?? null,
-            creatorBadgeId: ctx.user.badgeNumber ?? null,
-            creatorIp,
-            creatorFingerprint: ctx.user.authUserId,
-          });
-          await routeTelegram({
-            telegramId: copy.id,
-            toOrganizationId: target.id,
-            forwardedByUserId: ctx.user.id,
-            allowDraft: true,
-            note: "إرسال جماعي إلى الوحدات التابعة مباشرة",
+        // Record partial progress durably if creating or routing a copy fails.
+        const broadcastProgress: Array<{
+          telegramId: number;
+          organizationId: string;
+          status: "created" | "routed";
+        }> = configuredDestination
+          ? [{ telegramId: telegram.id, organizationId: configuredDestination.id, status: "routed" }]
+          : [];
+        try {
+          for (const target of broadcastTargets.slice(1)) {
+            const targetOrganizationSerialNumber =
+              await allocateOrganizationSerialNumber(organizationId, "outgoing");
+            const targetSerialNumber = await allocateSerialNumber();
+            const targetSerialCode = numbering.serialPrefix + "-" + dateCode + "-" + String(targetSerialNumber).padStart(5, "0");
+            const targetOrganizationSerialCode = numbering.serialPrefix + "-" + dateCode + "-" + String(targetOrganizationSerialNumber).padStart(5, "0");
+            const copy = await createTelegram({
+              ...telegramInput,
+              idempotencyKey: null,
+              serialNumber: targetSerialNumber,
+              serialCode: targetSerialCode,
+              organizationSerialNumber: targetOrganizationSerialNumber,
+              organizationSerialCode: targetOrganizationSerialCode,
+              status: "draft",
+              verificationToken: randomUUID(),
+              createdByUserId: ctx.user.id,
+              organizationId,
+              currentOrganizationId: organizationId,
+              creatorName,
+              creatorEmail: ctx.user.email ?? null,
+              creatorBadgeId: ctx.user.badgeNumber ?? null,
+              creatorIp,
+              creatorFingerprint: ctx.user.authUserId,
+            });
+            const progress = { telegramId: copy.id, organizationId: target.id, status: "created" as const };
+            broadcastProgress.push(progress);
+            await routeTelegram({
+              telegramId: copy.id,
+              toOrganizationId: target.id,
+              forwardedByUserId: ctx.user.id,
+              allowDraft: true,
+              note: "إرسال جماعي إلى الوحدات التابعة مباشرة",
+            });
+            progress.status = "routed";
+          }
+        } catch (error) {
+          const failure = error instanceof Error ? error.message : String(error);
+          try {
+            await recordTelegramAction({
+              telegramId: telegram.id,
+              actorUserId: ctx.user.id,
+              action: "telegram.broadcast.partial_failure",
+              fromStatus: telegram.status,
+              toStatus: "partial_failure",
+              reason: "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
+              metadata: {
+                failure,
+                targets: broadcastTargets.map(target => ({ organizationId: target.id, name: target.name })),
+                progress: broadcastProgress,
+              },
+            });
+          } catch (auditError) {
+            console.error("[Telegram broadcast] Failed to persist partial-failure audit", auditError);
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `تعذر إكمال الإرسال الجماعي للبرقية ${telegram.serialCode}. سُجّلت حالة الإرسال الجزئي للمراجعة؛ معرّف البرقية الأساسية: ${telegram.id}.`,
+            cause: error,
           });
         }
 

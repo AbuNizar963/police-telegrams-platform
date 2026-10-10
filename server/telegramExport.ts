@@ -18,6 +18,13 @@ function isSafeExportHtml(html: string): boolean {
   );
 }
 
+export function isAllowedExportResourceUrl(url: string): boolean {
+  return (
+    url === "about:blank" ||
+    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url)
+  );
+}
+
 function getChromiumExecutablePath(): string {
   return process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 }
@@ -48,6 +55,18 @@ export async function renderTelegramDocument(
     const page = await browser.newPage({
       viewport: { width: 794, height: 1123 },
       deviceScaleFactor: format === "png" ? 3 : 1,
+      javaScriptEnabled: false,
+    });
+
+    // Export HTML is supplied by an authenticated client, so treat it as
+    // untrusted even when the normal UI generates it. Rendering must never
+    // make network requests to localhost, cloud metadata, or arbitrary hosts.
+    await page.route("**/*", async route => {
+      if (isAllowedExportResourceUrl(route.request().url())) {
+        await route.continue();
+        return;
+      }
+      await route.abort("blockedbyclient");
     });
 
     await page.emulateMedia({ media: "print" });

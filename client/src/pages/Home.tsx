@@ -13,6 +13,8 @@ import {
   Activity,
   AlertTriangle,
   Archive,
+  ArrowDown,
+  ArrowUp,
   ArrowUpLeft,
   Building2,
   CheckCircle2,
@@ -1094,21 +1096,21 @@ export default function Home() {
                 onClick={() => setSelectedId(row.id)}
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex flex-wrap items-center gap-2 pl-16">
                   {row.organizationId === row.currentOrganizationId ? (
                     <span
                       aria-label="برقية صادرة"
-                      className="order-last inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                      className="absolute left-0 top-1/2 inline-flex w-fit -translate-y-1/2 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold leading-4 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
                     >
-                      <Send aria-hidden="true" className="h-3 w-3" />
+                      <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" />
                       صادرة
                     </span>
                   ) : (
                     <span
                       aria-label="برقية واردة"
-                      className="order-last inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      className="absolute left-0 top-1/2 inline-flex w-fit -translate-y-1/2 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold leading-4 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                     >
-                      <Inbox aria-hidden="true" className="h-3 w-3" />
+                      <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
                       واردة
                     </span>
                   )}

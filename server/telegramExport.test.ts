@@ -52,7 +52,7 @@ describe("telegram export resource isolation", () => {
     ).toBe(true);
   });
 
-  it("blocks remote, local-network, file, and unsupported data resources", () => {
+  it("blocks unsafe network and data resources", () => {
     expect(isAllowedExportResourceUrl("https://example.com/image.png")).toBe(
       false
     );

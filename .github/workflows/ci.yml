@@ -38,9 +38,6 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose formatter output (temporary)
-        run: pnpm exec prettier server/telegramExport.test.ts
-
       - name: Check formatting
         run: pnpm lint
 

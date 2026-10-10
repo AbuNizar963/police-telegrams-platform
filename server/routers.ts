@@ -2113,7 +2113,15 @@ export const appRouter = router({
               error
             );
           }
-          const routedTelegram = await getTelegramById(telegram.id);
+          let routedTelegram: Awaited<ReturnType<typeof getTelegramById>>;
+          try {
+            routedTelegram = await getTelegramById(telegram.id);
+          } catch (error) {
+            if (broadcastTargets.length > 0) {
+              await reportBroadcastFailure(error);
+            }
+            throw error;
+          }
           if (routedTelegram) telegram = routedTelegram;
         }
 

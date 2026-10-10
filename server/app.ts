@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
 import { registerTelegramExportRoutes } from "./telegramExport";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
+import { ENV } from "./_core/env";
 import { getUserOrganizationMembership } from "./organization";
 
 /**
@@ -45,6 +46,9 @@ export function createApp(
   options: { productionStatic?: boolean } = {}
 ): Express {
   const app = express();
+  // Vercel supplies the client address through one trusted proxy hop in production.
+  // Do not trust forwarded headers in local development or test environments.
+  app.set("trust proxy", ENV.isProduction ? 1 : false);
   app.disable("x-powered-by");
 
   // Authenticate large-payload routes before parsing attacker-controlled bodies.

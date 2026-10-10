@@ -21,6 +21,7 @@ const mocked = vi.hoisted(() => ({
   recordTelegramVersion: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
   listRoutingTargets: vi.fn(),
+  listOrganizationDescendants: vi.fn(),
   routeTelegram: vi.fn(),
 }));
 
@@ -31,8 +32,67 @@ vi.mock("./organization", async importOriginal => {
     ...actual,
     getConfiguredTelegramDestination: mocked.getConfiguredTelegramDestination,
     listRoutingTargets: mocked.listRoutingTargets,
+    listOrganizationDescendants: mocked.listOrganizationDescendants,
     routeTelegram: mocked.routeTelegram,
   };
+  it("records partial broadcast progress and returns a clear error when routing a copy fails", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000004",
+        name: "الجهة التابعة الثالثة",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.routeTelegram
+      .mockResolvedValueOnce({ id: 11 })
+      .mockRejectedValueOnce(new Error("routing copy failed"));
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+      })
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: expect.stringContaining("سُجّلت حالة الإرسال الجزئي للمراجعة"),
+    });
+
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        action: "telegram.broadcast.partial_failure",
+        toStatus: "partial_failure",
+        metadata: expect.objectContaining({
+          failure: "routing copy failed",
+          progress: expect.arrayContaining([
+            expect.objectContaining({
+              organizationId: targets[1].id,
+              status: "created",
+            }),
+          ]),
+        }),
+      })
+    );
+  });
+
 });
 
 function createContext(): TrpcContext {
@@ -81,6 +141,7 @@ describe("telegrams.create", () => {
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
     mocked.listRoutingTargets.mockResolvedValue([]);
+    mocked.listOrganizationDescendants.mockResolvedValue([]);
     mocked.routeTelegram.mockResolvedValue(undefined);
   });
 

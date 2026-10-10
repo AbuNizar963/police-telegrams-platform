@@ -2063,8 +2063,10 @@ export const appRouter = router({
             const targetOrganizationSerialNumber =
               await allocateOrganizationSerialNumber(organizationId, "outgoing");
             const targetSerialNumber = await allocateSerialNumber();
-            const targetSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
-            const targetOrganizationSerialCode = `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
+            const targetSerialCode =
+              `${numbering.serialPrefix}-${dateCode}-${String(targetSerialNumber).padStart(5, "0")}`;
+            const targetOrganizationSerialCode =
+              `${numbering.serialPrefix}-${dateCode}-${String(targetOrganizationSerialNumber).padStart(5, "0")}`;
             const copy = await createTelegram({
               ...telegramInput,
               idempotencyKey: null,
@@ -2109,7 +2111,8 @@ export const appRouter = router({
               action: "telegram.broadcast.partial_failure",
               fromStatus: telegram.status,
               toStatus: "partial_failure",
-              reason: "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
+              reason:
+                "تعذر إكمال الإرسال الجماعي؛ يلزم فحص النسخ وإعادة معالجة الجهات غير المكتملة.",
               metadata: {
                 failure,
                 targets: broadcastTargets.map(target => ({

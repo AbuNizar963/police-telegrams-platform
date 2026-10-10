@@ -276,10 +276,21 @@ function StatusBadge({ value }: { value: Status }) {
         : value === "pending" || value === "returned"
           ? "bg-amber-500"
           : "bg-slate-400";
+  const StatusIcon =
+    value === "forwarded"
+      ? Share2
+      : value === "resolved" || value === "approved" || value === "completed"
+        ? CheckCircle2
+        : value === "in_progress" || value === "in_review"
+          ? Activity
+          : value === "draft"
+            ? FileText
+            : Clock3;
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusStyles[value]}`}
     >
+      <StatusIcon className="h-3.5 w-3.5" />
       <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass}`} />
       {statusLabels[value]}
     </span>
@@ -293,11 +304,22 @@ function PriorityBadge({ value }: { value: Priority }) {
       : value === "slow"
         ? "bg-slate-500/10 text-slate-600 dark:text-slate-300"
         : "bg-blue-500/10 text-blue-700 dark:text-blue-300";
+  const PriorityIcon = value === "urgent" ? Siren : Shield;
   return (
     <span
-      className={`inline-flex rounded-md px-2.5 py-1 text-[11px] font-semibold ${tone}`}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ${tone}`}
     >
+      <PriorityIcon className="h-3.5 w-3.5" />
       {priorityLabels[value]}
+    </span>
+  );
+}
+
+function CategoryBadge({ value }: { value: Category }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-500/10 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+      <FileText className="h-3.5 w-3.5" />
+      {categoryLabels[value]}
     </span>
   );
 }
@@ -459,35 +481,6 @@ export default function Home() {
       // Ignore storage errors; the in-memory defaults are still applied.
     }
   };
-
-  const desktopGridClass = [
-    "grid",
-    "w-full",
-    "gap-3",
-    "text-right",
-    "md:items-center",
-    "md:px-5",
-    "transition-colors",
-    "hover:bg-muted/40",
-    displayColumns.category && displayColumns.priority && displayColumns.creator
-      ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]"
-      : displayColumns.category && displayColumns.priority
-        ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_32px]"
-        : displayColumns.category && displayColumns.creator
-          ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_145px_32px]"
-          : displayColumns.priority && displayColumns.creator
-            ? "md:grid-cols-[110px_minmax(180px,1fr)_125px_145px_32px]"
-            : displayColumns.category
-              ? "md:grid-cols-[110px_minmax(180px,1fr)_120px_32px]"
-              : displayColumns.priority
-                ? "md:grid-cols-[110px_minmax(180px,1fr)_125px_32px]"
-                : displayColumns.creator
-                  ? "md:grid-cols-[110px_minmax(180px,1fr)_145px_32px]"
-                  : "md:grid-cols-[110px_minmax(180px,1fr)_32px]",
-  ].join(" ");
-  const desktopGridHeaderClass =
-    desktopGridClass.match(/md:grid-cols-\[[^\]]+\]/)?.[0] ??
-    "md:grid-cols-[110px_minmax(180px,1fr)_120px_125px_145px_32px]";
 
   const input = useMemo(
     () => ({
@@ -1080,16 +1073,6 @@ export default function Home() {
               </button>
             </div>
           )}
-          <div
-            className={`hidden gap-3 border-b bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground md:grid ${desktopGridHeaderClass}`}
-          >
-            <span>الرقم</span>
-            <span>موضوع البرقية</span>
-            {displayColumns.category && <span>التصنيف</span>}
-            {displayColumns.priority && <span>الأولوية / السرية</span>}
-            {displayColumns.creator && <span>المنشئ / الوقت</span>}
-            <span />
-          </div>
           <div className="divide-y">
             {list.isLoading && (
               <div className="p-12 text-center text-sm text-muted-foreground">
@@ -1109,7 +1092,7 @@ export default function Home() {
               <button
                 key={row.id}
                 onClick={() => setSelectedId(row.id)}
-                className={`group ${desktopGridClass} px-4 py-4`}
+                className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {row.organizationId === row.currentOrganizationId ? (
@@ -1138,33 +1121,44 @@ export default function Home() {
                   </span>
                   <StatusBadge value={row.status} />
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{row.subject}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    إلى: {row.recipient}
+                <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:gap-x-6">
+                  <p className="truncate">
+                    <span className="font-semibold text-foreground">من:</span>{" "}
+                    {row.creatorName}
+                  </p>
+                  <p className="truncate">
+                    <span className="font-semibold text-foreground">إلى:</span>{" "}
+                    {row.recipient}
                   </p>
                 </div>
-                {displayColumns.category && (
-                  <span className="text-xs text-muted-foreground">
-                    {categoryLabels[row.category]}
-                  </span>
-                )}
-                {displayColumns.priority && (
-                  <div className="flex flex-wrap items-center gap-1">
+                <p className="min-w-0 truncate text-base font-bold sm:text-lg">
+                  <span className="text-sm font-semibold text-muted-foreground sm:text-base">
+                    الموضوع:
+                  </span>{" "}
+                  {row.subject}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {displayColumns.priority && (
                     <PriorityBadge value={row.priority} />
+                  )}
+                  {displayColumns.category && (
+                    <CategoryBadge value={row.category} />
+                  )}
+                  {displayColumns.priority && (
                     <SeverityBadge value={row.classification} />
-                  </div>
-                )}
+                  )}
+                </div>
                 {displayColumns.creator && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     <UserRound className="h-3.5 w-3.5" />
                     <span className="truncate">{row.creatorName}</span>
-                    <span className="hidden lg:inline">
+                    <span className="hidden sm:inline">·</span>
+                    <span className="hidden sm:inline">
                       {formatConfiguredDate(row.createdAt, settings.data)}
                     </span>
                   </div>
                 )}
-                <ChevronLeft className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-1 md:block" />
+                <ChevronLeft className="absolute left-4 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-muted-foreground transition-transform group-hover:-translate-x-1 md:block sm:left-5" />
               </button>
             ))}
           </div>

@@ -2047,6 +2047,7 @@ export const appRouter = router({
                 "فشل الإرسال الجماعي؛ تراجعت مسارات الإرسال ونسخه داخل معاملة واحدة، وبقيت البرقية الأساسية كمسودة.",
               metadata: {
                 failure,
+                rollbackGuaranteed: true,
                 targets: broadcastTargets.map(target => ({
                   organizationId: target.id,
                   name: target.name,

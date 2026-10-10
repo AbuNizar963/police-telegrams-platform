@@ -120,6 +120,7 @@ export const userManagementRouter = router({
           unit: input.unit?.trim() || null,
           email: null,
           loginMethod: "password",
+          mustChangePassword: true,
           role: "user",
           createdAt: now,
           updatedAt: now,

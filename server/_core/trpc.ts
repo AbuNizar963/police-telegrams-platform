@@ -29,10 +29,27 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+const requirePasswordChange = t.middleware(async opts => {
+  const { ctx, next } = opts;
 
-export const adminProcedure = t.procedure.use(
-  t.middleware(async opts => {
+  if (ctx.user?.mustChangePassword) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "يجب تغيير كلمة المرور المؤقتة قبل استخدام النظام",
+    });
+  }
+
+  return next();
+});
+
+export const authenticatedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = authenticatedProcedure.use(requirePasswordChange);
+
+export const adminProcedure = t.procedure
+  .use(requireUser)
+  .use(requirePasswordChange)
+  .use(
+    t.middleware(async opts => {
     const { ctx, next } = opts;
 
     if (!ctx.user || ctx.user.role !== "admin") {
@@ -49,10 +66,13 @@ export const adminProcedure = t.procedure.use(
       },
     });
   })
-);
+  );
 
-export const organizationAdminProcedure = t.procedure.use(
-  t.middleware(async opts => {
+export const organizationAdminProcedure = t.procedure
+  .use(requireUser)
+  .use(requirePasswordChange)
+  .use(
+    t.middleware(async opts => {
     const { ctx, next } = opts;
 
     if (!ctx.user) {
@@ -88,4 +108,4 @@ export const organizationAdminProcedure = t.procedure.use(
       },
     });
   })
-);
+  );

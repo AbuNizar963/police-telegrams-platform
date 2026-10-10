@@ -102,6 +102,11 @@ import {
   storagePutDepartmentLogo,
 } from "./storage";
 import {
+  ALLOWED_ATTACHMENT_TYPES,
+  validateUploadedFile,
+  sha256Hex,
+} from "./fileSecurity";
+import {
   getWebPushPublicKey,
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
@@ -139,6 +144,22 @@ const statusSchema = z.enum([
   "archived",
 ]);
 
+const safeLogoUrlSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .nullable()
+  .refine(value => {
+    if (!value) return true;
+    if (value.startsWith("/api/storage/")) return true;
+    try {
+      const url = new URL(value);
+      const configuredSupabase = ENV.supabaseUrl ? new URL(ENV.supabaseUrl) : null;
+      return url.protocol === "https:" && (!configuredSupabase || url.origin === configuredSupabase.origin);
+    } catch {
+      return false;
+    }
+  }, "رابط الشعار يجب أن يكون مسار تخزين داخليًا أو رابط HTTPS موثوقًا");
 const organizationSettingsPayloadSchema = z.object({
   departmentName: z.string().trim().min(2).max(255),
   unitName: z.string().trim().max(255),
@@ -166,7 +187,7 @@ const organizationSettingsPayloadSchema = z.object({
     "dd MMM yyyy HH:mm",
   ]),
   numberSystem: z.enum(["latin", "arabic"]),
-  logoUrl: z.string().url().max(2000).nullable(),
+  logoUrl: safeLogoUrlSchema,
 });
 
 function getStartingNumberFromPrefix(
@@ -940,7 +961,7 @@ export const appRouter = router({
             .max(32)
             .default("yyyy/MM/dd HH:mm:ss"),
           numberSystem: z.enum(["latin", "arabic"]).default("latin"),
-          logoUrl: z.string().url().max(2000).nullable().optional(),
+          logoUrl: safeLogoUrlSchema.optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -1043,15 +1064,7 @@ export const appRouter = router({
         z.object({
           telegramId: z.number().int().positive(),
           fileName: z.string().trim().min(1).max(180),
-          contentType: z.enum([
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "application/pdf",
-            "audio/mpeg",
-            "audio/wav",
-            "audio/webm",
-          ]),
+          contentType: z.enum(ALLOWED_ATTACHMENT_TYPES),
           base64: z.string().min(1).max(14_000_000),
         })
       )
@@ -1090,7 +1103,7 @@ export const appRouter = router({
             originalName: input.fileName,
             mimeType: input.contentType,
             sizeBytes: bytes.byteLength,
-            sha256: createHash("sha256").update(bytes).digest("hex"),
+            sha256: sha256Hex(bytes),
             uploadedByUserId: ctx.user.id,
           });
         } catch (error) {

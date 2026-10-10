@@ -1433,6 +1433,7 @@ export async function updateUserPassword(
     .from("users")
     .update({
       password_hash: passwordHash,
+      authUserId: randomUUID(),
       mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })

@@ -11,6 +11,42 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { ENV } from "./_core/env";
 import { getUserOrganizationMembership } from "./organization";
 
+const verificationAttempts = new Map<string, { count: number; resetAt: number }>();
+const VERIFY_WINDOW_MS = 60_000;
+const VERIFY_MAX_ATTEMPTS = 60;
+
+function isSameOriginRequest(req: express.Request): boolean {
+  const origin = req.get("origin");
+  if (origin) {
+    try {
+      return new URL(origin).host === req.get("host");
+    } catch {
+      return false;
+    }
+  }
+  const referer = req.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).host === req.get("host");
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function allowVerificationAttempt(ip: string): boolean {
+  const now = Date.now();
+  const current = verificationAttempts.get(ip);
+  if (!current || current.resetAt <= now) {
+    verificationAttempts.set(ip, { count: 1, resetAt: now + VERIFY_WINDOW_MS });
+    return true;
+  }
+  if (current.count >= VERIFY_MAX_ATTEMPTS) return false;
+  current.count += 1;
+  return true;
+}
+
 /**
  * Creates the HTTP application shared by the local server and Vercel.
  *
@@ -50,6 +86,21 @@ export function createApp(
   // Do not trust forwarded headers in local development or test environments.
   app.set("trust proxy", ENV.isProduction ? 1 : false);
   app.disable("x-powered-by");
+  app.use((req, res, next) => {
+    res.setHeader(
+      "Content-Security-Policy-Report-Only",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:;"
+    );
+    if (
+      ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&
+      req.path.startsWith("/api/") &&
+      !isSameOriginRequest(req)
+    ) {
+      res.status(403).json({ error: "الطلب غير صالح لمصدر خارجي" });
+      return;
+    }
+    next();
+  });
 
   // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.
@@ -97,6 +148,12 @@ export function createApp(
   app.get("/api/verify/:token", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    if (!allowVerificationAttempt(req.ip || "unknown")) {
+      return res
+        .status(429)
+        .json({ valid: false, error: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا" });
+    }
 
     const token = req.params.token;
     if (
@@ -112,7 +169,7 @@ export function createApp(
       const { data: telegram, error } = await supabase
         .from("telegrams")
         .select(
-          "serialNumber, serialCode, organizationSerialCode, creatorName, createdAt, organizationId, archivedAt, status"
+          "serialNumber, serialCode, organizationSerialCode, createdAt, organizationId, archivedAt, status"
         )
         .eq("verificationToken", token)
         .maybeSingle();
@@ -141,7 +198,6 @@ export function createApp(
         serialNumber: telegram.serialNumber,
         createdAt: telegram.createdAt,
         unitName: organization?.name ?? "الوحدة الشرطية",
-        creatorName: telegram.creatorName,
       });
     } catch (error) {
       console.error("Telegram verification failed:", error);

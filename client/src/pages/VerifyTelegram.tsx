@@ -11,7 +11,6 @@ type VerificationResult = {
   serialNumber?: number;
   createdAt?: string;
   unitName?: string;
-  creatorName?: string;
   error?: string;
 };
 
@@ -145,12 +144,6 @@ export default function VerifyTelegram() {
                   <dt className="text-xs text-slate-500">تاريخ البرقية</dt>
                   <dd className="mt-1 font-semibold text-slate-900">
                     {formatTelegramDate(result.createdAt)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500">اسم الشرطي المنشئ</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">
-                    {result.creatorName || "—"}
                   </dd>
                 </div>
               </dl>

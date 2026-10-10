@@ -297,6 +297,7 @@ export const userManagementRouter = router({
       const { error } = await client
         .from("users")
         .update({
+          authUserId: randomUUID(),
           password_hash: await hashPassword(input.password),
           mustChangePassword: true,
           loginMethod: "password",

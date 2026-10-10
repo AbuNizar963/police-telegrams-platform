@@ -1908,7 +1908,10 @@ export const appRouter = router({
               if (!hasExistingRoute) {
                 throw new TRPCError({
                   code: "CONFLICT",
-                  message: `مفتاح التكرار مرتبط بالبرقية المسودة ${existing.serialCode ?? existing.id} ولم يُعثر على مسار إرسال. لم تُعتبر المحاولة السابقة ناجحة؛ راجع المسودة وأعد المحاولة بمفتاح جديد.`,
+                  message: [
+                    `مفتاح التكرار مرتبط بالبرقية المسودة ${existing.serialCode ?? existing.id}`,
+                    "ولم يُعثر على مسار إرسال. لم تُعتبر المحاولة السابقة ناجحة؛ راجع المسودة وأعد المحاولة بمفتاح جديد.",
+                  ].join(" "),
                 });
               }
             }

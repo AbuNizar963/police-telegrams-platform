@@ -38,6 +38,11 @@ jobs:
             exit 1
           fi
 
+      - name: Temporary formatter diagnostics
+        run: |
+          pnpm exec prettier --write client/src/components/OwnerUserManagement.tsx server/profileRouter.test.ts
+          git diff -- client/src/components/OwnerUserManagement.tsx server/profileRouter.test.ts
+
       - name: Check formatting
         run: pnpm lint
 

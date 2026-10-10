@@ -57,7 +57,7 @@ describe("telegram export resource isolation", () => {
       false,
     );
     expect(isAllowedExportResourceUrl("http://127.0.0.1:3000/admin")).toBe(
-      false
+      false,
     );
     expect(
       isAllowedExportResourceUrl("http://169.254.169.254/latest/meta-data/"),
@@ -67,10 +67,10 @@ describe("telegram export resource isolation", () => {
       isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>"),
     ).toBe(false);
     expect(isAllowedExportResourceUrl("data:font/ttf,raw-font-data")).toBe(
-      false
+      false,
     );
     expect(isAllowedExportResourceUrl("blob:https://example.com/id")).toBe(
-      false
+      false,
     );
   });
 });

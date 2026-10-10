@@ -4074,7 +4074,10 @@ function DepartmentSettingsModal({
         contentType: file.type === "image/jpeg" ? "image/jpeg" : "image/png",
         base64,
       });
-      setLogoUrl(new URL(result.url, window.location.origin).toString());
+      // Keep the server-provided stable storage path relative. The settings
+      // validator intentionally accepts /api/storage/* paths, not arbitrary
+      // absolute URLs from the current application host.
+      setLogoUrl(result.url);
       toast.success("تم رفع الشعار، اضغط حفظ لاعتماده");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر رفع الشعار");

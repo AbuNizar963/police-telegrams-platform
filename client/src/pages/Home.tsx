@@ -1298,6 +1298,7 @@ export default function Home() {
         <TelegramDetail
           telegram={detail.data}
           settings={settings.data}
+          isOutgoing={isOutgoingTelegram(detail.data)}
           isAdmin={me.data?.role === "admin"}
           canOperate={
             me.data?.role === "admin" ||
@@ -2240,6 +2241,7 @@ function TelegramComposer({
 function TelegramDetail({
   telegram,
   settings,
+  isOutgoing,
   isAdmin,
   canOperate,
   routingDirectory,
@@ -2275,6 +2277,7 @@ function TelegramDetail({
     numberSystem?: NumberSystem;
     logoUrl: string | null;
   };
+  isOutgoing: boolean;
   isAdmin: boolean;
   canOperate: boolean;
   routingDirectory: Array<{
@@ -2482,6 +2485,7 @@ function TelegramDetail({
       telegram.senderOrganizationName?.trim() || "الجهة المرسلة",
       numberSystem
     );
+    const documentType = isOutgoing ? "برقية صادرة" : "برقية واردة";
     const unitName = localizeDigits(
       settings?.unitName ?? "قيادة الأمن الداخلي",
       numberSystem
@@ -2694,6 +2698,7 @@ function TelegramDetail({
           background: #f8fafc;
           font-size: 13px;
         }
+        .telegram-export-page .classification-value { font-weight: 500; }
         .telegram-export-page .telegram-content {
           min-height: 570px;
           padding: 22px 24px;
@@ -2808,9 +2813,9 @@ function TelegramDetail({
           </div>
         </header>
         <section class="classification">
-          <span><strong>نوع الوثيقة:</strong> برقية رسمية</span>
-          <span><strong>التصنيف:</strong> ${escapeHtml(categoryLabels[telegram.category])}</span>
-          <span><strong>الحالة:</strong> ${escapeHtml(statusLabels[telegram.status])}</span>
+          <span><strong>نوع الوثيقة:</strong> <span class="classification-value">${escapeHtml(documentType)}</span></span>
+          <span><strong>التصنيف:</strong> <span class="classification-value">${escapeHtml(categoryLabels[telegram.category])}</span></span>
+          <span><strong>الحالة:</strong> <span class="classification-value">${escapeHtml(statusLabels[telegram.status])}</span></span>
         </section>
         <main class="telegram-content">
           <section class="routing">

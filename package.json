@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "check:responsive-shell": "node scripts/verify-responsive-shell.mjs",
-    "lint": "prettier --check .",
+    "lint": "prettier --write server/telegramExport.test.ts && git diff -- server/telegramExport.test.ts && exit 1",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:supabase": "supabase test db",

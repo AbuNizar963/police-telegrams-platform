@@ -32,6 +32,7 @@ import {
   LockKeyhole,
   Menu,
   MessageSquarePlus,
+  Paperclip,
   Printer,
   Radio,
   Search,
@@ -584,19 +585,51 @@ export default function Home() {
     },
     onError: error => toast.error(error.message || "تعذر استيراد ملف Excel"),
   });
+  const composerAttachmentRef = useRef<File | null>(null);
+  const uploadComposerAttachment =
+    trpc.telegrams.uploadAttachment.useMutation();
   const create = trpc.telegrams.create.useMutation({
-    onSuccess: telegram => {
+    onSuccess: async telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
         serialCode: getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
         subject: telegram.subject,
         telegramId: telegram.id,
       });
+      const attachment = composerAttachmentRef.current;
+      composerAttachmentRef.current = null;
+      if (attachment) {
+        try {
+          await uploadComposerAttachment.mutateAsync({
+            telegramId: telegram.id,
+            fileName: attachment.name,
+            contentType: attachment.type as
+              | "image/jpeg"
+              | "image/png"
+              | "image/webp"
+              | "application/pdf"
+              | "audio/mpeg"
+              | "audio/wav"
+              | "audio/webm",
+            base64: await readFileAsBase64(attachment),
+          });
+          toast.success("تم إرفاق الملف بالبرقية");
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `تم إنشاء البرقية لكن تعذر إرفاق الملف: ${error.message}`
+              : "تم إنشاء البرقية لكن تعذر إرفاق الملف"
+          );
+        }
+      }
       setComposerOpen(false);
       utils.telegrams.list.invalidate();
       utils.dashboard.stats.invalidate();
     },
-    onError: error => toast.error(error.message || "تعذر إنشاء البرقية"),
+    onError: error => {
+      composerAttachmentRef.current = null;
+      toast.error(error.message || "تعذر إنشاء البرقية");
+    },
   });
   const data = stats.data ?? {
     total: 0,
@@ -1248,12 +1281,15 @@ export default function Home() {
       )}
       {composerOpen && (
         <TelegramComposer
-          pending={create.isPending}
+          pending={create.isPending || uploadComposerAttachment.isPending}
           routingDirectory={routingDirectory.data ?? []}
           descendants={organizationDescendants.data ?? []}
           numberSystem={numberSystem}
           close={() => setComposerOpen(false)}
-          submit={values => create.mutate(values)}
+          submit={(values, attachment) => {
+            composerAttachmentRef.current = attachment ?? null;
+            create.mutate(values);
+          }}
         />
       )}
       {selectedId !== null && detail.data && (
@@ -1858,17 +1894,20 @@ function TelegramComposer({
   }>;
   numberSystem: NumberSystem;
   close: () => void;
-  submit: (values: {
-    subject: string;
-    recipient: string;
-    recipientOrganizationId?: string;
-    broadcastToDescendants?: boolean;
-    body: string;
-    classification: Classification;
-    priority: Priority;
-    category: Category;
-    requestedOrganizationSerialNumber: number;
-  }) => void;
+  submit: (
+    values: {
+      subject: string;
+      recipient: string;
+      recipientOrganizationId?: string;
+      broadcastToDescendants?: boolean;
+      body: string;
+      classification: Classification;
+      priority: Priority;
+      category: Category;
+      requestedOrganizationSerialNumber: number;
+    },
+    attachment?: File
+  ) => void;
 }) {
   const [subject, setSubject] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -1881,6 +1920,8 @@ function TelegramComposer({
   const [category, setCategory] = useState<Category>("administrative");
   const [serialNumber, setSerialNumber] = useState("");
   const [serialNumberEdited, setSerialNumberEdited] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
   );
@@ -1932,17 +1973,20 @@ function TelegramComposer({
       return;
     }
 
-    submit({
-      subject: subject.trim(),
-      recipient: recipient.trim(),
-      ...(recipientOrganizationId ? { recipientOrganizationId } : {}),
-      ...(broadcastToDescendants ? { broadcastToDescendants: true } : {}),
-      body: body.trim(),
-      classification,
-      priority,
-      category,
-      requestedOrganizationSerialNumber: Number(serialNumber),
-    });
+    submit(
+      {
+        subject: subject.trim(),
+        recipient: recipient.trim(),
+        ...(recipientOrganizationId ? { recipientOrganizationId } : {}),
+        ...(broadcastToDescendants ? { broadcastToDescendants: true } : {}),
+        body: body.trim(),
+        classification,
+        priority,
+        category,
+        requestedOrganizationSerialNumber: Number(serialNumber),
+      },
+      attachment ?? undefined
+    );
   };
 
   return (
@@ -2108,15 +2152,70 @@ function TelegramComposer({
 
         <label className="grid gap-1.5 text-xs font-bold">
           نص البرقية
-          <Textarea
-            value={body}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            onChange={event => setBody(event.target.value)}
-            placeholder="اكتب تفاصيل البلاغ..."
-            className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg leading-7 sm:min-h-36"
-          />
+          <div className="relative">
+            <Textarea
+              value={body}
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              onChange={event => setBody(event.target.value)}
+              placeholder="اكتب تفاصيل البلاغ..."
+              className="w-full min-w-0 max-w-full min-h-[30vh] rounded-lg pb-14 leading-7 sm:min-h-36"
+            />
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
+              onChange={event => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (!file) return;
+                const allowed = [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "application/pdf",
+                  "audio/mpeg",
+                  "audio/wav",
+                  "audio/webm",
+                ];
+                if (!allowed.includes(file.type)) {
+                  toast.error("نوع الملف غير مسموح");
+                  return;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                  toast.error("حجم المرفق يتجاوز 10 ميغابايت");
+                  return;
+                }
+                setAttachment(file);
+              }}
+            />
+            <button
+              type="button"
+              aria-label="إرفاق ملف بالبرقية"
+              title="إرفاق ملف"
+              onClick={() => attachmentInputRef.current?.click()}
+              disabled={pending}
+              className="absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#b4945a]/50 bg-background text-[#7a5c1e] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff8e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Paperclip className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">إرفاق ملف</span>
+            </button>
+          </div>
+          {attachment && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[#b4945a]/35 bg-[#fffaf0] px-3 py-2 text-[11px] font-normal text-[#7a5c1e] dark:bg-[#2d281b] dark:text-[#e7cc8c]">
+              <span className="min-w-0 truncate">مرفق: {attachment.name}</span>
+              <button
+                type="button"
+                onClick={() => setAttachment(null)}
+                className="shrink-0 rounded-md p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                aria-label="إزالة المرفق"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
         </label>
       </div>
 

@@ -23,9 +23,9 @@ describe("telegram export resource isolation", () => {
       isAllowedExportResourceUrl("http://169.254.169.254/latest/meta-data/")
     ).toBe(false);
     expect(isAllowedExportResourceUrl("file:///etc/passwd")).toBe(false);
-    expect(isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>")).toBe(
-      false
-    );
+    expect(
+      isAllowedExportResourceUrl("data:text/html,<script>alert(1)</script>")
+    ).toBe(false);
     expect(isAllowedExportResourceUrl("blob:https://example.com/id")).toBe(
       false
     );

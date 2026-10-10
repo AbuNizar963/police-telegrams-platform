@@ -70,6 +70,7 @@ import {
   getOrganizationByIdIncludingInactive,
   getUserOrganizationMembership,
   getTelegramRouteById,
+  hasTelegramRoute,
   listAllOrganizations,
   listOrganizationAccountSummaries,
   listOrganizationDescendants,
@@ -1887,7 +1888,33 @@ export const appRouter = router({
           const existing = await getTelegramByIdempotencyKey(
             input.idempotencyKey
           );
-          if (existing) return existing;
+          if (existing) {
+            if (
+              input.broadcastToDescendants &&
+              existing.status === "draft"
+            ) {
+              let hasExistingRoute: boolean;
+              try {
+                hasExistingRoute = await hasTelegramRoute(existing.id);
+              } catch (error) {
+                throw new TRPCError({
+                  code: "INTERNAL_SERVER_ERROR",
+                  message:
+                    "تعذر التحقق من حالة الإرسال الجماعي السابقة؛ راجع البرقية قبل إعادة المحاولة.",
+                  cause: error,
+                });
+              }
+
+              if (!hasExistingRoute) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: `مفتاح التكرار مرتبط بالبرقية المسودة ${existing.serialCode ?? existing.id} ولم يُعثر على مسار إرسال. لم تُعتبر المحاولة السابقة ناجحة؛ راجع المسودة وأعد المحاولة بمفتاح جديد.`,
+                });
+              }
+            }
+
+            return existing;
+          }
         }
 
         const organizationId = await getUserOrganizationId(ctx.user.id);

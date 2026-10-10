@@ -7,6 +7,8 @@ import {
   X,
   UserPlus,
   Users,
+  Building2,
+  ChevronDown,
   ShieldCheck,
   Pencil,
   Trash2,
@@ -15,6 +17,10 @@ import {
 
 export default function OwnerUserManagement() {
   const [open, setOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [expandedOrganizationIds, setExpandedOrganizationIds] = useState<
+    Set<string>
+  >(new Set());
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -99,6 +105,7 @@ export default function OwnerUserManagement() {
       setPhone("");
       setRank("");
       setUnit("");
+      setShowCreateForm(false);
       await utils.userManagement.list.invalidate();
     },
     onError: error => toast.error(error.message || "تعذر إنشاء الحساب"),
@@ -167,19 +174,34 @@ export default function OwnerUserManagement() {
               إنشاء حسابات دخول فردية للشرطيين العاملين على النظام.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="إغلاق"
-            onClick={() => setOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              className="gap-2 bg-[#10233f] text-white hover:bg-[#18375f]"
+              onClick={() => setShowCreateForm(current => !current)}
+              aria-expanded={showCreateForm}
+            >
+              <UserPlus className="h-4 w-4" />
+              {showCreateForm ? "إخفاء نموذج الإضافة" : "إضافة شرطي"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="إغلاق"
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <form onSubmit={submit} className="space-y-3 rounded-xl border p-4">
+        <div className="mt-5">
+          {showCreateForm && (
+            <form
+              onSubmit={submit}
+              className="mb-5 space-y-3 rounded-2xl border border-[#b49a55]/40 bg-[#fffaf0]/70 p-4 shadow-sm dark:bg-[#2d281b]/40"
+            >
             <div className="mb-2 flex items-center gap-2">
               <UserPlus className="h-4 w-4 text-[#9b7c3d]" />
               <h3 className="font-bold">إنشاء حساب شرطي</h3>
@@ -297,9 +319,10 @@ export default function OwnerUserManagement() {
                 ? "جارٍ إنشاء الحساب..."
                 : "إنشاء حساب الشرطي"}
             </Button>
-          </form>
+            </form>
+          )}
 
-          <section className="min-w-0 rounded-xl border p-4">
+          <section className="min-w-0 rounded-2xl border p-4">
             <div className="mb-3 flex items-center gap-2">
               <Users className="h-4 w-4 text-[#9b7c3d]" />
               <h3 className="font-bold">الحسابات المسجلة</h3>
@@ -379,20 +402,43 @@ export default function OwnerUserManagement() {
                   key={group.id}
                   className="overflow-hidden rounded-xl border bg-muted/10"
                 >
-                  <header className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2.5">
-                    <div className="min-w-0">
-                      <h4 className="truncate text-sm font-bold">
-                        {group.name}
-                      </h4>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        حسابات هذه الجهة
-                      </p>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2.5 text-right transition-colors hover:bg-muted/50"
+                    onClick={() =>
+                      setExpandedOrganizationIds(current => {
+                        const next = new Set(current);
+                        if (next.has(group.id)) next.delete(group.id);
+                        else next.add(group.id);
+                        return next;
+                      })
+                    }
+                    aria-expanded={expandedOrganizationIds.has(group.id)}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#10233f]/10 text-[#9b7c3d]">
+                        <Building2 className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-bold">
+                          {group.name}
+                        </h4>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          اضغط لعرض حسابات الجهة
+                        </p>
+                      </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums">
-                      {group.users.length}
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums">
+                        {group.users.length} حساب
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${expandedOrganizationIds.has(group.id) ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
                     </span>
-                  </header>
-                  <ul className="divide-y px-3">
+                  </button>
+                  {expandedOrganizationIds.has(group.id) && <ul className="divide-y px-3">
                     {group.users.map(user => (
                       <li key={user.id} className="py-3 first:pt-3">
                         <div className="flex items-start justify-between gap-2">
@@ -522,7 +568,7 @@ export default function OwnerUserManagement() {
                         </div>
                       </li>
                     ))}
-                  </ul>
+                  </ul>}
                 </section>
               ))}
             </div>

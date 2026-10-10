@@ -2398,9 +2398,19 @@ function TelegramDetail({
       visited.add(hierarchyId);
       hierarchyId = organization.parentOrganizationId;
     }
-    const organizationHierarchy = hierarchyNames.length
+    // The first two header lines are fixed institutional headings. Some
+    // organization trees include "وزارة الداخلية" as a parent node, so omit
+    // fixed headings from the dynamic hierarchy to avoid displaying them twice.
+    const hierarchyCandidates = hierarchyNames.length
       ? hierarchyNames
       : [unitName, departmentName];
+    const fixedHeaderNames = new Set([
+      "الجمهورية العربية السورية",
+      "وزارة الداخلية",
+    ]);
+    const organizationHierarchy = hierarchyCandidates.filter(
+      name => !fixedHeaderNames.has(name.trim())
+    );
     const createdAt = formatConfiguredDate(telegram.createdAt, settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,

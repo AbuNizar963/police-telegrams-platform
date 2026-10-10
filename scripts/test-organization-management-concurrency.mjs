@@ -188,7 +188,13 @@ try {
   ]);
   assert.ok(
     initialWrites.every(result => !result.error),
-    "both concurrent initial settings upserts must succeed"
+    `both concurrent initial settings upserts must succeed: ${initialWrites
+      .map((result, index) =>
+        result.error
+          ? `write ${index + 1}: ${result.error.code ?? "unknown"} ${result.error.message}`
+          : `write ${index + 1}: ok`
+      )
+      .join("; ")}`
   );
   assert.equal(
     Number(initialWrites[0].data),

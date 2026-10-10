@@ -1,7 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { hashPassword, publicUser, verifyPassword } from "./_core/auth";
-import { authenticatedProcedure, protectedProcedure, router } from "./_core/trpc";
+import {
+  authenticatedProcedure,
+  protectedProcedure,
+  router,
+} from "./_core/trpc";
 import { getUserById, updateUserPassword, updateUserProfile } from "./db";
 
 export const profileRouter = router({

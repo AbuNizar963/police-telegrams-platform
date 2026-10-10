@@ -276,6 +276,16 @@ SELECT throws_ok(
 
 SELECT is(
   (
+    SELECT status::text
+    FROM public.telegrams
+    WHERE "serialCode" = 'TEST-BROADCAST-ROLLBACK-9300010'
+  ),
+  'draft',
+  'failed broadcast leaves the primary telegram as a draft'
+);
+
+SELECT is(
+  (
     SELECT count(*)::integer
     FROM public.telegram_routes AS route
     JOIN public.telegrams AS telegram ON telegram.id = route."telegramId"

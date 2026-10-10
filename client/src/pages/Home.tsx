@@ -2890,7 +2890,7 @@ function TelegramDetail({
       style.textContent = css;
     }
 
-    if (exportStyles.some(style => /url\\(["']?\\/fonts\\/cairo-\\d+\\.ttf/.test(style.textContent ?? ""))) {
+    if (exportStyles.some(style => /url\(["']?\/fonts\/cairo-\d+\.ttf/.test(style.textContent ?? ""))) {
       throw new Error("تعذر تضمين خطوط العربية في الوثيقة");
     }
 

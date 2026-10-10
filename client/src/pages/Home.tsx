@@ -754,7 +754,7 @@ export default function Home() {
   return (
     <div
       dir="rtl"
-      className="mx-auto min-h-[calc(100vh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
+      className="mx-auto min-h-[calc(100dvh-3rem)] w-full max-w-[1800px] space-y-4 pb-10"
     >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">

@@ -529,7 +529,7 @@ export default function OwnerUserManagement() {
           </section>
         </div>
         {editing && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4">
             <form
               role="dialog"
               aria-modal="true"
@@ -548,7 +548,7 @@ export default function OwnerUserManagement() {
                   unit: editForm.unit.trim() || null,
                 });
               }}
-              className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-xl bg-background p-5 shadow-xl"
+              className="max-h-[calc(100dvh-2rem)] w-full max-w-lg space-y-3 overflow-y-auto rounded-xl bg-background p-5 shadow-xl"
             >
               <div className="flex items-center justify-between">
                 <h3 id="edit-user-title" className="text-lg font-bold">

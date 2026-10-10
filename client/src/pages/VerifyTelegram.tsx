@@ -79,7 +79,7 @@ export default function VerifyTelegram() {
     <main
       dir="rtl"
       lang="ar"
-      className="flex min-h-screen items-center justify-center bg-background px-4 py-8"
+      className="flex min-h-dvh items-center justify-center bg-background px-4 py-8"
     >
       <section className="surface-elevated w-full max-w-lg overflow-hidden rounded-[1.5rem] border bg-card shadow-xl">
         <header className="flex items-center gap-3 bg-[#10233f] px-6 py-5 text-white">

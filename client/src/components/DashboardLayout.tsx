@@ -122,7 +122,7 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <form
           className="surface-elevated flex w-full max-w-md flex-col gap-6 rounded-[1.5rem] border bg-card/95 p-6 shadow-lg backdrop-blur sm:p-8"
           onSubmit={event => {

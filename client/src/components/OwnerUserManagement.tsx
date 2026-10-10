@@ -48,31 +48,115 @@ export default function OwnerUserManagement() {
     enabled: open,
     refetchOnWindowFocus: false,
   });
+  const organizations = trpc.organizations.all.useQuery(undefined, {
+    enabled: open,
+    refetchOnWindowFocus: false,
+  });
   const userGroups = useMemo(() => {
-    const groups = new Map<
-      string,
-      { id: string; name: string; users: NonNullable<typeof users.data> }
-    >();
+    type Group = {
+      id: string;
+      name: string;
+      parentOrganizationId: string | null;
+      users: NonNullable<typeof users.data>;
+      depth: number;
+    };
+    const organizationById = new Map(
+      (organizations.data ?? []).map(organization => [organization.id, organization])
+    );
+    const usersByOrganization = new Map<string, NonNullable<typeof users.data>>();
     for (const user of users.data ?? []) {
       const id = user.organizationId ?? "unassigned";
-      const name = user.organizationName || "جهة غير محددة";
-      const group = groups.get(id);
-      if (group) {
-        group.users.push(user);
-      } else {
-        groups.set(id, { id, name, users: [user] });
+      const groupUsers = usersByOrganization.get(id) ?? [];
+      groupUsers.push(user);
+      usersByOrganization.set(id, groupUsers);
+    }
+    const relevantIds = new Set(usersByOrganization.keys());
+    for (const id of Array.from(relevantIds)) {
+      let parentId = organizationById.get(id)?.parentOrganizationId ?? null;
+      while (parentId && !relevantIds.has(parentId)) {
+        relevantIds.add(parentId);
+        parentId = organizationById.get(parentId)?.parentOrganizationId ?? null;
       }
     }
-    return Array.from(groups.values()).sort((a, b) =>
-      a.name.localeCompare(b.name, "ar")
-    );
-  }, [users.data]);
+    const groups = new Map<string, Group>();
+    for (const id of Array.from(relevantIds)) {
+      const organization = organizationById.get(id);
+      let depth = 0;
+      let parentId = organization?.parentOrganizationId ?? null;
+      const visited = new Set<string>();
+      while (parentId && relevantIds.has(parentId) && !visited.has(parentId)) {
+        depth += 1;
+        visited.add(parentId);
+        parentId = organizationById.get(parentId)?.parentOrganizationId ?? null;
+      }
+      groups.set(id, {
+        id,
+        name: organization?.name ?? (id === "unassigned" ? "جهة غير محددة" : "جهة غير معروفة"),
+        parentOrganizationId: organization?.parentOrganizationId ?? null,
+        users: usersByOrganization.get(id) ?? [],
+        depth,
+      });
+    }
+    const childrenByParent = new Map<string | null, Group[]>();
+    for (const group of Array.from(groups.values())) {
+      const parentId = groups.has(group.parentOrganizationId ?? "")
+        ? group.parentOrganizationId
+        : null;
+      const children = childrenByParent.get(parentId) ?? [];
+      children.push(group);
+      childrenByParent.set(parentId, children);
+    }
+    for (const children of Array.from(childrenByParent.values())) {
+      children.sort((a: Group, b: Group) =>
+        a.name.localeCompare(b.name, "ar")
+      );
+    }
+    const ordered: Group[] = [];
+    const visit = (parentId: string | null) => {
+      for (const group of childrenByParent.get(parentId) ?? []) {
+        ordered.push(group);
+        visit(group.id);
+      }
+    };
+    visit(null);
+    return ordered;
+  }, [organizations.data, users.data]);
   const visibleUserGroups = useMemo(() => {
     const query = userSearch.trim().toLocaleLowerCase("ar");
+    const groupsById = new Map(userGroups.map(group => [group.id, group]));
+    const matchingIds = new Set<string>();
+    for (const group of userGroups) {
+      const organizationMatches =
+        organizationFilter === "all" ||
+        group.id === organizationFilter ||
+        group.parentOrganizationId === organizationFilter;
+      const users = query
+        ? group.users.filter(user =>
+            [
+              user.name,
+              user.username,
+              user.badgeNumber,
+              user.phone,
+              user.rank,
+              user.unit,
+            ]
+              .filter(Boolean)
+              .some(value =>
+                String(value).toLocaleLowerCase("ar").includes(query)
+              )
+          )
+        : group.users;
+      if (organizationMatches && users.length > 0) matchingIds.add(group.id);
+    }
+    for (const id of Array.from(matchingIds)) {
+      let parentId = groupsById.get(id)?.parentOrganizationId ?? null;
+      while (parentId && groupsById.has(parentId)) {
+        matchingIds.add(parentId);
+        parentId = groupsById.get(parentId)?.parentOrganizationId ?? null;
+      }
+    }
     return userGroups
-      .filter(
-        group => organizationFilter === "all" || group.id === organizationFilter
-      )
+      .filter(group => matchingIds.has(group.id))
       .map(group => ({
         ...group,
         users: query
@@ -91,8 +175,7 @@ export default function OwnerUserManagement() {
                 )
             )
           : group.users,
-      }))
-      .filter(group => group.users.length > 0);
+      }));
   }, [organizationFilter, userGroups, userSearch]);
   const utils = trpc.useUtils();
   const createUser = trpc.userManagement.create.useMutation({
@@ -400,7 +483,8 @@ export default function OwnerUserManagement() {
               {visibleUserGroups.map(group => (
                 <section
                   key={group.id}
-                  className="overflow-hidden rounded-xl border bg-muted/10"
+                  className="overflow-hidden rounded-xl border border-r-2 border-r-[#b4945a]/45 bg-muted/10"
+                  style={{ marginRight: `${Math.min(group.depth * 20, 80)}px` }}
                 >
                   <button
                     type="button"

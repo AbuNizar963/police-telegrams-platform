@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isAllowedExportResourceUrl,
-  isSafeExportHtml,
-} from "./telegramExport";
+import { isAllowedExportResourceUrl, isSafeExportHtml } from "./telegramExport";
 
 describe("telegram export HTML validation", () => {
   it("accepts embedded Cairo TTF fonts within the HTML size limit", () => {

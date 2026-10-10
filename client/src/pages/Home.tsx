@@ -2644,12 +2644,19 @@ function TelegramDetail({
           font-size: 20px;
         }
         .telegram-export-page .signature {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           margin-top: auto;
           padding-top: 26px;
-          text-align: left;
+          text-align: center;
           line-height: 1.9;
         }
-        .telegram-export-page .signature p { margin: 0; }
+        .telegram-export-page .signature p {
+          width: 100%;
+          margin: 0;
+          text-align: center;
+        }
         .telegram-export-page .signature-label {
           margin-top: 14px !important;
           color: #667085;
@@ -4029,7 +4036,7 @@ function DepartmentSettingsModal({
                   <Shield className="h-7 w-7" />
                 </div>
               )}
-              <div>
+              <div className="min-w-0 text-center">
                 <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground">
                   برقية رسمية
                 </p>

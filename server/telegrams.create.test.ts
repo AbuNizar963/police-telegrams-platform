@@ -35,8 +35,6 @@ vi.mock("./organization", async importOriginal => {
     listOrganizationDescendants: mocked.listOrganizationDescendants,
     routeTelegram: mocked.routeTelegram,
   };
-
-
 });
 
 function createContext(): TrpcContext {
@@ -356,6 +354,7 @@ describe("telegrams.create", () => {
       note: "إحالة إلى الجهة المختارة عند إنشاء البرقية",
     });
   });
+
   it("records partial broadcast progress and returns a clear error when routing a copy fails", async () => {
     const targets = [
       {
@@ -413,5 +412,4 @@ describe("telegrams.create", () => {
       })
     );
   });
-
 });

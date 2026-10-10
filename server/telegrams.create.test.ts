@@ -467,7 +467,7 @@ describe("telegrams.create", () => {
     expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
   });
 
-  it("records partial failure when refreshing the primary telegram after routing fails", async () => {
+  it("records partial failure when refreshing the primary telegram after routing succeeds", async () => {
     const targets = [
       {
         id: "00000000-0000-4000-8000-000000000002",
@@ -520,6 +520,55 @@ describe("telegrams.create", () => {
       })
     );
     expect(mocked.createTelegram).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports manual review when partial-failure audit persistence fails", async () => {
+    const targets = [
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        name: "الجهة التابعة الأولى",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        name: "الجهة التابعة الثانية",
+        parentOrganizationId: "00000000-0000-0000-0000-000000000001",
+      },
+    ];
+    mocked.listOrganizationDescendants.mockResolvedValue(targets);
+    mocked.createTelegram
+      .mockImplementationOnce(async input => ({
+        id: 7,
+        createdAt: new Date(),
+        ...input,
+      }))
+      .mockRejectedValueOnce(new Error("copy creation failed"));
+    mocked.routeTelegram.mockResolvedValueOnce({ id: 11 });
+    mocked.recordTelegramAction.mockRejectedValueOnce(
+      new Error("audit persistence failed")
+    );
+
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(
+      caller.telegrams.create({
+        subject: "تعميم اختبار",
+        recipient: "الجهات التابعة",
+        body: "محتوى التعميم",
+        classification: "normal",
+        priority: "normal",
+        category: "administrative",
+        broadcastToDescendants: true,
+      })
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: expect.stringContaining(
+        "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا؛ يلزم فحص السجلات والنسخ يدويًا."
+      ),
+    });
+
+    expect(mocked.recordTelegramAction).toHaveBeenCalledTimes(1);
+    expect(mocked.createTelegram).toHaveBeenCalledTimes(2);
   });
 
   it("records partial progress when creating a broadcast copy fails", async () => {

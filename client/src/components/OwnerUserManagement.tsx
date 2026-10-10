@@ -230,7 +230,8 @@ export default function OwnerUserManagement() {
                 placeholder="12 محرفًا على الأقل"
               />
               <span className="text-xs font-normal text-muted-foreground">
-                يجب أن تكون كلمة المرور المؤقتة 12 محرفًا على الأقل، وسيُطلب من المستخدم تغييرها عند أول دخول.
+                يجب أن تكون كلمة المرور المؤقتة 12 محرفًا على الأقل، وسيُطلب من المستخدم
+                تغييرها عند أول دخول.
               </span>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">

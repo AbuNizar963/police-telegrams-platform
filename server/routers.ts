@@ -1889,10 +1889,7 @@ export const appRouter = router({
             input.idempotencyKey
           );
           if (existing) {
-            if (
-              input.broadcastToDescendants &&
-              existing.status === "draft"
-            ) {
+            if (input.broadcastToDescendants && existing.status === "draft") {
               let hasExistingRoute: boolean;
               try {
                 hasExistingRoute = await hasTelegramRoute(existing.id);

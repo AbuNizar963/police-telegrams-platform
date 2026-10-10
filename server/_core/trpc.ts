@@ -84,13 +84,9 @@ export const organizationAdminProcedure = t.procedure
         });
       }
 
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "لا تملك صلاحية إدارة الجهة الشرطية",
-        });
-      }
-
+      // Organization privileges come from the active membership, not the
+      // platform-wide user role. Provisioned organization administrators use
+      // role="user" and receive organization_admin membership for their unit.
       const membership = await getUserOrganizationMembership(ctx.user.id);
       if (
         !membership ||

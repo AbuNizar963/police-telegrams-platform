@@ -22,6 +22,8 @@ export default function OwnerUserManagement() {
   const [phone, setPhone] = useState("");
   const [rank, setRank] = useState("");
   const [unit, setUnit] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [organizationFilter, setOrganizationFilter] = useState("all");
   const [editing, setEditing] = useState<any>(null);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -59,6 +61,33 @@ export default function OwnerUserManagement() {
       a.name.localeCompare(b.name, "ar")
     );
   }, [users.data]);
+  const visibleUserGroups = useMemo(() => {
+    const query = userSearch.trim().toLocaleLowerCase("ar");
+    return userGroups
+      .filter(
+        group => organizationFilter === "all" || group.id === organizationFilter
+      )
+      .map(group => ({
+        ...group,
+        users: query
+          ? group.users.filter(user =>
+              [
+                user.name,
+                user.username,
+                user.badgeNumber,
+                user.phone,
+                user.rank,
+                user.unit,
+              ]
+                .filter(Boolean)
+                .some(value =>
+                  String(value).toLocaleLowerCase("ar").includes(query)
+                )
+            )
+          : group.users,
+      }))
+      .filter(group => group.users.length > 0);
+  }, [organizationFilter, userGroups, userSearch]);
   const utils = trpc.useUtils();
   const createUser = trpc.userManagement.create.useMutation({
     onSuccess: async () => {
@@ -277,6 +306,37 @@ export default function OwnerUserManagement() {
                 {users.data?.length ?? 0}
               </span>
             </div>
+            <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.7fr)]">
+              <Input
+                value={userSearch}
+                onChange={event => setUserSearch(event.target.value)}
+                placeholder="بحث بالاسم أو اسم المستخدم أو الرقم الوظيفي"
+                aria-label="البحث في حسابات المستخدمين"
+              />
+              <select
+                value={organizationFilter}
+                onChange={event => setOrganizationFilter(event.target.value)}
+                aria-label="تصفية الحسابات حسب الجهة"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">كل الجهات التنظيمية</option>
+                {userGroups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.users.length})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {(userSearch.trim() || organizationFilter !== "all") && (
+              <p className="mb-3 text-xs text-muted-foreground">
+                يعرض{" "}
+                {visibleUserGroups.reduce(
+                  (total, group) => total + group.users.length,
+                  0
+                )}{" "}
+                من أصل {users.data?.length ?? 0} حساب
+              </p>
+            )}
             {users.isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 جارٍ تحميل الحسابات...
@@ -304,8 +364,16 @@ export default function OwnerUserManagement() {
                 لا توجد حسابات مسجلة بعد.
               </p>
             )}
+            {!users.isLoading &&
+              !users.isError &&
+              (users.data?.length ?? 0) > 0 &&
+              visibleUserGroups.length === 0 && (
+                <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                  لا توجد حسابات مطابقة للبحث أو الجهة المحددة.
+                </p>
+              )}
             <div className="max-h-[440px] space-y-3 overflow-y-auto">
-              {userGroups.map(group => (
+              {visibleUserGroups.map(group => (
                 <section
                   key={group.id}
                   className="overflow-hidden rounded-xl border bg-muted/10"

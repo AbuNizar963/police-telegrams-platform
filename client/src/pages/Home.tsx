@@ -2647,6 +2647,7 @@ function TelegramDetail({
           display: flex;
           flex-direction: column;
           align-items: stretch;
+          align-self: flex-end;
           width: min(48%, 320px);
           margin-top: auto;
           margin-right: auto;
@@ -2658,6 +2659,8 @@ function TelegramDetail({
         .telegram-export-page .signature p {
           width: 100%;
           margin: 0;
+          font-size: 20px;
+          font-weight: 700;
           text-align: center;
         }
         .telegram-export-page .signature-label {
@@ -2721,7 +2724,7 @@ function TelegramDetail({
           <div class="telegram-body">${escapeHtml(localizeDigits(telegram.body, numberSystem))}</div>
           <section class="signature">
             <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
-            <p>رئيس ${escapeHtml(departmentName)}</p>
+            <p><strong>رئيس ${escapeHtml(departmentName)}</strong></p>
           </section>
         </main>
         <footer class="document-footer">

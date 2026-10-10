@@ -224,13 +224,13 @@ export default function OwnerUserManagement() {
                 autoComplete="new-password"
                 value={password}
                 onChange={event => setPassword(event.target.value)}
-                minLength={4}
+                minLength={12}
                 maxLength={256}
                 required
-                placeholder="4 أحرف على الأقل"
+                placeholder="12 محرفًا على الأقل"
               />
               <span className="text-xs font-normal text-muted-foreground">
-                يمكن استخدام كلمة مرور من 4 أحرف أو أكثر.
+                يجب أن تكون كلمة المرور المؤقتة 12 محرفًا على الأقل، وسيُطلب من المستخدم تغييرها عند أول دخول.
               </span>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -289,7 +289,7 @@ export default function OwnerUserManagement() {
                 createUser.isPending ||
                 name.trim().length < 2 ||
                 username.trim().length < 3 ||
-                password.length < 4
+                password.length < 12
               }
             >
               {createUser.isPending
@@ -463,7 +463,8 @@ export default function OwnerUserManagement() {
                                       aria-label={`كلمة مرور جديدة لـ ${user.name}`}
                                       type="password"
                                       className="h-8 w-28"
-                                      placeholder="كلمة مرور جديدة"
+                                      placeholder="كلمة مرور مؤقتة (12+)"
+                                      minLength={12}
                                       value={enablePassword[user.id] ?? ""}
                                       onChange={e =>
                                         setEnablePassword(v => ({
@@ -481,7 +482,7 @@ export default function OwnerUserManagement() {
                                       aria-label={`إعادة تفعيل ${user.name}`}
                                       disabled={
                                         (enablePassword[user.id] ?? "").length <
-                                          4 || enableUser.isPending
+                                          12 || enableUser.isPending
                                       }
                                       onClick={() =>
                                         enableUser.mutate({
@@ -598,7 +599,7 @@ export default function OwnerUserManagement() {
                   onChange={e =>
                     setEditForm(v => ({ ...v, password: e.target.value }))
                   }
-                  minLength={editForm.password ? 4 : undefined}
+                  minLength={editForm.password ? 12 : undefined}
                 />
               </label>
               <div className="flex justify-end gap-2">

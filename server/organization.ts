@@ -975,6 +975,15 @@ export async function getTelegramRouteById(
   return data ? mapRoute(data as Record<string, unknown>) : null;
 }
 
+export async function hasTelegramRoute(telegramId: number): Promise<boolean> {
+  const { count, error } = await getSupabaseAdmin()
+    .from("telegram_routes")
+    .select("id", { count: "exact", head: true })
+    .eq("telegramId", telegramId);
+  throwIfError(error, "Failed to check telegram routes");
+  return (count ?? 0) > 0;
+}
+
 export async function approveTelegramRoute(input: {
   routeId: number;
   approverUserId: number;

@@ -501,8 +501,8 @@ function ArchivePanel({
               key={row.id}
               className="hidden grid-cols-[110px_minmax(0,1fr)_130px_100px] items-center gap-3 px-4 py-3 text-sm md:grid"
             >
-              <span className="font-mono text-xs font-bold text-[#9b7c3d]">
-                {getTelegramDisplayNumber(row.serialCode)}
+              <span className="text-sm font-bold text-foreground">
+                برقية رقم: {getTelegramDisplayNumber(row.serialCode)}
               </span>
               <span className="truncate font-semibold">{row.subject}</span>
               <span className="truncate text-xs text-muted-foreground">
@@ -524,8 +524,8 @@ function ArchivePanel({
                 <p className="min-w-0 break-words text-sm font-semibold">
                   {row.subject}
                 </p>
-                <span className="shrink-0 font-mono text-xs font-bold text-[#9b7c3d]">
-                  {getTelegramDisplayNumber(row.serialCode)}
+                <span className="shrink-0 text-sm font-bold text-foreground">
+                  برقية رقم: {getTelegramDisplayNumber(row.serialCode)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">

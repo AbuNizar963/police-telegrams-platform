@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Pencil, Plus, RefreshCw, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import {
@@ -146,22 +145,7 @@ export default function OwnerOrganizationManagement() {
       refetchOnWindowFocus: false,
     }
   );
-  const pendingApprovals = trpc.organizations.pendingApprovals.useQuery(
-    undefined,
-    {
-      enabled: open,
-    }
-  );
   const utils = trpc.useUtils();
-  const approveRoute = trpc.telegrams.approveRoute.useMutation({
-    onSuccess: async (_route, input) => {
-      toast.success(
-        input.approved ? "تم اعتماد الإحالة ونقل البرقية" : "تم رفض الإحالة"
-      );
-      await utils.organizations.pendingApprovals.invalidate();
-    },
-    onError: error => toast.error(error.message || "تعذر تسجيل قرار الإحالة"),
-  });
   const create = trpc.organizations.create.useMutation({
     onSuccess: result => {
       if (result.account) {
@@ -542,36 +526,34 @@ export default function OwnerOrganizationManagement() {
         aria-labelledby="owner-org-title"
         className="app-modal-shell min-w-0 p-3 sm:p-7"
       >
-        <header className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold tracking-wide text-[#9b7c3d]">
-              الهيكل التنظيمي للجهات الشرطية
-            </p>
-            <h2 id="owner-org-title" className="mt-1 text-xl font-bold">
+        <header className="min-w-0">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <h2 id="owner-org-title" className="min-w-0 text-xl font-bold">
               إدارة المناطق والأقسام والمخافر
             </h2>
-            <p className="mt-1 break-words text-sm text-muted-foreground">
-              الافتراضي: وزارة الداخلية ← المحافظة ← مديرية الريف أو قسم المدينة
-              ← المخفر ← الوحدة. يستطيع المالك تخصيص علاقة الأب لكل جهة.
-            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => openEditorForCreate()}
+              >
+                <Plus className="ml-1 h-4 w-4" /> إضافة جهة
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(false)}
+                aria-label="إغلاق"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="shrink-0"
-            onClick={() => openEditorForCreate()}
-          >
-            <Plus className="ml-1 h-4 w-4" /> إضافة جهة
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setOpen(false)}
-            aria-label="إغلاق"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          <p className="mt-3 w-full text-sm leading-7 text-muted-foreground">
+            التسلسل التنظيمي: وزارة الداخلية ← المحافظة ← مديرية الريف أو قسم
+            المدينة ← المخفر ← الوحدة. يمكن للمالك تخصيص علاقة الأب لكل جهة.
+          </p>
         </header>
 
         <div
@@ -1349,79 +1331,6 @@ export default function OwnerOrganizationManagement() {
                 )}
               </div>
             )}
-            <div className="mt-5 border-t pt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="text-sm font-bold">
-                  طلبات إحالة البرقيات بانتظار السلطة الأعلى
-                </h4>
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700">
-                  {pendingApprovals.data?.length ?? 0}
-                </span>
-              </div>
-              {pendingApprovals.data?.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  لا توجد طلبات معلقة.
-                </p>
-              )}
-              {pendingApprovals.data?.map(route => {
-                const telegram = route.telegrams as {
-                  serialCode?: string;
-                  subject?: string;
-                } | null;
-                const from = route.fromOrganization as { name?: string } | null;
-                const to = route.toOrganization as { name?: string } | null;
-                return (
-                  <div
-                    key={String(route.id)}
-                    className="mb-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
-                  >
-                    <p className="text-sm font-semibold">
-                      {getTelegramDisplayNumber(telegram?.serialCode)} —{" "}
-                      {telegram?.subject}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      طلب من {from?.name ?? "جهة"} إلى {to?.name ?? "جهة"} — لا
-                      ينتقل إلا بعد اعتماد السلطة الأعلى
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={approveRoute.isPending}
-                        onClick={() =>
-                          approveRoute.mutate({
-                            routeId: Number(route.id),
-                            approved: true,
-                            reason: "اعتماد السلطة الأعلى",
-                          })
-                        }
-                      >
-                        اعتماد ونقل
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={approveRoute.isPending}
-                        onClick={() => {
-                          const reason = window
-                            .prompt("أدخل سبب رفض الإحالة (إلزامي):")
-                            ?.trim();
-                          if (!reason) return;
-                          approveRoute.mutate({
-                            routeId: Number(route.id),
-                            approved: false,
-                            reason,
-                          });
-                        }}
-                      >
-                        رفض
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </section>
         </div>
       </section>

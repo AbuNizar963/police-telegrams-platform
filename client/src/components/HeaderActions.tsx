@@ -269,7 +269,7 @@ export default function HeaderActions() {
           {canManageOrganizationSettings && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-right text-xs font-bold text-[#9b7c3d]">
+              <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
                 إعدادات الجهة
               </DropdownMenuLabel>
               <DropdownMenuItem
@@ -288,7 +288,7 @@ export default function HeaderActions() {
           {user?.role === "admin" && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-right text-xs font-bold text-[#9b7c3d]">
+              <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
                 إعدادات المالك
               </DropdownMenuLabel>
               <DropdownMenuItem

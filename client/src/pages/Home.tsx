@@ -1111,7 +1111,7 @@ export default function Home() {
                 onClick={() => setSelectedId(row.id)}
                 className={`group ${desktopGridClass} px-4 py-4`}
               >
-                <div className="flex flex-col items-start gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
                   {row.organizationId === row.currentOrganizationId ? (
                     <span
                       aria-label="برقية صادرة"
@@ -1129,15 +1129,14 @@ export default function Home() {
                       واردة
                     </span>
                   )}
-                  <span className="font-mono text-xs font-bold text-[#9b7c3d]">
+                  <span className="text-base font-bold text-foreground sm:text-lg">
+                    برقية رقم:{" "}
                     {localizeDigits(
                       getTelegramDisplayNumber(getTelegramSerialCode(row)),
                       numberSystem
                     )}
                   </span>
-                  <span className="md:hidden">
-                    <StatusBadge value={row.status} />
-                  </span>
+                  <StatusBadge value={row.status} />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{row.subject}</p>
@@ -3636,7 +3635,7 @@ function Modal({
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {subtitle && (
-              <p className="font-mono text-xs font-bold text-[#9b7c3d]">
+              <p className="font-mono text-xs font-semibold text-muted-foreground">
                 {subtitle}
               </p>
             )}
@@ -3886,10 +3885,10 @@ function DepartmentSettingsModal({
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-semibold tracking-[0.16em] text-[#9b7c3d]">
+                <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground">
                   برقية رسمية
                 </p>
-                <p className="text-xs font-semibold text-[#9b7c3d]">
+                <p className="text-xs font-semibold text-muted-foreground">
                   {localizeDigits(unitChiefRank, numberSystem)}{" "}
                   {localizeDigits(unitChiefName, numberSystem)}
                 </p>

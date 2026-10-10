@@ -112,10 +112,7 @@ export default function OwnerUserManagement() {
       >
         <header className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold tracking-wide text-[#9b7c3d]">
-              OWNER / USER MANAGEMENT
-            </p>
-            <h2 id="owner-users-title" className="mt-1 text-xl font-bold">
+            <h2 id="owner-users-title" className="text-xl font-bold">
               إدارة الحسابات
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">

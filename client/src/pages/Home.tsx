@@ -1175,7 +1175,7 @@ export default function Home() {
                     )}
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-1 text-sm leading-6 text-muted-foreground">
+                <div className="grid grid-cols-1 gap-1 text-sm font-medium leading-6 text-muted-foreground">
                   <p className="break-words">
                     <span className="font-semibold text-foreground">من:</span>{" "}
                     {row.senderOrganizationName || "الجهة المرسلة"}
@@ -1185,7 +1185,7 @@ export default function Home() {
                     {row.recipient}
                   </p>
                 </div>
-                <p className="min-w-0 break-words text-sm font-normal leading-7 sm:text-base">
+                <p className="min-w-0 break-words text-sm font-medium leading-7 sm:text-base">
                   <span className="font-semibold text-muted-foreground">
                     الموضوع:
                   </span>{" "}
@@ -2714,6 +2714,7 @@ function TelegramDetail({
           direction: rtl;
         }
         .telegram-export-page .routing p { margin: 0; }
+        .telegram-export-page .routing-details { font-weight: 500; }
         .telegram-export-page .routing-qr {
           width: 113px;
           height: 113px;

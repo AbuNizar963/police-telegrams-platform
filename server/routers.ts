@@ -2100,6 +2100,8 @@ export const appRouter = router({
           }
         } catch (error) {
           const failure = error instanceof Error ? error.message : String(error);
+          let auditRecorded = false;
+
           try {
             await recordTelegramAction({
               telegramId: telegram.id,
@@ -2117,15 +2119,21 @@ export const appRouter = router({
                 progress: broadcastProgress,
               },
             });
+            auditRecorded = true;
           } catch (auditError) {
             console.error(
               "[Telegram broadcast] Failed to persist partial-failure audit",
               auditError
             );
           }
+
+          const auditMessage = auditRecorded
+            ? "سُجّلت حالة الإرسال الجزئي للمراجعة."
+            : "تعذّر تسجيل حالة الإرسال الجزئي تلقائيًا؛ يلزم فحص السجلات والنسخ يدويًا.";
+
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: `تعذر إكمال الإرسال الجماعي للبرقية ${telegram.serialCode}. سُجّلت حالة الإرسال الجزئي للمراجعة؛ معرّف البرقية الأساسية: ${telegram.id}.`,
+            message: `تعذر إكمال الإرسال الجماعي للبرقية ${telegram.serialCode}. ${auditMessage} معرّف البرقية الأساسية: ${telegram.id}.`,
             cause: error,
           });
         }

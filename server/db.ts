@@ -601,6 +601,10 @@ export async function updateRouteOutgoingSerial(input: {
   throwIfError(error, "Failed to save outgoing organization serial");
 }
 
+export type TelegramListItem = Telegram & {
+  senderOrganizationName: string | null;
+};
+
 export async function listTelegrams(
   _userId: number,
   canViewAll: boolean,
@@ -640,7 +644,7 @@ export async function listTelegrams(
   page = 1,
   pageSize = 50,
   organizationScopeIds: string[] | null = null
-): Promise<Telegram[]> {
+): Promise<TelegramListItem[]> {
   const safePage = Math.max(1, Math.floor(page));
   const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
   let query = getSupabaseAdmin()
@@ -690,7 +694,34 @@ export async function listTelegrams(
 
   const { data, error } = await query;
   throwIfError(error, "Failed to list telegrams");
-  return (data ?? []).map(row => mapTelegram(row as Record<string, unknown>));
+  const telegrams = (data ?? []).map(row =>
+    mapTelegram(row as Record<string, unknown>)
+  );
+  const organizationIds = Array.from(
+    new Set(telegrams.map(telegram => telegram.organizationId))
+  );
+  const organizationNames = new Map<string, string>();
+  if (organizationIds.length > 0) {
+    const { data: organizations, error: organizationsError } =
+      await getSupabaseAdmin()
+        .from("organizations")
+        .select("id, name")
+        .in("id", organizationIds);
+    throwIfError(organizationsError, "Failed to list telegram organizations");
+    for (const organization of organizations ?? []) {
+      if (
+        typeof organization.id === "string" &&
+        typeof organization.name === "string"
+      ) {
+        organizationNames.set(organization.id, organization.name);
+      }
+    }
+  }
+  return telegrams.map(telegram => ({
+    ...telegram,
+    senderOrganizationName:
+      organizationNames.get(telegram.organizationId) ?? null,
+  }));
 }
 
 export async function getTelegramReport(

@@ -1120,18 +1120,18 @@ export default function Home() {
                     )}
                   </span>
                 </div>
-                <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:gap-x-6">
-                  <p className="truncate">
+                <div className="grid gap-1 text-sm leading-6 text-muted-foreground sm:grid-cols-2 sm:gap-x-6">
+                  <p className="break-words">
                     <span className="font-semibold text-foreground">من:</span>{" "}
-                    {row.creatorName}
+                    {row.senderOrganizationName || "الجهة المرسلة"}
                   </p>
-                  <p className="truncate">
+                  <p className="break-words">
                     <span className="font-semibold text-foreground">إلى:</span>{" "}
                     {row.recipient}
                   </p>
                 </div>
-                <p className="min-w-0 truncate text-base font-bold sm:text-lg">
-                  <span className="text-sm font-semibold text-muted-foreground sm:text-base">
+                <p className="min-w-0 break-words text-sm font-bold leading-7 sm:text-base">
+                  <span className="font-semibold text-muted-foreground">
                     الموضوع:
                   </span>{" "}
                   {row.subject}

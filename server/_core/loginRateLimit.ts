@@ -45,9 +45,7 @@ async function consumeLoginRateLimit(
     });
   }
 
-  const row = (Array.isArray(data) ? data[0] : data) as
-    | RateLimitRpcRow
-    | null;
+  const row = (Array.isArray(data) ? data[0] : data) as RateLimitRpcRow | null;
   if (!row || typeof row.allowed !== "boolean") {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",

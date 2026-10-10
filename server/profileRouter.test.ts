@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
-function contextFor(): TrpcContext {
+function contextFor(
+  overrides: Partial<NonNullable<TrpcContext["user"]>> = {}
+): TrpcContext {
   const now = new Date();
   return {
     user: {
@@ -13,9 +15,11 @@ function contextFor(): TrpcContext {
       email: "officer@example.com",
       loginMethod: "google",
       role: "user",
+      mustChangePassword: false,
       createdAt: now,
       updatedAt: now,
       lastSignedIn: now,
+      ...overrides,
     },
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
     res: {} as TrpcContext["res"],
@@ -30,6 +34,37 @@ describe("profile router", () => {
     await expect(
       appRouter.createCaller(context).profile.get()
     ).resolves.toEqual(context.user);
+  });
+
+  it("allows temporary-password users to access the password-change profile", async () => {
+    const context = contextFor({ mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).profile.get()
+    ).resolves.toEqual(context.user);
+  });
+
+  it("blocks protected data until the temporary password is changed", async () => {
+    const context = contextFor({ mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).dashboard.stats()
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("blocks administrative actions while a temporary password is active", async () => {
+    const context = contextFor({ role: "admin", mustChangePassword: true });
+    await expect(
+      appRouter.createCaller(context).userManagement.list()
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects managed-account passwords shorter than twelve characters", async () => {
+    await expect(
+      appRouter.createCaller(contextFor({ role: "admin" })).userManagement.create({
+        name: "Test Officer",
+        username: "test-officer",
+        password: "short",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("rejects names shorter than two characters", async () => {

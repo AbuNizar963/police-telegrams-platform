@@ -104,9 +104,15 @@ export async function notifyOrganizationTelegramCreated(input: {
     subscriptions.map(async (subscription: PushSubscriptionRecord) => {
       if (!isAllowedPushEndpoint(subscription.endpoint)) {
         try {
-          await deletePushSubscription(subscription.userId, subscription.endpoint);
+          await deletePushSubscription(
+            subscription.userId,
+            subscription.endpoint
+          );
         } catch (error) {
-          console.warn("[Notification] Rejected push endpoint cleanup failed", error);
+          console.warn(
+            "[Notification] Rejected push endpoint cleanup failed",
+            error
+          );
         }
         removed += 1;
         return;

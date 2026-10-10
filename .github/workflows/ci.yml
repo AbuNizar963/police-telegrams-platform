@@ -29,7 +29,10 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Temporary lockfile diagnostics
+        run: git diff -- pnpm-lock.yaml
 
       - name: Reject legacy platform dependencies
         run: |

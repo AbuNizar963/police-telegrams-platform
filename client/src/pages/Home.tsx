@@ -2761,7 +2761,7 @@ function TelegramDetail({
         .telegram-export-page .signature p {
           width: 100%;
           margin: 0;
-          font-size: 20px;
+          font-size: 16px;
           font-weight: 700;
           text-align: center;
         }

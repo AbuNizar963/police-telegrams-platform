@@ -411,6 +411,7 @@ describe("telegrams.create", () => {
         }),
       })
     );
+  });
 
   it("records the primary telegram as created when its initial broadcast route fails", async () => {
     const targets = [
@@ -512,6 +513,5 @@ describe("telegrams.create", () => {
     } finally {
       consoleError.mockRestore();
     }
-  });
   });
 });

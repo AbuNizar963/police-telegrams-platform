@@ -49,11 +49,12 @@ describe("profile router", () => {
   it(
     "blocks protected data until the temporary password is changed",
     async () => {
-    const context = contextFor({ mustChangePassword: true });
-    await expect(
-      appRouter.createCaller(context).dashboard.stats()
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
+      const context = contextFor({ mustChangePassword: true });
+      await expect(
+        appRouter.createCaller(context).dashboard.stats()
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+  );
 
   it(
     "blocks administrative actions while a temporary password is active",

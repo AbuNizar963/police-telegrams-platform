@@ -70,7 +70,7 @@ export async function showLocalTelegramNotification(input: {
   const options: NotificationOptions = {
     body: `رقم البرقية: ${input.serialCode}\nالموضوع: ${input.subject}`,
     icon: "/notification-icon.png",
-    badge: "/notification-icon.png",
+    badge: "/notification-badge.png",
     tag: `telegram-${input.telegramId}`,
     silent: false,
     dir: "rtl",

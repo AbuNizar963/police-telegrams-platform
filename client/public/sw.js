@@ -5,6 +5,7 @@ const SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   "/notification-icon.png",
+  "/notification-badge.png",
 ];
 
 self.addEventListener("install", event => {
@@ -62,7 +63,7 @@ self.addEventListener("push", event => {
     self.registration.showNotification(payload.title || "تنبيه برقيات الشرطة", {
       body: payload.body || "لديك إشعار جديد في نظام البرقيات",
       icon: "/notification-icon.png",
-      badge: "/notification-icon.png",
+      badge: "/notification-badge.png",
       dir: "rtl",
       lang: "ar",
       tag: payload.tag || "police-telegram",

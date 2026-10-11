@@ -156,25 +156,34 @@ describe("telegram administration permissions", () => {
     mocked.recordTelegramAction.mockResolvedValue(undefined);
   });
 
-  it("rejects update requests from ordinary officers before database access", async () => {
+  it("allows ordinary officers to update a telegram during the 48-hour window", async () => {
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: telegram.organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getUserOrganizationId.mockResolvedValue(telegram.organizationId);
     const caller = appRouter.createCaller(contextFor("user"));
 
-    await expect(caller.telegrams.update(updateInput)).rejects.toMatchObject({
-      code: "FORBIDDEN",
+    await expect(caller.telegrams.update(updateInput)).resolves.toMatchObject({
+      subject: "موضوع معدل",
     });
-    expect(mocked.getTelegramById).not.toHaveBeenCalled();
-    expect(mocked.updateTelegram).not.toHaveBeenCalled();
+    expect(mocked.updateTelegram).toHaveBeenCalled();
   });
 
-  it("rejects delete requests from ordinary officers before database access", async () => {
+  it("allows ordinary officers to delete a telegram during the 48-hour window", async () => {
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: telegram.organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getUserOrganizationId.mockResolvedValue(telegram.organizationId);
     const caller = appRouter.createCaller(contextFor("user"));
 
-    await expect(caller.telegrams.delete({ id: 7 })).rejects.toMatchObject({
-      code: "FORBIDDEN",
+    await expect(caller.telegrams.delete({ id: 7 })).resolves.toMatchObject({
+      success: true,
     });
-    expect(mocked.getTelegramById).not.toHaveBeenCalled();
-    expect(mocked.purgeTelegramPermanently).not.toHaveBeenCalled();
-    expect(storageMocks.storageDelete).not.toHaveBeenCalled();
+    expect(mocked.purgeTelegramPermanently).toHaveBeenCalledWith(7);
   });
 
   it("allows administrators to update a telegram without changing its creator or serial", async () => {

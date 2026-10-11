@@ -94,6 +94,7 @@ describe("purgeTelegramPermanently", () => {
     const result = await purgeTelegramPermanently(7);
 
     expect(state.deletedTables).toEqual([
+      "notifications",
       "telegram_actions",
       "telegram_versions",
       "telegram_attachments",

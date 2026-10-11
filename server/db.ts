@@ -1082,6 +1082,37 @@ export async function purgeTelegramPermanently(
     .eq("telegramId", id);
   throwIfError(attachmentError, "Failed to load telegram attachments");
 
+  const { data: routeRows, error: routeError } = await supabase
+    .from("telegram_routes")
+    .select("id")
+    .eq("telegramId", id);
+  throwIfError(routeError, "Failed to load telegram routes");
+  const routeIds = (routeRows ?? [])
+    .map(row => Number((row as { id?: unknown }).id))
+    .filter(Number.isInteger);
+
+  // notifications.routeId and notifications.telegramId are RESTRICT foreign
+  // keys in deployed databases. Remove inbox rows before their parent route
+  // and telegram rows to make permanent deletion atomic from the API view.
+  const { error: telegramNotificationError } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("telegramId", id);
+  throwIfError(
+    telegramNotificationError,
+    "Failed to purge telegram notifications"
+  );
+  if (routeIds.length > 0) {
+    const { error: routeNotificationError } = await supabase
+      .from("notifications")
+      .delete()
+      .in("routeId", routeIds);
+    throwIfError(
+      routeNotificationError,
+      "Failed to purge route notifications"
+    );
+  }
+
   // Order matters: every referencing table is cleared before its parent row.
   const dependentTables = [
     "telegram_actions",

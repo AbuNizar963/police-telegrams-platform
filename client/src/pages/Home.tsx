@@ -1300,6 +1300,13 @@ export default function Home() {
           settings={settings.data}
           isOutgoing={isOutgoingTelegram(detail.data)}
           isAdmin={me.data?.role === "admin"}
+          canManageContent={
+            me.data?.role === "admin" ||
+            organizationContext.data?.isOwner === true ||
+            (Date.now() - detail.data.createdAt.getTime() >= 0 &&
+              Date.now() - detail.data.createdAt.getTime() <=
+                48 * 60 * 60 * 1000)
+          }
           canOperate={
             me.data?.role === "admin" ||
             [
@@ -2288,6 +2295,7 @@ function TelegramDetail({
   settings,
   isOutgoing,
   isAdmin,
+  canManageContent,
   canOperate,
   routingDirectory,
   close,
@@ -2324,6 +2332,7 @@ function TelegramDetail({
   };
   isOutgoing: boolean;
   isAdmin: boolean;
+  canManageContent: boolean;
   canOperate: boolean;
   routingDirectory: Array<{
     id: string;
@@ -3512,14 +3521,16 @@ function TelegramDetail({
           </Button>
           {isAdmin && (
             <>
-              <Button
-                onClick={() => setEditOpen(true)}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                <Save className="ml-2 h-4 w-4" />
-                تعديل البرقية
-              </Button>
+              {canManageContent && (
+                <Button
+                  onClick={() => setEditOpen(true)}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  <Save className="ml-2 h-4 w-4" />
+                  تعديل البرقية
+                </Button>
+              )}
               {telegram.status === "draft" && (
                 <Button
                   onClick={() => requestTransition("submitted")}
@@ -3606,24 +3617,26 @@ function TelegramDetail({
                   أرشفة
                 </Button>
               ) : null}
-              <Button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+              {canManageContent && (
+                <Button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+                      )
                     )
-                  )
-                    deleteTelegram.mutate({ id: telegram.id });
-                }}
-                disabled={deleteTelegram.isPending}
-                variant="destructive"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                <Trash2 className="ml-2 h-4 w-4" />
-                {deleteTelegram.isPending
-                  ? "جارٍ الحذف النهائي..."
-                  : "حذف نهائي"}
-              </Button>
+                      deleteTelegram.mutate({ id: telegram.id });
+                  }}
+                  disabled={deleteTelegram.isPending}
+                  variant="destructive"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  <Trash2 className="ml-2 h-4 w-4" />
+                  {deleteTelegram.isPending
+                    ? "جارٍ الحذف النهائي..."
+                    : "حذف نهائي"}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -3689,6 +3702,34 @@ function TelegramDetail({
               إكمال المعالجة
             </Button>
           )}
+        </div>
+      )}
+      {canManageContent && !isAdmin && (
+        <div className="mt-4 flex flex-wrap gap-2 print:hidden">
+          <Button
+            onClick={() => setEditOpen(true)}
+            variant="outline"
+            className="h-10 rounded-lg"
+          >
+            <Save className="ml-2 h-4 w-4" />
+            تعديل البرقية
+          </Button>
+          <Button
+            onClick={() => {
+              if (
+                window.confirm(
+                  `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} نهائيًا مع مرفقاتها وسجل مسارها خلال نافذة السماح. هل تريد المتابعة؟`
+                )
+              )
+                deleteTelegram.mutate({ id: telegram.id });
+            }}
+            disabled={deleteTelegram.isPending}
+            variant="destructive"
+            className="h-10 rounded-lg"
+          >
+            <Trash2 className="ml-2 h-4 w-4" />
+            {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
+          </Button>
         </div>
       )}
       {routeableTargets.length > 0 &&

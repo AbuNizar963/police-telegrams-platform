@@ -279,6 +279,17 @@ async function assertTelegramOrganizationScope(
   }
 }
 
+const TELEGRAM_MANAGEMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function canManageTelegramContent(
+  user: TelegramScopeUser,
+  createdAt: Date
+): boolean {
+  if (isPlatformOwner(user)) return true;
+  const ageMs = Date.now() - createdAt.getTime();
+  return ageMs >= 0 && ageMs <= TELEGRAM_MANAGEMENT_WINDOW_MS;
+}
+
 async function assertOwnerOrganizationScope(
   user: TelegramScopeUser,
   organizationId: string | null,
@@ -1384,7 +1395,7 @@ export const appRouter = router({
         };
       }),
 
-    update: adminProcedure
+    update: protectedProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -1414,6 +1425,14 @@ export const appRouter = router({
           existing,
           "لا تملك صلاحية تعديل هذه البرقية خارج جهة العمل النشطة"
         );
+
+        if (!canManageTelegramContent(ctx.user, existing.createdAt)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "انتهت مهلة تعديل البرقية (48 ساعة)؛ الصلاحية الدائمة للمالك فقط",
+          });
+        }
 
         if (input.status !== existing.status) {
           throw new TRPCError({
@@ -1459,7 +1478,7 @@ export const appRouter = router({
         return updated;
       }),
 
-    delete: adminProcedure
+    delete: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         const existing = await getTelegramById(input.id);
@@ -1474,6 +1493,14 @@ export const appRouter = router({
           existing,
           "لا تملك صلاحية حذف هذه البرقية خارج جهة العمل النشطة"
         );
+
+        if (!canManageTelegramContent(ctx.user, existing.createdAt)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "انتهت مهلة حذف البرقية (48 ساعة)؛ الصلاحية الدائمة للمالك فقط",
+          });
+        }
 
         const purged = await purgeTelegramPermanently(existing.id);
         if (!purged) {

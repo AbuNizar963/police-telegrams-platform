@@ -37,12 +37,12 @@ export function BrandMark({
         />
       </div>
       {showLabel ? (
-        <div className="min-w-0 text-right">
+        <div className="min-w-0 text-center">
           <p className="truncate text-sm font-bold tracking-tight text-foreground">
             نظام برقيات الشرطة
           </p>
           {!compactLabel ? (
-            <p className="truncate text-[11px] text-muted-foreground">
+            <p className="truncate text-base font-semibold leading-6 text-muted-foreground">
               القائمة الجانبية
             </p>
           ) : null}

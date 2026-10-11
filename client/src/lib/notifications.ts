@@ -52,8 +52,13 @@ function getTelegramNotificationCopy(
   direction: TelegramNotificationDirection
 ): string {
   return direction === "incoming"
-    ? "لقد وردتك برقية"
-    : "تم تسجيل برقية صادرة";
+    ? "برقية واردة"
+    : "برقية صادرة";
+}
+
+function getShortTelegramNumber(serialCode: string): string {
+  const lastNumericPart = serialCode.match(/(\d+)$/)?.[1];
+  return lastNumericPart || serialCode;
 }
 
 export async function showLocalTelegramNotification(input: {
@@ -67,8 +72,9 @@ export async function showLocalTelegramNotification(input: {
 
   const direction = input.direction ?? "outgoing";
   const title = getTelegramNotificationCopy(direction);
+  const shortNumber = getShortTelegramNumber(input.serialCode);
   const options: NotificationOptions = {
-    body: `رقم البرقية: ${input.serialCode}\nالموضوع: ${input.subject}`,
+    body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
     icon: "/notification-icon.png",
     badge: "/notification-badge.png",
     tag: `telegram-${input.telegramId}`,

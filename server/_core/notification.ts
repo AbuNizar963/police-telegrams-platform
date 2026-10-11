@@ -15,6 +15,11 @@ export type NotificationPayload = {
 
 type TelegramNotificationDirection = "outgoing" | "incoming";
 
+function getShortTelegramNumber(serialCode: string): string {
+  const lastNumericPart = serialCode.match(/(\d+)$/)?.[1];
+  return lastNumericPart || serialCode;
+}
+
 function validate(payload: NotificationPayload): NotificationPayload {
   const title = payload.title.trim();
   const content = payload.content.trim();
@@ -89,11 +94,12 @@ export async function notifyOrganizationTelegramCreated(input: {
 
   const subscriptions = await listPushSubscriptions(input.organizationId);
   const direction = input.direction ?? "outgoing";
+  const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type: "telegram.created",
     title:
-      direction === "incoming" ? "لقد وردتك برقية" : "تم تسجيل برقية صادرة",
-    body: `رقم البرقية: ${input.serialCode}\nالموضوع: ${input.subject}`,
+      direction === "incoming" ? "برقية واردة" : "برقية صادرة",
+    body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {

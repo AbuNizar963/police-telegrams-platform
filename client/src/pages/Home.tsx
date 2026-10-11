@@ -2347,6 +2347,7 @@ function TelegramDetail({
   const paperRef = useRef<HTMLDivElement>(null);
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
   const updateTelegram = trpc.telegrams.update.useMutation({
     onSuccess: async () => {
       toast.success("تم حفظ تعديلات البرقية");
@@ -2361,6 +2362,22 @@ function TelegramDetail({
   });
   const deleteTelegram = trpc.telegrams.delete.useMutation({
     onSuccess: async result => {
+      // Remove the row from every cached list immediately so the main screen
+      // updates without waiting for a refetch or requiring a browser reload.
+      queryClient.setQueriesData(
+        { queryKey: getQueryKey(trpc.telegrams.list) },
+        (current: unknown) => {
+          if (!Array.isArray(current)) return current;
+          return current.filter(
+            item =>
+              !item ||
+              typeof item !== "object" ||
+              !("id" in item) ||
+              (item as { id?: unknown }).id !== telegram.id
+          );
+        }
+      );
+      close();
       toast.success(
         result.deletedAttachmentCount > 0
           ? `تم حذف البرقية ${getTelegramDisplayNumber(result.serialCode)} نهائيًا مع ${result.deletedAttachmentCount} مرفق`
@@ -2377,7 +2394,6 @@ function TelegramDetail({
         utils.dashboard.stats.invalidate(),
         utils.reports.telegrams.invalidate(),
       ]);
-      close();
     },
     onError: error => toast.error(error.message || "تعذر حذف البرقية"),
   });

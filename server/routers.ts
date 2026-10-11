@@ -1634,7 +1634,27 @@ export const appRouter = router({
           const sourceOrganization = await getOrganizationById(
             route.fromOrganizationId
           );
-          if (telegram && sourceOrganization?.parentOrganizationId) {
+          if (telegram && route.approvalStatus === "not_required") {
+            const incomingSerialCode =
+              route.routeSerialCode ?? telegram.serialCode;
+            await notifyOrganizationUsers({
+              organizationId: route.toOrganizationId,
+              type: "route.approved",
+              title: "برقية واردة",
+              body: `وردت برقية جديدة برقم ${incomingSerialCode}.`,
+              telegramId: telegram.id,
+              routeId: route.id,
+            });
+            await notifyOrganizationTelegramCreated({
+              organizationId: route.toOrganizationId,
+              serialCode: incomingSerialCode,
+              subject: telegram.subject,
+              recipient: telegram.recipient,
+              priority: telegram.priority,
+              telegramId: telegram.id,
+              direction: "incoming",
+            });
+          } else if (telegram && sourceOrganization?.parentOrganizationId) {
             const destination = await getOrganizationById(
               route.toOrganizationId
             );
@@ -2319,7 +2339,27 @@ export const appRouter = router({
           try {
             const sourceOrganization =
               await getOrganizationById(organizationId);
-            if (sourceOrganization?.parentOrganizationId) {
+            if (route.approvalStatus === "not_required") {
+              const incomingSerialCode =
+                route.routeSerialCode ?? telegram.serialCode;
+              await notifyOrganizationUsers({
+                organizationId: route.toOrganizationId,
+                type: "route.approved",
+                title: "برقية واردة",
+                body: `وردت برقية جديدة برقم ${incomingSerialCode}.`,
+                telegramId: telegram.id,
+                routeId: route.id,
+              });
+              await notifyOrganizationTelegramCreated({
+                organizationId: route.toOrganizationId,
+                serialCode: incomingSerialCode,
+                subject: telegram.subject,
+                recipient: telegram.recipient,
+                priority: telegram.priority,
+                telegramId: telegram.id,
+                direction: "incoming",
+              });
+            } else if (sourceOrganization?.parentOrganizationId) {
               await notifyOrganizationUsers({
                 organizationId: sourceOrganization.parentOrganizationId,
                 type: "route.requested",

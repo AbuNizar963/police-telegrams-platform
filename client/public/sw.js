@@ -1,5 +1,11 @@
-const CACHE_NAME = "police-telegrams-shell-v4";
-const SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE_NAME = "police-telegrams-shell-v5";
+const SHELL = [
+  "/",
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/notification-icon.png",
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -48,19 +54,20 @@ self.addEventListener("push", event => {
   } catch {
     payload = {
       title: "تنبيه برقيات الشرطة",
-      body: event.data?.text() ?? "لديك إشعار جديد",
+      body: event.data?.text() ?? "لديك إشعار جديد في نظام البرقيات",
     };
   }
 
   event.waitUntil(
     self.registration.showNotification(payload.title || "تنبيه برقيات الشرطة", {
-      body: payload.body || "لديك إشعار جديد في مركز البرقيات",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      body: payload.body || "لديك إشعار جديد في نظام البرقيات",
+      icon: "/notification-icon.png",
+      badge: "/notification-icon.png",
       dir: "rtl",
       lang: "ar",
       tag: payload.tag || "police-telegram",
       renotify: true,
+      silent: false,
       data: { url: payload.url || "/", ...payload.data },
       vibrate: [200, 100, 200],
     })

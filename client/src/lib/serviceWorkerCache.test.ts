@@ -45,8 +45,9 @@ describe("service worker cache cleanup", () => {
     });
     await activation;
 
-    expect(deleteCache).toHaveBeenCalledTimes(1);
+    expect(deleteCache).toHaveBeenCalledTimes(2);
     expect(deleteCache).toHaveBeenCalledWith("police-telegrams-shell-v3");
+    expect(deleteCache).toHaveBeenCalledWith("police-telegrams-shell-v4");
     expect(deleteCache).not.toHaveBeenCalledWith("transformers-cache");
     expect(deleteCache).not.toHaveBeenCalledWith("another-library-cache");
   });

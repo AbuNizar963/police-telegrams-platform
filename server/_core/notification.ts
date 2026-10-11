@@ -13,6 +13,8 @@ export type NotificationPayload = {
   content: string;
 };
 
+type TelegramNotificationDirection = "outgoing" | "incoming";
+
 function validate(payload: NotificationPayload): NotificationPayload {
   const title = payload.title.trim();
   const content = payload.content.trim();
@@ -79,16 +81,19 @@ export async function notifyOrganizationTelegramCreated(input: {
   recipient: string;
   priority: string;
   telegramId: number;
+  direction?: TelegramNotificationDirection;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
   if (!vapidConfigured) {
     return { sent: 0, removed: 0, configured: false };
   }
 
   const subscriptions = await listPushSubscriptions(input.organizationId);
+  const direction = input.direction ?? "outgoing";
   const payload = JSON.stringify({
     type: "telegram.created",
-    title: "برقية شرطية جديدة",
-    body: `${input.serialCode} — ${input.subject}`,
+    title:
+      direction === "incoming" ? "لقد وردتك برقية" : "تم تسجيل برقية صادرة",
+    body: `رقم البرقية: ${input.serialCode}\nالموضوع: ${input.subject}`,
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {

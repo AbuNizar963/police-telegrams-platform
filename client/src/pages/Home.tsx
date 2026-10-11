@@ -597,6 +597,7 @@ export default function Home() {
         serialCode: getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
         subject: telegram.subject,
         telegramId: telegram.id,
+        direction: "outgoing",
       });
       const attachment = composerAttachmentRef.current;
       composerAttachmentRef.current = null;

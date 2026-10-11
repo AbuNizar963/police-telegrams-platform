@@ -1778,9 +1778,10 @@ export const appRouter = router({
                 organizationId: route.toOrganizationId,
                 serialCode: route.routeSerialCode ?? routedTelegram.serialCode,
                 subject: routedTelegram.subject,
-                recipient: routedTelegram.recipient,
-                priority: routedTelegram.priority,
-                telegramId: routedTelegram.id,
+              recipient: routedTelegram.recipient,
+              priority: routedTelegram.priority,
+              telegramId: routedTelegram.id,
+              direction: "incoming",
               });
             } catch (error) {
               console.warn(
@@ -2380,6 +2381,7 @@ export const appRouter = router({
             recipient: telegram.recipient,
             priority: telegram.priority,
             telegramId: telegram.id,
+            direction: "outgoing",
           });
         } catch (error) {
           console.warn("[Notification] Telegram push dispatch failed", error);

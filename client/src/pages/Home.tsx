@@ -645,6 +645,8 @@ export default function Home() {
     resolved: 0,
     incoming: 0,
     outgoing: 0,
+    todayUrgent: 0,
+    todayIncoming: 0,
   };
   const numberSystem = ((
     settings.data as { numberSystem?: NumberSystem } | undefined
@@ -764,17 +766,23 @@ export default function Home() {
     clearKpiFilters();
     setActiveKpi(key);
 
-    if (key === "today") {
+    const setTodayRange = () => {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
       end.setDate(end.getDate() + 1);
       setDateFrom(start.toISOString());
       setDateTo(end.toISOString());
+    };
+
+    if (key === "today") {
+      setTodayRange();
     } else if (key === "urgent") {
       setPriority("urgent");
+      setTodayRange();
     } else if (key === "incoming") {
       setTelegramView("incoming");
+      setTodayRange();
     } else if (key === "in-progress") {
       setStatus("in_progress");
     } else if (key === "resolved") {
@@ -913,7 +921,7 @@ export default function Home() {
           numberSystem={numberSystem}
           label="الصادرة اليوم"
           value={data.today}
-          detail="آخر 24 ساعة"
+          detail="من بداية اليوم"
           icon={Activity}
           tone="bg-blue-500/10 text-blue-600"
           active={activeKpi === "today"}
@@ -921,9 +929,9 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="أولوية عاجل"
-          value={data.urgent}
-          detail="تحتاج انتباهاً"
+          label="أولوية عاجل اليوم"
+          value={data.todayUrgent}
+          detail="من بداية اليوم"
           icon={Siren}
           tone="bg-red-500/10 text-red-600"
           active={activeKpi === "urgent"}
@@ -931,9 +939,9 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="البرقيات الواردة"
-          value={data.incoming}
-          detail="إلى جهتك الحالية"
+          label="الواردة اليوم"
+          value={data.todayIncoming}
+          detail="إلى جهتك منذ بداية اليوم"
           icon={Inbox}
           tone="bg-emerald-500/10 text-emerald-600"
           active={activeKpi === "incoming"}
@@ -980,9 +988,9 @@ export default function Home() {
                     {activeKpi === "today"
                       ? "الصادرة اليوم"
                       : activeKpi === "urgent"
-                        ? "أولوية عاجل"
-                        : activeKpi === "incoming"
-                          ? "البرقيات الواردة"
+                          ? "أولوية عاجل اليوم"
+                          : activeKpi === "incoming"
+                          ? "الواردة اليوم"
                           : activeKpi === "in-progress"
                             ? "قيد الإجراء"
                             : activeKpi === "resolved"

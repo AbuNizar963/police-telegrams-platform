@@ -1377,6 +1377,8 @@ export async function getDashboardStats(
     inProgress,
     resolved,
     today,
+    todayUrgent,
+    todayIncoming,
     incoming,
     outgoing,
   ] = await Promise.all([
@@ -1403,6 +1405,21 @@ export async function getDashboardStats(
     countTelegrams(userId, canViewAll, organizationId, q =>
       q.gte("createdAt", start.toISOString()).lt("createdAt", end.toISOString())
     ),
+    countTelegrams(userId, canViewAll, organizationId, q =>
+      q
+        .eq("priority", "urgent")
+        .gte("createdAt", start.toISOString())
+        .lt("createdAt", end.toISOString())
+    ),
+    organizationId
+      ? countTelegrams(userId, canViewAll, organizationId, q =>
+          q
+            .eq("currentOrganizationId", organizationId)
+            .neq("organizationId", organizationId)
+            .gte("createdAt", start.toISOString())
+            .lt("createdAt", end.toISOString())
+        )
+      : Promise.resolve(0),
     organizationId
       ? countTelegrams(userId, canViewAll, organizationId, q =>
           q
@@ -1427,6 +1444,8 @@ export async function getDashboardStats(
     inProgress,
     resolved,
     today,
+    todayUrgent,
+    todayIncoming,
     incoming,
     outgoing,
   };

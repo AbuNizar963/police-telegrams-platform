@@ -43,7 +43,7 @@ export function BrandMark({
           </p>
           {!compactLabel ? (
             <p className="truncate text-[11px] text-muted-foreground">
-              غرفة العمليات الرقمية
+              القائمة الجانبية
             </p>
           ) : null}
         </div>

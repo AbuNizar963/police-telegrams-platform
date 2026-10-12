@@ -569,7 +569,6 @@ export default function Home() {
       getQueryKey(trpc.dashboard.stats),
       getQueryKey(trpc.organizations.pendingApprovals),
       getQueryKey(trpc.notifications.inbox),
-      getQueryKey(trpc.settings.get),
     ]) {
       void queryClient.cancelQueries({ queryKey });
       queryClient.removeQueries({ queryKey });
@@ -4114,8 +4113,13 @@ function DepartmentSettingsModal({
   const selectWorkplace = trpc.organizations.selectWorkplace.useMutation({
     onSuccess: async result => {
       setSelectedWorkplaceId(result.organizationId);
+      await Promise.all([
+        utils.organizations.context.invalidate(),
+        utils.settings.get.invalidate(),
+        utils.telegrams.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
       onWorkplaceChanged();
-      await utils.invalidate();
       toast.success(`تم تغيير جهة العمل إلى ${result.organizationName}`);
     },
     onError: error => {
@@ -4138,11 +4142,7 @@ function DepartmentSettingsModal({
     onError: error => toast.error(error.message || "تعذر تحديث إعدادات الجهة"),
   });
   const upload = trpc.settings.uploadLogo.useMutation();
-  const isOrganizationSettingsReady =
-    settings?.organizationId === (activeOrganizationId ?? null) &&
-    selectedWorkplaceId === (activeOrganizationId ?? "");
-  const isWorkplaceTransitioning =
-    selectWorkplace.isPending || !isOrganizationSettingsReady;
+  const isWorkplaceTransitioning = selectWorkplace.isPending || !settings;
 
   useEffect(() => {
     const handler = () => setOpen(true);

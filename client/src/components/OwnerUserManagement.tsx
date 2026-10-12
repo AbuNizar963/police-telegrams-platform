@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import {
+  Ban,
   Building2,
   CheckCircle2,
   Pencil,
@@ -99,6 +100,9 @@ export default function OwnerUserManagement() {
   const [enablePassword, setEnablePassword] = useState<Record<number, string>>(
     {}
   );
+  const [enablePasswordOpen, setEnablePasswordOpen] = useState<
+    Record<number, boolean>
+  >({});
 
   const users = trpc.userManagement.list.useQuery(undefined, {
     enabled: open,
@@ -232,6 +236,7 @@ export default function OwnerUserManagement() {
     onSuccess: async (_data, variables) => {
       toast.success("تمت إعادة تفعيل الحساب");
       setEnablePassword(current => ({ ...current, [variables.id]: "" }));
+      setEnablePasswordOpen(current => ({ ...current, [variables.id]: false }));
       await utils.userManagement.list.invalidate();
     },
     onError: error => toast.error(error.message || "تعذر تفعيل الحساب"),
@@ -651,7 +656,7 @@ export default function OwnerUserManagement() {
                                   {user.role === "admin" ? "مالك" : "حساب جهة"}
                                 </span>
                                 {user.role !== "admin" && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex flex-wrap items-center justify-end gap-1">
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -675,105 +680,126 @@ export default function OwnerUserManagement() {
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                     {user.loginMethod === "disabled" ? (
-                                      <div className="flex items-center gap-1">
-                                        <Input
-                                          aria-label={`كلمة مرور جديدة لـ ${user.name ?? user.username ?? "الحساب"}`}
-                                          type="password"
-                                          className="h-8 w-32"
-                                          placeholder="كلمة مرور (12+)"
-                                          minLength={12}
-                                          value={enablePassword[user.id] ?? ""}
-                                          onChange={event =>
-                                            setEnablePassword(current => ({
-                                              ...current,
-                                              [user.id]: event.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-blue-700 hover:bg-blue-500/10"
-                                          title="إعادة تفعيل الحساب"
-                                          aria-label={`إعادة تفعيل ${user.name ?? user.username ?? "الحساب"}`}
-                                          disabled={
-                                            (enablePassword[user.id] ?? "")
-                                              .length < 12 ||
-                                            enableUser.isPending
-                                          }
-                                          onClick={() =>
-                                            enableUser.mutate({
-                                              id: user.id,
-                                              password: enablePassword[user.id],
-                                            })
-                                          }
-                                        >
-                                          <RotateCcw className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    ) : (
                                       <>
                                         <Button
                                           type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-red-700 hover:bg-red-500/10"
-                                          title="تعطيل الحساب"
-                                          aria-label={`تعطيل حساب ${user.name ?? user.username ?? "المستخدم"}`}
-                                          onClick={() => {
-                                            const label =
-                                              user.name ??
-                                              user.username ??
-                                              "هذا الحساب";
-                                            if (
-                                              window.confirm(
-                                                `هل تريد تعطيل حساب ${label}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
-                                              )
-                                            ) {
-                                              disableUser.mutate({
-                                                id: user.id,
-                                              });
-                                            }
-                                          }}
-                                          disabled={
-                                            disableUser.isPending ||
-                                            deleteUser.isPending
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 gap-1 border-blue-200 px-2 text-xs text-blue-700 hover:bg-blue-500/10"
+                                          title="فتح نموذج إعادة تفعيل الحساب"
+                                          aria-expanded={
+                                            enablePasswordOpen[user.id] === true
+                                          }
+                                          onClick={() =>
+                                            setEnablePasswordOpen(current => ({
+                                              ...current,
+                                              [user.id]: !current[user.id],
+                                            }))
                                           }
                                         >
-                                          <Trash2 className="h-4 w-4" />
+                                          <RotateCcw className="h-3.5 w-3.5" />
+                                          إعادة التفعيل
                                         </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-red-900 hover:bg-red-900/10 dark:text-red-300"
-                                          title="حذف نهائي"
-                                          aria-label={`حذف حساب ${user.name ?? user.username ?? "المستخدم"} نهائيًا`}
-                                          onClick={() => {
-                                            const label =
-                                              user.name ??
-                                              user.username ??
-                                              "هذا الحساب";
-                                            if (
-                                              window.confirm(
-                                                `سيتم حذف حساب ${label} نهائيًا. إذا كان مرتبطًا ببرقيات أو سجل تدقيق سيُرفض الحذف حفاظًا على السجلات. هل تريد المتابعة؟`
-                                              )
-                                            ) {
-                                              deleteUser.mutate({
-                                                id: user.id,
-                                              });
-                                            }
-                                          }}
-                                          disabled={
-                                            deleteUser.isPending ||
-                                            disableUser.isPending
-                                          }
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {enablePasswordOpen[user.id] && (
+                                          <div className="flex basis-full items-center justify-end gap-1 pt-1">
+                                            <Input
+                                              aria-label={`كلمة مرور جديدة لـ ${user.name ?? user.username ?? "الحساب"}`}
+                                              type="password"
+                                              className="h-8 w-40"
+                                              placeholder="كلمة مرور جديدة (12+)"
+                                              minLength={12}
+                                              autoComplete="new-password"
+                                              value={
+                                                enablePassword[user.id] ?? ""
+                                              }
+                                              onChange={event =>
+                                                setEnablePassword(current => ({
+                                                  ...current,
+                                                  [user.id]: event.target.value,
+                                                }))
+                                              }
+                                            />
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              className="h-8 bg-blue-700 px-2 text-xs text-white hover:bg-blue-800"
+                                              disabled={
+                                                (enablePassword[user.id] ?? "")
+                                                  .length < 12 ||
+                                                enableUser.isPending
+                                              }
+                                              onClick={() =>
+                                                enableUser.mutate({
+                                                  id: user.id,
+                                                  password:
+                                                    enablePassword[user.id],
+                                                })
+                                              }
+                                            >
+                                              {enableUser.isPending
+                                                ? "جارٍ..."
+                                                : "تأكيد"}
+                                            </Button>
+                                          </div>
+                                        )}
                                       </>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 gap-1 border-amber-200 px-2 text-xs text-amber-700 hover:bg-amber-500/10"
+                                        title="تعطيل الحساب مع الاحتفاظ بالسجلات"
+                                        aria-label={`تعطيل حساب ${user.name ?? user.username ?? "المستخدم"}`}
+                                        onClick={() => {
+                                          const label =
+                                            user.name ??
+                                            user.username ??
+                                            "هذا الحساب";
+                                          if (
+                                            window.confirm(
+                                              `هل تريد تعطيل حساب ${label}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
+                                            )
+                                          ) {
+                                            disableUser.mutate({ id: user.id });
+                                          }
+                                        }}
+                                        disabled={
+                                          disableUser.isPending ||
+                                          deleteUser.isPending
+                                        }
+                                      >
+                                        <Ban className="h-3.5 w-3.5" />
+                                        تعطيل
+                                      </Button>
                                     )}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-900 hover:bg-red-900/10 dark:text-red-300"
+                                      title="حذف نهائي"
+                                      aria-label={`حذف حساب ${user.name ?? user.username ?? "المستخدم"} نهائيًا`}
+                                      onClick={() => {
+                                        const label =
+                                          user.name ??
+                                          user.username ??
+                                          "هذا الحساب";
+                                        if (
+                                          window.confirm(
+                                            `سيتم حذف حساب ${label} نهائيًا. إذا كان مرتبطًا ببرقيات أو سجل تدقيق سيُرفض الحذف حفاظًا على السجلات. هل تريد المتابعة؟`
+                                          )
+                                        ) {
+                                          deleteUser.mutate({ id: user.id });
+                                        }
+                                      }}
+                                      disabled={
+                                        deleteUser.isPending ||
+                                        disableUser.isPending
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 )}
                               </div>

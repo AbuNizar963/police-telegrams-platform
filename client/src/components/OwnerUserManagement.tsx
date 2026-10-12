@@ -236,6 +236,13 @@ export default function OwnerUserManagement() {
     },
     onError: error => toast.error(error.message || "تعذر تفعيل الحساب"),
   });
+  const deleteUser = trpc.userManagement.delete.useMutation({
+    onSuccess: async () => {
+      toast.success("تم حذف الحساب نهائيًا");
+      await utils.userManagement.list.invalidate();
+    },
+    onError: error => toast.error(error.message || "تعذر حذف الحساب"),
+  });
 
   useEffect(() => {
     const show = () => setOpen(true);
@@ -706,30 +713,66 @@ export default function OwnerUserManagement() {
                                         </Button>
                                       </div>
                                     ) : (
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-red-700 hover:bg-red-500/10"
-                                        title="تعطيل الحساب"
-                                        aria-label={`تعطيل حساب ${user.name ?? user.username ?? "المستخدم"}`}
-                                        onClick={() => {
-                                          const label =
-                                            user.name ??
-                                            user.username ??
-                                            "هذا الحساب";
-                                          if (
-                                            window.confirm(
-                                              `هل تريد تعطيل حساب ${label}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
-                                            )
-                                          ) {
-                                            disableUser.mutate({ id: user.id });
+                                      <>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-red-700 hover:bg-red-500/10"
+                                          title="تعطيل الحساب"
+                                          aria-label={`تعطيل حساب ${user.name ?? user.username ?? "المستخدم"}`}
+                                          onClick={() => {
+                                            const label =
+                                              user.name ??
+                                              user.username ??
+                                              "هذا الحساب";
+                                            if (
+                                              window.confirm(
+                                                `هل تريد تعطيل حساب ${label}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
+                                              )
+                                            ) {
+                                              disableUser.mutate({
+                                                id: user.id,
+                                              });
+                                            }
+                                          }}
+                                          disabled={
+                                            disableUser.isPending ||
+                                            deleteUser.isPending
                                           }
-                                        }}
-                                        disabled={disableUser.isPending}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-red-900 hover:bg-red-900/10 dark:text-red-300"
+                                          title="حذف نهائي"
+                                          aria-label={`حذف حساب ${user.name ?? user.username ?? "المستخدم"} نهائيًا`}
+                                          onClick={() => {
+                                            const label =
+                                              user.name ??
+                                              user.username ??
+                                              "هذا الحساب";
+                                            if (
+                                              window.confirm(
+                                                `سيتم حذف حساب ${label} نهائيًا. إذا كان مرتبطًا ببرقيات أو سجل تدقيق سيُرفض الحذف حفاظًا على السجلات. هل تريد المتابعة؟`
+                                              )
+                                            ) {
+                                              deleteUser.mutate({
+                                                id: user.id,
+                                              });
+                                            }
+                                          }}
+                                          disabled={
+                                            deleteUser.isPending ||
+                                            disableUser.isPending
+                                          }
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </>
                                     )}
                                   </div>
                                 )}

@@ -4,12 +4,14 @@ import { getSupabaseAdmin } from "./_core/supabase";
 export interface OwnerIdentity {
   role?: string | null;
   username?: string | null;
+  isPlatformOwner?: boolean | null;
 }
 
 /** Owner-only operations must match the configured owner account, not every admin. */
 export function isPlatformOwner(
   user: OwnerIdentity | null | undefined
 ): boolean {
+  if (user?.isPlatformOwner === true && user.role === "admin") return true;
   const configuredOwner = ENV.ownerUsername.trim().toLowerCase();
   return (
     user?.role === "admin" &&
@@ -21,7 +23,7 @@ export function isPlatformOwner(
 export async function isPlatformOwnerUserId(userId: number): Promise<boolean> {
   const { data, error } = await getSupabaseAdmin()
     .from("users")
-    .select("id, username, role")
+    .select("id, username, role, isPlatformOwner")
     .eq("id", userId)
     .maybeSingle();
 

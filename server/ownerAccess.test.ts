@@ -44,6 +44,16 @@ describe("isPlatformOwner", () => {
     expect(isPlatformOwner(null)).toBe(false);
   });
 
+  it("recognizes the persisted platform-owner flag even if the configured username changes", () => {
+    expect(
+      isPlatformOwner({
+        username: "the-persisted-owner",
+        role: "admin",
+        isPlatformOwner: true,
+      })
+    ).toBe(true);
+  });
+
   it("looks up only identity fields when a membership change targets a user", async () => {
     mocks.maybeSingle.mockResolvedValueOnce({
       data: { id: 1, username: ENV.ownerUsername, role: "admin" },
@@ -51,7 +61,9 @@ describe("isPlatformOwner", () => {
     });
 
     await expect(isPlatformOwnerUserId(1)).resolves.toBe(true);
-    expect(mocks.select).toHaveBeenCalledWith("id, username, role");
+    expect(mocks.select).toHaveBeenCalledWith(
+      "id, username, role, isPlatformOwner"
+    );
     expect(mocks.eq).toHaveBeenCalledWith("id", 1);
   });
 

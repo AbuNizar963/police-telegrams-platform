@@ -6,6 +6,7 @@ import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
 import { addOrganizationMembership } from "./organization";
+import { isPlatformOwner } from "./ownerAccess";
 
 async function getActiveOrganizationForAccount(organizationId: string) {
   const { data, error } = await getSupabaseAdmin()
@@ -350,6 +351,63 @@ export const userManagementRouter = router({
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.enable",
+        entityType: "user",
+        entityId: String(input.id),
+        metadata: JSON.stringify({ username: target.data.username }),
+      });
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isPlatformOwner(ctx.user)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "الحذف النهائي للحسابات متاح لمالك النظام فقط",
+        });
+      }
+      if (input.id === ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا يمكنك حذف حسابك الحالي",
+        });
+      }
+
+      const client = getSupabaseAdmin();
+      const target = await client
+        .from("users")
+        .select("id, role, username")
+        .eq("id", input.id)
+        .maybeSingle();
+      if (target.error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "تعذر تحميل الحساب المطلوب للحذف",
+        });
+      }
+      if (!target.data) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      }
+      if (target.data.role === "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا يمكن حذف حساب مالك النظام",
+        });
+      }
+
+      const { error } = await client.from("users").delete().eq("id", input.id);
+      if (error) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "لا يمكن حذف هذا الحساب نهائيًا لأنه مرتبط ببرقيات أو سجلات تدقيق. استخدم التعطيل بدلًا من الحذف.",
+        });
+      }
+      await writeAuditLog({
+        actorUserId: ctx.user.id,
+        actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
+        action: "user.delete",
         entityType: "user",
         entityId: String(input.id),
         metadata: JSON.stringify({ username: target.data.username }),

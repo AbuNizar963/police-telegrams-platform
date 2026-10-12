@@ -187,11 +187,13 @@ function formatConfiguredDate(
   settings?: {
     timezone?: string;
     dateFormat?: string;
+    timeFormat?: string;
     numberSystem?: NumberSystem;
   }
 ) {
   const date = new Date(value);
   const timezone = settings?.timezone ?? "Asia/Riyadh";
+  const hour12 = settings?.timeFormat === "12";
   if (settings?.dateFormat === "dd MMM yyyy HH:mm")
     return localizeDigits(
       new Intl.DateTimeFormat("ar-SA", {
@@ -201,6 +203,7 @@ function formatConfiguredDate(
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        hour12,
       }).format(date),
       settings?.numberSystem ?? "latin"
     );
@@ -213,17 +216,18 @@ function formatConfiguredDate(
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-      hour12: false,
+      hour12,
     })
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
+  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${hour12 && parts.dayPeriod ? ` ${parts.dayPeriod}` : ""}`;
   const text =
     settings?.dateFormat === "yyyy-MM-dd HH:mm:ss"
-      ? `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+      ? `${parts.year}-${parts.month}-${parts.day} ${timeText}`
       : settings?.dateFormat === "yyyy/MM/dd HH:mm:ss"
-        ? `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
-        : `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
+        ? `${parts.year}/${parts.month}/${parts.day} ${timeText}`
+        : `${parts.day}/${parts.month}/${parts.year} ${timeText}`;
   return localizeDigits(text, settings?.numberSystem ?? "latin");
 }
 
@@ -232,12 +236,14 @@ function formatConfiguredHeaderDateTime(
   settings?: {
     timezone?: string;
     dateFormat?: string;
+    timeFormat?: string;
     numberSystem?: NumberSystem;
   }
 ) {
   const date = new Date(value);
   const timezone = settings?.timezone ?? "Asia/Riyadh";
   const numberSystem = settings?.numberSystem ?? "latin";
+  const hour12 = settings?.timeFormat === "12";
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-GB", {
       timeZone: timezone,
@@ -247,16 +253,14 @@ function formatConfiguredHeaderDateTime(
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-      hour12: false,
+      hour12,
     })
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
   const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
-  return localizeDigits(
-    `${formattedDate} - ${parts.hour}:${parts.minute}:${parts.second}`,
-    numberSystem
-  );
+  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${hour12 && parts.dayPeriod ? ` ${parts.dayPeriod}` : ""}`;
+  return localizeDigits(`${formattedDate} - ${timeText}`, numberSystem);
 }
 
 function SeverityBadge({ value }: { value: Classification }) {
@@ -1679,6 +1683,7 @@ function TelegramReportModal({
   settings?: {
     timezone?: string;
     dateFormat?: string;
+    timeFormat?: string;
     numberSystem?: NumberSystem;
   };
   close: () => void;
@@ -2344,6 +2349,7 @@ function TelegramDetail({
     unitChiefName?: string;
     timezone?: string;
     dateFormat?: string;
+    timeFormat?: string;
     numberSystem?: NumberSystem;
     logoUrl: string | null;
   };
@@ -4065,6 +4071,7 @@ function DepartmentSettingsModal({
     incomingSerialStart: number;
     timezone?: string;
     dateFormat?: string;
+    timeFormat?: string;
     numberSystem?: NumberSystem;
     logoUrl: string | null;
   };
@@ -4105,6 +4112,7 @@ function DepartmentSettingsModal({
   );
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("yyyy/MM/dd HH:mm:ss");
+  const [timeFormat, setTimeFormat] = useState<"12" | "24">("24");
   const [numberSystem, setNumberSystem] =
     useState<SupportedNumberSystem>("latin");
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
@@ -4161,6 +4169,7 @@ function DepartmentSettingsModal({
     );
     setTimezone(settings?.timezone ?? "Asia/Riyadh");
     setDateFormat(settings?.dateFormat ?? "yyyy/MM/dd HH:mm:ss");
+    setTimeFormat(settings?.timeFormat === "12" ? "12" : "24");
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
@@ -4174,6 +4183,7 @@ function DepartmentSettingsModal({
     settings?.incomingSerialPrefix,
     settings?.timezone,
     settings?.dateFormat,
+    settings?.timeFormat,
     settings?.numberSystem,
   ]);
   useEffect(() => {
@@ -4452,6 +4462,19 @@ function DepartmentSettingsModal({
                 <option value="dd MMM yyyy HH:mm">22 سبتمبر 2026 14:30</option>
               </select>
             </label>
+            <label className="grid gap-1.5 text-[11px] font-semibold">
+              نمط الوقت
+              <select
+                value={timeFormat}
+                onChange={event =>
+                  setTimeFormat(event.target.value as "12" | "24")
+                }
+                className="h-10 rounded-lg border bg-background px-3 text-sm font-normal"
+              >
+                <option value="24">24 ساعة — 14:30:00</option>
+                <option value="12">12 ساعة — 02:30:00 م</option>
+              </select>
+            </label>
           </div>
           <label className="grid gap-1.5 text-[11px] font-semibold">
             نظام الأرقام
@@ -4547,6 +4570,7 @@ function DepartmentSettingsModal({
               incomingSerialStart: settings.incomingSerialStart,
               timezone,
               dateFormat,
+              timeFormat,
               numberSystem,
               logoUrl: logoUrl?.trim() || null,
             })

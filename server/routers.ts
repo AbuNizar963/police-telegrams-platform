@@ -246,6 +246,7 @@ const organizationSettingsPayloadSchema = z.object({
     "yyyy/MM/dd HH:mm:ss",
     "dd MMM yyyy HH:mm",
   ]),
+  timeFormat: z.enum(["12", "24"]).default("24"),
   numberSystem: z.enum(["latin", "arabic"]),
   logoUrl: safeLogoUrlSchema,
 });
@@ -550,6 +551,7 @@ export const appRouter = router({
             nextIncomingSerial: 1,
             timezone: "Asia/Damascus",
             dateFormat: "yyyy/MM/dd HH:mm:ss",
+            timeFormat: "24" as const,
             numberSystem: "latin" as const,
             logoUrl: null,
             logoKey: null,
@@ -618,6 +620,7 @@ export const appRouter = router({
               nextIncomingSerial: incomingStart,
               timezone: input.timezone,
               dateFormat: input.dateFormat,
+              timeFormat: input.timeFormat,
               numberSystem: input.numberSystem,
               logoUrl: input.logoUrl,
               updatedByUserId: ctx.user.id,
@@ -649,6 +652,7 @@ export const appRouter = router({
               incomingSerialStart: incomingStart,
               timezone: input.timezone,
               dateFormat: input.dateFormat,
+              timeFormat: input.timeFormat,
               numberSystem: input.numberSystem,
             }),
           });
@@ -853,8 +857,10 @@ export const appRouter = router({
           });
         }
         if (
+          !isPlatformOwner(ctx.user) &&
           ctx.user.role !== "admin" &&
-          ctx.organizationMembership.organizationId !== input.organizationId
+          (!ctx.organizationMembership ||
+            ctx.organizationMembership.organizationId !== input.organizationId)
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",
@@ -1045,6 +1051,7 @@ export const appRouter = router({
             .min(4)
             .max(32)
             .default("yyyy/MM/dd HH:mm:ss"),
+          timeFormat: z.enum(["12", "24"]).default("24"),
           numberSystem: z.enum(["latin", "arabic"]).default("latin"),
           logoUrl: safeLogoUrlSchema.optional(),
         })
@@ -1120,6 +1127,7 @@ export const appRouter = router({
           nextIncomingSerial: incomingStart,
           timezone: input.timezone,
           dateFormat: input.dateFormat,
+          timeFormat: input.timeFormat,
           numberSystem: input.numberSystem,
           logoUrl: input.logoUrl ?? null,
           updatedByUserId: ctx.user.id,

@@ -3,6 +3,7 @@ import superjson from "superjson";
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import type { TrpcContext } from "./context";
 import { getUserOrganizationMembership } from "../organization";
+import { isPlatformOwner } from "../ownerAccess";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -71,8 +72,9 @@ export const organizationAdminProcedure = t.procedure.use(requireUser).use(
     // role="user" and receive organization_admin membership for their unit.
     const membership = await getUserOrganizationMembership(ctx.user.id);
     if (
-      !membership ||
-      !["system_admin", "organization_admin"].includes(membership.role)
+      !isPlatformOwner(ctx.user) &&
+      (!membership ||
+        !["system_admin", "organization_admin"].includes(membership.role))
     ) {
       throw new TRPCError({
         code: "FORBIDDEN",

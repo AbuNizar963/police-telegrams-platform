@@ -56,6 +56,7 @@ type OrganizationSettingsDraft = {
     | "yyyy-MM-dd HH:mm:ss"
     | "yyyy/MM/dd HH:mm:ss"
     | "dd MMM yyyy HH:mm";
+  timeFormat: "12" | "24";
   numberSystem: "latin" | "arabic";
   logoUrl: string;
 };
@@ -73,6 +74,7 @@ const emptyOrganizationSettings = (
   incomingSerialStart: 1,
   timezone: "Asia/Damascus",
   dateFormat: "yyyy/MM/dd HH:mm:ss",
+  timeFormat: "24",
   numberSystem: "latin",
   logoUrl: "",
 });
@@ -213,6 +215,7 @@ export default function OwnerOrganizationManagement() {
       ].includes(saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
         ? (saved.dateFormat as OrganizationSettingsDraft["dateFormat"])
         : "yyyy/MM/dd HH:mm:ss",
+      timeFormat: saved.timeFormat === "12" ? "12" : "24",
       numberSystem: saved.numberSystem === "arabic" ? "arabic" : "latin",
       logoUrl: saved.logoUrl ?? "",
     });
@@ -375,6 +378,7 @@ export default function OwnerOrganizationManagement() {
       incomingSerialStart: settingsDraft.incomingSerialStart,
       timezone: settingsDraft.timezone.trim(),
       dateFormat: settingsDraft.dateFormat,
+      timeFormat: settingsDraft.timeFormat,
       numberSystem: settingsDraft.numberSystem,
       logoUrl: settingsDraft.logoUrl.trim() || null,
     };
@@ -1102,6 +1106,22 @@ export default function OwnerOrganizationManagement() {
                       <option value="dd MMM yyyy HH:mm">
                         22 سبتمبر 2026 14:30
                       </option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-semibold">
+                    نمط الوقت
+                    <select
+                      className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                      value={settingsDraft.timeFormat}
+                      onChange={event =>
+                        setSettingsDraft(current => ({
+                          ...current,
+                          timeFormat: event.target.value as "12" | "24",
+                        }))
+                      }
+                    >
+                      <option value="24">24 ساعة — 14:30:00</option>
+                      <option value="12">12 ساعة — 02:30:00 م</option>
                     </select>
                   </label>
                   <label className="grid gap-1 text-xs font-semibold">

@@ -195,6 +195,7 @@ export const departmentSettings = pgTable(
     dateFormat: varchar("dateFormat", { length: 32 })
       .default("dd/MM/yyyy HH:mm:ss")
       .notNull(),
+    timeFormat: varchar("timeFormat", { length: 2 }).default("24").notNull(),
     numberSystem: numberSystem("numberSystem").default("latin").notNull(),
     logoUrl: text("logoUrl"),
     updatedByUserId: integer("updatedByUserId"),

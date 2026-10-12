@@ -51,9 +51,7 @@ export async function playTelegramNotificationSound(): Promise<void> {
 function getTelegramNotificationCopy(
   direction: TelegramNotificationDirection
 ): string {
-  return direction === "incoming"
-    ? "برقية واردة"
-    : "برقية صادرة";
+  return direction === "incoming" ? "برقية واردة" : "برقية صادرة";
 }
 
 function getShortTelegramNumber(serialCode: string): string {

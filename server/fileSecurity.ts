@@ -21,13 +21,24 @@ export function detectFileType(bytes: Buffer): AllowedAttachmentType | null {
   if (startsWithBytes(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
   if (startsWithBytes(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
     return "image/png";
-  if (bytes.length >= 12 && bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP")
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString() === "RIFF" &&
+    bytes.subarray(8, 12).toString() === "WEBP"
+  )
     return "image/webp";
   if (bytes.subarray(0, 5).toString() === "%PDF-") return "application/pdf";
-  if (bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WAVE")
+  if (
+    bytes.subarray(0, 4).toString() === "RIFF" &&
+    bytes.subarray(8, 12).toString() === "WAVE"
+  )
     return "audio/wav";
-  if (bytes.subarray(0, 4).toString() === "\x1a\x45\xdf\xa3") return "audio/webm";
-  if (bytes.subarray(0, 3).toString() === "ID3" || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0))
+  if (bytes.subarray(0, 4).toString() === "\x1a\x45\xdf\xa3")
+    return "audio/webm";
+  if (
+    bytes.subarray(0, 3).toString() === "ID3" ||
+    (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)
+  )
     return "audio/mpeg";
   return null;
 }
@@ -41,7 +52,10 @@ export function validateUploadedFile(input: {
   if (input.bytes.length === 0 || input.bytes.length > input.maxBytes) {
     throw new Error("حجم الملف غير صالح");
   }
-  if (!/^[^\x00-\x1f\\/]+$/.test(input.fileName) || input.fileName.length > 180) {
+  if (
+    !/^[^\x00-\x1f\\/]+$/.test(input.fileName) ||
+    input.fileName.length > 180
+  ) {
     throw new Error("اسم الملف غير صالح");
   }
   const actualType = detectFileType(input.bytes);

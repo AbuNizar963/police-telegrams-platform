@@ -6,9 +6,11 @@ function playNotificationChime(type: string | null | undefined) {
   try {
     const AudioContextClass =
       window.AudioContext ||
-      (window as Window & {
-        webkitAudioContext?: typeof AudioContext;
-      }).webkitAudioContext;
+      (
+        window as Window & {
+          webkitAudioContext?: typeof AudioContext;
+        }
+      ).webkitAudioContext;
     if (!AudioContextClass) return;
 
     const context = new AudioContextClass();

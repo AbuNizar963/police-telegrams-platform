@@ -97,8 +97,7 @@ export async function notifyOrganizationTelegramCreated(input: {
   const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type: "telegram.created",
-    title:
-      direction === "incoming" ? "برقية واردة" : "برقية صادرة",
+    title: direction === "incoming" ? "برقية واردة" : "برقية صادرة",
     body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,

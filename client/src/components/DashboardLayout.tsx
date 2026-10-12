@@ -17,12 +17,15 @@ import {
   Activity,
   FileSpreadsheet,
   LayoutDashboard,
+  LockKeyhole,
   MapPinned,
   PanelLeft,
   Plus,
+  ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
@@ -103,10 +106,6 @@ export default function DashboardLayout({
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  useEffect(() => {
-    if (user?.mustChangePassword) setLocation("/profile");
-  }, [setLocation, user?.mustChangePassword]);
-
   if (loading) {
     return <DashboardLayoutSkeleton />;
   }
@@ -183,19 +182,172 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": `${sidebarWidth}px`,
-        } as CSSProperties
-      }
-      open={sidebarOpen}
-      onOpenChange={setSidebarOpen}
+    <>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": `${sidebarWidth}px`,
+          } as CSSProperties
+        }
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+      >
+        <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+          {children}
+        </DashboardLayoutContent>
+      </SidebarProvider>
+      <TemporaryPasswordDialog user={user} />
+    </>
+  );
+}
+
+function TemporaryPasswordDialog({
+  user,
+}: {
+  user: NonNullable<ReturnType<typeof useAuth>["user"]>;
+}) {
+  const utils = trpc.useUtils();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const changePassword = trpc.profile.changePassword.useMutation({
+    onSuccess: async () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      await utils.auth.me.invalidate();
+    },
+  });
+  const skipPasswordChange =
+    trpc.profile.dismissTemporaryPasswordChange.useMutation({
+      onSuccess: async () => {
+        await utils.auth.me.invalidate();
+      },
+    });
+
+  if (!user.mustChangePassword) return null;
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (newPassword !== confirmPassword) return;
+    changePassword.mutate({ currentPassword, newPassword });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+      dir="rtl"
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
-    </SidebarProvider>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="temporary-password-title"
+        onSubmit={submit}
+        className="w-full max-w-md space-y-5 rounded-3xl border bg-background p-6 shadow-2xl sm:p-8"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+              <ShieldCheck className="h-6 w-6" />
+            </span>
+            <div>
+              <h2 id="temporary-password-title" className="text-lg font-bold">
+                حماية حسابك
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                هذه كلمة مرور مؤقتة. يمكنك تغييرها الآن أو المتابعة بها مؤقتًا.
+                ستظهر هذه الرسالة مرة واحدة فقط.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted"
+            aria-label="إغلاق النافذة"
+            onClick={() => skipPasswordChange.mutate()}
+            disabled={skipPasswordChange.isPending}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <label className="grid gap-1.5 text-sm font-medium">
+            كلمة المرور الحالية
+            <Input
+              type="password"
+              dir="ltr"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={event => setCurrentPassword(event.target.value)}
+              placeholder="كلمة المرور المؤقتة"
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium">
+            كلمة المرور الجديدة
+            <Input
+              type="password"
+              dir="ltr"
+              autoComplete="new-password"
+              minLength={12}
+              value={newPassword}
+              onChange={event => setNewPassword(event.target.value)}
+              placeholder="12 محرفًا على الأقل"
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium">
+            تأكيد كلمة المرور الجديدة
+            <Input
+              type="password"
+              dir="ltr"
+              autoComplete="new-password"
+              minLength={12}
+              value={confirmPassword}
+              onChange={event => setConfirmPassword(event.target.value)}
+              placeholder="أعد كتابة كلمة المرور"
+            />
+          </label>
+          {newPassword &&
+            confirmPassword &&
+            newPassword !== confirmPassword && (
+              <p className="text-xs text-destructive">
+                كلمتا المرور غير متطابقتين.
+              </p>
+            )}
+          {changePassword.error && (
+            <p role="alert" className="text-xs text-destructive">
+              {changePassword.error.message}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={() => skipPasswordChange.mutate()}
+            disabled={skipPasswordChange.isPending || changePassword.isPending}
+          >
+            {skipPasswordChange.isPending ? "جارٍ المتابعة..." : "تخطي الآن"}
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[#10233f] text-white hover:bg-[#18375f]"
+            disabled={
+              changePassword.isPending ||
+              skipPasswordChange.isPending ||
+              !currentPassword ||
+              newPassword.length < 12 ||
+              newPassword !== confirmPassword
+            }
+          >
+            <LockKeyhole className="ml-2 h-4 w-4" />
+            {changePassword.isPending ? "جارٍ الحفظ..." : "تغيير كلمة المرور"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -325,7 +477,6 @@ function DashboardLayoutContent({
                 })}
             </SidebarMenu>
           </SidebarContent>
-
         </Sidebar>
         <div
           className={`absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/20 ${isCollapsed ? "hidden" : ""}`}

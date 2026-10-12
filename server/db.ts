@@ -1107,10 +1107,7 @@ export async function purgeTelegramPermanently(
       .from("notifications")
       .delete()
       .in("routeId", routeIds);
-    throwIfError(
-      routeNotificationError,
-      "Failed to purge route notifications"
-    );
+    throwIfError(routeNotificationError, "Failed to purge route notifications");
   }
 
   // Order matters: every referencing table is cleared before its parent row.
@@ -1483,10 +1480,22 @@ export async function updateUserPassword(
     .from("users")
     .update({
       password_hash: passwordHash,
-      authUserId: randomUUID(),
       mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id);
   throwIfError(error, "Failed to update user password");
+}
+
+export async function dismissTemporaryPasswordChange(
+  id: number
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .update({
+      mustChangePassword: false,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id);
+  throwIfError(error, "Failed to dismiss temporary password reminder");
 }

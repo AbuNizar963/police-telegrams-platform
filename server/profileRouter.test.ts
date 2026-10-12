@@ -43,20 +43,6 @@ describe("profile router", () => {
     ).resolves.toEqual(context.user);
   });
 
-  it("blocks protected data until the temporary password is changed", async () => {
-    const context = contextFor({ mustChangePassword: true });
-    await expect(
-      appRouter.createCaller(context).dashboard.stats()
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("blocks administrative actions while a temporary password is active", async () => {
-    const context = contextFor({ role: "admin", mustChangePassword: true });
-    await expect(
-      appRouter.createCaller(context).userManagement.list()
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
   it("rejects managed-account passwords shorter than twelve characters", async () => {
     await expect(
       appRouter

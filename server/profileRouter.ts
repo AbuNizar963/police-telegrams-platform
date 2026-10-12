@@ -6,7 +6,12 @@ import {
   protectedProcedure,
   router,
 } from "./_core/trpc";
-import { getUserById, updateUserPassword, updateUserProfile } from "./db";
+import {
+  dismissTemporaryPasswordChange,
+  getUserById,
+  updateUserPassword,
+  updateUserProfile,
+} from "./db";
 
 export const profileRouter = router({
   get: authenticatedProcedure.query(({ ctx }) => ctx.user),
@@ -79,4 +84,11 @@ export const profileRouter = router({
       );
       return { success: true };
     }),
+
+  dismissTemporaryPasswordChange: authenticatedProcedure.mutation(
+    async ({ ctx }) => {
+      await dismissTemporaryPasswordChange(ctx.user.id);
+      return { success: true };
+    }
+  ),
 });

@@ -11,7 +11,10 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { ENV } from "./_core/env";
 import { getUserOrganizationMembership } from "./organization";
 
-const verificationAttempts = new Map<string, { count: number; resetAt: number }>();
+const verificationAttempts = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
 const VERIFY_WINDOW_MS = 60_000;
 const VERIFY_MAX_ATTEMPTS = 60;
 
@@ -115,13 +118,6 @@ export function createApp(
         return;
       }
 
-      if (user.mustChangePassword) {
-        res.status(403).json({
-          error: "يجب تغيير كلمة المرور المؤقتة قبل استخدام النظام",
-        });
-        return;
-      }
-
       if (requiresOrganizationAdminLargeBody(path)) {
         const membership = await getUserOrganizationMembership(user.id);
         if (
@@ -150,9 +146,10 @@ export function createApp(
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
     if (!allowVerificationAttempt(req.ip || "unknown")) {
-      return res
-        .status(429)
-        .json({ valid: false, error: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا" });
+      return res.status(429).json({
+        valid: false,
+        error: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا",
+      });
     }
 
     const token = req.params.token;

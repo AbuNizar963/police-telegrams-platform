@@ -182,6 +182,19 @@ const DEFAULT_DISPLAY_COLUMNS: Record<DisplayColumn, boolean> = {
 function formatCount(value: number, system: NumberSystem) {
   return localizeDigits(numberFormatter.format(value), system);
 }
+
+function getArabicDayPeriod(date: Date, timezone: string, hour12: boolean) {
+  if (!hour12) return "";
+  return (
+    new Intl.DateTimeFormat("ar-SA", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: true,
+    })
+      .formatToParts(date)
+      .find(part => part.type === "dayPeriod")?.value ?? ""
+  );
+}
 function formatConfiguredDate(
   value: Date | string | number,
   settings?: {
@@ -221,7 +234,8 @@ function formatConfiguredDate(
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
-  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${hour12 && parts.dayPeriod ? ` ${parts.dayPeriod}` : ""}`;
+  const arabicDayPeriod = getArabicDayPeriod(date, timezone, hour12);
+  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${arabicDayPeriod ? ` ${arabicDayPeriod}` : ""}`;
   const text =
     settings?.dateFormat === "yyyy-MM-dd HH:mm:ss"
       ? `${parts.year}-${parts.month}-${parts.day} ${timeText}`
@@ -259,7 +273,8 @@ function formatConfiguredHeaderDateTime(
       .map(part => [part.type, part.value])
   );
   const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
-  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${hour12 && parts.dayPeriod ? ` ${parts.dayPeriod}` : ""}`;
+  const arabicDayPeriod = getArabicDayPeriod(date, timezone, hour12);
+  const timeText = `${parts.hour}:${parts.minute}:${parts.second}${arabicDayPeriod ? ` ${arabicDayPeriod}` : ""}`;
   return localizeDigits(`${formattedDate} - ${timeText}`, numberSystem);
 }
 

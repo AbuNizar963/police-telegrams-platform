@@ -36,6 +36,17 @@ function decodeVapidKey(value: string): Uint8Array {
   return bytes;
 }
 
+function formatNotificationDate(value: Date | string | number): string {
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(value));
+}
+
 /**
  * Compact, accessible quick actions displayed in the dashboard's upper corner.
  * Notification and account menus intentionally show only information currently
@@ -157,8 +168,12 @@ export default function HeaderActions() {
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={8} className="w-72">
-          <DropdownMenuLabel className="text-right">
+        <DropdownMenuContent
+          align="end"
+          sideOffset={8}
+          className="[direction:rtl] w-[min(92vw,26rem)] max-w-[calc(100vw-1rem)] p-0"
+        >
+          <DropdownMenuLabel className="px-4 py-3 text-right text-sm font-bold">
             الإشعارات
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -167,11 +182,11 @@ export default function HeaderActions() {
               جارٍ تحميل التنبيهات...
             </p>
           ) : notificationInbox.data?.items.length ? (
-            <div className="max-h-80 overflow-y-auto p-2">
+            <div className="max-h-[min(70vh,24rem)] overflow-y-auto p-2">
               {notificationInbox.data.items.map(notification => (
                 <DropdownMenuItem
                   key={notification.id}
-                  className="mb-1 cursor-pointer flex-col items-stretch gap-1 rounded-lg p-3 text-right"
+                  className="mb-1 min-w-0 cursor-pointer flex-col items-stretch gap-2 rounded-xl border border-transparent p-3 text-right hover:border-border hover:bg-muted/60"
                   onSelect={() => {
                     if (!notification.readAt) {
                       markNotificationRead.mutate({ id: notification.id });
@@ -185,17 +200,25 @@ export default function HeaderActions() {
                     }
                   }}
                 >
-                  <span className="flex items-center justify-between gap-2 text-xs font-bold">
-                    <span>{notification.title}</span>
+                  <span className="flex min-w-0 items-start justify-between gap-3 text-xs font-bold leading-5">
+                    <span className="min-w-0 break-words">
+                      {notification.title}
+                    </span>
                     {!notification.readAt && (
-                      <span className="h-2 w-2 rounded-full bg-red-600" />
+                      <span
+                        className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-600"
+                        aria-label="تنبيه غير مقروء"
+                      />
                     )}
                   </span>
-                  <span className="text-[11px] leading-5 text-muted-foreground">
+                  <span className="min-w-0 break-words text-[11px] leading-5 text-muted-foreground">
                     {notification.body}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(notification.createdAt).toLocaleString("ar-SY")}
+                  <span
+                    dir="rtl"
+                    className="text-[10px] font-medium text-muted-foreground"
+                  >
+                    {formatNotificationDate(notification.createdAt)}
                   </span>
                 </DropdownMenuItem>
               ))}
@@ -209,12 +232,6 @@ export default function HeaderActions() {
               </p>
             </div>
           )}
-          <DropdownMenuSeparator />
-          <div className="px-3 py-2 text-center text-[11px] text-muted-foreground">
-            {pushEnabled && notificationConfig.data?.enabled
-              ? "التنبيهات الداخلية وPush مفعّلة"
-              : "فعّل إشعارات الجهاز من قائمة الإعدادات"}
-          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 

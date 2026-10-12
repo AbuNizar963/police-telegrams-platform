@@ -520,13 +520,21 @@ export default function Home() {
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
   useEffect(() => {
-    if (organizationContext.data?.isOwner) setOrganizationScope("current");
+    if (
+      organizationContext.data?.isOwner ||
+      me.data?.isPlatformOwner === true
+    ) {
+      setOrganizationScope("current");
+    }
   }, [
     organizationContext.data?.isOwner,
     organizationContext.data?.organizationId,
+    me.data?.isPlatformOwner,
   ]);
   const workplaceOrganizations = trpc.organizations.all.useQuery(undefined, {
-    enabled: organizationContext.data?.isOwner === true,
+    enabled:
+      organizationContext.data?.isOwner === true ||
+      me.data?.isPlatformOwner === true,
   });
   const organizationDescendants = trpc.organizations.descendants.useQuery();
   const stats = trpc.dashboard.stats.useQuery(undefined, {
@@ -988,8 +996,8 @@ export default function Home() {
                     {activeKpi === "today"
                       ? "الصادرة اليوم"
                       : activeKpi === "urgent"
-                          ? "أولوية عاجل اليوم"
-                          : activeKpi === "incoming"
+                        ? "أولوية عاجل اليوم"
+                        : activeKpi === "incoming"
                           ? "الواردة اليوم"
                           : activeKpi === "in-progress"
                             ? "قيد الإجراء"
@@ -1333,7 +1341,10 @@ export default function Home() {
         <DepartmentSettingsModal
           settings={settings.data}
           organizationName={organizationContext.data?.organizationName}
-          isOwner={organizationContext.data?.isOwner === true}
+          isOwner={
+            organizationContext.data?.isOwner === true ||
+            me.data?.isPlatformOwner === true
+          }
           activeOrganizationId={organizationContext.data?.organizationId}
           organizations={workplaceOrganizations.data ?? []}
           onWorkplaceChanged={clearWorkplaceSensitiveState}
@@ -2257,9 +2268,7 @@ function TelegramComposer({
               type="button"
               aria-label="إرفاق ملف بالبرقية"
               title="اختيار مرفق من المعرض أو الملفات"
-              onClick={() =>
-                setAttachmentPickerOpen(current => !current)
-              }
+              onClick={() => setAttachmentPickerOpen(current => !current)}
               disabled={pending}
               className="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-[#7a5c1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -69,11 +69,27 @@ export async function getPrimaryOrganization(): Promise<Organization> {
 export async function getUserOrganizationMembership(
   userId: number
 ): Promise<OrganizationMembership | null> {
-  const { data, error } = await getSupabaseAdmin()
+  const client = getSupabaseAdmin();
+  const { data: user, error: userError } = await client
+    .from("users")
+    .select("organizationId")
+    .eq("id", userId)
+    .maybeSingle();
+  throwIfError(userError, "Failed to load user's organization");
+  if (!user) return null;
+
+  const homeOrganizationId =
+    typeof user.organizationId === "string" ? user.organizationId : null;
+  let membershipQuery = client
     .from("organization_memberships")
     .select("*")
     .eq("userId", userId)
-    .eq("isActive", true)
+    .eq("isActive", true);
+  if (homeOrganizationId) {
+    membershipQuery = membershipQuery.eq("organizationId", homeOrganizationId);
+  }
+
+  const { data, error } = await membershipQuery
     .order("createdAt", { ascending: true })
     .limit(1)
     .maybeSingle();

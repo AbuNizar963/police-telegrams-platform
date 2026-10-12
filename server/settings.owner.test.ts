@@ -144,4 +144,23 @@ describe("platform owner organization settings", () => {
     );
     expect(mocks.writeAuditLog).toHaveBeenCalledTimes(2);
   });
+
+  it("accepts a credential-free HTTPS logo URL from an approved external CDN", async () => {
+    const caller = appRouter.createCaller(ownerContext());
+    const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
+
+    await expect(
+      caller.organizations.settings.update({
+        ...settingsInput(organizationA.id),
+        logoUrl,
+      })
+    ).resolves.toMatchObject({ organizationId: organizationA.id });
+
+    expect(
+      mocks.upsertOrganizationSettingsForOrganization
+    ).toHaveBeenCalledWith(
+      organizationA.id,
+      expect.objectContaining({ logoUrl })
+    );
+  });
 });

@@ -1137,6 +1137,10 @@ export default function OwnerOrganizationManagement() {
                       maxLength={2000}
                       placeholder="https://..."
                     />
+                    <span className="font-normal leading-5 text-muted-foreground">
+                      اتركه فارغًا عند عدم وجود شعار، أو استخدم رابط HTTPS آمن
+                      (مثل رابط التخزين أو CDN الرسمي للجهة).
+                    </span>
                   </label>
                 </div>
               </section>

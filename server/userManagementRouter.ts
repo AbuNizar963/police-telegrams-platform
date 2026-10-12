@@ -5,10 +5,29 @@ import { adminProcedure, router } from "./_core/trpc";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
-import {
-  addOrganizationMembership,
-  getPrimaryOrganization,
-} from "./organization";
+import { addOrganizationMembership } from "./organization";
+
+async function getActiveOrganizationForAccount(organizationId: string) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("organizations")
+    .select("id, name, isActive")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "تعذر التحقق من الجهة المختارة للحساب",
+    });
+  }
+  if (!data || data.isActive !== true) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "الجهة المختارة غير موجودة أو غير مفعّلة",
+    });
+  }
+  return data as { id: string; name: string; isActive: boolean };
+}
 
 export const userManagementRouter = router({
   list: adminProcedure.query(async () => {
@@ -65,6 +84,7 @@ export const userManagementRouter = router({
   create: adminProcedure
     .input(
       z.object({
+        organizationId: z.string().uuid(),
         name: z.string().trim().min(2).max(255),
         username: z
           .string()
@@ -104,8 +124,10 @@ export const userManagementRouter = router({
           message: "اسم المستخدم مستخدم بالفعل",
         });
 
+      const organization = await getActiveOrganizationForAccount(
+        input.organizationId
+      );
       const now = new Date().toISOString();
-      const organization = await getPrimaryOrganization();
       const { data, error } = await client
         .from("users")
         .insert({
@@ -127,7 +149,7 @@ export const userManagementRouter = router({
           lastSignedIn: now,
         })
         .select(
-          "id, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn"
+          "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, createdAt, lastSignedIn"
         )
         .single();
 
@@ -140,11 +162,22 @@ export const userManagementRouter = router({
         });
       }
 
-      await addOrganizationMembership({
-        organizationId: organization.id,
-        userId: data.id,
-        role: "dispatcher",
-      });
+      try {
+        await addOrganizationMembership({
+          organizationId: organization.id,
+          userId: data.id,
+          role: "dispatcher",
+        });
+      } catch (membershipError) {
+        const cleanup = await client.from("users").delete().eq("id", data.id);
+        if (cleanup.error) {
+          console.error(
+            "[userManagement.create] Failed to remove account after membership failure",
+            cleanup.error
+          );
+        }
+        throw membershipError;
+      }
 
       await writeAuditLog({
         actorUserId: ctx.user.id,
@@ -154,6 +187,8 @@ export const userManagementRouter = router({
         entityId: String(data.id),
         metadata: JSON.stringify({
           username,
+          organizationId: organization.id,
+          organizationName: organization.name,
           badgeNumber: input.badgeNumber ?? null,
         }),
       });

@@ -145,6 +145,33 @@ const statusSchema = z.enum([
   "archived",
 ]);
 
+function isPrivateLogoHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/\.$/, "");
+  if (
+    normalized === "localhost" ||
+    normalized === "::1" ||
+    normalized === "[::1]" ||
+    normalized.endsWith(".localhost") ||
+    normalized.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  const ipv4 = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!ipv4) return false;
+  const octets = ipv4.slice(1).map(Number);
+  if (octets.some(value => value > 255)) return true;
+  const [first, second] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
 const safeLogoUrlSchema = z
   .string()
   .trim()
@@ -155,8 +182,12 @@ const safeLogoUrlSchema = z
     if (value.startsWith("/api/storage/")) return true;
     try {
       const url = new URL(value);
-      const configuredSupabase = ENV.supabaseUrl ? new URL(ENV.supabaseUrl) : null;
-      return url.protocol === "https:" && (!configuredSupabase || url.origin === configuredSupabase.origin);
+      return (
+        url.protocol === "https:" &&
+        !url.username &&
+        !url.password &&
+        !isPrivateLogoHostname(url.hostname)
+      );
     } catch {
       return false;
     }
@@ -1798,10 +1829,10 @@ export const appRouter = router({
                 organizationId: route.toOrganizationId,
                 serialCode: route.routeSerialCode ?? routedTelegram.serialCode,
                 subject: routedTelegram.subject,
-              recipient: routedTelegram.recipient,
-              priority: routedTelegram.priority,
-              telegramId: routedTelegram.id,
-              direction: "incoming",
+                recipient: routedTelegram.recipient,
+                priority: routedTelegram.priority,
+                telegramId: routedTelegram.id,
+                direction: "incoming",
               });
             } catch (error) {
               console.warn(

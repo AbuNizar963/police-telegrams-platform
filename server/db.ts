@@ -1038,11 +1038,15 @@ export async function upsertMobilePushToken(input: {
   throwIfError(error, "Failed to save mobile push token");
 }
 
-export async function deleteMobilePushToken(token: string): Promise<void> {
+export async function deleteMobilePushToken(
+  token: string,
+  userId: number,
+): Promise<void> {
   const { error } = await getSupabaseAdmin()
     .from("mobile_push_tokens")
     .delete()
-    .eq("token", token);
+    .eq("token", token)
+    .eq("userId", userId);
   throwIfError(error, "Failed to remove mobile push token");
 }
 

@@ -2773,14 +2773,11 @@ function TelegramDetail({
         .telegram-export-page .header-metadata { min-width: 0; }
         /* Mirror the two blocks from the page edges, not from the logo. */
         .telegram-export-page .header-government { text-align: right; }
-        .telegram-export-page .header-metadata { text-align: left; overflow: hidden; }
+        .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
         .telegram-export-page .header-government p { transform-origin: right center; }
-        .telegram-export-page .header-metadata p { display: flex; align-items: baseline; direction: rtl; gap: 4px; }
-        .telegram-export-page .header-metadata strong { flex: 0 0 auto; }
-        .telegram-export-page .header-metadata .metadata-value { min-width: 0; flex: 1 1 auto; overflow: hidden; text-align: left; text-overflow: clip; white-space: nowrap; }
-        .telegram-export-page .header-date-value { display: block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
+        .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
@@ -2927,10 +2924,10 @@ function TelegramDetail({
           </div>
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
-            <p><strong>رقم البرقية:</strong> <span class="metadata-value">${escapeHtml(displaySerial)}</span></p>
-            <p><strong>الوقت والتاريخ:</strong> <span class="metadata-value header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
-            <p><strong>درجة السرية:</strong> <span class="metadata-value">${escapeHtml(classificationLabels[telegram.classification])}</span></p>
-            <p><strong>درجة الأولوية:</strong> <span class="metadata-value">${escapeHtml(priorityLabels[telegram.priority])}</span></p>
+            <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
+            <p><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
+            <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
+            <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">

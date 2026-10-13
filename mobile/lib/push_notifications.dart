@@ -15,6 +15,7 @@ class PushNotificationService {
 
   Future<void> initialize({
     required void Function(int telegramId) onTelegramOpened,
+    required void Function(int telegramId) onForegroundTelegram,
     required void Function(String token) onToken,
   }) async {
     try {
@@ -29,9 +30,11 @@ class PushNotificationService {
       final token = await _messaging.getToken();
       if (token != null && token.isNotEmpty) onToken(token);
 
+      // A foreground delivery is not a user tap. Refresh the inbox/dashboard
+      // without navigating away from the screen the user is currently using.
       _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
         final id = _telegramId(message);
-        if (id != null) onTelegramOpened(id);
+        if (id != null) onForegroundTelegram(id);
       });
       _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen((
         message,

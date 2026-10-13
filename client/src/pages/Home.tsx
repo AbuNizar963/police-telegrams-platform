@@ -3723,7 +3723,7 @@ function TelegramDetail({
               )}
             </>
           )}
-          {canOperate && !isAdmin && (
+          {!isAdmin && (
             <>
               {canManageContent && (
                 <Button
@@ -3776,64 +3776,68 @@ function TelegramDetail({
                     : "حذف نهائي"}
                 </Button>
               )}
-              {telegram.status === "draft" && (
-                <Button
-                  onClick={() => requestTransition("submitted")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 rounded-lg"
-                >
-                  إرسال للمراجعة
-                </Button>
-              )}
-              {telegram.status === "submitted" && (
-                <Button
-                  onClick={() => requestTransition("in_review")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 rounded-lg"
-                >
-                  بدء المراجعة
-                </Button>
-              )}
-              {telegram.status === "in_review" && (
+              {canOperate && (
                 <>
-                  <Button
-                    onClick={() => requestTransition("approved")}
-                    disabled={transition.isPending}
-                    className="h-10 rounded-lg bg-emerald-600 text-white"
-                  >
-                    اعتماد
-                  </Button>
-                  <Button
-                    onClick={() => requestTransition("returned")}
-                    disabled={transition.isPending}
-                    variant="outline"
-                    className="h-10 rounded-lg"
-                  >
-                    إرجاع بسبب
-                  </Button>
-                  <Button
-                    onClick={() => requestTransition("rejected")}
-                    disabled={transition.isPending}
-                    variant="destructive"
-                    className="h-10 rounded-lg"
-                  >
-                    رفض
-                  </Button>
+                  {telegram.status === "draft" && (
+                    <Button
+                      onClick={() => requestTransition("submitted")}
+                      disabled={transition.isPending}
+                      variant="outline"
+                      className="h-10 rounded-lg"
+                    >
+                      إرسال للمراجعة
+                    </Button>
+                  )}
+                  {telegram.status === "submitted" && (
+                    <Button
+                      onClick={() => requestTransition("in_review")}
+                      disabled={transition.isPending}
+                      variant="outline"
+                      className="h-10 rounded-lg"
+                    >
+                      بدء المراجعة
+                    </Button>
+                  )}
+                  {telegram.status === "in_review" && (
+                    <>
+                      <Button
+                        onClick={() => requestTransition("approved")}
+                        disabled={transition.isPending}
+                        className="h-10 rounded-lg bg-emerald-600 text-white"
+                      >
+                        اعتماد
+                      </Button>
+                      <Button
+                        onClick={() => requestTransition("returned")}
+                        disabled={transition.isPending}
+                        variant="outline"
+                        className="h-10 rounded-lg"
+                      >
+                        إرجاع بسبب
+                      </Button>
+                      <Button
+                        onClick={() => requestTransition("rejected")}
+                        disabled={transition.isPending}
+                        variant="destructive"
+                        className="h-10 rounded-lg"
+                      >
+                        رفض
+                      </Button>
+                    </>
+                  )}
+                  {(telegram.status === "approved" ||
+                    telegram.status === "in_progress" ||
+                    telegram.status === "forwarded") && (
+                    <Button
+                      onClick={() => requestTransition("completed")}
+                      disabled={transition.isPending}
+                      variant="outline"
+                      className="h-10 rounded-lg"
+                    >
+                      إكمال المعالجة
+                    </Button>
+                  )}
                 </>
-              )}
-              {(telegram.status === "approved" ||
-                telegram.status === "in_progress" ||
-                telegram.status === "forwarded") && (
-                <Button
-                  onClick={() => requestTransition("completed")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 rounded-lg"
-                >
-                  إكمال المعالجة
-                </Button>
               )}
             </>
           )}

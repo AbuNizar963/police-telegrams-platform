@@ -2656,9 +2656,8 @@ function TelegramDetail({
       getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
       numberSystem
     );
-    const logoFallback = `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const logo = settings?.logoUrl
-      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" onerror="this.outerHTML='${logoFallback}'" />`
+      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
@@ -2688,9 +2687,8 @@ function TelegramDetail({
       alt: "رمز QR للتحقق من أصالة البرقية",
     });
 
-    const watermarkFallback = `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const watermark = settings?.logoUrl
-      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" onerror="this.outerHTML='${watermarkFallback}'" />`
+      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
       : `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
 
     const wrapper = document.createElement("div");

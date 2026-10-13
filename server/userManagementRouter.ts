@@ -303,6 +303,16 @@ export const userManagementRouter = router({
         rank: z.string().trim().max(120).nullable(),
         unit: z.string().trim().max(255).nullable(),
         password: z.string().min(12).max(256).optional().or(z.literal("")),
+        role: z
+          .enum([
+            "regional_admin",
+            "organization_supervisor",
+            "dispatcher",
+            "reviewer",
+            "reader",
+            "auditor",
+          ])
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -321,6 +331,17 @@ export const userManagementRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
       if (typeof target.data.organizationId === "string") {
         await assertCanManageOrganization(ctx.user, target.data.organizationId);
+      }
+      if (
+        input.role &&
+        ["regional_admin", "organization_supervisor"].includes(input.role) &&
+        !isPlatformOwner(ctx.user) &&
+        ctx.user.role !== "admin"
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "تعيين أدوار الإدارة العليا متاح لمالك النظام فقط",
+        });
       }
       if (target.data.role === "admin" && input.id !== ctx.user.id) {
         throw new TRPCError({
@@ -374,6 +395,13 @@ export const userManagementRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "تعذر حفظ تعديلات الحساب",
+        });
+      }
+      if (input.role && typeof target.data.organizationId === "string") {
+        await addOrganizationMembership({
+          organizationId: target.data.organizationId,
+          userId: input.id,
+          role: input.role,
         });
       }
       await writeAuditLog({

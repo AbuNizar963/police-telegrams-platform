@@ -51,6 +51,13 @@ type EditForm = {
   rank: string;
   unit: string;
   password: string;
+  role:
+    | "regional_admin"
+    | "organization_supervisor"
+    | "dispatcher"
+    | "reviewer"
+    | "reader"
+    | "auditor";
 };
 
 type OrganizationUserGroup = {
@@ -68,6 +75,7 @@ const emptyEditForm: EditForm = {
   rank: "",
   unit: "",
   password: "",
+  role: "dispatcher",
 };
 
 const membershipRoleLabels: Record<string, string> = {
@@ -117,6 +125,9 @@ export default function OwnerUserManagement() {
   );
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(25);
+  const [organizationRootFilter, setOrganizationRootFilter] = useState("");
+  const [organizationBranchFilter, setOrganizationBranchFilter] = useState("");
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [enablePassword, setEnablePassword] = useState<Record<number, string>>(
@@ -127,7 +138,13 @@ export default function OwnerUserManagement() {
   >({});
 
   const users = trpc.userManagement.list.useQuery(
-    { page: userPage, pageSize: 25, search: userSearch },
+    {
+      page: userPage,
+      pageSize: userPageSize,
+      search: userSearch,
+      organizationId:
+        organizationBranchFilter || organizationRootFilter || undefined,
+    },
     {
       enabled: open,
       refetchOnWindowFocus: false,
@@ -143,6 +160,12 @@ export default function OwnerUserManagement() {
   const totalUserPages = users.data?.totalPages ?? 1;
   const managedOrganizations = (organizations.data ??
     []) as ManagedOrganization[];
+  const rootOrganizations = managedOrganizations.filter(
+    organization => !organization.parentOrganizationId
+  );
+  const branchOrganizations = managedOrganizations.filter(
+    organization => organization.parentOrganizationId === organizationRootFilter
+  );
   const organizationById = useMemo(
     () =>
       new Map(
@@ -284,7 +307,12 @@ export default function OwnerUserManagement() {
 
   useEffect(() => {
     setUserPage(1);
-  }, [userSearch]);
+  }, [
+    userSearch,
+    userPageSize,
+    organizationRootFilter,
+    organizationBranchFilter,
+  ]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -564,6 +592,58 @@ export default function OwnerUserManagement() {
               />
             </div>
           </div>
+          <div className="mb-4 grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px]">
+            <label className="grid gap-1 text-xs font-semibold">
+              المحافظة أو الجهة العليا
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                value={organizationRootFilter}
+                onChange={event => {
+                  setOrganizationRootFilter(event.target.value);
+                  setOrganizationBranchFilter("");
+                }}
+              >
+                <option value="">كل الجهات</option>
+                {rootOrganizations.map(organization => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-semibold">
+              المركز أو الجهة التابعة
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                value={organizationBranchFilter}
+                disabled={
+                  !organizationRootFilter || branchOrganizations.length === 0
+                }
+                onChange={event =>
+                  setOrganizationBranchFilter(event.target.value)
+                }
+              >
+                <option value="">كل الجهات التابعة</option>
+                {branchOrganizations.map(organization => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-semibold">
+              في الصفحة
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                value={userPageSize}
+                onChange={event => setUserPageSize(Number(event.target.value))}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
 
           {users.isLoading || organizations.isLoading ? (
             <p className="rounded-2xl border py-12 text-center text-sm text-muted-foreground">
@@ -743,6 +823,8 @@ export default function OwnerUserManagement() {
                                           rank: user.rank ?? "",
                                           unit: user.unit ?? "",
                                           password: "",
+                                          role: (user.membershipRole ??
+                                            "dispatcher") as EditForm["role"],
                                         });
                                       }}
                                     >
@@ -936,6 +1018,7 @@ export default function OwnerUserManagement() {
                   phone: editForm.phone.trim() || null,
                   rank: editForm.rank.trim() || null,
                   unit: editForm.unit.trim() || null,
+                  role: editForm.role,
                 });
               }}
               className="max-h-[calc(100dvh-2rem)] w-full max-w-lg space-y-3 overflow-y-auto rounded-2xl bg-background p-5 shadow-xl"
@@ -989,6 +1072,27 @@ export default function OwnerUserManagement() {
                   />
                 </label>
               ))}
+              <label className="grid gap-1 text-sm font-medium">
+                الصلاحية التشغيلية
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  value={editForm.role}
+                  onChange={event =>
+                    setEditForm(current => ({
+                      ...current,
+                      role: event.target.value as EditForm["role"],
+                    }))
+                  }
+                >
+                  {Object.entries(membershipRoleLabels)
+                    .filter(([role]) => role !== "system_admin")
+                    .map(([role, label]) => (
+                      <option key={role} value={role}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
+              </label>
               <label className="grid gap-1 text-sm font-medium">
                 كلمة مرور جديدة (اختياري)
                 <Input

@@ -4,6 +4,10 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import type { TrpcContext } from "./context";
 import { getUserOrganizationMembership } from "../organization";
 import { isPlatformOwner } from "../ownerAccess";
+import {
+  assertScopedUserManagementAccess,
+  canManageAllOrganizations,
+} from "../organizationScope";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -82,6 +86,29 @@ export const organizationAdminProcedure = t.procedure.use(requireUser).use(
       });
     }
 
+    return next({
+      ctx: {
+        ...ctx,
+        user: ctx.user,
+        organizationMembership: membership,
+      },
+    });
+  })
+);
+
+export const organizationManagerProcedure = t.procedure.use(requireUser).use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: UNAUTHED_ERR_MSG,
+      });
+    }
+    await assertScopedUserManagementAccess(ctx.user);
+    const membership = canManageAllOrganizations(ctx.user)
+      ? null
+      : await getUserOrganizationMembership(ctx.user.id);
     return next({
       ctx: {
         ...ctx,

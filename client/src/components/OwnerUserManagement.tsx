@@ -30,6 +30,7 @@ type ManagedUser = {
   rank: string | null;
   unit: string | null;
   role: string;
+  membershipRole?: string | null;
   loginMethod: string | null;
 };
 
@@ -69,6 +70,17 @@ const emptyEditForm: EditForm = {
   password: "",
 };
 
+const membershipRoleLabels: Record<string, string> = {
+  regional_admin: "مدير منطقة",
+  organization_supervisor: "مشرف جهة",
+  organization_admin: "مدير جهة",
+  system_admin: "مسؤول نظام",
+  dispatcher: "موظف تشغيل",
+  reviewer: "مراجع",
+  reader: "قارئ",
+  auditor: "مدقق",
+};
+
 function matchesUserSearch(user: ManagedUser, query: string): boolean {
   if (!query) return true;
   return [
@@ -94,7 +106,17 @@ export default function OwnerUserManagement() {
   const [phone, setPhone] = useState("");
   const [rank, setRank] = useState("");
   const [unit, setUnit] = useState("");
+  const [accountRole, setAccountRole] = useState(
+    "dispatcher" as
+      | "regional_admin"
+      | "organization_supervisor"
+      | "dispatcher"
+      | "reviewer"
+      | "reader"
+      | "auditor"
+  );
   const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [enablePassword, setEnablePassword] = useState<Record<number, string>>(
@@ -104,17 +126,21 @@ export default function OwnerUserManagement() {
     Record<number, boolean>
   >({});
 
-  const users = trpc.userManagement.list.useQuery(undefined, {
-    enabled: open,
-    refetchOnWindowFocus: false,
-  });
+  const users = trpc.userManagement.list.useQuery(
+    { page: userPage, pageSize: 25, search: userSearch },
+    {
+      enabled: open,
+      refetchOnWindowFocus: false,
+    }
+  );
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
     refetchOnWindowFocus: false,
   });
   const utils = trpc.useUtils();
 
-  const managedUsers = (users.data ?? []) as ManagedUser[];
+  const managedUsers = (users.data?.items ?? []) as ManagedUser[];
+  const totalUserPages = users.data?.totalPages ?? 1;
   const managedOrganizations = (organizations.data ??
     []) as ManagedOrganization[];
   const organizationById = useMemo(
@@ -200,6 +226,7 @@ export default function OwnerUserManagement() {
     setPhone("");
     setRank("");
     setUnit("");
+    setAccountRole("dispatcher");
   };
 
   const openCreateForm = (organizationId = "") => {
@@ -255,6 +282,10 @@ export default function OwnerUserManagement() {
     return () => window.removeEventListener("open-owner-user-management", show);
   }, []);
 
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearch]);
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedOrganizationId) {
@@ -270,6 +301,7 @@ export default function OwnerUserManagement() {
       phone: phone.trim() || null,
       rank: rank.trim() || null,
       unit: unit.trim() || null,
+      role: accountRole,
     });
   };
 
@@ -369,6 +401,35 @@ export default function OwnerUserManagement() {
                   : "الاختيار إلزامي لضمان ظهور سجلات الجهة للحساب الجديد."}
               </p>
             </div>
+            <label className="grid gap-1.5 text-sm font-semibold">
+              الصلاحية التشغيلية
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                value={accountRole}
+                onChange={event =>
+                  setAccountRole(event.target.value as typeof accountRole)
+                }
+              >
+                <option value="dispatcher">
+                  موظف تشغيل — إنشاء ومتابعة البرقيات
+                </option>
+                <option value="reviewer">
+                  مراجع — مراجعة واعتماد الإحالات
+                </option>
+                <option value="reader">قارئ — عرض البرقيات والسجل فقط</option>
+                <option value="auditor">مدقق — عرض السجل والتدقيق</option>
+                <option value="organization_supervisor">
+                  مشرف الجهة — إدارة حسابات الجهة
+                </option>
+                <option value="regional_admin">
+                  مدير المنطقة — إدارة الجهات التابعة
+                </option>
+              </select>
+              <span className="text-xs font-normal text-muted-foreground">
+                مدير المنطقة ومشرف الجهة متاحان لمالك النظام، ويبقى نطاق كل دور
+                محصورًا بالجهة أو المنطقة التابعة له.
+              </span>
+            </label>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium">
@@ -655,6 +716,14 @@ export default function OwnerUserManagement() {
                                 >
                                   {user.role === "admin" ? "مالك" : "حساب جهة"}
                                 </span>
+                                {user.role !== "admin" &&
+                                  user.membershipRole && (
+                                    <span className="rounded-md bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                                      {membershipRoleLabels[
+                                        user.membershipRole
+                                      ] ?? user.membershipRole}
+                                    </span>
+                                  )}
                                 {user.role !== "admin" && (
                                   <div className="flex flex-wrap items-center justify-end gap-1">
                                     <Button
@@ -812,6 +881,40 @@ export default function OwnerUserManagement() {
                 );
               })}
             </div>
+          )}
+          {!users.isLoading && !users.isError && totalUserPages > 1 && (
+            <nav
+              className="mt-5 flex items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3 text-sm"
+              aria-label="صفحات الحسابات"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={userPage <= 1 || users.isFetching}
+                onClick={() => setUserPage(page => Math.max(1, page - 1))}
+              >
+                السابق
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                صفحة <strong className="text-foreground">{userPage}</strong> من{" "}
+                <strong className="text-foreground">{totalUserPages}</strong>
+                {typeof users.data?.total === "number" && (
+                  <> · {users.data.total} حساب</>
+                )}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={userPage >= totalUserPages || users.isFetching}
+                onClick={() =>
+                  setUserPage(page => Math.min(totalUserPages, page + 1))
+                }
+              >
+                التالي
+              </Button>
+            </nav>
           )}
         </section>
 

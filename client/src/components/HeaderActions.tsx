@@ -68,6 +68,14 @@ export default function HeaderActions() {
     ["system_admin", "organization_admin"].includes(
       organizationContext.data?.role ?? ""
     );
+  const canManageUsers =
+    user?.role === "admin" ||
+    [
+      "system_admin",
+      "organization_admin",
+      "regional_admin",
+      "organization_supervisor",
+    ].includes(organizationContext.data?.role ?? "");
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
   });
@@ -318,7 +326,7 @@ export default function HeaderActions() {
               </DropdownMenuItem>
             </>
           )}
-          {user?.role === "admin" && (
+          {canManageUsers && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">

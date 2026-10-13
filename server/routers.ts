@@ -23,6 +23,7 @@ import {
   publicProcedure,
   router,
   organizationAdminProcedure,
+  organizationManagerProcedure,
 } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { profileRouter } from "./profileRouter";
@@ -94,6 +95,10 @@ import {
   updateOrganization,
   updateOrganizationAccount,
 } from "./organization";
+import {
+  assertCanManageOrganization,
+  getManagedOrganizationIds,
+} from "./organizationScope";
 import {
   StorageAccessDeniedError,
   storageCreateSignedUrl,
@@ -510,13 +515,34 @@ export const appRouter = router({
       listRoutingDirectory(ctx.user.id)
     ),
 
-    all: adminProcedure.query(() => listAllOrganizations()),
-    accounts: adminProcedure
+    all: organizationManagerProcedure.query(async ({ ctx }) => {
+      const allowedIds = new Set(await getManagedOrganizationIds(ctx.user));
+      const organizations = await listAllOrganizations();
+      return organizations.filter(organization =>
+        allowedIds.has(organization.id)
+      );
+    }),
+    accounts: organizationManagerProcedure
       .input(z.object({ organizationId: z.string().uuid() }))
-      .query(({ input }) =>
-        listOrganizationAccountSummaries(input.organizationId)
-      ),
-    allAccounts: adminProcedure.query(() => listOrganizationAccountSummaries()),
+      .query(async ({ ctx, input }) => {
+        const allowedIds = new Set(await getManagedOrganizationIds(ctx.user));
+        if (!allowedIds.has(input.organizationId)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لا تملك صلاحية عرض حسابات هذه الجهة",
+          });
+        }
+        return listOrganizationAccountSummaries(input.organizationId);
+      }),
+    allAccounts: organizationManagerProcedure.query(async ({ ctx }) => {
+      const allowedIds = await getManagedOrganizationIds(ctx.user);
+      const summaries = await Promise.all(
+        allowedIds.map(organizationId =>
+          listOrganizationAccountSummaries(organizationId)
+        )
+      );
+      return summaries.flat();
+    }),
     settings: router({
       get: adminProcedure
         .input(z.object({ organizationId: z.string().uuid() }))
@@ -834,7 +860,7 @@ export const appRouter = router({
         })
       ),
 
-    assignMember: organizationAdminProcedure
+    assignMember: organizationManagerProcedure
       .input(
         z.object({
           organizationId: z.string().uuid(),
@@ -842,6 +868,8 @@ export const appRouter = router({
           role: z.enum([
             "system_admin",
             "organization_admin",
+            "regional_admin",
+            "organization_supervisor",
             "dispatcher",
             "reviewer",
             "reader",
@@ -857,15 +885,17 @@ export const appRouter = router({
               "لا يمكن تغيير عضوية مالك النظام من هذا المسار؛ استخدم محدد جهة العمل",
           });
         }
+        await assertCanManageOrganization(ctx.user, input.organizationId);
         if (
+          ["system_admin", "organization_admin", "regional_admin"].includes(
+            input.role
+          ) &&
           !isPlatformOwner(ctx.user) &&
-          ctx.user.role !== "admin" &&
-          (!ctx.organizationMembership ||
-            ctx.organizationMembership.organizationId !== input.organizationId)
+          ctx.user.role !== "admin"
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "لا يمكن تعيين مستخدم خارج الجهة التي تديرها",
+            message: "تعيين أدوار الإدارة العليا متاح لمالك النظام فقط",
           });
         }
 
@@ -959,6 +989,8 @@ export const appRouter = router({
         const allowedRoles = [
           "system_admin",
           "organization_admin",
+          "regional_admin",
+          "organization_supervisor",
           "reviewer",
           "reader",
           "auditor",
@@ -1339,6 +1371,11 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const owner = isPlatformOwner(ctx.user);
         const canViewAll = canViewAllTelegrams(ctx.user);
+        const membership = await getUserOrganizationMembership(ctx.user.id);
+        const regionalManagerScope =
+          membership?.role === "regional_admin"
+            ? await getManagedOrganizationIds(ctx.user)
+            : null;
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
@@ -1347,13 +1384,14 @@ export const appRouter = router({
             ? await listOrganizationDescendants(ctx.user.id)
             : [];
         const organizationScopeIds =
-          !owner && input?.organizationScope
+          regionalManagerScope ??
+          (!owner && input?.organizationScope
             ? input.organizationScope === "children"
               ? [organizationId!, ...descendants.map(item => item.id)]
               : descendants.some(item => item.id === input.organizationScope)
                 ? [input.organizationScope]
                 : [organizationId!]
-            : null;
+            : null);
 
         return listTelegrams(
           ctx.user.id,
@@ -1733,9 +1771,13 @@ export const appRouter = router({
         const membership = await getUserOrganizationMembership(ctx.user.id);
         if (
           !membership ||
-          !["system_admin", "organization_admin", "reviewer"].includes(
-            membership.role
-          )
+          ![
+            "system_admin",
+            "organization_admin",
+            "regional_admin",
+            "organization_supervisor",
+            "reviewer",
+          ].includes(membership.role)
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",

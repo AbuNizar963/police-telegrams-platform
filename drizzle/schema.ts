@@ -70,6 +70,8 @@ export const organizationType = pgEnum("organization_type", [
 export const organizationMemberRole = pgEnum("organization_member_role", [
   "system_admin",
   "organization_admin",
+  "regional_admin",
+  "organization_supervisor",
   "dispatcher",
   "reviewer",
   "reader",

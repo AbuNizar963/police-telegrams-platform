@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, router } from "./_core/trpc";
+import {
+  adminProcedure,
+  organizationManagerProcedure,
+  router,
+} from "./_core/trpc";
 import { hashPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
 import { writeAuditLog } from "./db";
 import { addOrganizationMembership } from "./organization";
 import { isPlatformOwner } from "./ownerAccess";
+import {
+  assertCanManageOrganization,
+  getManagedOrganizationIds,
+} from "./organizationScope";
 
 async function getActiveOrganizationForAccount(organizationId: string) {
   const { data, error } = await getSupabaseAdmin()
@@ -31,58 +39,117 @@ async function getActiveOrganizationForAccount(organizationId: string) {
 }
 
 export const userManagementRouter = router({
-  list: adminProcedure.query(async () => {
-    const client = getSupabaseAdmin();
-    const { data, error } = await client
-      .from("users")
-      .select(
-        "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn"
-      )
-      .order("createdAt", { ascending: false });
-    if (error)
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "تعذر تحميل حسابات المستخدمين",
-      });
-    const users = data ?? [];
-    const organizationIds = Array.from(
-      new Set(
-        users
-          .map(user => user.organizationId)
-          .filter((id): id is string => typeof id === "string")
-      )
-    );
-    const organizationNames = new Map<string, string>();
-    if (organizationIds.length > 0) {
-      const organizations = await client
-        .from("organizations")
-        .select("id, name")
-        .in("id", organizationIds);
-      if (organizations.error) {
+  list: organizationManagerProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(10).max(100).default(25),
+        search: z.string().trim().max(120).default(""),
+        organizationId: z.string().uuid().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const client = getSupabaseAdmin();
+      const managedOrganizationIds = await getManagedOrganizationIds(ctx.user);
+      if (input.organizationId) {
+        await assertCanManageOrganization(ctx.user, input.organizationId);
+      }
+      const scopedOrganizationIds = input.organizationId
+        ? [input.organizationId]
+        : managedOrganizationIds;
+      let query = client
+        .from("users")
+        .select(
+          "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn",
+          { count: "exact" }
+        )
+        .in("organizationId", scopedOrganizationIds)
+        .order("createdAt", { ascending: false })
+        .range(
+          (input.page - 1) * input.pageSize,
+          input.page * input.pageSize - 1
+        );
+      const search = input.search.toLowerCase();
+      if (search) {
+        query = query.or(
+          `name.ilike.%${search}%,username.ilike.%${search}%,badgeNumber.ilike.%${search}%,phone.ilike.%${search}%`
+        );
+      }
+      const { data, error, count } = await query;
+      if (error)
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "تعذر تحميل جهات حسابات المستخدمين",
+          message: "تعذر تحميل حسابات المستخدمين",
         });
-      }
-      for (const organization of organizations.data ?? []) {
-        if (
-          typeof organization.id === "string" &&
-          typeof organization.name === "string"
-        ) {
-          organizationNames.set(organization.id, organization.name);
+      const users = data ?? [];
+      const pageOrganizationIds = Array.from(
+        new Set(
+          users
+            .map(user => user.organizationId)
+            .filter((id): id is string => typeof id === "string")
+        )
+      );
+      const organizationNames = new Map<string, string>();
+      const membershipRoles = new Map<number, string>();
+      if (pageOrganizationIds.length > 0) {
+        const organizations = await client
+          .from("organizations")
+          .select("id, name")
+          .in("id", pageOrganizationIds);
+        if (organizations.error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "تعذر تحميل جهات حسابات المستخدمين",
+          });
+        }
+        for (const organization of organizations.data ?? []) {
+          if (
+            typeof organization.id === "string" &&
+            typeof organization.name === "string"
+          ) {
+            organizationNames.set(organization.id, organization.name);
+          }
         }
       }
-    }
-    return users.map(user => ({
-      ...user,
-      organizationName:
-        typeof user.organizationId === "string"
-          ? (organizationNames.get(user.organizationId) ?? null)
-          : null,
-    }));
-  }),
+      if (users.length > 0) {
+        const memberships = await client
+          .from("organization_memberships")
+          .select("userId, role")
+          .in(
+            "userId",
+            users.map(user => user.id)
+          )
+          .eq("isActive", true);
+        if (memberships.error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "تعذر تحميل صلاحيات حسابات المستخدمين",
+          });
+        }
+        for (const membership of memberships.data ?? []) {
+          membershipRoles.set(
+            Number(membership.userId),
+            String(membership.role)
+          );
+        }
+      }
+      return {
+        items: users.map(user => ({
+          ...user,
+          membershipRole: membershipRoles.get(Number(user.id)) ?? null,
+          organizationName:
+            typeof user.organizationId === "string"
+              ? (organizationNames.get(user.organizationId) ?? null)
+              : null,
+        })),
+        total: count ?? 0,
+        page: input.page,
+        pageSize: input.pageSize,
+        totalPages: Math.max(1, Math.ceil((count ?? 0) / input.pageSize)),
+      };
+    }),
 
-  create: adminProcedure
+  create: organizationManagerProcedure
     .input(
       z.object({
         organizationId: z.string().uuid(),
@@ -104,6 +171,16 @@ export const userManagementRouter = router({
         phone: z.string().trim().max(32).nullable().optional(),
         rank: z.string().trim().max(120).nullable().optional(),
         unit: z.string().trim().max(255).nullable().optional(),
+        role: z
+          .enum([
+            "regional_admin",
+            "organization_supervisor",
+            "dispatcher",
+            "reviewer",
+            "reader",
+            "auditor",
+          ])
+          .default("dispatcher"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -128,6 +205,17 @@ export const userManagementRouter = router({
       const organization = await getActiveOrganizationForAccount(
         input.organizationId
       );
+      await assertCanManageOrganization(ctx.user, organization.id);
+      if (
+        ["regional_admin", "organization_supervisor"].includes(input.role) &&
+        !isPlatformOwner(ctx.user) &&
+        ctx.user.role !== "admin"
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "تعيين أدوار الإدارة العليا متاح لمالك النظام فقط",
+        });
+      }
       const now = new Date().toISOString();
       const { data, error } = await client
         .from("users")
@@ -167,7 +255,7 @@ export const userManagementRouter = router({
         await addOrganizationMembership({
           organizationId: organization.id,
           userId: data.id,
-          role: "dispatcher",
+          role: input.role,
         });
       } catch (membershipError) {
         const cleanup = await client.from("users").delete().eq("id", data.id);
@@ -196,7 +284,7 @@ export const userManagementRouter = router({
       return data;
     }),
 
-  update: adminProcedure
+  update: organizationManagerProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -221,7 +309,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username")
+        .select("id, role, username, organizationId")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error)
@@ -231,6 +319,9 @@ export const userManagementRouter = router({
         });
       if (!target.data)
         throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      if (typeof target.data.organizationId === "string") {
+        await assertCanManageOrganization(ctx.user, target.data.organizationId);
+      }
       if (target.data.role === "admin" && input.id !== ctx.user.id) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -299,7 +390,7 @@ export const userManagementRouter = router({
       return data;
     }),
 
-  enable: adminProcedure
+  enable: organizationManagerProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -310,7 +401,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username, loginMethod")
+        .select("id, role, username, loginMethod, organizationId")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error)
@@ -320,6 +411,9 @@ export const userManagementRouter = router({
         });
       if (!target.data)
         throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      if (typeof target.data.organizationId === "string") {
+        await assertCanManageOrganization(ctx.user, target.data.organizationId);
+      }
       if (target.data.role === "admin")
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -415,7 +509,7 @@ export const userManagementRouter = router({
       return { success: true };
     }),
 
-  disable: adminProcedure
+  disable: organizationManagerProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       if (input.id === ctx.user.id)
@@ -426,7 +520,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username")
+        .select("id, role, username, organizationId")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error)
@@ -436,6 +530,9 @@ export const userManagementRouter = router({
         });
       if (!target.data)
         throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      if (typeof target.data.organizationId === "string") {
+        await assertCanManageOrganization(ctx.user, target.data.organizationId);
+      }
       if (target.data.role === "admin")
         throw new TRPCError({
           code: "FORBIDDEN",

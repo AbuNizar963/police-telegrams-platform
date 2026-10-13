@@ -851,6 +851,8 @@ export default function Home() {
             [
               "system_admin",
               "organization_admin",
+              "regional_admin",
+              "organization_supervisor",
               "reviewer",
               "reader",
               "auditor",
@@ -1347,6 +1349,8 @@ export default function Home() {
             [
               "system_admin",
               "organization_admin",
+              "regional_admin",
+              "organization_supervisor",
               "reviewer",
               "dispatcher",
             ].includes(organizationContext.data?.role ?? "")

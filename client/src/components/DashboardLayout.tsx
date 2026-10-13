@@ -361,6 +361,18 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user } = useAuth();
+  const organizationContext = trpc.organizations.context.useQuery(undefined, {
+    enabled: Boolean(user),
+    staleTime: 30_000,
+  });
+  const canManageUsers =
+    user?.role === "admin" ||
+    [
+      "system_admin",
+      "organization_admin",
+      "regional_admin",
+      "organization_supervisor",
+    ].includes(organizationContext.data?.role ?? "");
   const [location, setLocation] = useLocation();
   const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -444,7 +456,7 @@ function DashboardLayoutContent({
             </p>
             <SidebarMenu className="gap-1.5">
               {menuItems
-                .filter(item => !item.adminOnly || user?.role === "admin")
+                .filter(item => !item.adminOnly || canManageUsers)
                 .map(item => {
                   const isActive = location === item.path;
                   return (

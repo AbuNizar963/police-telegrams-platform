@@ -9,7 +9,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  final _messaging = FirebaseMessaging.instance;
+  // Resolve Firebase lazily: DashboardPage can be constructed before Firebase
+  // is configured, and initialization errors must not crash the app at startup.
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   StreamSubscription<RemoteMessage>? _openedSubscription;
 

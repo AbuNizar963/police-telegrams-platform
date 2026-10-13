@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAccessStorageKey } from "./storage";
+import { canAccessStorageKey, storageKeyFromStoredUrl } from "./storage";
 
 describe("storage access control", () => {
   const officer = { id: 42, role: "user" as const };
@@ -40,5 +40,14 @@ describe("storage access control", () => {
     expect(
       canAccessStorageKey("telegrams/42/folder\\\\file.pdf", officer)
     ).toBe(false);
+  });
+
+  it("extracts legacy absolute application storage URLs", () => {
+    expect(
+      storageKeyFromStoredUrl(
+        "https://police-telegrams-platform.vercel.app/api/storage/telegrams/1/logo.png",
+        "attachments"
+      )
+    ).toBe("telegrams/1/logo.png");
   });
 });

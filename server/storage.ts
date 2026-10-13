@@ -83,6 +83,10 @@ export function storageKeyFromStoredUrl(
   try {
     const url = new URL(trimmed);
     const path = decodeURIComponent(url.pathname);
+    const applicationStoragePrefix = "/api/storage/";
+    if (path.startsWith(applicationStoragePrefix)) {
+      return path.slice(applicationStoragePrefix.length);
+    }
     const prefix = `/storage/v1/object/sign/${bucket}/`;
     return path.startsWith(prefix) ? path.slice(prefix.length) : null;
   } catch {

@@ -225,6 +225,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> refresh() async {
+    if (!mounted) return;
     setState(() => loading = true);
     try {
       final results = await Future.wait([

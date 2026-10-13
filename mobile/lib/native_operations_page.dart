@@ -240,7 +240,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                   overflow: TextOverflow.ellipsis,
                 ),
                 subtitle: Text(
-                  '${_value(row['serialCode'] ?? row['serialNumber'])}\nخط العرض: $lat · خط الطول: $lng',
+                  '${_value(row['serialCode'] ?? row['serialNumber'])}\\n'
+                  'خط العرض: $lat · خط الطول: $lng',
                 ),
                 isThreeLine: true,
                 trailing: row['priority'] == 'urgent'

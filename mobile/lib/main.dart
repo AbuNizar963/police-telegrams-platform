@@ -535,7 +535,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _searchField() => TextField(
     textInputAction: TextInputAction.search,
-    onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
+    onChanged: (value) =>
+        setState(() => searchQuery = value.trim().toLowerCase()),
     decoration: InputDecoration(
       hintText: 'بحث بالرقم أو الموضوع أو الحالة أو الجهة...',
       prefixIcon: const Icon(Icons.search),

@@ -1023,19 +1023,17 @@ export async function upsertMobilePushToken(input: {
   platform: string;
 }): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await getSupabaseAdmin()
-    .from("mobile_push_tokens")
-    .upsert(
-      {
-        userId: input.userId,
-        organizationId: input.organizationId,
-        token: input.token,
-        platform: input.platform,
-        lastUsedAt: now,
-        updatedAt: now,
-      },
-      { onConflict: "token" }
-    );
+  const { error } = await getSupabaseAdmin().from("mobile_push_tokens").upsert(
+    {
+      userId: input.userId,
+      organizationId: input.organizationId,
+      token: input.token,
+      platform: input.platform,
+      lastUsedAt: now,
+      updatedAt: now,
+    },
+    { onConflict: "token" }
+  );
   throwIfError(error, "Failed to save mobile push token");
 }
 

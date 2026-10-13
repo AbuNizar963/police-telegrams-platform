@@ -3579,39 +3579,18 @@ function TelegramDetail({
             <LocateFixed className="ml-2 h-4 w-4" />
             الموقع
           </Button>
-          {canManageContent && (
-            <>
-              <div className="basis-full border-t border-border/70 pt-2 text-[11px] font-bold text-muted-foreground">
-                إجراءات السجل
-              </div>
-              <Button
-                onClick={() => setEditOpen(true)}
-                variant="outline"
-                className="h-10 flex-1 rounded-lg border-[#10233f]/30 sm:flex-none"
-              >
-                <Save className="ml-2 h-4 w-4" />
-                تعديل البرقية
-              </Button>
-              <Button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
-                    )
-                  )
-                    deleteTelegram.mutate({ id: telegram.id });
-                }}
-                disabled={deleteTelegram.isPending}
-                variant="destructive"
-                className="h-10 flex-1 rounded-lg sm:flex-none"
-              >
-                <Trash2 className="ml-2 h-4 w-4" />
-                {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
-              </Button>
-            </>
-          )}
           {isAdmin && (
             <>
+              {canManageContent && (
+                <Button
+                  onClick={() => setEditOpen(true)}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  <Save className="ml-2 h-4 w-4" />
+                  تعديل البرقية
+                </Button>
+              )}
               {telegram.status === "draft" && (
                 <Button
                   onClick={() => requestTransition("submitted")}

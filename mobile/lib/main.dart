@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'mobile_pages.dart';
+import 'native_operations_page.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
 
@@ -376,6 +377,120 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.logout),
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                color: navy,
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined, color: gold, size: 36),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'برقيات الشرطة',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.account['name'] ?? widget.account['username'] ?? ''}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.dashboard_outlined),
+                title: const Text('لوحة التحكم'),
+                selected: section == 0,
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => section = 0);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.call_made_outlined),
+                title: const Text('البرقيات الصادرة'),
+                selected: section == 1,
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => section = 1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.call_received_outlined),
+                title: const Text('البرقيات الواردة'),
+                selected: section == 2,
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => section = 2);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.map_outlined),
+                title: const Text('المواقع والوحدات والموارد والأرشيف'),
+                subtitle: const Text('متابعة العمل الميداني'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NativeOperationsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_none),
+                title: const Text('الإشعارات'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NotificationsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.assessment_outlined),
+                title: const Text('التقارير'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReportsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('الإعدادات والملف الشخصي'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileSettingsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: gold,

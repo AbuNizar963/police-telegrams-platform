@@ -192,6 +192,7 @@ export const userManagementRouter = router({
           .enum([
             "regional_admin",
             "organization_supervisor",
+            "organization_admin",
             "dispatcher",
             "reviewer",
             "reader",
@@ -224,7 +225,11 @@ export const userManagementRouter = router({
       );
       await assertCanManageOrganization(ctx.user, organization.id);
       if (
-        ["regional_admin", "organization_supervisor"].includes(input.role) &&
+        [
+          "regional_admin",
+          "organization_supervisor",
+          "organization_admin",
+        ].includes(input.role) &&
         !isPlatformOwner(ctx.user) &&
         ctx.user.role !== "admin"
       ) {
@@ -326,6 +331,7 @@ export const userManagementRouter = router({
           .enum([
             "regional_admin",
             "organization_supervisor",
+            "organization_admin",
             "dispatcher",
             "reviewer",
             "reader",
@@ -363,7 +369,11 @@ export const userManagementRouter = router({
       }
       if (
         input.role &&
-        ["regional_admin", "organization_supervisor"].includes(input.role) &&
+        [
+          "regional_admin",
+          "organization_supervisor",
+          "organization_admin",
+        ].includes(input.role) &&
         !isPlatformOwner(ctx.user) &&
         ctx.user.role !== "admin"
       ) {

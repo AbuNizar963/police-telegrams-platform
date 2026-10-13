@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { getRequestAuditContext } from "./auditContext";
 import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
@@ -269,6 +270,7 @@ export const userManagementRouter = router({
       }
 
       await writeAuditLog({
+        ...getRequestAuditContext(ctx.req),
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.create",
@@ -405,6 +407,7 @@ export const userManagementRouter = router({
         });
       }
       await writeAuditLog({
+        ...getRequestAuditContext(ctx.req),
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.update",
@@ -470,6 +473,7 @@ export const userManagementRouter = router({
         });
       }
       await writeAuditLog({
+        ...getRequestAuditContext(ctx.req),
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.enable",
@@ -527,6 +531,7 @@ export const userManagementRouter = router({
         });
       }
       await writeAuditLog({
+        ...getRequestAuditContext(ctx.req),
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.delete",
@@ -583,6 +588,7 @@ export const userManagementRouter = router({
         });
       }
       await writeAuditLog({
+        ...getRequestAuditContext(ctx.req),
         actorUserId: ctx.user.id,
         actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
         action: "user.disable",

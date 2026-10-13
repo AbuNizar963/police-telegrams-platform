@@ -1142,9 +1142,18 @@ export async function purgeTelegramPermanently(
 }
 
 export async function writeAuditLog(
-  input: Omit<AuditLog, "id" | "createdAt">
+  input: Omit<
+    AuditLog,
+    "id" | "createdAt" | "ipAddress" | "userAgent" | "deviceType"
+  > &
+    Partial<Pick<AuditLog, "ipAddress" | "userAgent" | "deviceType">>
 ): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("audit_logs").insert(input);
+  const { error } = await getSupabaseAdmin()
+    .from("audit_logs")
+    .insert({
+      ...input,
+      deviceType: input.deviceType ?? "unknown",
+    });
   throwIfError(error, "Failed to write audit log");
 }
 export type NotificationRecord = {

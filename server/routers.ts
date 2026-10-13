@@ -16,6 +16,7 @@ import { ENV } from "./_core/env";
 import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
 import { z } from "zod";
+import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
 import {
   adminProcedure,
@@ -660,6 +661,7 @@ export const appRouter = router({
           );
 
           await writeAuditLog({
+            ...getRequestAuditContext(ctx.req),
             actorUserId: ctx.user.id,
             actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
             action: "organization.settings.update",
@@ -733,6 +735,7 @@ export const appRouter = router({
           createdByUserId: ctx.user.id,
         });
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: input.allowHierarchyOverride
@@ -812,6 +815,7 @@ export const appRouter = router({
           input;
         const organization = await updateOrganization(organizationInput);
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: input.allowHierarchyOverride
@@ -1169,6 +1173,7 @@ export const appRouter = router({
         await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
 
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: "settings.update",
@@ -1248,6 +1253,7 @@ export const appRouter = router({
         }
 
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "attachment.upload",
@@ -1311,6 +1317,7 @@ export const appRouter = router({
           10 * 60
         );
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "attachment.download",
@@ -1542,6 +1549,7 @@ export const appRouter = router({
         });
 
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: "telegram.update",
@@ -1605,6 +1613,7 @@ export const appRouter = router({
         // The telegram and its history are physically removed; this audit entry
         // stays as the immutable record that the deletion happened.
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Administrator",
           action: "telegram.delete",
@@ -1695,6 +1704,7 @@ export const appRouter = router({
         }
 
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "telegram.route",
@@ -1809,6 +1819,7 @@ export const appRouter = router({
         });
         await resolveRouteNotifications(route.id);
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: input.approved
@@ -1944,6 +1955,7 @@ export const appRouter = router({
           receiverUserId: ctx.user.id,
         });
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: "telegram.route.receive",
@@ -1990,6 +2002,7 @@ export const appRouter = router({
         });
         await resolveRouteNotifications(route.id);
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
           action: input.accepted
@@ -2054,6 +2067,7 @@ export const appRouter = router({
             metadata: { serialCode: existing.serialCode },
           });
           await writeAuditLog({
+            ...getRequestAuditContext(ctx.req),
             actorUserId: ctx.user.id,
             actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
             action: "telegram.status.transition",
@@ -2464,6 +2478,7 @@ export const appRouter = router({
         }
 
         await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
           actorName: creatorName,
           action: "telegram.create",
@@ -2616,6 +2631,7 @@ export const appRouter = router({
               workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
             });
             await writeAuditLog({
+              ...getRequestAuditContext(ctx.req),
               actorUserId: ctx.user.id,
               actorName: creatorName,
               action: "telegram.import.excel",

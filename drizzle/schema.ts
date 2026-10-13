@@ -523,6 +523,11 @@ export const auditLogs = pgTable(
     entityType: varchar("entityType", { length: 80 }).notNull(),
     entityId: varchar("entityId", { length: 80 }),
     metadata: text("metadata"),
+    ipAddress: varchar("ipAddress", { length: 80 }),
+    userAgent: varchar("userAgent", { length: 512 }),
+    deviceType: varchar("deviceType", { length: 16 })
+      .default("unknown")
+      .notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -39,7 +39,8 @@ export function registerStorageRoutes(app: Express): void {
           if (!assetResponse.ok) {
             throw new Error("Logo storage backend error");
           }
-          res.set("Cache-Control", "private, max-age=300");
+          res.set("Cache-Control", "private, no-store");
+          res.set("Vary", "Cookie");
           res.set(
             "Content-Type",
             assetResponse.headers.get("content-type") ?? "image/png"
@@ -55,7 +56,8 @@ export function registerStorageRoutes(app: Express): void {
           );
         }
       }
-      res.set("Cache-Control", "private, max-age=300");
+      res.set("Cache-Control", "private, no-store");
+      res.set("Vary", "Cookie");
       res.redirect(307, url);
     } catch (error) {
       if (error instanceof StorageAccessDeniedError) {

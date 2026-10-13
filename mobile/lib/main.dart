@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
+import 'native_user_management_page.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
 
@@ -449,6 +450,23 @@ class _DashboardPageState extends State<DashboardPage> {
                   );
                 },
               ),
+              if (widget.account['role'] == 'admin') ...[
+                ListTile(
+                  leading: const Icon(Icons.manage_accounts_outlined),
+                  title: const Text('إدارة المستخدمين'),
+                  subtitle: const Text('حسابات الجهات والصلاحيات'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            NativeUserManagementPage(api: widget.api),
+                      ),
+                    );
+                  },
+                ),
+              ],
               ListTile(
                 leading: const Icon(Icons.notifications_none),
                 title: const Text('الإشعارات'),

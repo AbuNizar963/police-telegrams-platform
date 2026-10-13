@@ -193,7 +193,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
           'id': user['id'],
           ...form,
           'password': password,
-          'confirmPassword': confirmPassword,
+          if (confirmPassword != null) 'confirmPassword': confirmPassword,
         },
       );
       _showMessage('تم تحديث بيانات الحساب.');
@@ -734,6 +734,7 @@ class _EnableUserDialogState extends State<_EnableUserDialog> {
           TextField(
             controller: _password,
             obscureText: true,
+            onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: 'كلمة المرور الجديدة (12+)',
             ),
@@ -741,6 +742,7 @@ class _EnableUserDialogState extends State<_EnableUserDialog> {
           TextField(
             controller: _confirmPassword,
             obscureText: true,
+            onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: 'كلمة المرور الحالية للتأكيد',
             ),

@@ -938,8 +938,8 @@ export const appRouter = router({
       }),
     unregisterMobileToken: protectedProcedure
       .input(z.object({ token: z.string().trim().min(20).max(4096) }))
-      .mutation(async ({ input }) => {
-        await deleteMobilePushToken(input.token);
+      .mutation(async ({ ctx, input }) => {
+        await deleteMobilePushToken(input.token, ctx.user.id);
         return { registered: false };
       }),
     inbox: protectedProcedure.query(async ({ ctx }) => {

@@ -81,9 +81,10 @@ async function mapSettingsView(
     };
   }
 
-  const logoUrl = /^https?:\/\//i.test(logoKey)
-    ? logoKey
-    : await storageCreateSignedUrl(logoKey, 60 * 60);
+  const logoUrl =
+    /^https?:\/\//i.test(logoKey) && !resolvedKey
+      ? logoKey
+      : await storageCreateSignedUrl(resolvedKey ?? logoKey, 60 * 60);
 
   return {
     ...settings,

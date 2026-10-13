@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'mobile_pages.dart';
 import 'push_notifications.dart';
+import 'telegram_actions.dart';
 
 const navy = Color(0xFF101C35);
 const gold = Color(0xFFC9A45C);
@@ -294,7 +296,18 @@ class _DashboardPageState extends State<DashboardPage> {
           : RefreshIndicator(onRefresh: refresh, child: _sectionBody()),
       bottomNavigationBar: NavigationBar(
         selectedIndex: section,
-        onDestinationSelected: (index) => setState(() => section = index),
+        onDestinationSelected: (index) {
+          if (index < 3) {
+            setState(() => section = index);
+            return;
+          }
+          final page = switch (index) {
+            3 => NotificationsPage(api: widget.api),
+            4 => ReportsPage(api: widget.api),
+            _ => ProfileSettingsPage(api: widget.api),
+          };
+          Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
@@ -310,6 +323,21 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: Icon(Icons.call_received_outlined),
             selectedIcon: Icon(Icons.call_received),
             label: 'الواردة',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.notifications_none),
+            selectedIcon: Icon(Icons.notifications),
+            label: 'الإشعارات',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.assessment_outlined),
+            selectedIcon: Icon(Icons.assessment),
+            label: 'التقارير',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'الإعدادات',
           ),
         ],
       ),
@@ -611,6 +639,12 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                       ),
                     ),
                   ]),
+                  const SizedBox(height: 12),
+                  TelegramActionsPanel(
+                    api: widget.api,
+                    telegramId: widget.telegramId,
+                    onChanged: load,
+                  ),
                 ],
               ),
       ),

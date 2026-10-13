@@ -1337,12 +1337,12 @@ export default function Home() {
           settings={settings.data}
           isOutgoing={isOutgoingTelegram(detail.data)}
           isAdmin={me.data?.role === "admin"}
-          canManageContent={
-            me.data?.role === "admin" ||
-            organizationContext.data?.isOwner === true ||
-            (Date.now() - detail.data.createdAt.getTime() >= 0 &&
-              Date.now() - detail.data.createdAt.getTime() <=
-                48 * 60 * 60 * 1000)
+          canManageContent={Boolean(me.data)}
+          managementExpired={
+            Boolean(me.data) &&
+            me.data?.role !== "admin" &&
+            organizationContext.data?.isOwner !== true &&
+            Date.now() - detail.data.createdAt.getTime() > 48 * 60 * 60 * 1000
           }
           canOperate={
             me.data?.role === "admin" ||
@@ -2337,6 +2337,7 @@ function TelegramDetail({
   isOutgoing,
   isAdmin,
   canManageContent,
+  managementExpired,
   canOperate,
   routingDirectory,
   close,
@@ -2375,6 +2376,7 @@ function TelegramDetail({
   isOutgoing: boolean;
   isAdmin: boolean;
   canManageContent: boolean;
+  managementExpired: boolean;
   canOperate: boolean;
   routingDirectory: Array<{
     id: string;
@@ -2439,6 +2441,10 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر حذف البرقية"),
   });
+  const notifyManagementExpired = () =>
+    toast.info(
+      "انتهت مهلة تعديل وحذف البرقية البالغة 48 ساعة. يرجى التواصل مع مسؤول الجهة إذا كان هناك خطأ."
+    );
   const transition = trpc.telegrams.transition.useMutation({
     onSuccess: async () => {
       toast.success("تم تسجيل انتقال البرقية وتحديث سجل التدقيق");
@@ -3581,9 +3587,19 @@ function TelegramDetail({
             <>
               {canManageContent && (
                 <Button
-                  onClick={() => setEditOpen(true)}
+                  onClick={() =>
+                    managementExpired
+                      ? notifyManagementExpired()
+                      : setEditOpen(true)
+                  }
                   variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                  className={`h-10 flex-1 rounded-lg sm:flex-none ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
+                  aria-disabled={managementExpired}
+                  title={
+                    managementExpired
+                      ? "انتهت مهلة التعديل البالغة 48 ساعة"
+                      : undefined
+                  }
                 >
                   <Save className="ml-2 h-4 w-4" />
                   تعديل البرقية
@@ -3678,6 +3694,10 @@ function TelegramDetail({
               {canManageContent && (
                 <Button
                   onClick={() => {
+                    if (managementExpired) {
+                      notifyManagementExpired();
+                      return;
+                    }
                     if (
                       window.confirm(
                         `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
@@ -3687,7 +3707,13 @@ function TelegramDetail({
                   }}
                   disabled={deleteTelegram.isPending}
                   variant="destructive"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                  className={`h-10 flex-1 rounded-lg sm:flex-none ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
+                  aria-disabled={managementExpired}
+                  title={
+                    managementExpired
+                      ? "انتهت مهلة الحذف البالغة 48 ساعة"
+                      : undefined
+                  }
                 >
                   <Trash2 className="ml-2 h-4 w-4" />
                   {deleteTelegram.isPending
@@ -3699,6 +3725,57 @@ function TelegramDetail({
           )}
           {canOperate && !isAdmin && (
             <>
+              {canManageContent && (
+                <Button
+                  onClick={() =>
+                    managementExpired
+                      ? notifyManagementExpired()
+                      : setEditOpen(true)
+                  }
+                  variant="outline"
+                  className={`h-10 rounded-lg ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
+                  aria-disabled={managementExpired}
+                  title={
+                    managementExpired
+                      ? "انتهت مهلة التعديل البالغة 48 ساعة"
+                      : undefined
+                  }
+                >
+                  <Save className="ml-2 h-4 w-4" />
+                  تعديل البرقية
+                </Button>
+              )}
+              {canManageContent && (
+                <Button
+                  onClick={() => {
+                    if (managementExpired) {
+                      notifyManagementExpired();
+                      return;
+                    }
+                    if (
+                      window.confirm(
+                        `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+                      )
+                    ) {
+                      deleteTelegram.mutate({ id: telegram.id });
+                    }
+                  }}
+                  disabled={deleteTelegram.isPending}
+                  variant="destructive"
+                  className={`h-10 rounded-lg ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
+                  aria-disabled={managementExpired}
+                  title={
+                    managementExpired
+                      ? "انتهت مهلة الحذف البالغة 48 ساعة"
+                      : undefined
+                  }
+                >
+                  <Trash2 className="ml-2 h-4 w-4" />
+                  {deleteTelegram.isPending
+                    ? "جارٍ الحذف النهائي..."
+                    : "حذف نهائي"}
+                </Button>
+              )}
               {telegram.status === "draft" && (
                 <Button
                   onClick={() => requestTransition("submitted")}

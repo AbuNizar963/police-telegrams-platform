@@ -879,13 +879,19 @@ export default function OwnerUserManagement() {
                                                   .length < 12 ||
                                                 enableUser.isPending
                                               }
-                                              onClick={() =>
+                                              onClick={() => {
+                                                const confirmPassword =
+                                                  window.prompt(
+                                                    "أدخل كلمة المرور الحالية لتأكيد إعادة تفعيل الحساب"
+                                                  );
+                                                if (!confirmPassword) return;
                                                 enableUser.mutate({
                                                   id: user.id,
                                                   password:
                                                     enablePassword[user.id],
-                                                })
-                                              }
+                                                  confirmPassword,
+                                                });
+                                              }}
                                             >
                                               {enableUser.isPending
                                                 ? "جارٍ..."
@@ -912,7 +918,15 @@ export default function OwnerUserManagement() {
                                               `هل تريد تعطيل حساب ${label}؟ لن تُحذف البرقيات أو السجلات المرتبطة به، ويمكن إعادة تفعيله لاحقًا.`
                                             )
                                           ) {
-                                            disableUser.mutate({ id: user.id });
+                                            const confirmPassword =
+                                              window.prompt(
+                                                "أدخل كلمة المرور الحالية لتأكيد تعطيل الحساب"
+                                              );
+                                            if (!confirmPassword) return;
+                                            disableUser.mutate({
+                                              id: user.id,
+                                              confirmPassword,
+                                            });
                                           }
                                         }}
                                         disabled={
@@ -941,7 +955,14 @@ export default function OwnerUserManagement() {
                                             `سيتم حذف حساب ${label} نهائيًا. إذا كان مرتبطًا ببرقيات أو سجل تدقيق سيُرفض الحذف حفاظًا على السجلات. هل تريد المتابعة؟`
                                           )
                                         ) {
-                                          deleteUser.mutate({ id: user.id });
+                                          const confirmPassword = window.prompt(
+                                            "أدخل كلمة المرور الحالية لتأكيد الحذف النهائي"
+                                          );
+                                          if (!confirmPassword) return;
+                                          deleteUser.mutate({
+                                            id: user.id,
+                                            confirmPassword,
+                                          });
                                         }
                                       }}
                                       disabled={
@@ -1009,6 +1030,15 @@ export default function OwnerUserManagement() {
               dir="rtl"
               onSubmit={event => {
                 event.preventDefault();
+                const requiresConfirmation =
+                  Boolean(editForm.password) ||
+                  editForm.role !== editing.membershipRole;
+                const confirmPassword = requiresConfirmation
+                  ? window.prompt(
+                      "أدخل كلمة المرور الحالية لتأكيد تغيير الصلاحية أو كلمة المرور"
+                    )
+                  : undefined;
+                if (requiresConfirmation && !confirmPassword) return;
                 updateUser.mutate({
                   id: editing.id,
                   ...editForm,
@@ -1019,6 +1049,7 @@ export default function OwnerUserManagement() {
                   rank: editForm.rank.trim() || null,
                   unit: editForm.unit.trim() || null,
                   role: editForm.role,
+                  confirmPassword: confirmPassword ?? undefined,
                 });
               }}
               className="max-h-[calc(100dvh-2rem)] w-full max-w-lg space-y-3 overflow-y-auto rounded-2xl bg-background p-5 shadow-xl"

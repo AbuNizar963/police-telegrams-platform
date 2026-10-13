@@ -7,9 +7,9 @@ import {
   organizationManagerProcedure,
   router,
 } from "./_core/trpc";
-import { hashPassword } from "./_core/auth";
+import { hashPassword, verifyPassword } from "./_core/auth";
 import { getSupabaseAdmin } from "./_core/supabase";
-import { writeAuditLog } from "./db";
+import { getUserById, writeAuditLog } from "./db";
 import { addOrganizationMembership } from "./organization";
 import { isPlatformOwner } from "./ownerAccess";
 import {
@@ -37,6 +37,22 @@ async function getActiveOrganizationForAccount(organizationId: string) {
     });
   }
   return data as { id: string; name: string; isActive: boolean };
+}
+
+async function requireCurrentPassword(
+  userId: number,
+  password: string
+): Promise<void> {
+  const user = await getUserById(userId);
+  if (
+    !user?.passwordHash ||
+    !(await verifyPassword(password, user.passwordHash))
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "تأكيد كلمة المرور الحالية غير صحيح أو غير متاح لهذا الحساب",
+    });
+  }
 }
 
 export const userManagementRouter = router({
@@ -305,6 +321,7 @@ export const userManagementRouter = router({
         rank: z.string().trim().max(120).nullable(),
         unit: z.string().trim().max(255).nullable(),
         password: z.string().min(12).max(256).optional().or(z.literal("")),
+        confirmPassword: z.string().min(1).max(256).optional(),
         role: z
           .enum([
             "regional_admin",
@@ -318,6 +335,16 @@ export const userManagementRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if ((input.password || input.role) && !input.confirmPassword) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "تأكيد كلمة المرور الحالية مطلوب لتغيير الصلاحية أو كلمة المرور",
+        });
+      }
+      if ((input.password || input.role) && input.confirmPassword) {
+        await requireCurrentPassword(ctx.user.id, input.confirmPassword);
+      }
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
@@ -426,9 +453,11 @@ export const userManagementRouter = router({
       z.object({
         id: z.number().int().positive(),
         password: z.string().min(12).max(256),
+        confirmPassword: z.string().min(1).max(256),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await requireCurrentPassword(ctx.user.id, input.confirmPassword);
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
@@ -485,7 +514,12 @@ export const userManagementRouter = router({
     }),
 
   delete: adminProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        confirmPassword: z.string().min(1).max(256),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!isPlatformOwner(ctx.user)) {
         throw new TRPCError({
@@ -493,6 +527,7 @@ export const userManagementRouter = router({
           message: "الحذف النهائي للحسابات متاح لمالك النظام فقط",
         });
       }
+      await requireCurrentPassword(ctx.user.id, input.confirmPassword);
       if (input.id === ctx.user.id) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -543,8 +578,14 @@ export const userManagementRouter = router({
     }),
 
   disable: organizationManagerProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        confirmPassword: z.string().min(1).max(256),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
+      await requireCurrentPassword(ctx.user.id, input.confirmPassword);
       if (input.id === ctx.user.id)
         throw new TRPCError({
           code: "FORBIDDEN",

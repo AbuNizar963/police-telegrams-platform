@@ -151,4 +151,22 @@ describe("user management organization assignment", () => {
     expect(mocks.usersInsert).not.toHaveBeenCalled();
     expect(mocks.addOrganizationMembership).not.toHaveBeenCalled();
   });
+
+  it("requires the current password before changing an account role", async () => {
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.update({
+        id: 25,
+        name: "الشرطي التجريبي",
+        username: "officer25",
+        badgeNumber: null,
+        phone: null,
+        rank: null,
+        unit: null,
+        password: "",
+        role: "reviewer",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

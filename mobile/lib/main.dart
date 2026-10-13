@@ -583,13 +583,6 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
     }
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Center(child: Text('لا توجد برقيات في هذا القسم')),
-        ),
-      );
-    }
     return Column(
       children: filteredRows.map((item) {
         final row = Map<String, dynamic>.from(item as Map);

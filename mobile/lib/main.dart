@@ -189,6 +189,9 @@ class _DashboardPageState extends State<DashboardPage> {
     push.initialize(
       onToken: _registerPushToken,
       onTelegramOpened: _openIncomingTelegram,
+      onForegroundTelegram: (_) {
+        refresh();
+      },
     );
   }
 

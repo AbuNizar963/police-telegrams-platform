@@ -274,7 +274,28 @@ class _DashboardPageState extends State<DashboardPage> {
           IconButton(
             onPressed: () async {
               final navigator = Navigator.of(context);
-              await widget.api.logout();
+
+              // Remove the device token while the authenticated session is
+              // still available. Logout must remain possible if push cleanup
+              // fails because the device is offline or Firebase is unavailable.
+              try {
+                final token = await push.currentToken();
+                if (token != null) {
+                  await widget.api.call(
+                    'notifications.unregisterMobileToken',
+                    mutation: true,
+                    input: {'token': token},
+                  );
+                }
+              } catch (_) {
+                // Continue with local logout even if remote token cleanup fails.
+              }
+
+              try {
+                await widget.api.logout();
+              } catch (_) {
+                // PoliceApi.logout clears the locally stored session in finally.
+              }
               if (!mounted) return;
               navigator.pushReplacement(
                 MaterialPageRoute(builder: (_) => const LoginPage()),

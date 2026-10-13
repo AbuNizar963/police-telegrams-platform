@@ -513,6 +513,37 @@ export const pushSubscriptions = pgTable(
   ]
 );
 
+export const mobilePushTokens = pgTable(
+  "mobile_push_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    platform: varchar("platform", { length: 16 }).notNull(),
+    lastUsedAt: timestamp("lastUsedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  table => [
+    index("mobile_push_tokens_org_idx").on(
+      table.organizationId,
+      table.lastUsedAt
+    ),
+    index("mobile_push_tokens_user_idx").on(table.userId, table.lastUsedAt),
+  ]
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {

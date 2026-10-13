@@ -18,5 +18,11 @@ export const ENV = {
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:admin@example.com",
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? "",
+  firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
+  firebasePrivateKey: (process.env.FIREBASE_PRIVATE_KEY ?? "").replace(
+    /\\n/g,
+    "\n"
+  ),
   isProduction: process.env.NODE_ENV === "production",
 };

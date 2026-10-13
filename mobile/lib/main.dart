@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -183,12 +185,20 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     refresh();
     push.initialize(
-      onToken: (token) {
-        // The token is ready for the authenticated FCM registration endpoint.
-        // It is deliberately not logged or persisted in plaintext here.
-      },
+      onToken: _registerPushToken,
       onTelegramOpened: _openIncomingTelegram,
     );
+  }
+
+  Future<void> _registerPushToken(String token) async {
+    try {
+      await widget.api.call(
+        'notifications.registerMobileToken',
+        input: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+      );
+    } catch (_) {
+      // A temporary registration failure must not block the user interface.
+    }
   }
 
   Future<void> _openIncomingTelegram(int telegramId) async {

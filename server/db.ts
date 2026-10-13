@@ -1008,6 +1008,57 @@ export async function listPushSubscriptions(
   return (data ?? []) as PushSubscriptionRecord[];
 }
 
+export type MobilePushTokenRecord = {
+  id: number;
+  userId: number;
+  organizationId: string;
+  token: string;
+  platform: string;
+};
+
+export async function upsertMobilePushToken(input: {
+  userId: number;
+  organizationId: string;
+  token: string;
+  platform: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await getSupabaseAdmin()
+    .from("mobile_push_tokens")
+    .upsert(
+      {
+        userId: input.userId,
+        organizationId: input.organizationId,
+        token: input.token,
+        platform: input.platform,
+        lastUsedAt: now,
+        updatedAt: now,
+      },
+      { onConflict: "token" }
+    );
+  throwIfError(error, "Failed to save mobile push token");
+}
+
+export async function deleteMobilePushToken(token: string): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("mobile_push_tokens")
+    .delete()
+    .eq("token", token);
+  throwIfError(error, "Failed to remove mobile push token");
+}
+
+export async function listMobilePushTokens(
+  organizationId: string
+): Promise<MobilePushTokenRecord[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("mobile_push_tokens")
+    .select("id, userId, organizationId, token, platform")
+    .eq("organizationId", organizationId)
+    .order("lastUsedAt", { ascending: false });
+  throwIfError(error, "Failed to list mobile push tokens");
+  return (data ?? []) as MobilePushTokenRecord[];
+}
+
 export async function transitionTelegram(input: {
   telegramId: number;
   actorUserId: number;

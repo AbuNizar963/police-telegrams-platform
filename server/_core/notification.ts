@@ -1,7 +1,11 @@
 import { TRPCError } from "@trpc/server";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import webpush from "web-push";
 import {
+  deleteMobilePushToken,
   deletePushSubscription,
+  listMobilePushTokens,
   listPushSubscriptions,
   type PushSubscriptionRecord,
 } from "../db";
@@ -75,6 +79,65 @@ if (ENV.vapidPublicKey && ENV.vapidPrivateKey && ENV.vapidSubject) {
   vapidConfigured = true;
 }
 
+const firebaseConfigured = Boolean(
+  ENV.firebaseProjectId && ENV.firebaseClientEmail && ENV.firebasePrivateKey
+);
+if (firebaseConfigured && getApps().length === 0) {
+  initializeApp({
+    credential: cert({
+      projectId: ENV.firebaseProjectId,
+      clientEmail: ENV.firebaseClientEmail,
+      privateKey: ENV.firebasePrivateKey,
+    }),
+  });
+}
+
+async function notifyFirebaseOrganization(input: {
+  organizationId: string;
+  serialCode: string;
+  subject: string;
+  recipient: string;
+  priority: string;
+  telegramId: number;
+  direction: TelegramNotificationDirection;
+}): Promise<{ sent: number; removed: number; configured: boolean }> {
+  if (!firebaseConfigured) return { sent: 0, removed: 0, configured: false };
+  const tokens = await listMobilePushTokens(input.organizationId);
+  if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
+  const shortNumber = getShortTelegramNumber(input.serialCode);
+  const response = await getMessaging().sendEachForMulticast({
+    tokens: tokens.map(item => item.token),
+    notification: {
+      title: input.direction === "incoming" ? "برقية واردة جديدة" : "برقية جديدة",
+      body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
+    },
+    data: {
+      type: "telegram.incoming",
+      telegramId: String(input.telegramId),
+      serialCode: input.serialCode,
+      recipient: input.recipient,
+      priority: input.priority,
+    },
+    android: { priority: "high" },
+    apns: { payload: { aps: { sound: "default", badge: 1 } } },
+  });
+  const invalidTokens = response.responses
+    .map((result, index) =>
+      !result.success &&
+      (result.error?.code === "messaging/registration-token-not-registered" ||
+        result.error?.code === "messaging/invalid-registration-token")
+        ? tokens[index]?.token
+        : null
+    )
+    .filter((token): token is string => Boolean(token));
+  await Promise.all(invalidTokens.map(token => deleteMobilePushToken(token)));
+  return {
+    sent: response.successCount,
+    removed: invalidTokens.length,
+    configured: true,
+  };
+}
+
 export function getWebPushPublicKey(): string | null {
   return vapidConfigured ? ENV.vapidPublicKey : null;
 }
@@ -88,12 +151,16 @@ export async function notifyOrganizationTelegramCreated(input: {
   telegramId: number;
   direction?: TelegramNotificationDirection;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
+  const direction = input.direction ?? "outgoing";
+  const firebaseResult = await notifyFirebaseOrganization({
+    ...input,
+    direction,
+  });
   if (!vapidConfigured) {
-    return { sent: 0, removed: 0, configured: false };
+    return firebaseResult;
   }
 
   const subscriptions = await listPushSubscriptions(input.organizationId);
-  const direction = input.direction ?? "outgoing";
   const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type: "telegram.created",
@@ -151,7 +218,11 @@ export async function notifyOrganizationTelegramCreated(input: {
       }
     })
   );
-  return { sent, removed, configured: true };
+  return {
+    sent: sent + firebaseResult.sent,
+    removed: removed + firebaseResult.removed,
+    configured: true,
+  };
 }
 export async function notifyOrganizationRouteEvent(input: {
   organizationId: string;

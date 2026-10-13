@@ -47,6 +47,20 @@ mobile/ios/Runner/GoogleService-Info.plist
 }
 ```
 
-## ملاحظة الخادم
+## إعداد الخادم
 
-التطبيق أصبح جاهزًا لاستقبال FCM token ومعالجة الإشعار في الواجهة والخلفية وعند الضغط عليه. يلزم إضافة Firebase Admin SDK في الخادم وتسجيل FCM tokens للمستخدمين حتى يبدأ الخادم بإرسال الإشعارات الفعلية للبرقيات الواردة. لا تضع مفاتيح Firebase الخاصة أو Service Account داخل تطبيق الهاتف.
+تم ربط الخادم بإرسال Firebase Admin عند إنشاء البرقية الواردة. أضف هذه المتغيرات السرية إلى بيئة الخادم أو Vercel، ولا تضعها داخل تطبيق الهاتف:
+
+```text
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-...@....iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+ثم طبّق ترحيل قاعدة البيانات:
+
+```text
+supabase/migrations/20261013200000_add_mobile_fcm_tokens.sql
+```
+
+بعد تسجيل الدخول، يسجل تطبيق Flutter الـFCM token عبر `notifications.registerMobileToken`. وعند وصول برقية إلى الجهة المستلمة يرسل الخادم الإشعار لكل أجهزة الجهة، ويحذف الرموز المنتهية تلقائيًا.

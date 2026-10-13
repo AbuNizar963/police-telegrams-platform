@@ -278,7 +278,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
               ),
               title: Text(_value(unit['name'], 'جهة بدون اسم')),
               subtitle: Text(
-                '${_value(unit['code'], 'بدون رمز')} · ${_value(unit['type'], 'نوع غير محدد')}',
+                '${_value(unit['code'], 'بدون رمز')} · '
+                '${_value(unit['type'], 'نوع غير محدد')}',
               ),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -435,7 +436,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 ),
                 title: Text(_value(row['subject'], 'برقية بدون موضوع')),
                 subtitle: Text(
-                  '${_value(row['serialCode'] ?? row['serialNumber'])} · ${_value(row['recipient'])}',
+                  '${_value(row['serialCode'] ?? row['serialNumber'])} · '
+                  '${_value(row['recipient'])}',
                 ),
                 isThreeLine: true,
               ),

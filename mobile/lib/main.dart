@@ -174,6 +174,7 @@ class _DashboardPageState extends State<DashboardPage> {
   String? error;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
+  int section = 0;
 
   @override
   void initState() {
@@ -251,94 +252,172 @@ class _DashboardPageState extends State<DashboardPage> {
         icon: const Icon(Icons.add),
         label: const Text('برقية جديدة'),
       ),
-      body: RefreshIndicator(
-        onRefresh: refresh,
-        child: loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (error != null)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Text(
-                          error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ),
-                  Text(
-                    'مرحبًا ${widget.account['name'] ?? widget.account['username'] ?? ''}',
-                    style: const TextStyle(
-                      color: navy,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 13),
-                  Row(
-                    children: [
-                      _stat(
-                        'الإجمالي',
-                        stats['total'] ?? stats['totalTelegrams'] ?? 0,
-                        Icons.description_outlined,
-                      ),
-                      _stat(
-                        'قيد المراجعة',
-                        stats['inReview'] ?? stats['pending'] ?? 0,
-                        Icons.pending_actions_outlined,
-                      ),
-                      _stat(
-                        'مكتملة',
-                        stats['completed'] ?? stats['approved'] ?? 0,
-                        Icons.verified_outlined,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'آخر البرقيات',
-                    style: TextStyle(
-                      color: navy,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (telegrams.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Center(child: Text('لا توجد برقيات بعد')),
-                      ),
-                    ),
-                  ...telegrams.map((item) {
-                    final row = Map<String, dynamic>.from(item as Map);
-                    return Card(
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: navy,
-                          child: Icon(Icons.description, color: gold),
-                        ),
-                        title: Text(
-                          '${row['subject'] ?? 'برقية بدون موضوع'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        subtitle: Text(
-                          '${row['serialCode'] ?? row['serialNumber'] ?? '—'} · ${row['status'] ?? 'مسودة'}',
-                        ),
-                        trailing: const Icon(Icons.chevron_left),
-                      ),
-                    );
-                  }),
-                ],
-              ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(onRefresh: refresh, child: _sectionBody()),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: section,
+        onDestinationSelected: (index) => setState(() => section = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: 'الرئيسية',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.call_made_outlined),
+            selectedIcon: Icon(Icons.call_made),
+            label: 'الصادرة',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.call_received_outlined),
+            selectedIcon: Icon(Icons.call_received),
+            label: 'الواردة',
+          ),
+        ],
       ),
     ),
   );
+
+  Widget _sectionBody() {
+    if (section == 0) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (error != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Text(error!, style: const TextStyle(color: Colors.red)),
+              ),
+            ),
+          Text(
+            'مرحبًا ${widget.account['name'] ?? widget.account['username'] ?? ''}',
+            style: const TextStyle(
+              color: navy,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              _stat(
+                'الإجمالي',
+                stats['total'] ?? stats['totalTelegrams'] ?? 0,
+                Icons.description_outlined,
+              ),
+              _stat(
+                'قيد المراجعة',
+                stats['inReview'] ?? stats['pending'] ?? 0,
+                Icons.pending_actions_outlined,
+              ),
+              _stat(
+                'مكتملة',
+                stats['completed'] ?? stats['approved'] ?? 0,
+                Icons.verified_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'آخر البرقيات',
+            style: TextStyle(
+              color: navy,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _telegramCards(telegrams),
+        ],
+      );
+    }
+    final incoming = section == 2;
+    final rows = telegrams
+        .where(
+          (item) =>
+              _isIncoming(Map<String, dynamic>.from(item as Map)) == incoming,
+        )
+        .toList();
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          incoming ? 'البرقيات الواردة' : 'البرقيات الصادرة',
+          style: const TextStyle(
+            color: navy,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          incoming
+              ? 'البرقيات المحالة إلى جهتك الشرطية'
+              : 'البرقيات التي أنشأتها جهتك الشرطية',
+          style: const TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 14),
+        _telegramCards(rows),
+      ],
+    );
+  }
+
+  bool _isIncoming(Map<String, dynamic> row) {
+    final direction = '${row['direction'] ?? row['type'] ?? ''}'.toLowerCase();
+    if (direction == 'incoming' || direction == 'واردة') return true;
+    if (direction == 'outgoing' || direction == 'صادرة') return false;
+    return row['organizationId'] != row['currentOrganizationId'];
+  }
+
+  Widget _telegramCards(List<dynamic> rows) {
+    if (rows.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: Text('لا توجد برقيات في هذا القسم')),
+        ),
+      );
+    }
+    return Column(
+      children: rows.map((item) {
+        final row = Map<String, dynamic>.from(item as Map);
+        return Card(
+          child: ListTile(
+            onTap: row['id'] == null
+                ? null
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TelegramDetailsPage(
+                        api: widget.api,
+                        telegramId: row['id'] as int,
+                      ),
+                    ),
+                  ),
+            leading: CircleAvatar(
+              backgroundColor: _isIncoming(row) ? navy : gold,
+              child: Icon(
+                _isIncoming(row) ? Icons.call_received : Icons.call_made,
+                color: _isIncoming(row) ? gold : navy,
+              ),
+            ),
+            title: Text(
+              '${row['subject'] ?? 'برقية بدون موضوع'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              '${row['serialCode'] ?? row['serialNumber'] ?? '—'} · ${row['status'] ?? 'مسودة'}',
+            ),
+            trailing: const Icon(Icons.chevron_left),
+          ),
+        );
+      }).toList(),
+    );
+  }
 
   Widget _stat(String title, dynamic value, IconData icon) => Expanded(
     child: Card(
@@ -360,6 +439,184 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
+    ),
+  );
+}
+
+class TelegramDetailsPage extends StatefulWidget {
+  const TelegramDetailsPage({
+    super.key,
+    required this.api,
+    required this.telegramId,
+  });
+  final PoliceApi api;
+  final int telegramId;
+  @override
+  State<TelegramDetailsPage> createState() => _TelegramDetailsPageState();
+}
+
+class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
+  bool loading = true;
+  String? error;
+  Map<String, dynamic>? telegram;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await widget.api.call(
+        'telegrams.get',
+        input: {'id': widget.telegramId},
+      );
+      if (mounted) {
+        setState(() => telegram = Map<String, dynamic>.from(data as Map));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = telegram;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: navy,
+          foregroundColor: Colors.white,
+          title: const Text(
+            'تفاصيل البرقية',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : error != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              )
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: navy,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '${data?['serialCode'] ?? data?['serialNumber'] ?? '—'}',
+                          style: const TextStyle(
+                            color: gold,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${data?['subject'] ?? 'بدون موضوع'}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Chip(
+                            label: Text('${data?['status'] ?? 'غير محددة'}'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _infoCard('بيانات البرقية', [
+                    _infoRow(
+                      'الجهة المرسلة',
+                      data?['senderOrganizationName'] ??
+                          data?['organizationName'] ??
+                          '—',
+                    ),
+                    _infoRow('الجهة المستلمة', data?['recipient'] ?? '—'),
+                    _infoRow('الأولوية', data?['priority'] ?? 'normal'),
+                    _infoRow('التصنيف', data?['classification'] ?? 'normal'),
+                    _infoRow('الفئة', data?['category'] ?? 'administrative'),
+                    _infoRow('تاريخ الإنشاء', data?['createdAt'] ?? '—'),
+                  ]),
+                  const SizedBox(height: 12),
+                  _infoCard('نص البرقية', [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${data?['body'] ?? 'لا يوجد نص'}',
+                        style: const TextStyle(fontSize: 15, height: 1.7),
+                      ),
+                    ),
+                  ]),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _infoCard(String title, List<Widget> children) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: navy,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    ),
+  );
+  Widget _infoRow(String label, dynamic value) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 125,
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            '$value',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
     ),
   );
 }

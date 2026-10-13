@@ -1244,6 +1244,7 @@ export async function listUserNotifications(
     );
   }
   const { data, error } = await notificationsQuery
+    .is("readAt", null)
     .order("createdAt", { ascending: false })
     .limit(limit);
   throwIfError(error, "Failed to list notifications");
@@ -1272,6 +1273,19 @@ export async function markNotificationRead(
     .eq("userId", userId)
     .is("readAt", null);
   throwIfError(error, "Failed to mark notification as read");
+}
+
+/** Resolve pending route work for every account in the receiving organization. */
+export async function resolveRouteNotifications(
+  routeId: number
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("notifications")
+    .update({ readAt: new Date().toISOString() })
+    .eq("routeId", routeId)
+    .in("type", ["route.approved", "route.requested"])
+    .is("readAt", null);
+  throwIfError(error, "Failed to resolve route notifications");
 }
 
 async function countTelegrams(

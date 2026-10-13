@@ -47,6 +47,10 @@ function formatNotificationDate(value: Date | string | number): string {
   }).format(new Date(value));
 }
 
+function requiresNotificationAction(type: string): boolean {
+  return type === "route.approved" || type === "route.requested";
+}
+
 /**
  * Compact, accessible quick actions displayed in the dashboard's upper corner.
  * Notification and account menus intentionally show only information currently
@@ -162,7 +166,10 @@ export default function HeaderActions() {
           >
             <Bell className="h-[18px] w-[18px]" />
             {(notificationInbox.data?.unreadCount ?? 0) > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+              <span
+                aria-label={`${notificationInbox.data?.unreadCount} إشعار غير منجز`}
+                className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-background"
+              >
                 {notificationInbox.data?.unreadCount}
               </span>
             )}
@@ -188,7 +195,10 @@ export default function HeaderActions() {
                   key={notification.id}
                   className="mb-1 min-w-0 cursor-pointer flex-col items-stretch gap-2 rounded-xl border border-transparent p-3 text-right hover:border-border hover:bg-muted/60"
                   onSelect={() => {
-                    if (!notification.readAt) {
+                    if (
+                      !notification.readAt &&
+                      !requiresNotificationAction(notification.type)
+                    ) {
                       markNotificationRead.mutate({ id: notification.id });
                     }
                     if (notification.telegramId) {
@@ -214,6 +224,12 @@ export default function HeaderActions() {
                   <span className="min-w-0 break-words text-[11px] leading-5 text-muted-foreground">
                     {notification.body}
                   </span>
+                  {requiresNotificationAction(notification.type) &&
+                    !notification.readAt && (
+                      <span className="w-fit rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-700 dark:text-red-300">
+                        بانتظار تأكيد الاستلام أو الرفض
+                      </span>
+                    )}
                   <span
                     dir="rtl"
                     className="text-[10px] font-medium text-muted-foreground"

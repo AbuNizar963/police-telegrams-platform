@@ -60,6 +60,7 @@ import {
   deletePushSubscription,
   listUserNotifications,
   markNotificationRead,
+  resolveRouteNotifications,
   notifyOrganizationUsers,
   notifyUser,
   upsertPushSubscription,
@@ -1764,6 +1765,7 @@ export const appRouter = router({
           approved: input.approved,
           reason: input.reason,
         });
+        await resolveRouteNotifications(route.id);
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
@@ -1944,6 +1946,7 @@ export const appRouter = router({
           accepted: input.accepted,
           reason: input.reason,
         });
+        await resolveRouteNotifications(route.id);
         await writeAuditLog({
           actorUserId: ctx.user.id,
           actorName: ctx.user.name ?? ctx.user.email ?? "Officer",

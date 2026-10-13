@@ -2777,6 +2777,7 @@ function TelegramDetail({
         .telegram-export-page .header-government p,
         .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
         .telegram-export-page .header-government p { transform-origin: right center; }
+        .telegram-export-page .header-date-row { transform: translateX(1ch) scaleX(0.86); }
         .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
@@ -2925,7 +2926,7 @@ function TelegramDetail({
           <div class="header-logo-cell">${logo}</div>
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
-            <p><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
+            <p class="header-date-row"><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
             <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'push_notifications.dart';
 
 const navy = Color(0xFF101C35);
 const gold = Color(0xFFC9A45C);
@@ -175,11 +176,37 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   int section = 0;
+  final push = PushNotificationService();
 
   @override
   void initState() {
     super.initState();
     refresh();
+    push.initialize(
+      onToken: (token) {
+        // The token is ready for the authenticated FCM registration endpoint.
+        // It is deliberately not logged or persisted in plaintext here.
+      },
+      onTelegramOpened: _openIncomingTelegram,
+    );
+  }
+
+  Future<void> _openIncomingTelegram(int telegramId) async {
+    await refresh();
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            TelegramDetailsPage(api: widget.api, telegramId: telegramId),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    push.dispose();
+    super.dispose();
   }
 
   Future<void> refresh() async {

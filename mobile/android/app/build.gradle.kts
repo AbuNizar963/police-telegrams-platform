@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.hadir.police.police_telegrams"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

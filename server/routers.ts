@@ -60,12 +60,14 @@ import {
   getUserByUsername,
   getUserOrganizationId,
   deletePushSubscription,
+  deleteMobilePushToken,
   listUserNotifications,
   markNotificationRead,
   resolveRouteNotifications,
   notifyOrganizationUsers,
   notifyUser,
   upsertPushSubscription,
+  upsertMobilePushToken,
 } from "./db";
 import {
   addOrganizationMembership,
@@ -917,6 +919,29 @@ export const appRouter = router({
   }),
 
   notifications: router({
+    registerMobileToken: protectedProcedure
+      .input(
+        z.object({
+          token: z.string().trim().min(20).max(4096),
+          platform: z.enum(["android", "ios"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        await upsertMobilePushToken({
+          userId: ctx.user.id,
+          organizationId,
+          token: input.token,
+          platform: input.platform,
+        });
+        return { registered: true };
+      }),
+    unregisterMobileToken: protectedProcedure
+      .input(z.object({ token: z.string().trim().min(20).max(4096) }))
+      .mutation(async ({ input }) => {
+        await deleteMobilePushToken(input.token);
+        return { registered: false };
+      }),
     inbox: protectedProcedure.query(async ({ ctx }) => {
       const organizationId = isPlatformOwner(ctx.user)
         ? await getUserOrganizationId(ctx.user.id)

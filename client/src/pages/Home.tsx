@@ -2656,8 +2656,9 @@ function TelegramDetail({
       getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
       numberSystem
     );
+    const logoFallback = `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const logo = settings?.logoUrl
-      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
+      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" onerror="this.outerHTML='${logoFallback}'" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
@@ -2687,8 +2688,9 @@ function TelegramDetail({
       alt: "رمز QR للتحقق من أصالة البرقية",
     });
 
+    const watermarkFallback = `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const watermark = settings?.logoUrl
-      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
+      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" onerror="this.outerHTML='${watermarkFallback}'" />`
       : `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
 
     const wrapper = document.createElement("div");
@@ -3577,18 +3579,39 @@ function TelegramDetail({
             <LocateFixed className="ml-2 h-4 w-4" />
             الموقع
           </Button>
+          {canManageContent && (
+            <>
+              <div className="basis-full border-t border-border/70 pt-2 text-[11px] font-bold text-muted-foreground">
+                إجراءات السجل
+              </div>
+              <Button
+                onClick={() => setEditOpen(true)}
+                variant="outline"
+                className="h-10 flex-1 rounded-lg border-[#10233f]/30 sm:flex-none"
+              >
+                <Save className="ml-2 h-4 w-4" />
+                تعديل البرقية
+              </Button>
+              <Button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+                    )
+                  )
+                    deleteTelegram.mutate({ id: telegram.id });
+                }}
+                disabled={deleteTelegram.isPending}
+                variant="destructive"
+                className="h-10 flex-1 rounded-lg sm:flex-none"
+              >
+                <Trash2 className="ml-2 h-4 w-4" />
+                {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
+              </Button>
+            </>
+          )}
           {isAdmin && (
             <>
-              {canManageContent && (
-                <Button
-                  onClick={() => setEditOpen(true)}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  <Save className="ml-2 h-4 w-4" />
-                  تعديل البرقية
-                </Button>
-              )}
               {telegram.status === "draft" && (
                 <Button
                   onClick={() => requestTransition("submitted")}
@@ -3760,34 +3783,6 @@ function TelegramDetail({
               إكمال المعالجة
             </Button>
           )}
-        </div>
-      )}
-      {canManageContent && !isAdmin && (
-        <div className="mt-4 flex flex-wrap gap-2 print:hidden">
-          <Button
-            onClick={() => setEditOpen(true)}
-            variant="outline"
-            className="h-10 rounded-lg"
-          >
-            <Save className="ml-2 h-4 w-4" />
-            تعديل البرقية
-          </Button>
-          <Button
-            onClick={() => {
-              if (
-                window.confirm(
-                  `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} نهائيًا مع مرفقاتها وسجل مسارها خلال نافذة السماح. هل تريد المتابعة؟`
-                )
-              )
-                deleteTelegram.mutate({ id: telegram.id });
-            }}
-            disabled={deleteTelegram.isPending}
-            variant="destructive"
-            className="h-10 rounded-lg"
-          >
-            <Trash2 className="ml-2 h-4 w-4" />
-            {deleteTelegram.isPending ? "جارٍ الحذف..." : "حذف البرقية"}
-          </Button>
         </div>
       )}
       {routeableTargets.length > 0 &&

@@ -54,6 +54,7 @@ type EditForm = {
   role:
     | "regional_admin"
     | "organization_supervisor"
+    | "organization_admin"
     | "dispatcher"
     | "reviewer"
     | "reader"
@@ -118,6 +119,7 @@ export default function OwnerUserManagement() {
     "dispatcher" as
       | "regional_admin"
       | "organization_supervisor"
+      | "organization_admin"
       | "dispatcher"
       | "reviewer"
       | "reader"
@@ -448,6 +450,9 @@ export default function OwnerUserManagement() {
                 <option value="auditor">مدقق — عرض السجل والتدقيق</option>
                 <option value="organization_supervisor">
                   مشرف الجهة — إدارة حسابات الجهة
+                </option>
+                <option value="organization_admin">
+                  مدير الجهة — تعديل شعار وإعدادات الجهة وإدارة حساباتها
                 </option>
                 <option value="regional_admin">
                   مدير المنطقة — إدارة الجهات التابعة

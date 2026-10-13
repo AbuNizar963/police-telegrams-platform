@@ -104,10 +104,7 @@ describe("storage route", () => {
 
     expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
-    expect(res.set).toHaveBeenCalledWith(
-      "Cache-Control",
-      "private, max-age=300"
-    );
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
     expect(res.redirect).toHaveBeenCalledWith(
       307,
       "https://storage.example/logo"

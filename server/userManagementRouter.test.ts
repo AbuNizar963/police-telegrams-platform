@@ -132,6 +132,26 @@ describe("user management organization assignment", () => {
     );
   });
 
+  it("creates an organization administrator membership", async () => {
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.create({
+        organizationId,
+        name: "مدير الجهة التجريبي",
+        username: "organization-admin25",
+        password: "A-secure-password-123",
+        role: "organization_admin",
+      })
+    ).resolves.toMatchObject({ id: 25, organizationId });
+
+    expect(mocks.addOrganizationMembership).toHaveBeenCalledWith({
+      organizationId,
+      userId: 25,
+      role: "organization_admin",
+    });
+  });
+
   it("rejects an inactive selected organization before inserting an account", async () => {
     mocks.organizationLookup.mockResolvedValue({
       data: { id: organizationId, name: "قسم موقوف", isActive: false },

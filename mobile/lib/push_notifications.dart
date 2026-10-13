@@ -53,6 +53,17 @@ class PushNotificationService {
     return int.tryParse('$raw');
   }
 
+  /// Returns the current device token when Firebase is configured.
+  /// A missing or unavailable Firebase configuration must not block logout.
+  Future<String?> currentToken() async {
+    try {
+      final token = await _messaging.getToken();
+      return token == null || token.isEmpty ? null : token;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> dispose() async {
     await _foregroundSubscription?.cancel();
     await _openedSubscription?.cancel();

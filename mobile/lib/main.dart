@@ -247,6 +247,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   int section = 0;
+  String searchQuery = '';
   final push = PushNotificationService();
 
   @override
@@ -486,6 +487,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 8),
+          _searchField(),
+          const SizedBox(height: 10),
           _telegramCards(telegrams),
         ],
       );
@@ -516,6 +519,8 @@ class _DashboardPageState extends State<DashboardPage> {
           style: const TextStyle(color: Colors.black54),
         ),
         const SizedBox(height: 14),
+        _searchField(),
+        const SizedBox(height: 10),
         _telegramCards(rows),
       ],
     );
@@ -528,8 +533,56 @@ class _DashboardPageState extends State<DashboardPage> {
     return row['organizationId'] != row['currentOrganizationId'];
   }
 
+  Widget _searchField() => TextField(
+    textInputAction: TextInputAction.search,
+    onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
+    decoration: InputDecoration(
+      hintText: 'بحث بالرقم أو الموضوع أو الحالة أو الجهة...',
+      prefixIcon: const Icon(Icons.search),
+      suffixIcon: searchQuery.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'مسح البحث',
+              onPressed: () => setState(() => searchQuery = ''),
+              icon: const Icon(Icons.close),
+            ),
+    ),
+  );
+
   Widget _telegramCards(List<dynamic> rows) {
-    if (rows.isEmpty) {
+    final query = searchQuery.trim().toLowerCase();
+    final filteredRows = query.isEmpty
+        ? rows
+        : rows.where((item) {
+            final row = Map<String, dynamic>.from(item as Map);
+            final searchable = [
+              row['subject'],
+              row['serialCode'],
+              row['serialNumber'],
+              row['status'],
+              row['organizationName'],
+              row['fromOrganizationName'],
+              row['toOrganizationName'],
+              row['senderName'],
+            ].where((value) => value != null).join(' ').toLowerCase();
+            return searchable.contains(query);
+          }).toList();
+
+    if (filteredRows.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: Text(
+              query.isEmpty
+                  ? 'لا توجد برقيات في هذا القسم'
+                  : 'لا توجد نتائج مطابقة لعبارة البحث',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(20),
@@ -538,7 +591,7 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
     return Column(
-      children: rows.map((item) {
+      children: filteredRows.map((item) {
         final row = Map<String, dynamic>.from(item as Map);
         return Card(
           child: ListTile(

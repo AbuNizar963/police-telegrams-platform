@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
@@ -122,6 +122,13 @@ export default function OwnerOrganizationManagement() {
   const [settingsSaveFailedForId, setSettingsSaveFailedForId] = useState<
     string | null
   >(null);
+  const [organizationSearch, setOrganizationSearch] = useState("");
+  const [organizationTypeFilter, setOrganizationTypeFilter] = useState<
+    "all" | OrganizationType
+  >("all");
+  const [organizationStatusFilter, setOrganizationStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -453,6 +460,43 @@ export default function OwnerOrganizationManagement() {
   const selectedAccounts = (allAccounts.data ?? []).filter(
     account => account.organizationId === selectedOrganizationId
   );
+  const organizationStats = useMemo(() => {
+    const items = organizations.data ?? [];
+    return {
+      total: items.length,
+      active: items.filter(item => item.isActive).length,
+      inactive: items.filter(item => !item.isActive).length,
+      accounts: allAccounts.data?.length ?? 0,
+    };
+  }, [allAccounts.data, organizations.data]);
+  const filteredOrganizations = useMemo(() => {
+    const query = organizationSearch.trim().toLocaleLowerCase("ar");
+    return (organizations.data ?? []).filter(item => {
+      const matchesSearch =
+        !query ||
+        [item.name, item.code, typeLabels[item.type as OrganizationType]]
+          .join(" ")
+          .toLocaleLowerCase("ar")
+          .includes(query);
+      const matchesType =
+        organizationTypeFilter === "all" ||
+        item.type === organizationTypeFilter;
+      const matchesStatus =
+        organizationStatusFilter === "all" ||
+        (organizationStatusFilter === "active" && item.isActive) ||
+        (organizationStatusFilter === "inactive" && !item.isActive);
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [
+    organizationSearch,
+    organizationStatusFilter,
+    organizationTypeFilter,
+    organizations.data,
+  ]);
+  const hasOrganizationFilters =
+    Boolean(organizationSearch.trim()) ||
+    organizationTypeFilter !== "all" ||
+    organizationStatusFilter !== "all";
   const accountCountByOrganization = useMemo(() => {
     const counts = new Map<string, number>();
     for (const account of allAccounts.data ?? []) {
@@ -560,6 +604,42 @@ export default function OwnerOrganizationManagement() {
             التسلسل التنظيمي: وزارة الداخلية ← المحافظة ← مديرية الريف أو قسم
             المدينة ← المخفر ← الوحدة. يمكن للمالك تخصيص علاقة الأب لكل جهة.
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              {
+                label: "إجمالي الجهات",
+                value: organizationStats.total,
+                tone: "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40",
+              },
+              {
+                label: "جهات مفعلة",
+                value: organizationStats.active,
+                tone: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20",
+              },
+              {
+                label: "جهات موقوفة",
+                value: organizationStats.inactive,
+                tone: "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20",
+              },
+              {
+                label: "الحسابات المرتبطة",
+                value: organizationStats.accounts,
+                tone: "border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-950/20",
+              },
+            ].map(stat => (
+              <div
+                key={stat.label}
+                className={`rounded-xl border p-3 ${stat.tone}`}
+              >
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  {stat.label}
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </header>
 
         <div
@@ -1203,6 +1283,53 @@ export default function OwnerOrganizationManagement() {
                 <RefreshCw className="ml-1 h-3.5 w-3.5" /> تحديث
               </Button>
             </div>
+            <div className="mb-4 grid gap-2 rounded-xl border border-primary/10 bg-primary/[0.025] p-3 sm:grid-cols-[minmax(0,1fr)_180px_150px]">
+              <label className="relative block">
+                <span className="sr-only">البحث في الجهات</span>
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={organizationSearch}
+                  onChange={event => setOrganizationSearch(event.target.value)}
+                  placeholder="ابحث باسم الجهة أو الرمز..."
+                  className="pr-9"
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-semibold">
+                <span>نوع الجهة</span>
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                  value={organizationTypeFilter}
+                  onChange={event =>
+                    setOrganizationTypeFilter(
+                      event.target.value as "all" | OrganizationType
+                    )
+                  }
+                >
+                  <option value="all">كل المستويات</option>
+                  {organizationTypeOptions.map(type => (
+                    <option key={type} value={type}>
+                      {typeLabels[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-semibold">
+                <span>حالة الجهة</span>
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm font-normal"
+                  value={organizationStatusFilter}
+                  onChange={event =>
+                    setOrganizationStatusFilter(
+                      event.target.value as "all" | "active" | "inactive"
+                    )
+                  }
+                >
+                  <option value="all">كل الحالات</option>
+                  <option value="active">مفعلة فقط</option>
+                  <option value="inactive">موقوفة فقط</option>
+                </select>
+              </label>
+            </div>
             {organizations.isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 جارٍ تحميل الهيكل...
@@ -1228,10 +1355,46 @@ export default function OwnerOrganizationManagement() {
             <div className="max-h-[560px] space-y-2 overflow-y-auto">
               {!organizations.isLoading &&
               !organizations.isError &&
-              (organizations.data ?? []).length === 0 ? (
+              filteredOrganizations.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  لا توجد جهات مسجلة في الهيكل التنظيمي.
+                  {hasOrganizationFilters
+                    ? "لا توجد جهات تطابق معايير البحث الحالية."
+                    : "لا توجد جهات مسجلة في الهيكل التنظيمي."}
                 </p>
+              ) : hasOrganizationFilters ? (
+                filteredOrganizations.map(item => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-right transition hover:border-primary hover:bg-primary/[0.03] ${selectedOrganizationId === item.id ? "border-primary bg-primary/5" : ""}`}
+                    onClick={() => toggleOrganization(item.id)}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="rounded-lg bg-primary/10 p-2 text-primary">
+                        <Building2 className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold">
+                          {item.name}
+                        </span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {typeLabels[item.type as OrganizationType]} ·{" "}
+                          {item.code}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-[10px]">
+                      <span
+                        className={`rounded-full px-2 py-1 font-semibold ${item.isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}
+                      >
+                        {item.isActive ? "مفعلة" : "موقوفة"}
+                      </span>
+                      <span className="hidden text-muted-foreground sm:inline">
+                        {accountCountByOrganization.get(item.id) ?? 0} حساب
+                      </span>
+                    </span>
+                  </button>
+                ))
               ) : (
                 renderOrganizationTree(null)
               )}

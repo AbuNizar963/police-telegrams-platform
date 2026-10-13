@@ -204,7 +204,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     final accepted = await _confirmAction(
       title: 'تعطيل الحساب',
       message:
-          'سيتم تعطيل الحساب مع الاحتفاظ ببرقياته وسجلاته. يمكن إعادة تفعيله لاحقًا.',
+          'سيتم تعطيل الحساب مع الاحتفاظ ببرقياته وسجلاته. '
+          'يمكن إعادة تفعيله لاحقًا.',
     );
     if (!accepted) return;
     final password = await _confirmPassword('تأكيد تعطيل الحساب');
@@ -243,7 +244,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     final accepted = await _confirmAction(
       title: 'حذف الحساب نهائيًا',
       message:
-          'قد يرفض الخادم الحذف إذا كان الحساب مرتبطًا ببرقيات أو سجلات تدقيق. لن تُحذف أي برقيات تلقائيًا.',
+          'قد يرفض الخادم الحذف إذا كان الحساب مرتبطًا ببرقيات أو سجلات تدقيق. '
+          'لن تُحذف أي برقيات تلقائيًا.',
     );
     if (!accepted) return;
     final password = await _confirmPassword('تأكيد الحذف النهائي');
@@ -351,7 +353,10 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
               content: Text(_error!),
               leading: const Icon(Icons.error_outline, color: Colors.red),
               actions: [
-                TextButton(onPressed: load, child: const Text('إعادة المحاولة')),
+                TextButton(
+                  onPressed: load,
+                  child: const Text('إعادة المحاولة'),
+                ),
               ],
             ),
           Expanded(
@@ -453,8 +458,12 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                         style: const TextStyle(color: Colors.black54),
                       ),
                       Text(
-                        '${_text(user['rank'])} · ${_text(user['badgeNumber'])}',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        '${_text(user['rank'])} · '
+                        '${_text(user['badgeNumber'])}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -553,7 +562,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     _role = '${user?['membershipRole'] ?? 'dispatcher'}';
     if (!_roles.containsKey(_role)) _role = 'dispatcher';
     if (!_editing && widget.organizations.isNotEmpty) {
-      final active = widget.organizations.where((item) => item['isActive'] == true);
+      final active = widget.organizations.where(
+        (item) => item['isActive'] == true,
+      );
       _organizationId = active.isNotEmpty ? '${active.first['id']}' : '';
     }
   }
@@ -596,7 +607,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               children: [
                 if (!_editing)
                   DropdownButtonFormField<String>(
-                    initialValue: _organizationId.isEmpty ? null : _organizationId,
+                    initialValue: _organizationId.isEmpty
+                        ? null
+                        : _organizationId,
                     decoration: const InputDecoration(labelText: 'الجهة'),
                     items: widget.organizations
                         .where((item) => item['isActive'] == true)
@@ -607,7 +620,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                           ),
                         )
                         .toList(),
-                    onChanged: (value) => setState(() => _organizationId = value ?? ''),
+                    onChanged: (value) =>
+                        setState(() => _organizationId = value ?? ''),
                     validator: (value) =>
                         value == null || value.isEmpty ? 'اختر الجهة.' : null,
                   ),
@@ -654,7 +668,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (value) => setState(() => _role = value ?? 'dispatcher'),
+                  onChanged: (value) =>
+                      setState(() => _role = value ?? 'dispatcher'),
                 ),
                 TextFormField(
                   controller: _badge,
@@ -671,7 +686,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                 ),
                 TextFormField(
                   controller: _unit,
-                  decoration: const InputDecoration(labelText: 'القسم أو المخفر'),
+                  decoration: const InputDecoration(
+                    labelText: 'القسم أو المخفر',
+                  ),
                 ),
               ],
             ),
@@ -691,7 +708,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               'name': _name.text.trim(),
               'username': _username.text.trim().toLowerCase(),
               'password': _password.text,
-              'badgeNumber': _badge.text.trim().isEmpty ? null : _badge.text.trim(),
+              'badgeNumber': _badge.text.trim().isEmpty
+                  ? null
+                  : _badge.text.trim(),
               'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
               'rank': _rank.text.trim().isEmpty ? null : _rank.text.trim(),
               'unit': _unit.text.trim().isEmpty ? null : _unit.text.trim(),

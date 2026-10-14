@@ -289,6 +289,7 @@ class _DashboardPageState extends State<DashboardPage> {
             TelegramDetailsPage(api: widget.api, telegramId: telegramId),
       ),
     );
+    if (mounted) await refresh();
   }
 
   @override
@@ -749,15 +750,18 @@ class _DashboardPageState extends State<DashboardPage> {
           child: ListTile(
             onTap: row['id'] == null
                 ? null
-                : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TelegramDetailsPage(
-                        api: widget.api,
-                        telegramId: row['id'] as int,
+                : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TelegramDetailsPage(
+                          api: widget.api,
+                          telegramId: row['id'] as int,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                    if (mounted) await refresh();
+                  },
             leading: CircleAvatar(
               backgroundColor: _isIncoming(row) ? navy : gold,
               child: Icon(
@@ -867,6 +871,53 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         .showSnackBar(const SnackBar(content: Text('تم حفظ تعديلات البرقية.')));
   }
 
+  Future<void> _deleteTelegram() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('حذف البرقية نهائياً'),
+          content: const Text(
+            'سيتم حذف البرقية وسجلها والمرفقات المرتبطة بها نهائياً. '
+            'لا يمكن التراجع عن هذا الإجراء.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('حذف نهائي'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.api.call(
+        'telegrams.delete',
+        mutation: true,
+        input: {'id': widget.telegramId},
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (exception) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            exception.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = telegram;
@@ -885,6 +936,11 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
               tooltip: 'تعديل البرقية',
               onPressed: loading || data == null ? null : _editTelegram,
               icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: 'حذف البرقية نهائياً',
+              onPressed: loading || data == null ? null : _deleteTelegram,
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
             ),
           ],
         ),

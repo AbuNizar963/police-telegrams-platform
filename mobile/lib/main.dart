@@ -111,7 +111,13 @@ class SessionGate extends StatefulWidget {
 
 class _SessionGateState extends State<SessionGate> {
   final PoliceApi _api = PoliceApi();
-  late final Future<Map<String, dynamic>?> _session = _api.restoreSession();
+  late Future<Map<String, dynamic>?> _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _session = _api.restoreSession();
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
@@ -158,7 +164,7 @@ class _SessionGateState extends State<SessionGate> {
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: () => setState(() {}),
+                      onPressed: () => setState(() => _session = _api.restoreSession()),
                       icon: const Icon(Icons.refresh),
                       label: const Text('إعادة المحاولة'),
                     ),

@@ -554,7 +554,6 @@ class _EmptyCard extends StatelessWidget {
   );
 }
 
-
 class DepartmentSettingsPage extends StatefulWidget {
   const DepartmentSettingsPage({super.key, required this.api});
 
@@ -652,17 +651,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           _text(settings['serialPrefix'], 'POL'),
         );
         _serialStart.text = _text(settings['serialStart'], '1');
-        _incomingSerialStart.text = _text(
-          settings['incomingSerialStart'],
-          '1',
-        );
+        _incomingSerialStart.text = _text(settings['incomingSerialStart'], '1');
         _timezone = _text(settings['timezone'], 'Asia/Riyadh');
         _dateFormat = _text(settings['dateFormat'], 'yyyy/MM/dd HH:mm:ss');
         _timeFormat = _text(settings['timeFormat'], '24') == '12' ? '12' : '24';
-        _numberSystem =
-            _text(settings['numberSystem'], 'latin') == 'arabic'
-                ? 'arabic'
-                : 'latin';
+        _numberSystem = _text(settings['numberSystem'], 'latin') == 'arabic'
+            ? 'arabic'
+            : 'latin';
         final logo = _text(settings['logoUrl']);
         _logoUrl = logo.isEmpty ? null : logo;
         _error = null;
@@ -693,8 +688,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     if (!prefixPattern.hasMatch(outgoingPrefix) ||
         !prefixPattern.hasMatch(incomingPrefix)) {
       setState(
-        () => _error =
-            'بادئتا الصادر والوارد يجب أن تكونا أحرفًا لاتينية كبيرة أو أرقامًا أو شرطة.',
+        () => _error = 'بادئتا الصادر والوارد يجب أن تكونا أحرفًا لاتينية كبيرة أو أرقامًا أو شرطة.',
       );
       return;
     }
@@ -747,9 +741,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           }
         });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ إعدادات الجهة.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تم حفظ إعدادات الجهة.')));
     } catch (exception) {
       if (mounted) {
         setState(
@@ -864,10 +857,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       ),
       items: options
           .map(
-            (option) => DropdownMenuItem(
-              value: option.key,
-              child: Text(option.value),
-            ),
+            (option) =>
+                DropdownMenuItem(value: option.key, child: Text(option.value)),
           )
           .toList(),
       onChanged: _saving ? null : onChanged,

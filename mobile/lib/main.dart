@@ -537,14 +537,6 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.notifications_none_rounded),
           ),
           IconButton(
-            tooltip: 'تحديث التطبيق',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AppUpdatePage()),
-            ),
-            icon: const Icon(Icons.system_update_alt),
-          ),
-          IconButton(
             tooltip: 'تحديث البيانات',
             onPressed: refresh,
             icon: const Icon(Icons.refresh_rounded),
@@ -746,6 +738,19 @@ class _DashboardPageState extends State<DashboardPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ReportsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.system_update_alt),
+                title: const Text('تحديث التطبيق'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AppUpdatePage(),
                     ),
                   );
                 },
@@ -1067,6 +1072,12 @@ class _DashboardPageState extends State<DashboardPage> {
             row['receiverOrganizationName'] ??
             row['currentOrganizationName'];
         final subject = '${row['subject'] ?? 'برقية بدون موضوع'}';
+        final creator =
+            row['senderName'] ??
+            row['createdByName'] ??
+            widget.account['name'] ??
+            widget.account['username'] ??
+            '';
         final rawPriority = row['priority'] ?? row['urgency'];
         final priority = rawPriority == null
             ? null
@@ -1083,7 +1094,7 @@ class _DashboardPageState extends State<DashboardPage> {
             : switch ('$rawConfidentiality'.toLowerCase()) {
                 'secret' => 'سري',
                 'top_secret' || 'top secret' => 'سري للغاية',
-                'confidential' => 'محظور',
+                'confidential' || 'restricted' => 'سري',
                 'normal' || 'public' => 'عادي',
                 _ => '$rawConfidentiality',
               };
@@ -1184,7 +1195,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          '${row['senderName'] ?? row['createdByName'] ?? widget.account['name'] ?? widget.account['username'] ?? ''}',
+                          '$creator',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

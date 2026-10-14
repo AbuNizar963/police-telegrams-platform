@@ -398,4 +398,3 @@ int _compareVersion(String latest, String current) {
   }
   return 0;
 }
-

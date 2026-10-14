@@ -119,6 +119,18 @@ class _SessionGateState extends State<SessionGate> {
     _session = _api.restoreSession();
   }
 
+  Future<void> _returnToLogin() async {
+    try {
+      await _api.logout();
+    } catch (_) {
+      // The local session must still be cleared when the server is unreachable.
+    } finally {
+      if (mounted) {
+        setState(() => _session = Future<Map<String, dynamic>?>.value(null));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
     future: _session,
@@ -169,10 +181,7 @@ class _SessionGateState extends State<SessionGate> {
                       label: const Text('إعادة المحاولة'),
                     ),
                     TextButton(
-                      onPressed: () async {
-                        await _api.logout();
-                        if (mounted) setState(() {});
-                      },
+                      onPressed: _returnToLogin,
                       child: const Text('العودة إلى تسجيل الدخول'),
                     ),
                   ],

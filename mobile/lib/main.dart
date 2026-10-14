@@ -31,7 +31,7 @@ class PoliceTelegramsApp extends StatelessWidget {
     title: 'برقيات الشرطة',
     theme: ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: canvas,
+      scaffoldBackgroundColor: const Color(0xFFF8F7F2),
       colorScheme: ColorScheme.fromSeed(
         seedColor: navy,
         primary: navy,
@@ -39,8 +39,8 @@ class PoliceTelegramsApp extends StatelessWidget {
         surface: const Color(0xFFFFFEFC),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: navy,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
@@ -451,10 +451,10 @@ class _DashboardPageState extends State<DashboardPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: navy,
         title: const Text(
-          'لوحة البرقيات',
+          'مركز البرقيات',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
@@ -756,10 +756,16 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 13),
-          Row(
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.55,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             children: [
               _stat(
-                'الإجمالي',
+                'إجمالي البرقيات',
                 stats['total'] ?? stats['totalTelegrams'] ?? 0,
                 Icons.description_outlined,
               ),
@@ -924,25 +930,41 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _stat(String title, dynamic value, IconData icon) => Expanded(
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Icon(icon, color: gold),
-            const SizedBox(height: 7),
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: navy,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
+  Widget _stat(String title, dynamic value, IconData icon) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                ),
               ),
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: const Color(0xFFEAF0FA),
+                child: Icon(icon, color: navy, size: 17),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$value',
+            style: const TextStyle(
+              color: navy,
+              fontSize: 23,
+              fontWeight: FontWeight.w900,
             ),
-            Text(title, style: const TextStyle(fontSize: 10)),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );

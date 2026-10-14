@@ -1390,6 +1390,7 @@ export const appRouter = router({
             priority: prioritySchema.optional(),
             category: categorySchema.optional(),
             status: statusSchema.optional(),
+            direction: z.enum(["incoming", "outgoing"]).optional(),
             from: z.string().datetime().optional(),
             to: z.string().datetime().optional(),
             organizationScope: z
@@ -1438,7 +1439,9 @@ export const appRouter = router({
           input?.to,
           input?.page,
           input?.pageSize,
-          organizationScopeIds
+          organizationScopeIds,
+          input?.direction,
+          membership?.organizationId ?? null
         );
       }),
 

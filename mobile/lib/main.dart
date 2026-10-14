@@ -10,6 +10,7 @@ import 'native_user_management_page.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
 import 'telegram_csv_page.dart';
+import 'telegram_edit_dialog.dart';
 
 const navy = Color(0xFF101C35);
 const gold = Color(0xFFC9A45C);
@@ -845,6 +846,28 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     }
   }
 
+  Future<void> _editTelegram() async {
+    final currentTelegram = telegram;
+    if (currentTelegram == null) return;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TelegramEditDialog(
+        api: widget.api,
+        telegramId: widget.telegramId,
+        telegram: currentTelegram,
+      ),
+    );
+
+    if (saved != true || !mounted) return;
+    await load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم حفظ تعديلات البرقية.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = telegram;
@@ -858,6 +881,13 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
             'تفاصيل البرقية',
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'تعديل البرقية',
+              onPressed: loading || data == null ? null : _editTelegram,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+          ],
         ),
         body: loading
             ? const Center(child: CircularProgressIndicator())

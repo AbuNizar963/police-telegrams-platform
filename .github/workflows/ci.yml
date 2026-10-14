@@ -28,6 +28,10 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      - name: Diagnose CSV codec formatting
+        working-directory: mobile
+        run: dart format --output=show lib/telegram_csv_codec.dart
+
       - name: Check mobile formatting
         working-directory: mobile
         run: dart format --output=none --set-exit-if-changed lib test

@@ -202,8 +202,9 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
         message = 'تمت قراءة ${preview.length} صفًا صالحًا.';
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -264,8 +265,9 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }

@@ -220,6 +220,14 @@ Future<void> _downloadAndInstall(
   _MobileRelease release,
 ) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    await _installerChannel.invokeMethod<bool>(
+      'requestUpdateNotificationPermission',
+    );
+    await _installerChannel.invokeMethod<void>('startUpdateNotification');
+  } on PlatformException catch (error) {
+    debugPrint('Update notification unavailable: ${error.message}');
+  }
   messenger?.showSnackBar(
     const SnackBar(
       duration: Duration(hours: 1),
@@ -264,12 +272,31 @@ Future<void> _downloadAndInstall(
 
       final sink = file.openWrite();
       var received = 0;
+      var lastReportedPercent = -1;
       try {
         await for (final chunk in response.stream.timeout(
           const Duration(minutes: 3),
         )) {
           sink.add(chunk);
           received += chunk.length;
+          final percent = (received * 100 / release.apkSize)
+              .floor()
+              .clamp(0, 100);
+          if (percent != lastReportedPercent) {
+            lastReportedPercent = percent;
+            try {
+              await _installerChannel.invokeMethod<void>(
+                'updateDownloadNotification',
+                {
+                  'progress': percent,
+                  'received': received,
+                  'total': release.apkSize,
+                },
+              );
+            } on PlatformException catch (error) {
+              debugPrint('Could not update download notification: ${error.message}');
+            }
+          }
         }
         await sink.flush();
       } finally {
@@ -280,6 +307,13 @@ Future<void> _downloadAndInstall(
       if (received != release.apkSize) {
         throw Exception('ملف التحديث غير مكتمل. أعد المحاولة.');
       }
+      try {
+        await _installerChannel.invokeMethod<void>(
+          'completeUpdateNotification',
+        );
+      } on PlatformException catch (error) {
+        debugPrint('Could not complete download notification: ${error.message}');
+      }
     } catch (_) {
       // Never leave a partial APK that could be mistaken for a complete update.
       try {
@@ -288,6 +322,13 @@ Future<void> _downloadAndInstall(
         }
       } catch (_) {
         // Preserve the original download error if cleanup also fails.
+      }
+      try {
+        await _installerChannel.invokeMethod<void>(
+          'failUpdateNotification',
+        );
+      } on PlatformException catch (error) {
+        debugPrint('Could not clear failed download notification: ${error.message}');
       }
       rethrow;
     } finally {

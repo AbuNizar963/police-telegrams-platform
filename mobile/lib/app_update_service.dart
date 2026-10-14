@@ -317,6 +317,23 @@ Future<void> _downloadAndInstall(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('لاحقًا'),
               ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    await _installerChannel.invokeMethod<String>(
+                      'openInstallSettings',
+                    );
+                  } on PlatformException catch (error) {
+                    if (context.mounted) {
+                      _showUpdateMessage(
+                        context,
+                        error.message ?? 'تعذر فتح إعدادات التثبيت.',
+                      );
+                    }
+                  }
+                },
+                child: const Text('فتح الإعدادات'),
+              ),
               FilledButton(
                 onPressed: () async {
                   Navigator.pop(dialogContext);

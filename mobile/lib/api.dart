@@ -3,6 +3,16 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+class ApiException implements Exception {
+  const ApiException(this.statusCode, this.message);
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class PoliceApi {
   PoliceApi({String? baseUrl})
     : baseUrl =
@@ -38,7 +48,7 @@ class PoliceApi {
           )
         : await http.get(uri, headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_message(response.body));
+      throw ApiException(response.statusCode, _message(response.body));
     }
     final decoded = jsonDecode(response.body);
     final result = decoded is Map ? decoded['result'] : null;
@@ -56,7 +66,7 @@ class PoliceApi {
       }),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_message(response.body));
+      throw ApiException(response.statusCode, _message(response.body));
     }
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
@@ -79,9 +89,16 @@ class PoliceApi {
       if (user is Map) return Map<String, dynamic>.from(user);
       await _storage.delete(key: 'session_cookie');
       return null;
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await _storage.delete(key: 'session_cookie');
+        return null;
+      }
+      // A server or network failure is not proof that the session expired.
+      // Keep the cookie so the next launch can retry without forcing login.
+      rethrow;
     } catch (_) {
-      // A network failure is not proof that the session expired. Keep the
-      // cookie so the next launch can retry instead of forcing a new login.
+      // A network failure is not proof that the session expired.
       rethrow;
     }
   }

@@ -1413,47 +1413,80 @@ class _DashboardPageState extends State<DashboardPage> {
     ],
   );
 
-  Widget _stat(String title, dynamic value, IconData icon) => Card(
-    margin: EdgeInsets.zero,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+  Widget _stat(String title, dynamic value, IconData icon) {
+    final accent = switch (icon) {
+      Icons.call_received_outlined => const Color(0xFF16836B),
+      Icons.call_made_outlined => const Color(0xFF356AC3),
+      Icons.priority_high_rounded => const Color(0xFFB54736),
+      Icons.pending_actions_outlined => const Color(0xFF9A6700),
+      Icons.task_alt_outlined => const Color(0xFF6B56B3),
+      _ => navy,
+    };
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.035),
+          border: Border(
+            top: BorderSide(color: accent, width: 3),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: Color(0xFF667085),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: accent.withValues(alpha: 0.11),
+                    child: Icon(icon, color: accent, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF667085),
+                  '$value',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
                   ),
                 ),
               ),
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: const Color(0xFFEAF0FA),
-                child: Icon(icon, color: navy, size: 17),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            '$value',
-            style: const TextStyle(
-              color: navy,
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class TelegramDetailsPage extends StatefulWidget {

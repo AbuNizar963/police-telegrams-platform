@@ -9,9 +9,11 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.io.IOException
 
 class MainActivity : FlutterActivity() {
-    private val installerChannel = "com.hadir.police.police_telegrams/apk_installer"
+    private val installerChannel =
+        "com.hadir.police.police_telegrams/apk_installer"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -28,13 +30,38 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
 
-                val apk = File(path)
-                if (!apk.isFile || !apk.name.endsWith(".apk", ignoreCase = true)) {
+                val downloadedApk = File(path)
+                if (!downloadedApk.isFile || !downloadedApk.name.endsWith(".apk", true)) {
                     result.error("APK_NOT_FOUND", "ملف التحديث غير موجود.", null)
+                    return@setMethodCallHandler
+                }
+                if (downloadedApk.length() <= 0L) {
+                    result.error("APK_EMPTY", "ملف التحديث فارغ؛ أعد تنزيله.", null)
                     return@setMethodCallHandler
                 }
 
                 try {
+                    // FileProvider only shares files beneath its configured cache path.
+                    // Copy the completed download into that exact directory instead of
+                    // assuming Dart's systemTemp directory always maps to cacheDir.
+                    val updateDirectory = File(cacheDir, "updates")
+                    if (!updateDirectory.exists() && !updateDirectory.mkdirs()) {
+                        throw IOException("تعذر تجهيز مجلد تثبيت التحديث.")
+                    }
+                    val installApk = File(updateDirectory, "police-telegrams-update.apk")
+                    if (downloadedApk.canonicalFile != installApk.canonicalFile) {
+                        downloadedApk.inputStream().use { input ->
+                            installApk.outputStream().use { output ->
+                                input.copyTo(output)
+                                output.fd.sync()
+                            }
+                        }
+                    }
+                    if (!installApk.isFile || installApk.length() != downloadedApk.length()) {
+                        installApk.delete()
+                        throw IOException("تعذر تجهيز ملف التحديث للتثبيت.")
+                    }
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                         !packageManager.canRequestPackageInstalls()
                     ) {
@@ -50,12 +77,16 @@ class MainActivity : FlutterActivity() {
                     val apkUri = FileProvider.getUriForFile(
                         this,
                         "$packageName.fileprovider",
-                        apk
+                        installApk
                     )
-                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                        setData(apkUri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                    }
+                    if (installIntent.resolveActivity(packageManager) == null) {
+                        throw IOException("لم يعثر Android على مُثبّت حزم متاح.")
                     }
                     startActivity(installIntent)
                     result.success("launched")

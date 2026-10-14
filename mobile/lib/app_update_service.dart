@@ -133,7 +133,7 @@ Future<void> checkAndPromptForAppUpdate(
 
     final shouldUpdate = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(

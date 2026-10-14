@@ -109,7 +109,9 @@ Future<void> checkAndPromptForAppUpdate(
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      throw Exception('تعذر التحقق من التحديثات (HTTP ${response.statusCode}).');
+      throw Exception(
+        'تعذر التحقق من التحديثات (HTTP ${response.statusCode}).',
+      );
     }
 
     final decoded = jsonDecode(response.body);
@@ -365,7 +367,8 @@ int _compareVersion(String latest, String current) {
       .toList();
   final a = parse(latest);
   final b = parse(current);
-  for (var index = 0; index < (a.length > b.length ? a.length : b.length); index++) {
+  final componentCount = a.length > b.length ? a.length : b.length;
+  for (var index = 0; index < componentCount; index++) {
     final left = index < a.length ? a[index] : 0;
     final right = index < b.length ? b[index] : 0;
     if (left != right) return left.compareTo(right);

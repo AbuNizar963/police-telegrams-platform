@@ -19,6 +19,24 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installerChannel)
             .setMethodCallHandler { call, result ->
+                if (call.method == "openInstallSettings") {
+                    try {
+                        val settingsIntent = Intent(
+                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:$packageName")
+                        )
+                        startActivity(settingsIntent)
+                        result.success("opened")
+                    } catch (error: Exception) {
+                        result.error(
+                            "SETTINGS_FAILED",
+                            error.message ?: "تعذر فتح إعدادات السماح بالتثبيت.",
+                            null
+                        )
+                    }
+                    return@setMethodCallHandler
+                }
+
                 if (call.method != "installApk") {
                     result.notImplemented()
                     return@setMethodCallHandler
@@ -65,11 +83,9 @@ class MainActivity : FlutterActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                         !packageManager.canRequestPackageInstalls()
                     ) {
-                        val settingsIntent = Intent(
-                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            Uri.parse("package:$packageName")
-                        )
-                        startActivity(settingsIntent)
+                        // Return to Flutter first so the user sees clear instructions.
+                        // Opening system settings here races the Flutter dialog and can
+                        // make the update appear to have silently returned to the app.
                         result.success("permission_required")
                         return@setMethodCallHandler
                     }

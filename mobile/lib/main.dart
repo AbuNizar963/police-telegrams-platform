@@ -728,7 +728,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => DepartmentSettingsPage(api: widget.api),
+                          builder: (_) =>
+                              DepartmentSettingsPage(api: widget.api),
                         ),
                       );
                     },
@@ -767,9 +768,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const AppUpdatePage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const AppUpdatePage()),
                     );
                   },
                 ),
@@ -1090,11 +1089,13 @@ class _DashboardPageState extends State<DashboardPage> {
           'draft' => 'مسودة',
           _ => rawStatus == 'null' ? 'مسودة' : rawStatus,
         };
-        final sender = row['fromOrganizationName'] ??
+        final sender =
+            row['fromOrganizationName'] ??
             row['senderOrganizationName'] ??
             row['senderName'] ??
             row['organizationName'];
-        final receiver = row['toOrganizationName'] ??
+        final receiver =
+            row['toOrganizationName'] ??
             row['receiverOrganizationName'] ??
             row['currentOrganizationName'] ??
             row['recipient'];
@@ -1277,61 +1278,57 @@ class _DashboardPageState extends State<DashboardPage> {
     String label,
     String value, {
     bool strong = true,
-  }) =>
-      RichText(
-        textAlign: TextAlign.right,
-        text: TextSpan(
+  }) => RichText(
+    textAlign: TextAlign.right,
+    text: TextSpan(
+      style: TextStyle(
+        color: strong ? const Color(0xFF626E7D) : const Color(0xFF414B59),
+        fontSize: 14,
+        height: 1.45,
+        fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
+      ),
+      children: [
+        TextSpan(text: '$label '),
+        TextSpan(
+          text: value,
           style: TextStyle(
-            color: strong ? const Color(0xFF626E7D) : const Color(0xFF414B59),
-            fontSize: 14,
-            height: 1.45,
+            color: strong ? const Color(0xFF626E7D) : const Color(0xFF263243),
             fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
           ),
-          children: [
-            TextSpan(text: '$label '),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: strong
-                    ? const Color(0xFF626E7D)
-                    : const Color(0xFF263243),
-                fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ],
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _telegramChip(
     String label,
     Color background,
     Color foreground, {
     IconData? icon,
-  }) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(20),
+  }) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 13, color: foreground),
+          const SizedBox(width: 4),
+        ],
+        Text(
+          label,
+          style: TextStyle(
+            color: foreground,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 13, color: foreground),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: foreground,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _paginationControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,

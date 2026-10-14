@@ -478,6 +478,20 @@ class _DashboardPageState extends State<DashboardPage> {
                     );
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.tune_outlined),
+                  title: const Text('إعدادات الجهة'),
+                  subtitle: const Text('هوية الجهة والترقيم والتوقيت'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DepartmentSettingsPage(api: widget.api),
+                      ),
+                    );
+                  },
+                ),
               ],
               ListTile(
                 leading: const Icon(Icons.notifications_none),

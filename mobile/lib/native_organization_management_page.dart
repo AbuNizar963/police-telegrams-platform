@@ -324,9 +324,22 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
     _type = _organizationTypes.containsKey(organization?['type'])
         ? organization!['type'] as String
         : 'department';
-    _parentId = '${organization?['parentOrganizationId'] ?? ''}';
-    _destinationId =
-        '${organization?['telegramDestinationOrganizationId'] ?? ''}';
+    final parentId =
+        organization?['parentOrganizationId']?.toString() ?? '';
+    _parentId = widget.organizations.any(
+      (item) =>
+          item['id']?.toString() == parentId &&
+          parentId != organization?['id']?.toString(),
+    )
+        ? parentId
+        : '';
+    final destinationId =
+        organization?['telegramDestinationOrganizationId']?.toString() ?? '';
+    _destinationId = widget.organizations.any(
+      (item) => item['id']?.toString() == destinationId,
+    )
+        ? destinationId
+        : '';
     _active = organization?['isActive'] != false;
     _overrideHierarchy = false;
     _createAccount = true;
@@ -450,7 +463,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                         value: '',
                         child: Text('استخدم الجهة الأب الافتراضية'),
                       ),
-                      ...parentOptions.map(
+                      ...widget.organizations.map(
                         (item) => DropdownMenuItem(
                           value: '${item['id']}',
                           child: Text(

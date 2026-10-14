@@ -362,6 +362,7 @@ class _DashboardPageState extends State<DashboardPage> {
   List<dynamic> telegrams = [];
   int section = 0;
   String searchQuery = '';
+  final searchController = TextEditingController();
   final push = PushNotificationService();
 
   @override
@@ -407,6 +408,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    searchController.dispose();
     push.dispose();
     super.dispose();
   }
@@ -506,8 +508,8 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       drawer: Drawer(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
+            padding: EdgeInsets.zero,
             children: [
               Container(
                 color: navy,
@@ -856,6 +858,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _searchField() => TextField(
+    controller: searchController,
     textInputAction: TextInputAction.search,
     onChanged: (value) =>
         setState(() => searchQuery = value.trim().toLowerCase()),
@@ -866,7 +869,10 @@ class _DashboardPageState extends State<DashboardPage> {
           ? null
           : IconButton(
               tooltip: 'مسح البحث',
-              onPressed: () => setState(() => searchQuery = ''),
+              onPressed: () {
+                searchController.clear();
+                setState(() => searchQuery = '');
+              },
               icon: const Icon(Icons.close),
             ),
     ),

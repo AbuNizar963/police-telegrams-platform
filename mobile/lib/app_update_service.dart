@@ -279,9 +279,7 @@ Future<void> _downloadAndInstall(
         )) {
           sink.add(chunk);
           received += chunk.length;
-          final percent = (received * 100 / release.apkSize)
-              .floor()
-              .clamp(0, 100);
+          final percent = (received * 100 / release.apkSize).floor().clamp(0, 100);
           if (percent != lastReportedPercent) {
             lastReportedPercent = percent;
             try {
@@ -294,7 +292,9 @@ Future<void> _downloadAndInstall(
                 },
               );
             } on PlatformException catch (error) {
-              debugPrint('Could not update download notification: ${error.message}');
+              debugPrint(
+                'Could not update download notification: ${error.message}',
+              );
             }
           }
         }
@@ -312,7 +312,9 @@ Future<void> _downloadAndInstall(
           'completeUpdateNotification',
         );
       } on PlatformException catch (error) {
-        debugPrint('Could not complete download notification: ${error.message}');
+        debugPrint(
+          'Could not complete download notification: ${error.message}',
+        );
       }
     } catch (_) {
       // Never leave a partial APK that could be mistaken for a complete update.
@@ -328,7 +330,9 @@ Future<void> _downloadAndInstall(
           'failUpdateNotification',
         );
       } on PlatformException catch (error) {
-        debugPrint('Could not clear failed download notification: ${error.message}');
+        debugPrint(
+          'Could not clear failed download notification: ${error.message}',
+        );
       }
       rethrow;
     } finally {

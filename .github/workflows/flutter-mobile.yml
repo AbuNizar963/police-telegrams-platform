@@ -53,14 +53,23 @@ jobs:
         run: flutter test
 
   build-android-apk:
-    name: Build Android APK
+    name: Build signed Android APK
     runs-on: ubuntu-latest
+    # Fork pull requests do not receive repository secrets. Do not produce
+    # an unsigned or debug-signed APK as a substitute for a release artifact.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     defaults:
       run:
         working-directory: mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -72,13 +81,59 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prepare release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required Android release signing secret $name is missing."
+              exit 1
+            fi
+          done
+
+          keystore_path="$RUNNER_TEMP/police-telegrams-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          test -s "$keystore_path"
+
+          # Validate the keystore password and alias without printing secret values.
+          keytool -list             -keystore "$keystore_path"             -storepass "$ANDROID_KEYSTORE_PASSWORD"             -alias "$ANDROID_KEY_ALIAS" >/dev/null
+
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+
       - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release
 
-      - name: Verify APK output
+      - name: Verify APK output and signature
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
-          file build/app/outputs/flutter-apk/app-release.apk
+          set -euo pipefail
+
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$apk"
+          file "$apk"
+
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$apksigner_path" ]; then
+            echo "::error::Android apksigner was not found in the installed SDK."
+            exit 1
+          fi
+
+          "$apksigner_path" verify --verbose "$apk"
+          "$apksigner_path" verify --print-certs "$apk"
+
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/police-telegrams-release.jks"
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4

@@ -910,9 +910,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            exception.toString().replaceFirst('Exception: ', ''),
-          ),
+          content: Text(exception.toString().replaceFirst('Exception: ', '')),
         ),
       );
     }

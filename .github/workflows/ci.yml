@@ -28,13 +28,6 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: Diagnose dashboard formatter changes
-        working-directory: mobile
-        run: |
-          dart format lib/main.dart
-          git -C .. diff -- mobile/lib/main.dart
-          exit 1
-
       - name: Check mobile formatting
         working-directory: mobile
         run: dart format --output=none --set-exit-if-changed lib test

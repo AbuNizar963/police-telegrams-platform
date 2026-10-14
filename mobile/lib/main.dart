@@ -368,7 +368,9 @@ class _DashboardPageState extends State<DashboardPage> {
   final searchController = TextEditingController();
   final push = PushNotificationService();
   Timer? _refreshTimer;
+  Timer? _searchDebounce;
   bool _refreshInProgress = false;
+  bool _refreshQueued = false;
 
   @override
   void initState() {
@@ -418,13 +420,18 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _searchDebounce?.cancel();
     searchController.dispose();
     push.dispose();
     super.dispose();
   }
 
   Future<void> refresh({bool showLoading = true}) async {
-    if (!mounted || _refreshInProgress) return;
+    if (!mounted) return;
+    if (_refreshInProgress) {
+      _refreshQueued = true;
+      return;
+    }
     _refreshInProgress = true;
     if (showLoading) setState(() => loading = true);
     try {
@@ -432,7 +439,11 @@ class _DashboardPageState extends State<DashboardPage> {
         widget.api.call('dashboard.stats'),
         widget.api.call(
           'telegrams.list',
-          input: {'page': telegramPage, 'pageSize': 20},
+          input: {
+            'page': telegramPage,
+            'pageSize': 20,
+            if (searchQuery.trim().isNotEmpty) 'search': searchQuery.trim(),
+          },
         ),
       ]);
       final list = results[1];
@@ -456,6 +467,10 @@ class _DashboardPageState extends State<DashboardPage> {
     } finally {
       _refreshInProgress = false;
       if (mounted && showLoading) setState(() => loading = false);
+      if (mounted && _refreshQueued) {
+        _refreshQueued = false;
+        refresh(showLoading: false);
+      }
     }
   }
 
@@ -881,8 +896,17 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _searchField() => TextField(
     controller: searchController,
     textInputAction: TextInputAction.search,
-    onChanged: (value) =>
-        setState(() => searchQuery = value.trim().toLowerCase()),
+    onChanged: (value) {
+      setState(() {
+        searchQuery = value.trim().toLowerCase();
+        telegramPage = 1;
+      });
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(
+        const Duration(milliseconds: 350),
+        () => refresh(showLoading: false),
+      );
+    },
     decoration: InputDecoration(
       hintText: 'بحث بالرقم أو الموضوع أو الحالة أو الجهة...',
       prefixIcon: const Icon(Icons.search),
@@ -892,7 +916,12 @@ class _DashboardPageState extends State<DashboardPage> {
               tooltip: 'مسح البحث',
               onPressed: () {
                 searchController.clear();
-                setState(() => searchQuery = '');
+                _searchDebounce?.cancel();
+                setState(() {
+                  searchQuery = '';
+                  telegramPage = 1;
+                });
+                refresh(showLoading: false);
               },
               icon: const Icon(Icons.close),
             ),

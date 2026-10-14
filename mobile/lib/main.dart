@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'app_update_page.dart';
+import 'app_update_service.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
 import 'native_organization_management_page.dart';
@@ -340,6 +341,9 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     refresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkAndPromptForAppUpdate(context);
+    });
     push.initialize(
       onToken: _registerPushToken,
       onTelegramOpened: _openIncomingTelegram,

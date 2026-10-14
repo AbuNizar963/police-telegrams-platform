@@ -451,6 +451,8 @@ class _DashboardPageState extends State<DashboardPage> {
           input: {
             'page': telegramPage,
             'pageSize': 20,
+            if (section == 1) 'direction': 'outgoing',
+            if (section == 2) 'direction': 'incoming',
             if (searchQuery.trim().isNotEmpty) 'search': searchQuery.trim(),
           },
         ),
@@ -634,7 +636,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   selected: section == 0,
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() => section = 0);
+                    setState(() {
+                      section = 0;
+                      telegramPage = 1;
+                    });
+                    refresh(showLoading: false);
                   },
                 ),
                 ListTile(
@@ -643,7 +649,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   selected: section == 1,
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() => section = 1);
+                    setState(() {
+                      section = 1;
+                      telegramPage = 1;
+                    });
+                    refresh(showLoading: false);
                   },
                 ),
                 ListTile(
@@ -652,7 +662,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   selected: section == 2,
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() => section = 2);
+                    setState(() {
+                      section = 2;
+                      telegramPage = 1;
+                    });
+                    refresh(showLoading: false);
                   },
                 ),
                 const Divider(),
@@ -802,7 +816,11 @@ class _DashboardPageState extends State<DashboardPage> {
         selectedIndex: section,
         onDestinationSelected: (index) {
           if (index < 3) {
-            setState(() => section = index);
+            setState(() {
+              section = index;
+              telegramPage = 1;
+            });
+            refresh(showLoading: false);
             return;
           }
           final page = switch (index) {

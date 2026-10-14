@@ -53,10 +53,10 @@ class PoliceTelegramsApp extends StatelessWidget {
       cardTheme: CardThemeData(
         color: const Color(0xFFFFFEFC),
         elevation: 0,
-        margin: const EdgeInsets.symmetric(vertical: 6),
+        margin: const EdgeInsets.symmetric(vertical: 5),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFFE1E5EB)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -503,11 +503,39 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F7F2),
         foregroundColor: navy,
-        title: const Text(
-          'مركز البرقيات',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        titleSpacing: 4,
+        title: Row(
+          children: [
+            ClipOval(
+              child: Image.asset(
+                'assets/police-telegrams-icon.png',
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 9),
+            const Flexible(
+              child: Text(
+                'مركز البرقيات',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
+              ),
+            ),
+          ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'الإشعارات',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NotificationsPage(api: widget.api),
+              ),
+            ),
+            icon: const Icon(Icons.notifications_none_rounded),
+          ),
           IconButton(
             tooltip: 'تحديث التطبيق',
             onPressed: () => Navigator.push(
@@ -516,8 +544,13 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             icon: const Icon(Icons.system_update_alt),
           ),
-          IconButton(onPressed: refresh, icon: const Icon(Icons.refresh)),
           IconButton(
+            tooltip: 'تحديث البيانات',
+            onPressed: refresh,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          IconButton(
+            tooltip: 'تسجيل الخروج',
             onPressed: () async {
               final navigator = Navigator.of(context);
 
@@ -552,12 +585,27 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
       drawer: Drawer(
+        backgroundColor: navy,
         child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
+          child: ListTileTheme(
+            data: const ListTileThemeData(
+              textColor: Colors.white,
+              iconColor: Color(0xFFB8C5D6),
+              selectedColor: Colors.white,
+              selectedTileColor: Color(0xFF12385D),
+              subtitleTextStyle: TextStyle(color: Color(0xFFB8C5D6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+            ),
+            child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             children: [
               Container(
-                color: navy,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF07152B),
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                ),
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -730,15 +778,17 @@ class _DashboardPageState extends State<DashboardPage> {
                 },
               ),
             ],
+            ),
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: gold,
-        foregroundColor: navy,
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        elevation: 4,
         onPressed: create,
-        icon: const Icon(Icons.add),
-        label: const Text('برقية جديدة'),
+        icon: const Icon(Icons.add_comment_outlined),
+        label: const Text('إنشاء برقية'),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -988,8 +1038,23 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       children: filteredRows.map((item) {
         final row = Map<String, dynamic>.from(item as Map);
+        final incoming = _isIncoming(row);
+        final serial = row['serialCode'] ?? row['serialNumber'] ?? row['number'];
+        final status = '${row['status'] ?? 'مسودة'}';
+        final sender = row['fromOrganizationName'] ??
+            row['senderOrganizationName'] ??
+            row['senderName'] ??
+            row['organizationName'];
+        final receiver = row['toOrganizationName'] ??
+            row['receiverOrganizationName'] ??
+            row['currentOrganizationName'];
+        final subject = '${row['subject'] ?? 'برقية بدون موضوع'}';
+        final priority = row['priority'] ?? row['urgency'];
+        final confidentiality = row['confidentiality'] ?? row['classification'];
         return Card(
-          child: ListTile(
+          clipBehavior: Clip.antiAlias,
+          margin: const EdgeInsets.symmetric(vertical: 5),
+          child: InkWell(
             onTap: row['id'] == null
                 ? null
                 : () async {
@@ -1004,28 +1069,152 @@ class _DashboardPageState extends State<DashboardPage> {
                     );
                     if (mounted) await refresh();
                   },
-            leading: CircleAvatar(
-              backgroundColor: _isIncoming(row) ? navy : gold,
-              child: Icon(
-                _isIncoming(row) ? Icons.call_received : Icons.call_made,
-                color: _isIncoming(row) ? gold : navy,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(13, 12, 13, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'برقية رقم: ${serial ?? '—'}',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Color(0xFF182230),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _telegramChip(
+                        incoming ? 'واردة' : 'صادرة',
+                        const Color(0xFFE8F0FF),
+                        const Color(0xFF2458C6),
+                        icon: incoming ? Icons.south_west_rounded : Icons.north_east_rounded,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 11),
+                  if (sender != null && '$sender'.trim().isNotEmpty)
+                    _telegramDetailLine('من:', '$sender'),
+                  if (receiver != null && '$receiver'.trim().isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    _telegramDetailLine('إلى:', '$receiver'),
+                  ],
+                  const SizedBox(height: 8),
+                  _telegramDetailLine('الموضوع:', subject, strong: false),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    alignment: WrapAlignment.start,
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (priority != null && '$priority'.trim().isNotEmpty)
+                        _telegramChip(
+                          '$priority',
+                          const Color(0xFFFFE9E9),
+                          const Color(0xFFB42332),
+                          icon: Icons.priority_high_rounded,
+                        ),
+                      if (confidentiality != null && '$confidentiality'.trim().isNotEmpty)
+                        _telegramChip(
+                          '$confidentiality',
+                          const Color(0xFFEAF0FF),
+                          const Color(0xFF315FC4),
+                          icon: Icons.shield_outlined,
+                        ),
+                      _telegramChip(
+                        status,
+                        const Color(0xFFEFF1F4),
+                        const Color(0xFF4B5565),
+                        icon: Icons.description_outlined,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline, size: 15, color: Color(0xFF87909D)),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          '${row['senderName'] ?? row['createdByName'] ?? widget.account['name'] ?? widget.account['username'] ?? ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF7A8493),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF9AA3AF)),
+                    ],
+                  ),
+                ],
               ),
             ),
-            title: Text(
-              '${row['subject'] ?? 'برقية بدون موضوع'}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Text(
-              '${row['serialCode'] ?? row['serialNumber'] ?? '—'} · ${row['status'] ?? 'مسودة'}',
-            ),
-            trailing: const Icon(Icons.chevron_left),
           ),
         );
       }).toList(),
     );
   }
+
+  Widget _telegramDetailLine(String label, String value, {bool strong = true}) =>
+      RichText(
+        textAlign: TextAlign.right,
+        text: TextSpan(
+          style: TextStyle(
+            color: strong ? const Color(0xFF626E7D) : const Color(0xFF414B59),
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
+          ),
+          children: [
+            TextSpan(text: '$label '),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: strong ? const Color(0xFF626E7D) : const Color(0xFF263243),
+                fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _telegramChip(
+    String label,
+    Color background,
+    Color foreground, {
+    IconData? icon,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13, color: foreground),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _paginationControls() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,

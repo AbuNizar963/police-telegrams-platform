@@ -354,8 +354,9 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
       'name': _name.text.trim(),
       'type': _type,
       'parentOrganizationId': _parentId.isEmpty ? null : _parentId,
-      'telegramDestinationOrganizationId':
-          _destinationId.isEmpty ? null : _destinationId,
+      'telegramDestinationOrganizationId': _destinationId.isEmpty
+          ? null
+          : _destinationId,
       'allowHierarchyOverride': widget.isOwner && _overrideHierarchy,
     };
     if (_editing) {
@@ -391,8 +392,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                       labelText: 'رمز الجهة',
                       hintText: 'POLICE-01',
                     ),
-                    validator: (value) =>
-                        _requiredText(value, 'رمز الجهة'),
+                    validator: (value) => _requiredText(value, 'رمز الجهة'),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -419,9 +419,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: _parentId,
-                    decoration: const InputDecoration(
-                      labelText: 'الجهة الأب',
-                    ),
+                    decoration: const InputDecoration(labelText: 'الجهة الأب'),
                     items: [
                       const DropdownMenuItem(
                         value: '',

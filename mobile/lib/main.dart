@@ -1209,24 +1209,24 @@ class _DashboardPageState extends State<DashboardPage> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      if (priority != null && '$priority'.trim().isNotEmpty)
+                      if (priority != null && priority.trim().isNotEmpty)
                         _telegramChip(
-                          '$priority',
+                          priority,
                           const Color(0xFFFFE9E9),
                           const Color(0xFFB42332),
                           icon: Icons.priority_high_rounded,
                         ),
                       if (confidentiality != null &&
-                          '$confidentiality'.trim().isNotEmpty)
+                          confidentiality.trim().isNotEmpty)
                         _telegramChip(
-                          '$confidentiality',
+                          confidentiality,
                           const Color(0xFFEAF0FF),
                           const Color(0xFF315FC4),
                           icon: Icons.shield_outlined,
                         ),
-                      if (category != null && '$category'.trim().isNotEmpty)
+                      if (category != null && category.trim().isNotEmpty)
                         _telegramChip(
-                          '$category',
+                          category,
                           const Color(0xFFE7F6F7),
                           const Color(0xFF17899A),
                           icon: Icons.category_outlined,

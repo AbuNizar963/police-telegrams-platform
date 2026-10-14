@@ -211,9 +211,11 @@ class _ReportsPageState extends State<ReportsPage> {
     final nextTo = from ? _to : selected;
     if (nextFrom != null &&
         nextTo != null &&
-        DateTime(nextFrom.year, nextFrom.month, nextFrom.day).isAfter(
-          DateTime(nextTo.year, nextTo.month, nextTo.day),
-        )) {
+        DateTime(
+          nextFrom.year,
+          nextFrom.month,
+          nextFrom.day,
+        ).isAfter(DateTime(nextTo.year, nextTo.month, nextTo.day))) {
       setState(() => error = 'تاريخ البداية يجب ألا يتجاوز تاريخ النهاية.');
       return;
     }
@@ -262,9 +264,9 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _exportCsv() async {
     final raw = report?['rows'] ?? report?['items'] ?? report?['telegrams'];
     if (raw is! List || raw.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا توجد سجلات لتصديرها.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('لا توجد سجلات لتصديرها.')));
       return;
     }
 
@@ -313,9 +315,7 @@ class _ReportsPageState extends State<ReportsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'تعذر تصدير التقرير: ${_errorMessage(exception)}',
-            ),
+            content: Text('تعذر تصدير التقرير: ${_errorMessage(exception)}'),
           ),
         );
       }

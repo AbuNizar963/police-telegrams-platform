@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'telegram_csv_codec.dart';
 
 const _navy = Color(0xFF101C35);
 const _gold = Color(0xFFC9A45C);
@@ -24,8 +25,6 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
   int invalidRows = 0;
 
   String value(dynamic v) => v == null || '$v' == 'null' ? '' : '$v'.trim();
-  String escapeCsv(String v) => '"${v.replaceAll('"', '""')}"';
-
   Future<void> exportCsv() async {
     setState(() {
       busy = true;
@@ -83,8 +82,7 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
           outgoing ? 'صادر' : 'وارد',
         ]);
       }
-      final csv =
-          '\uFEFF${rows.map((r) => r.map(escapeCsv).join(',')).join('\r\n')}\r\n';
+      final csv = TelegramCsvCodec.encodeRows(rows);
       final date = DateTime.now().toIso8601String().substring(0, 10);
       final path = await FilePicker.saveFile(
         dialogTitle: 'حفظ سجل البرقيات',
@@ -126,79 +124,13 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
       if (picked == null || picked.files.isEmpty) return;
       final bytes = picked.files.single.bytes;
       if (bytes == null) throw Exception('تعذر قراءة محتوى الملف المحدد.');
-      final matrix = decodeCsv(
-        utf8.decode(bytes, allowMalformed: true).replaceFirst('\uFEFF', ''),
+      final parsed = TelegramCsvCodec.parseImport(
+        utf8.decode(bytes, allowMalformed: false),
       );
-      if (matrix.isEmpty) throw Exception('الملف فارغ.');
-      final headers = matrix.first
-          .map((v) => v.trim().replaceFirst('\uFEFF', '').toLowerCase())
-          .toList();
-      String get(List<String> row, List<String> names) {
-        for (final name in names) {
-          final i = headers.indexOf(name);
-          if (i >= 0 && i < row.length) return row[i].trim();
-        }
-        return '';
-      }
-
-      final parsed = <Map<String, dynamic>>[];
-      var invalid = 0;
-      for (final row in matrix.skip(1)) {
-        if (row.every((v) => v.trim().isEmpty)) continue;
-        final body = get(row, [
-          'body',
-          'text',
-          'content',
-          'المتن',
-          'نص البرقية',
-          'النص',
-        ]);
-        if (body.length < 3) {
-          invalid++;
-          continue;
-        }
-        final direction = get(row, [
-          'sheetname',
-          'direction',
-          'الاتجاه',
-          'نوع البرقية',
-        ]).toLowerCase();
-        parsed.add({
-          'originalSerial': get(row, [
-            'originalserial',
-            'serial',
-            'serialnumber',
-            'الرقم',
-            'الرقم الأصلي',
-            'رقم البرقية',
-          ]),
-          'time': get(row, ['time', 'الوقت']),
-          'sender': get(row, ['sender', 'creator', 'المرسل', 'اسم المرسل']),
-          'date': get(row, ['date', 'التاريخ']),
-          'body': body,
-          'recipient': get(row, [
-            'recipient',
-            'receiver',
-            'المستلم',
-            'الجهة المستلمة',
-          ]),
-          'signature': get(row, ['signature', 'التوقيع']),
-          'notes': get(row, [
-            'notes',
-            'workflowreason',
-            'ملاحظات',
-            'الملاحظات',
-          ]),
-          'sheetName': ['وارد', 'الواردة', 'incoming'].contains(direction)
-              ? 'وارد'
-              : 'صادر',
-        });
-      }
       if (!mounted) return;
       setState(() {
-        preview = parsed.take(1000).toList();
-        invalidRows =
-            invalid + (parsed.length > 1000 ? parsed.length - 1000 : 0);
+        preview = parsed.rows;
+        invalidRows = parsed.invalidRows;
         message = 'تمت قراءة ${preview.length} صفًا صالحًا.';
       });
     } catch (e) {
@@ -271,40 +203,6 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
-  }
-
-  List<List<String>> decodeCsv(String source) {
-    final rows = <List<String>>[];
-    var row = <String>[];
-    final cell = StringBuffer();
-    var quoted = false;
-    for (var i = 0; i < source.length; i++) {
-      final c = source[i];
-      if (c == '"') {
-        if (quoted && i + 1 < source.length && source[i + 1] == '"') {
-          cell.write('"');
-          i++;
-        } else {
-          quoted = !quoted;
-        }
-      } else if (c == ',' && !quoted) {
-        row.add(cell.toString());
-        cell.clear();
-      } else if ((c == '\n' || c == '\r') && !quoted) {
-        if (c == '\r' && i + 1 < source.length && source[i + 1] == '\n') i++;
-        row.add(cell.toString());
-        cell.clear();
-        if (row.any((v) => v.isNotEmpty) || rows.isNotEmpty) rows.add(row);
-        row = <String>[];
-      } else {
-        cell.write(c);
-      }
-    }
-    if (cell.length > 0 || row.isNotEmpty) {
-      row.add(cell.toString());
-      rows.add(row);
-    }
-    return rows;
   }
 
   @override

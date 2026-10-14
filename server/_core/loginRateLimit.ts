@@ -33,8 +33,8 @@ async function consumeLoginRateLimit(
     {
       p_key_hash: keyHash,
       p_max_attempts: maxAttempts,
-      p_window_seconds: 5 * 60,
-      p_block_seconds: 5 * 60,
+      p_window_seconds: 15 * 60,
+      p_block_seconds: 15 * 60,
     }
   );
 

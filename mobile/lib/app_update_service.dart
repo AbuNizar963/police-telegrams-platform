@@ -267,7 +267,7 @@ Future<void> _downloadAndInstall(
         final reason = status['reason'];
         throw Exception(
           'فشل تنزيل التحديث في الخلفية'
-          ${reason == null ? '.' : ' (رمز الخطأ: $reason).'}',
+          '${reason == null ? '.' : ' (رمز الخطأ: $reason).'}',
         );
       }
       if (state != 'successful') continue;

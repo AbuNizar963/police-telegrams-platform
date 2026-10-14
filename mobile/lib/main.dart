@@ -630,6 +630,43 @@ class _DashboardPageState extends State<DashboardPage> {
                       Text(
                         '${widget.account['name'] ?? widget.account['username'] ?? ''}',
                         style: const TextStyle(color: Colors.white70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF12385D),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF315579),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.verified_user_outlined,
+                              size: 14,
+                              color: Color(0xFF9CC7F2),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.account['role'] == 'admin'
+                                  ? 'مدير النظام'
+                                  : 'حساب مستخدم',
+                              style: const TextStyle(
+                                color: Color(0xFFE5F0FF),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

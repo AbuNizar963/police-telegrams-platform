@@ -149,8 +149,8 @@ select is(
     where id = (select user_id from owner_workplace_test_context)
     limit 1
   ),
-  (select root_organization_id from owner_workplace_test_context),
-  'switching workplace does not change the owner home organization'
+  (select target_organization_id from owner_workplace_test_context),
+  'owner canonical organization scope follows the selected active workplace'
 );
 
 select is(

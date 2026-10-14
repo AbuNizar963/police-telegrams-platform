@@ -235,7 +235,11 @@ Future<void> _downloadAndInstall(
             ),
           ),
           SizedBox(width: 12),
-          Expanded(child: Text('جارٍ تنزيل التحديث في الخلفية؛ يمكنك متابعة استخدام التطبيق.')),
+          Expanded(
+            child: Text(
+              'جارٍ تنزيل التحديث في الخلفية؛ يمكنك متابعة استخدام التطبيق.',
+            ),
+          ),
         ],
       ),
     ),

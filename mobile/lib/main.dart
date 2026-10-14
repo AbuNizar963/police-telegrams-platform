@@ -474,9 +474,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => NativeOrganizationManagementPage(
-                          api: widget.api,
-                        ),
+                        builder: (_) =>
+                            NativeOrganizationManagementPage(api: widget.api),
                       ),
                     );
                   },

@@ -46,7 +46,7 @@ void main() {
     test('caps imports at one thousand rows', () {
       final buffer = StringBuffer('body\n');
       for (var index = 0; index < 1002; index++) {
-        buffer.writeln('نص برقية رقم \$index');
+        buffer.writeln('نص برقية رقم ' + index.toString());
       }
 
       final result = TelegramCsvCodec.parseImport(buffer.toString());
@@ -54,11 +54,14 @@ void main() {
       expect(result.invalidRows, 2);
     });
 
-    test('rejects an unclosed quoted field instead of silently corrupting it', () {
-      expect(
-        () => TelegramCsvCodec.parseImport('body\n"نص غير مكتمل'),
-        throwsA(isA<FormatException>()),
-      );
-    });
+    test(
+      'rejects an unclosed quoted field instead of silently corrupting it',
+      () {
+        expect(
+          () => TelegramCsvCodec.parseImport('body\n"نص غير مكتمل'),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
   });
 }

@@ -15,7 +15,7 @@ class TelegramCsvCodec {
   }
 
   static String _escapeCell(String value) =>
-      '"\${value.replaceAll('"', '""')}"';
+      '"' + value.replaceAll('"', '""') + '"';
 
   static CsvImportResult parseImport(String source) {
     final matrix = _decodeRows(source.replaceFirst('\uFEFF', ''));

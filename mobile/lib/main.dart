@@ -985,9 +985,10 @@ class _DashboardPageState extends State<DashboardPage> {
       Row(
         children: [
           OutlinedButton(
-            onPressed: telegramPage <= 1 || loading || _refreshInProgress
+            onPressed: telegramPage <= 1 || loading
                 ? null
                 : () {
+                    if (_refreshInProgress) return;
                     setState(() => telegramPage--);
                     refresh();
                   },
@@ -995,9 +996,10 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(width: 8),
           OutlinedButton(
-            onPressed: !hasNextTelegramPage || loading || _refreshInProgress
+            onPressed: !hasNextTelegramPage || loading
                 ? null
                 : () {
+                    if (_refreshInProgress) return;
                     setState(() => telegramPage++);
                     refresh();
                   },

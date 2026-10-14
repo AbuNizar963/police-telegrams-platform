@@ -221,178 +221,128 @@ Future<void> _downloadAndInstall(
 ) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
-    await _installerChannel.invokeMethod<bool>(
-      'requestUpdateNotificationPermission',
-    );
-    await _installerChannel.invokeMethod<void>('startUpdateNotification');
-  } on PlatformException catch (error) {
-    debugPrint('Update notification unavailable: ${error.message}');
-  }
-  messenger?.showSnackBar(
-    const SnackBar(
-      duration: Duration(hours: 1),
-      behavior: SnackBarBehavior.floating,
-      content: Row(
-        children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'جارٍ تنزيل التحديث في الخلفية؛ يمكنك متابعة استخدام التطبيق.',
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  try {
-    final directory = Directory('${Directory.systemTemp.path}/updates');
-    await directory.create(recursive: true);
-    final file = File('${directory.path}/police-telegrams-update.apk');
-    if (await file.exists()) await file.delete();
-
-    final client = http.Client();
     try {
-      final request = http.Request('GET', release.apkUrl);
-      request.headers['Accept'] = 'application/octet-stream';
-      final response = await client
-          .send(request)
-          .timeout(const Duration(seconds: 45));
-      if (response.statusCode != 200) {
-        throw Exception('فشل تنزيل التحديث (HTTP ${response.statusCode}).');
-      }
-
-      final sink = file.openWrite();
-      var received = 0;
-      var lastReportedPercent = -1;
-      try {
-        await for (final chunk in response.stream.timeout(
-          const Duration(minutes: 3),
-        )) {
-          sink.add(chunk);
-          received += chunk.length;
-          final percent = (received * 100 / release.apkSize).floor().clamp(
-            0,
-            100,
-          );
-          if (percent != lastReportedPercent) {
-            lastReportedPercent = percent;
-            try {
-              await _installerChannel.invokeMethod<void>(
-                'updateDownloadNotification',
-                {
-                  'progress': percent,
-                  'received': received,
-                  'total': release.apkSize,
-                },
-              );
-            } on PlatformException catch (error) {
-              debugPrint(
-                'Could not update download notification: ${error.message}',
-              );
-            }
-          }
-        }
-        await sink.flush();
-      } finally {
-        // Always close the file handle, including stream errors and timeouts.
-        await sink.close();
-      }
-
-      if (received != release.apkSize) {
-        throw Exception('ملف التحديث غير مكتمل. أعد المحاولة.');
-      }
-      try {
-        await _installerChannel.invokeMethod<void>(
-          'completeUpdateNotification',
-        );
-      } on PlatformException catch (error) {
-        debugPrint(
-          'Could not complete download notification: ${error.message}',
-        );
-      }
-    } catch (_) {
-      // Never leave a partial APK that could be mistaken for a complete update.
-      try {
-        if (await file.exists()) {
-          await file.delete();
-        }
-      } catch (_) {
-        // Preserve the original download error if cleanup also fails.
-      }
-      try {
-        await _installerChannel.invokeMethod<void>('failUpdateNotification');
-      } on PlatformException catch (error) {
-        debugPrint(
-          'Could not clear failed download notification: ${error.message}',
-        );
-      }
-      rethrow;
-    } finally {
-      client.close();
-    }
-
-    if (context.mounted) {
-      messenger?.hideCurrentSnackBar();
-    }
-    if (!context.mounted) return;
-
-    final result = await _installerChannel.invokeMethod<String>('installApk', {
-      'path': file.path,
-    });
-    if (result == 'permission_required' && context.mounted) {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('السماح بتثبيت التحديث'),
-            content: const Text(
-              'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر. بعد العودة، اضغط «إعادة محاولة التثبيت».',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('لاحقًا'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  try {
-                    await _installerChannel.invokeMethod<String>(
-                      'openInstallSettings',
-                    );
-                  } on PlatformException catch (error) {
-                    if (context.mounted) {
-                      _showUpdateMessage(
-                        context,
-                        error.message ?? 'تعذر فتح إعدادات التثبيت.',
-                      );
-                    }
-                  }
-                },
-                child: const Text('فتح الإعدادات'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  Navigator.pop(dialogContext);
-                  await _retryInstall(context, file.path);
-                },
-                child: const Text('إعادة محاولة التثبيت'),
-              ),
-            ],
-          ),
-        ),
+      await _installerChannel.invokeMethod<bool>(
+        'requestUpdateNotificationPermission',
       );
-    } else if (result != 'launched' && context.mounted) {
-      _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
+    } on PlatformException catch (error) {
+      debugPrint('Update notification permission unavailable: ${error.message}');
+    }
+
+    final downloadId = await _installerChannel.invokeMethod<int>(
+      'enqueueBackgroundDownload',
+      {
+        'url': release.apkUrl.toString(),
+        'expectedSize': release.apkSize,
+      },
+    );
+    if (downloadId == null || downloadId <= 0) {
+      throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
+    }
+
+    messenger?.showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 8),
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          'بدأ تنزيل التحديث بواسطة Android. سيستمر التنزيل عند مغادرة التطبيق، ويمكنك متابعة تقدمه من شريط الإشعارات.',
+        ),
+      ),
+    );
+
+    // Android DownloadManager owns the network transfer. It continues when
+    // Flutter is paused or the app process is reclaimed by the system.
+    while (context.mounted) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (!context.mounted) return;
+
+      final status = await _installerChannel.invokeMapMethod<String, dynamic>(
+        'queryBackgroundDownload',
+        {'id': downloadId},
+      );
+      if (status == null) continue;
+
+      final state = status['status'];
+      if (state == 'failed' || state == 'not_found') {
+        final reason = status['reason'];
+        throw Exception(
+          'فشل تنزيل التحديث في الخلفية'
+          ${reason == null ? '.' : ' (رمز الخطأ: $reason).'}',
+        );
+      }
+      if (state != 'successful') continue;
+
+      final downloaded = (status['downloaded'] as num?)?.toInt() ?? 0;
+      final reportedTotal = (status['total'] as num?)?.toInt() ?? 0;
+      if (downloaded != release.apkSize ||
+          (reportedTotal > 0 && reportedTotal != release.apkSize)) {
+        throw Exception('حجم ملف التحديث لا يطابق الإصدار المنشور.');
+      }
+
+      final localUri = status['localUri'] as String?;
+      if (localUri == null || localUri.isEmpty) {
+        throw Exception('اكتمل التنزيل لكن تعذر تحديد ملف التحديث.');
+      }
+      final localPath = Uri.tryParse(localUri)?.toFilePath();
+      if (localPath == null || localPath.isEmpty) {
+        throw Exception('مسار ملف التحديث الذي أعاده Android غير صالح.');
+      }
+
+      if (context.mounted) {
+        messenger?.hideCurrentSnackBar();
+      }
+      if (!context.mounted) return;
+
+      final result = await _installerChannel.invokeMethod<String>('installApk', {
+        'path': localPath,
+      });
+      if (result == 'permission_required' && context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('السماح بتثبيت التحديث'),
+              content: const Text(
+                'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر. بعد العودة، اضغط «إعادة محاولة التثبيت».',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('لاحقًا'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await _installerChannel.invokeMethod<String>(
+                        'openInstallSettings',
+                      );
+                    } on PlatformException catch (error) {
+                      if (context.mounted) {
+                        _showUpdateMessage(
+                          context,
+                          error.message ?? 'تعذر فتح إعدادات التثبيت.',
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('فتح الإعدادات'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await _retryInstall(context, localPath);
+                  },
+                  child: const Text('إعادة محاولة التثبيت'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (result != 'launched' && context.mounted) {
+        _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
+      }
+      return;
     }
   } catch (error) {
     if (context.mounted) {

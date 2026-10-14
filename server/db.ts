@@ -649,6 +649,11 @@ export async function listTelegrams(
   direction?: "incoming" | "outgoing",
   directionOrganizationId: string | null = null
 ): Promise<TelegramListItem[]> {
+  // Directional lists must be scoped to a concrete active organization.
+  // Platform owners without a selected organization must not see every telegram
+  // mislabeled as outgoing or receive an unfiltered incoming list.
+  if (direction && !directionOrganizationId) return [];
+
   const safePage = Math.max(1, Math.floor(page));
   const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
   let query = getSupabaseAdmin()

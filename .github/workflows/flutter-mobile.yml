@@ -43,6 +43,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Format and inspect Dart sources
+        run: |
+          set -euo pipefail
+          dart format lib test
+          for path in lib/app_update_page.dart lib/native_operations_page.dart lib/native_user_management_page.dart lib/telegram_csv_page.dart; do
+            echo "FORMATTED_FILE_BEGIN:$path"
+            base64 -w0 "$path"
+            echo
+            echo "FORMATTED_FILE_END:$path"
+          done
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
 

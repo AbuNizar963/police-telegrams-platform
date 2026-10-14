@@ -431,10 +431,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
           ...rows.map(
             (row) => Card(
               child: ListTile(
-                leading: const Icon(
-                  Icons.description_outlined,
-                  color: _gold,
-                ),
+                leading: const Icon(Icons.description_outlined, color: _gold),
                 title: Text(_value(row['subject'], 'برقية بدون موضوع')),
                 subtitle: Text(
                   '${_value(row['serialCode'] ?? row['serialNumber'])} · '

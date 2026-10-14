@@ -103,9 +103,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
             controller: controller,
             obscureText: true,
             autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'كلمة المرور الحالية',
-            ),
+            decoration: const InputDecoration(labelText: 'كلمة المرور الحالية'),
           ),
           actions: [
             TextButton(
@@ -169,10 +167,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     final form = await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _UserFormDialog(
-        organizations: _organizations,
-        user: user,
-      ),
+      builder: (_) =>
+          _UserFormDialog(organizations: _organizations, user: user),
     );
     if (form == null) return;
     final password = form['password'] as String? ?? '';
@@ -193,7 +189,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
           'id': user['id'],
           ...form,
           'password': password,
-          if (confirmPassword != null) 'confirmPassword': confirmPassword,
+          'confirmPassword': ?confirmPassword,
         },
       );
       _showMessage('تم تحديث بيانات الحساب.');

@@ -8,8 +8,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 const _navy = Color(0xFF101C35);
 const _gold = Color(0xFFC9A45C);
-const _repository = 'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
-const _playStoreUrl = 'https://play.google.com/store/apps/details?id=com.hadir.police.police_telegrams';
+const _repository =
+    'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
+const _playStoreUrl =
+    'https://play.google.com/store/apps/details?id=com.hadir.police.police_telegrams';
 
 class _ReleaseInfo {
   const _ReleaseInfo({
@@ -36,9 +38,7 @@ class _ReleaseInfo {
     }
 
     final page = Uri.tryParse(htmlUrl);
-    if (page == null ||
-        page.scheme != 'https' ||
-        page.host != 'github.com') {
+    if (page == null || page.scheme != 'https' || page.host != 'github.com') {
       throw const FormatException('رابط الإصدار غير موثوق.');
     }
 
@@ -119,7 +119,9 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
         throw const _NoPublishedRelease();
       }
       if (response.statusCode != 200) {
-        throw Exception('تعذر التحقق من التحديث (HTTP ${response.statusCode}).');
+        throw Exception(
+          'تعذر التحقق من التحديث (HTTP ${response.statusCode}).',
+        );
       }
 
       final decoded = jsonDecode(response.body);
@@ -140,7 +142,8 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
       final info = await PackageInfo.fromPlatform();
       setState(() {
         _currentVersion = '${info.version}+${info.buildNumber}';
-        _error = 'لم يُنشر إصدار رسمي للتحديث بعد. يمكنك التحقق من Google Play.';
+        _error =
+            'لم يُنشر إصدار رسمي للتحديث بعد. يمكنك التحقق من Google Play.';
         _checking = false;
       });
     } catch (error) {
@@ -155,10 +158,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   int _compareVersions(String latest, String current) {
     List<int> parse(String value) {
       final cleaned = value.split('+').first.split('-').first;
-      return cleaned
-          .split('.')
-          .map((part) => int.tryParse(part) ?? 0)
-          .toList();
+      return cleaned.split('.').map((part) => int.tryParse(part) ?? 0).toList();
     }
 
     final a = parse(latest);
@@ -186,12 +186,15 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   Future<void> _openPlayStore() => _open(Uri.parse(_playStoreUrl));
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatSize(int? bytes) {
     if (bytes == null) return 'غير معروف';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} كيلوبايت';
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(0)} كيلوبايت';
+    }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} ميغابايت';
   }
 
@@ -216,7 +219,11 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                   const CircleAvatar(
                     radius: 32,
                     backgroundColor: _navy,
-                    child: Icon(Icons.system_update_alt, color: _gold, size: 32),
+                    child: Icon(
+                      Icons.system_update_alt,
+                      color: _gold,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -233,7 +240,10 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                   if (_checking) ...[
                     const LinearProgressIndicator(color: _gold),
                     const SizedBox(height: 10),
-                    const Text('جارٍ التحقق من وجود إصدار أحدث...', textAlign: TextAlign.center),
+                    const Text(
+                      'جارٍ التحقق من وجود إصدار أحدث...',
+                      textAlign: TextAlign.center,
+                    ),
                   ] else if (_error != null) ...[
                     const Icon(Icons.info_outline, size: 30, color: _navy),
                     const SizedBox(height: 8),
@@ -248,10 +258,16 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                     Text(
                       'يتوفر إصدار أحدث: ${_release!.version}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: _navy),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _navy,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    Text('حجم APK: ${_formatSize(_release!.apkSize)}', textAlign: TextAlign.center),
+                    Text(
+                      'حجم APK: ${_formatSize(_release!.apkSize)}',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -279,9 +295,16 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                       child: const Text('تخطي الآن'),
                     ),
                   ] else ...[
-                    const Icon(Icons.check_circle_outline, color: Colors.green, size: 36),
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                      size: 36,
+                    ),
                     const SizedBox(height: 8),
-                    const Text('أنت تستخدم أحدث إصدار منشور.', textAlign: TextAlign.center),
+                    const Text(
+                      'أنت تستخدم أحدث إصدار منشور.',
+                      textAlign: TextAlign.center,
+                    ),
                     TextButton.icon(
                       onPressed: _checkForUpdates,
                       icon: const Icon(Icons.refresh),

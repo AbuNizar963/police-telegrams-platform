@@ -1040,7 +1040,7 @@ export async function upsertMobilePushToken(input: {
 
 export async function deleteMobilePushToken(
   token: string,
-  userId: number,
+  userId: number
 ): Promise<void> {
   const { error } = await getSupabaseAdmin()
     .from("mobile_push_tokens")

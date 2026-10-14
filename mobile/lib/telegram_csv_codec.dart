@@ -41,7 +41,12 @@ class TelegramCsvCodec {
       if (cells.every((cell) => cell.trim().isEmpty)) continue;
 
       final body = getCell(cells, const [
-        'body', 'text', 'content', 'المتن', 'نص البرقية', 'النص',
+        'body',
+        'text',
+        'content',
+        'المتن',
+        'نص البرقية',
+        'النص',
       ]);
       if (body.length < 3) {
         invalidRows++;
@@ -49,26 +54,42 @@ class TelegramCsvCodec {
       }
 
       final direction = getCell(cells, const [
-        'sheetname', 'direction', 'الاتجاه', 'نوع البرقية',
+        'sheetname',
+        'direction',
+        'الاتجاه',
+        'نوع البرقية',
       ]).toLowerCase();
 
       rows.add({
         'originalSerial': getCell(cells, const [
-          'originalserial', 'serial', 'serialnumber', 'الرقم',
-          'الرقم الأصلي', 'رقم البرقية',
+          'originalserial',
+          'serial',
+          'serialnumber',
+          'الرقم',
+          'الرقم الأصلي',
+          'رقم البرقية',
         ]),
         'time': getCell(cells, const ['time', 'الوقت']),
         'sender': getCell(cells, const [
-          'sender', 'creator', 'المرسل', 'اسم المرسل',
+          'sender',
+          'creator',
+          'المرسل',
+          'اسم المرسل',
         ]),
         'date': getCell(cells, const ['date', 'التاريخ']),
         'body': body,
         'recipient': getCell(cells, const [
-          'recipient', 'receiver', 'المستلم', 'الجهة المستلمة',
+          'recipient',
+          'receiver',
+          'المستلم',
+          'الجهة المستلمة',
         ]),
         'signature': getCell(cells, const ['signature', 'التوقيع']),
         'notes': getCell(cells, const [
-          'notes', 'workflowreason', 'ملاحظات', 'الملاحظات',
+          'notes',
+          'workflowreason',
+          'ملاحظات',
+          'الملاحظات',
         ]),
         'sheetName':
             direction.contains('وارد') || direction.contains('incoming')

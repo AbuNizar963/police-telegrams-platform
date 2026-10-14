@@ -39,11 +39,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Diagnose Dart formatter differences
-        run: |
-          dart format lib/app_update_service.dart
-          git diff -- lib/app_update_service.dart
-          exit 1
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze Dart source
         run: flutter analyze

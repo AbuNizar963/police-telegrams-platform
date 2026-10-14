@@ -65,6 +65,8 @@ class TelegramCsvCodec {
           'نوع البرقية',
         ],
       ).toLowerCase();
+      final isIncoming =
+          direction.contains('وارد') || direction.contains('incoming');
 
       rows.add({
         'originalSerial': getCell(
@@ -109,10 +111,7 @@ class TelegramCsvCodec {
             'الملاحظات',
           ],
         ),
-        'sheetName': direction.contains('وارد') ||
-                direction.contains('incoming')
-            ? 'وارد'
-            : 'صادر',
+        'sheetName': isIncoming ? 'وارد' : 'صادر',
       });
     }
 

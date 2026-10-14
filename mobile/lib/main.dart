@@ -445,7 +445,7 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
-        widget.api.call('organizations.context'),
+        widget.api.call('organizations.context').catchError((_) => null),
         widget.api.call(
           'telegrams.list',
           input: {

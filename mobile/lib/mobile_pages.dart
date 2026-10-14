@@ -148,6 +148,25 @@ class _ReportsPageState extends State<ReportsPage> {
   bool loading = true;
   String? error;
   Map<String, dynamic>? report;
+  final _searchController = TextEditingController();
+  String _status = 'all';
+  DateTime? _from;
+  DateTime? _to;
+
+  static const _statuses = <String, String>{
+    'draft': 'مسودة',
+    'submitted': 'مرسلة',
+    'in_review': 'قيد المراجعة',
+    'approved': 'معتمدة',
+    'returned': 'معادة',
+    'rejected': 'مرفوضة',
+    'forwarded': 'محالة',
+    'pending': 'معلقة',
+    'in_progress': 'قيد التنفيذ',
+    'resolved': 'تمت المعالجة',
+    'completed': 'مكتملة',
+    'archived': 'مؤرشفة',
+  };
 
   @override
   void initState() {
@@ -155,13 +174,73 @@ class _ReportsPageState extends State<ReportsPage> {
     load();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _dateValue(DateTime value, {bool endOfDay = false}) {
+    final date = DateTime(
+      value.year,
+      value.month,
+      value.day,
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0,
+    );
+    return date.toUtc().toIso8601String();
+  }
+
+  Future<void> _chooseDate({required bool from}) async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: (from ? _from : _to) ?? now,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 10),
+      helpText: from ? 'اختر تاريخ البداية' : 'اختر تاريخ النهاية',
+      cancelText: 'إلغاء',
+      confirmText: 'اختيار',
+    );
+    if (selected == null || !mounted) return;
+
+    final nextFrom = from ? selected : _from;
+    final nextTo = from ? _to : selected;
+    if (nextFrom != null &&
+        nextTo != null &&
+        DateTime(nextFrom.year, nextFrom.month, nextFrom.day).isAfter(
+          DateTime(nextTo.year, nextTo.month, nextTo.day),
+        )) {
+      setState(() => error = 'تاريخ البداية يجب ألا يتجاوز تاريخ النهاية.');
+      return;
+    }
+
+    setState(() {
+      if (from) {
+        _from = selected;
+      } else {
+        _to = selected;
+      }
+    });
+    await load();
+  }
+
   Future<void> load() async {
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
-      final result = await widget.api.call(
-        'reports.telegrams',
-        input: {'page': 1, 'pageSize': 100},
-      );
+      final input = <String, dynamic>{'page': 1, 'pageSize': 100};
+      final search = _searchController.text.trim();
+      if (search.isNotEmpty) input['search'] = search;
+      if (_status != 'all') input['status'] = _status;
+      if (_from != null) input['from'] = _dateValue(_from!);
+      if (_to != null) input['to'] = _dateValue(_to!, endOfDay: true);
+
+      final result = await widget.api.call('reports.telegrams', input: input);
       if (!mounted) return;
       setState(() {
         report = result is Map ? Map<String, dynamic>.from(result) : {};
@@ -172,6 +251,11 @@ class _ReportsPageState extends State<ReportsPage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'كل المدة';
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -185,15 +269,121 @@ class _ReportsPageState extends State<ReportsPage> {
           'التقارير',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'تحديث التقرير',
+            onPressed: loading ? null : load,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
-      body: loading
+      body: loading && report == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: load,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'تصفية التقرير',
+                            style: TextStyle(
+                              color: _navy,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) => load(),
+                            decoration: InputDecoration(
+                              labelText: 'بحث بالرقم أو الموضوع',
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchController.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: 'مسح البحث',
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        load();
+                                      },
+                                      icon: const Icon(Icons.close),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            initialValue: _status,
+                            decoration: const InputDecoration(
+                              labelText: 'حالة البرقية',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: 'all',
+                                child: Text('كل الحالات'),
+                              ),
+                              ..._statuses.entries.map(
+                                (entry) => DropdownMenuItem(
+                                  value: entry.key,
+                                  child: Text(entry.value),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() => _status = value);
+                              load();
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => _chooseDate(from: true),
+                                icon: const Icon(Icons.calendar_today_outlined),
+                                label: Text('من: ${_formatDate(_from)}'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => _chooseDate(from: false),
+                                icon: const Icon(Icons.event_outlined),
+                                label: Text('إلى: ${_formatDate(_to)}'),
+                              ),
+                              if (_from != null || _to != null)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _from = null;
+                                      _to = null;
+                                    });
+                                    load();
+                                  },
+                                  icon: const Icon(Icons.filter_alt_off),
+                                  label: const Text('مسح التاريخ'),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            onPressed: loading ? null : load,
+                            icon: const Icon(Icons.filter_alt),
+                            label: const Text('تطبيق الفلاتر'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   if (error != null) _ErrorCard(message: error!),
+                  if (loading && report != null)
+                    const LinearProgressIndicator(),
                   if (report != null) ...[
                     _ReportSummary(report: report!),
                     const SizedBox(height: 14),

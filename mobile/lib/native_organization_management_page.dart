@@ -324,20 +324,21 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
     _type = _organizationTypes.containsKey(organization?['type'])
         ? organization!['type'] as String
         : 'department';
-    final parentId =
-        organization?['parentOrganizationId']?.toString() ?? '';
-    _parentId = widget.organizations.any(
-      (item) =>
-          item['id']?.toString() == parentId &&
-          parentId != organization?['id']?.toString(),
-    )
+    final parentId = organization?['parentOrganizationId']?.toString() ?? '';
+    _parentId =
+        widget.organizations.any(
+          (item) =>
+              item['id']?.toString() == parentId &&
+              parentId != organization?['id']?.toString(),
+        )
         ? parentId
         : '';
     final destinationId =
         organization?['telegramDestinationOrganizationId']?.toString() ?? '';
-    _destinationId = widget.organizations.any(
-      (item) => item['id']?.toString() == destinationId,
-    )
+    _destinationId =
+        widget.organizations.any(
+          (item) => item['id']?.toString() == destinationId,
+        )
         ? destinationId
         : '';
     _active = organization?['isActive'] != false;

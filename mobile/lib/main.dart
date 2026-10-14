@@ -97,12 +97,92 @@ class PoliceTelegramsApp extends StatelessWidget {
         thickness: 1,
       ),
     ),
-    home: const LoginPage(),
+    home: const SessionGate(),
+  );
+}
+
+class SessionGate extends StatefulWidget {
+  const SessionGate({super.key});
+
+  @override
+  State<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<SessionGate> {
+  final PoliceApi _api = PoliceApi();
+  late final Future<Map<String, dynamic>?> _session = _api.restoreSession();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: _session,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: navy),
+                  SizedBox(height: 16),
+                  Text('جارٍ التحقق من جلسة الدخول...'),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      final account = snapshot.data;
+      if (account != null) {
+        return DashboardPage(api: _api, account: account);
+      }
+
+      if (snapshot.hasError) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.wifi_off_outlined, size: 42, color: navy),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'تعذر التحقق من جلسة الدخول بسبب مشكلة في الاتصال. تحقق من الإنترنت ثم أعد المحاولة.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => setState(() {}),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('إعادة المحاولة'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        await _api.logout();
+                        if (mounted) setState(() {});
+                      },
+                      child: const Text('العودة إلى تسجيل الدخول'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return LoginPage(api: _api);
+    },
   );
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, PoliceApi? api}) : _api = api;\n\n  final PoliceApi? _api;
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -110,7 +190,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final username = TextEditingController();
   final password = TextEditingController();
-  final api = PoliceApi();
+  late final PoliceApi api = widget._api ?? PoliceApi();
   bool busy = false;
   String? error;
 

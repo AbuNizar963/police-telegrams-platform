@@ -145,9 +145,7 @@ async function notifyFirebaseOrganization(input: {
     return !result.success && isInvalidRegistration && token ? [token] : [];
   });
   await Promise.all(
-    invalidTokens.map(token =>
-      deleteMobilePushToken(token.token, token.userId)
-    )
+    invalidTokens.map(token => deleteMobilePushToken(token.token, token.userId))
   );
   return {
     sent: response.successCount,

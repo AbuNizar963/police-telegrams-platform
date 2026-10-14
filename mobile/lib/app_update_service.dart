@@ -247,20 +247,33 @@ Future<void> _downloadAndInstall(
 
       final sink = file.openWrite();
       var received = 0;
-      await for (final chunk in response.stream.timeout(
-        const Duration(minutes: 3),
-      )) {
-        sink.add(chunk);
-        received += chunk.length;
-        progressKey.currentState?.update(received);
+      try {
+        await for (final chunk in response.stream.timeout(
+          const Duration(minutes: 3),
+        )) {
+          sink.add(chunk);
+          received += chunk.length;
+          progressKey.currentState?.update(received);
+        }
+        await sink.flush();
+      } finally {
+        // Always close the file handle, including stream errors and timeouts.
+        await sink.close();
       }
-      await sink.flush();
-      await sink.close();
 
       if (received != release.apkSize) {
-        await file.delete();
         throw Exception('ملف التحديث غير مكتمل. أعد المحاولة.');
       }
+    } catch (_) {
+      // Never leave a partial APK that could be mistaken for a complete update.
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Preserve the original download error if cleanup also fails.
+      }
+      rethrow;
     } finally {
       client.close();
     }

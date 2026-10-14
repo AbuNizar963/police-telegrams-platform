@@ -450,7 +450,9 @@ class _DashboardPageState extends State<DashboardPage> {
           'telegrams.list',
           input: {
             'page': telegramPage,
-            'pageSize': 20,
+            // Fetch one look-ahead row so the Next button is enabled only
+            // when another page actually exists.
+            'pageSize': 21,
             if (section == 1) 'direction': 'outgoing',
             if (section == 2) 'direction': 'incoming',
             if (searchQuery.trim().isNotEmpty) 'search': searchQuery.trim(),
@@ -464,14 +466,16 @@ class _DashboardPageState extends State<DashboardPage> {
           : list is List
           ? list
           : <dynamic>[];
+      final hasMoreRows = rows.length > 20;
+      final visibleRows = rows.take(20).toList(growable: false);
       if (mounted) {
         setState(() {
           stats = Map<String, dynamic>.from(results[0] as Map);
           activeOrganizationId = organizationContext is Map
               ? organizationContext['organizationId']?.toString()
               : null;
-          telegrams = rows;
-          hasNextTelegramPage = rows.length >= 20;
+          telegrams = visibleRows;
+          hasNextTelegramPage = hasMoreRows;
           error = null;
         });
       }

@@ -138,14 +138,19 @@ async function notifyFirebaseOrganization(input: {
   }
   const invalidTokens = response.responses.flatMap((result, index) => {
     const token = tokens[index];
-    const isInvalidRegistration =
-      result.error?.code === "messaging/registration-token-not-registered" ||
-      result.error?.code === "messaging/invalid-registration-token";
+    const invalidCode = [
+      "messaging/registration-token-not-registered",
+      "messaging/invalid-registration-token",
+    ].includes(result.error?.code ?? "");
 
-    return !result.success && isInvalidRegistration && token ? [token] : [];
+    if (result.success || !invalidCode || !token) return [];
+    return [token];
   });
+
   await Promise.all(
-    invalidTokens.map(token => deleteMobilePushToken(token.token, token.userId))
+    invalidTokens.map(({ token, userId }) =>
+      deleteMobilePushToken(token, userId)
+    )
   );
   return {
     sent: response.successCount,

@@ -946,12 +946,8 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
     final incoming = section == 2;
-    final rows = telegrams
-        .where(
-          (item) =>
-              _isIncoming(Map<String, dynamic>.from(item as Map)) == incoming,
-        )
-        .toList();
+    // The server applies direction and organization-scope filters before
+    // pagination; do not re-filter one page locally and hide valid results.
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -973,7 +969,7 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(height: 14),
         _searchField(),
         const SizedBox(height: 10),
-        _telegramCards(rows),
+        _telegramCards(telegrams),
         const SizedBox(height: 12),
         _paginationControls(),
       ],

@@ -39,6 +39,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Diagnostic Dart formatter output
+        if: always()
+        run: dart format --output=show lib/main.dart lib/app_update_service.dart
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
 

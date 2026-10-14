@@ -363,6 +363,20 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
+String _dashboardRefreshError(Object error) {
+  final details = error.toString().toLowerCase();
+  if (error is SocketException ||
+      details.contains('socketfailed host lookup') ||
+      details.contains('failed host lookup') ||
+      details.contains('no address associated with hostname') ||
+      details.contains('network is unreachable') ||
+      details.contains('connection refused') ||
+      details.contains('connection timed out')) {
+    return 'تعذر الاتصال بالخادم حاليًا. تحقق من اتصال الإنترنت أو إعدادات DNS، ثم أعد المحاولة. ستبقى هذه الصفحة متاحة، ولم يتم تسجيل خروجك.';
+  }
+  return 'تعذر تحديث بيانات لوحة التحكم. تحقق من الاتصال ثم أعد المحاولة.';
+}
+
 class _DashboardPageState extends State<DashboardPage> {
   bool loading = true;
   String? error;
@@ -481,7 +495,8 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+        final message = _dashboardRefreshError(e);
+        setState(() => error = message);
       }
     } finally {
       _refreshInProgress = false;
@@ -911,9 +926,43 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           if (error != null)
             Card(
+              color: const Color(0xFFFFF4E5),
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(error!, style: const TextStyle(color: Colors.red)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      color: Color(0xFF8A5A00),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            error!,
+                            style: const TextStyle(
+                              color: Color(0xFF704800),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton.icon(
+                              onPressed: loading
+                                  ? null
+                                  : () => refresh(showLoading: false),
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('إعادة المحاولة'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           Text(

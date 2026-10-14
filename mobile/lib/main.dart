@@ -6,6 +6,7 @@ import 'api.dart';
 import 'app_update_page.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
+import 'native_organization_management_page.dart';
 import 'native_user_management_page.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
@@ -464,6 +465,22 @@ class _DashboardPageState extends State<DashboardPage> {
                 },
               ),
               if (widget.account['role'] == 'admin') ...[
+                ListTile(
+                  leading: const Icon(Icons.account_tree_outlined),
+                  title: const Text('إدارة الجهات'),
+                  subtitle: const Text('الهيكل التنظيمي وإنشاء الجهات'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NativeOrganizationManagementPage(
+                          api: widget.api,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.manage_accounts_outlined),
                   title: const Text('إدارة المستخدمين'),

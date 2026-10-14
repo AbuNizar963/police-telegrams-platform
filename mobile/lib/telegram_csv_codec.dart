@@ -15,7 +15,7 @@ class TelegramCsvCodec {
   }
 
   static String _escapeCell(String value) =>
-      '"' + value.replaceAll('"', '""') + '"';
+      '"${value.replaceAll('"', '""')}"';
 
   static CsvImportResult parseImport(String source) {
     final matrix = _decodeRows(source.replaceFirst('\uFEFF', ''));
@@ -111,8 +111,8 @@ class TelegramCsvCodec {
         ),
         'sheetName':
             direction.contains('وارد') || direction.contains('incoming')
-                ? 'وارد'
-                : 'صادر',
+            ? 'وارد'
+            : 'صادر',
       });
     }
 
@@ -214,10 +214,7 @@ class TelegramCsvCodec {
 }
 
 class CsvImportResult {
-  const CsvImportResult({
-    required this.rows,
-    required this.invalidRows,
-  });
+  const CsvImportResult({required this.rows, required this.invalidRows});
 
   final List<Map<String, dynamic>> rows;
   final int invalidRows;

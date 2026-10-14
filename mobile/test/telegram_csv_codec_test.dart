@@ -46,7 +46,7 @@ void main() {
     test('caps imports at one thousand rows', () {
       final buffer = StringBuffer('body\n');
       for (var index = 0; index < 1002; index++) {
-        buffer.writeln('نص برقية رقم ' + index.toString());
+        buffer.writeln('نص برقية رقم $index');
       }
 
       final result = TelegramCsvCodec.parseImport(buffer.toString());

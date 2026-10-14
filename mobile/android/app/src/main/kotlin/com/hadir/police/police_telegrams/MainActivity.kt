@@ -1,14 +1,17 @@
 package com.hadir.police.police_telegrams
 
 import android.Manifest
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.database.Cursor
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.content.Context
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -35,6 +38,8 @@ class MainActivity : FlutterActivity() {
                     "requestUpdateNotificationPermission" -> {
                         requestUpdateNotificationPermission(result)
                     }
+                    "enqueueBackgroundDownload" -> enqueueBackgroundDownload(call, result)
+                    "queryBackgroundDownload" -> queryBackgroundDownload(call, result)
                     "startUpdateNotification" -> {
                         showUpdateNotification(
                             title = "جارٍ تنزيل تحديث برقيات الشرطة",
@@ -95,6 +100,109 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun enqueueBackgroundDownload(
+        call: io.flutter.plugin.common.MethodCall,
+        result: MethodChannel.Result
+    ) {
+        val url = call.argument<String>("url")
+        val expectedSize = call.argument<Long>("expectedSize")
+            ?: call.argument<Int>("expectedSize")?.toLong()
+        if (url.isNullOrBlank() || !url.startsWith("https://github.com/")) {
+            result.error("INVALID_DOWNLOAD_URL", "رابط التحديث غير صالح.", null)
+            return
+        }
+        try {
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                setTitle("تحديث برقيات الشرطة")
+                setDescription("يستمر تنزيل التحديث في الخلفية")
+                setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(false)
+                setDestinationInExternalFilesDir(
+                    this@MainActivity,
+                    android.os.Environment.DIRECTORY_DOWNLOADS,
+                    "police-telegrams-update.apk"
+                )
+                setMimeType("application/vnd.android.package-archive")
+            }
+            val id = manager.enqueue(request)
+            getSharedPreferences("app_update", Context.MODE_PRIVATE)
+                .edit()
+                .putLong("download_id", id)
+                .putLong("expected_size", expectedSize ?: -1L)
+                .apply()
+            result.success(id)
+        } catch (error: Exception) {
+            result.error(
+                "DOWNLOAD_ENQUEUE_FAILED",
+                error.message ?: "تعذر بدء التنزيل في الخلفية.",
+                null
+            )
+        }
+    }
+
+    private fun queryBackgroundDownload(
+        call: io.flutter.plugin.common.MethodCall,
+        result: MethodChannel.Result
+    ) {
+        val id = call.argument<Long>("id") ?: call.argument<Int>("id")?.toLong()
+            ?: getSharedPreferences("app_update", Context.MODE_PRIVATE)
+                .getLong("download_id", -1L)
+        if (id < 0L) {
+            result.success(mapOf("status" to "not_found"))
+            return
+        }
+        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        var cursor: Cursor? = null
+        try {
+            cursor = manager.query(DownloadManager.Query().setFilterById(id))
+            if (cursor == null || !cursor.moveToFirst()) {
+                result.success(mapOf("status" to "not_found"))
+                return
+            }
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            val downloaded = cursor.getLong(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+            )
+            val total = cursor.getLong(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+            )
+            val statusName = when (status) {
+                DownloadManager.STATUS_PENDING -> "pending"
+                DownloadManager.STATUS_RUNNING -> "running"
+                DownloadManager.STATUS_PAUSED -> "paused"
+                DownloadManager.STATUS_SUCCESSFUL -> "successful"
+                DownloadManager.STATUS_FAILED -> "failed"
+                else -> "unknown"
+            }
+            val uri = if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                cursor.getString(
+                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)
+                )
+            } else null
+            val reason = if (status == DownloadManager.STATUS_FAILED) {
+                cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+            } else 0
+            result.success(
+                mapOf(
+                    "id" to id,
+                    "status" to statusName,
+                    "downloaded" to downloaded,
+                    "total" to total,
+                    "localUri" to uri,
+                    "reason" to reason
+                )
+            )
+        } catch (error: Exception) {
+            result.error("DOWNLOAD_QUERY_FAILED", error.message, null)
+        } finally {
+            cursor?.close()
+        }
     }
 
     private fun requestUpdateNotificationPermission(result: MethodChannel.Result) {

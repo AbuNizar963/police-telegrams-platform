@@ -240,9 +240,9 @@ Future<void> _downloadAndInstall(
     try {
       final request = http.Request('GET', release.apkUrl);
       request.headers['Accept'] = 'application/octet-stream';
-      final response = await client.send(request).timeout(
-        const Duration(seconds: 45),
-      );
+      final response = await client
+          .send(request)
+          .timeout(const Duration(seconds: 45));
       if (response.statusCode != 200) {
         throw Exception('فشل تنزيل التحديث (HTTP ${response.statusCode}).');
       }
@@ -286,10 +286,9 @@ Future<void> _downloadAndInstall(
     }
     if (!context.mounted) return;
 
-    final result = await _installerChannel.invokeMethod<String>(
-      'installApk',
-      {'path': file.path},
-    );
+    final result = await _installerChannel.invokeMethod<String>('installApk', {
+      'path': file.path,
+    });
     if (result == 'permission_required' && context.mounted) {
       await showDialog<void>(
         context: context,
@@ -335,10 +334,9 @@ Future<void> _downloadAndInstall(
 
 Future<void> _retryInstall(BuildContext context, String path) async {
   try {
-    final result = await _installerChannel.invokeMethod<String>(
-      'installApk',
-      {'path': path},
-    );
+    final result = await _installerChannel.invokeMethod<String>('installApk', {
+      'path': path,
+    });
     if (result == 'permission_required' && context.mounted) {
       _showUpdateMessage(
         context,
@@ -361,10 +359,8 @@ void _showUpdateMessage(BuildContext context, String message) {
 }
 
 int _compareVersion(String latest, String current) {
-  List<int> parse(String value) => value
-      .split('.')
-      .map((part) => int.tryParse(part) ?? 0)
-      .toList();
+  List<int> parse(String value) =>
+      value.split('.').map((part) => int.tryParse(part) ?? 0).toList();
   final a = parse(latest);
   final b = parse(current);
   final componentCount = a.length > b.length ? a.length : b.length;

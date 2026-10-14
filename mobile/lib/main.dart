@@ -182,7 +182,8 @@ class _SessionGateState extends State<SessionGate> {
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: () => setState(() => _session = _api.restoreSession()),
+                      onPressed: () =>
+                          setState(() => _session = _api.restoreSession()),
                       icon: const Icon(Icons.refresh),
                       label: const Text('إعادة المحاولة'),
                     ),

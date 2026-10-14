@@ -15,7 +15,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   Future<void> _check() async {
     if (_checking) return;
     setState(() => _checking = true);
-    await checkAndPromptForAppUpdate(context);
+    await checkAndPromptForAppUpdate(context, showResult: true);
     if (mounted) setState(() => _checking = false);
   }
 

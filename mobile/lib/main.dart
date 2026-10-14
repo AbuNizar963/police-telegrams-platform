@@ -183,7 +183,9 @@ class _SessionGateState extends State<SessionGate> {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, PoliceApi? api}) : _api = api;\n\n  final PoliceApi? _api;
+  const LoginPage({super.key, PoliceApi? api}) : _api = api;
+
+  final PoliceApi? _api;
   @override
   State<LoginPage> createState() => _LoginPageState();
 }

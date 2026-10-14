@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'app_update_page.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
 import 'native_user_management_page.dart';
@@ -344,6 +345,14 @@ class _DashboardPageState extends State<DashboardPage> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
+          IconButton(
+            tooltip: 'تحديث التطبيق',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AppUpdatePage()),
+            ),
+            icon: const Icon(Icons.system_update_alt),
+          ),
           IconButton(onPressed: refresh, icon: const Icon(Icons.refresh)),
           IconButton(
             onPressed: () async {

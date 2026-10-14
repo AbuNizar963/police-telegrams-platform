@@ -864,35 +864,43 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 13),
-          Column(
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.45,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _stat(
-                      'إجمالي البرقيات',
-                      stats['total'] ?? stats['totalTelegrams'] ?? 0,
-                      Icons.description_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _stat(
-                      'قيد المراجعة',
-                      stats['inReview'] ?? stats['pending'] ?? 0,
-                      Icons.pending_actions_outlined,
-                    ),
-                  ),
-                ],
+              _stat(
+                'إجمالي البرقيات',
+                stats['total'] ?? 0,
+                Icons.description_outlined,
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: _stat(
-                  'البرقيات المكتملة',
-                  stats['completed'] ?? stats['approved'] ?? 0,
-                  Icons.verified_outlined,
-                ),
+              _stat(
+                'البرقيات الواردة',
+                stats['incoming'] ?? 0,
+                Icons.call_received_outlined,
+              ),
+              _stat(
+                'البرقيات الصادرة',
+                stats['outgoing'] ?? 0,
+                Icons.call_made_outlined,
+              ),
+              _stat(
+                'البرقيات العاجلة',
+                stats['urgent'] ?? 0,
+                Icons.priority_high_rounded,
+              ),
+              _stat(
+                'قيد المراجعة',
+                stats['pending'] ?? 0,
+                Icons.pending_actions_outlined,
+              ),
+              _stat(
+                'البرقيات المنجزة',
+                stats['resolved'] ?? 0,
+                Icons.verified_outlined,
               ),
             ],
           ),
@@ -1041,7 +1049,16 @@ class _DashboardPageState extends State<DashboardPage> {
         final incoming = _isIncoming(row);
         final serial =
             row['serialCode'] ?? row['serialNumber'] ?? row['number'];
-        final status = '${row['status'] ?? 'مسودة'}';
+        final rawStatus = '${row['status'] ?? 'draft'}'.toLowerCase();
+        final status = switch (rawStatus) {
+          'pending' => 'قيد المراجعة',
+          'in_progress' => 'قيد التنفيذ',
+          'resolved' || 'completed' => 'منجزة',
+          'approved' => 'معتمدة',
+          'rejected' => 'مرفوضة',
+          'draft' => 'مسودة',
+          _ => rawStatus == 'null' ? 'مسودة' : rawStatus,
+        };
         final sender = row['fromOrganizationName'] ??
             row['senderOrganizationName'] ??
             row['senderName'] ??
@@ -1050,8 +1067,26 @@ class _DashboardPageState extends State<DashboardPage> {
             row['receiverOrganizationName'] ??
             row['currentOrganizationName'];
         final subject = '${row['subject'] ?? 'برقية بدون موضوع'}';
-        final priority = row['priority'] ?? row['urgency'];
-        final confidentiality = row['confidentiality'] ?? row['classification'];
+        final rawPriority = row['priority'] ?? row['urgency'];
+        final priority = rawPriority == null
+            ? null
+            : switch ('$rawPriority'.toLowerCase()) {
+                'urgent' || 'critical' || 'high' => 'عاجل',
+                'normal' || 'standard' => 'عادي',
+                'low' => 'منخفض',
+                _ => '$rawPriority',
+              };
+        final rawConfidentiality =
+            row['confidentiality'] ?? row['classification'];
+        final confidentiality = rawConfidentiality == null
+            ? null
+            : switch ('$rawConfidentiality'.toLowerCase()) {
+                'secret' => 'سري',
+                'top_secret' || 'top secret' => 'سري للغاية',
+                'confidential' => 'محظور',
+                'normal' || 'public' => 'عادي',
+                _ => '$rawConfidentiality',
+              };
         return Card(
           clipBehavior: Clip.antiAlias,
           margin: const EdgeInsets.symmetric(vertical: 5),

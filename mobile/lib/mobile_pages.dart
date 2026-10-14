@@ -297,7 +297,8 @@ class _ReportsPageState extends State<ReportsPage> {
         ];
       }),
     ];
-    final csv = '\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n';
+    final csv =
+        '\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n';
 
     try {
       final date = DateTime.now().toIso8601String().substring(0, 10);
@@ -311,7 +312,11 @@ class _ReportsPageState extends State<ReportsPage> {
     } catch (exception) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر تصدير التقرير: ${_errorMessage(exception)}')),
+          SnackBar(
+            content: Text(
+              'تعذر تصدير التقرير: ${_errorMessage(exception)}',
+            ),
+          ),
         );
       }
     }

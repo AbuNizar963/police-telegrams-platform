@@ -39,7 +39,7 @@ class PoliceTelegramsApp extends StatelessWidget {
         surface: const Color(0xFFFFFEFC),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: const Color(0xFFF8F7F2),
+        backgroundColor: Color(0xFFF8F7F2),
         foregroundColor: navy,
         elevation: 0,
         centerTitle: false,

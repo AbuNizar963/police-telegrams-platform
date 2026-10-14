@@ -625,7 +625,6 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     return '$value';
   }
 
-
   List<MapEntry<String, String>> _withCurrent(
     List<MapEntry<String, String>> options,
     String current,

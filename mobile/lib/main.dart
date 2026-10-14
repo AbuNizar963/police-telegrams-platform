@@ -591,198 +591,198 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF07152B),
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
-                ),
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/police-telegrams-icon.png',
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF07152B),
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/police-telegrams-icon.png',
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'برقيات الشرطة',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                      const SizedBox(height: 10),
+                      const Text(
+                        'برقيات الشرطة',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${widget.account['name'] ?? widget.account['username'] ?? ''}',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        '${widget.account['name'] ?? widget.account['username'] ?? ''}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.dashboard_outlined),
-                title: const Text('لوحة التحكم'),
-                selected: section == 0,
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() => section = 0);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.call_made_outlined),
-                title: const Text('البرقيات الصادرة'),
-                selected: section == 1,
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() => section = 1);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.call_received_outlined),
-                title: const Text('البرقيات الواردة'),
-                selected: section == 2,
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() => section = 2);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.map_outlined),
-                title: const Text('المواقع والوحدات والموارد والأرشيف'),
-                subtitle: const Text('متابعة العمل الميداني'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => NativeOperationsPage(api: widget.api),
-                    ),
-                  );
-                },
-              ),
-              if (widget.account['role'] == 'admin') ...[
                 ListTile(
-                  leading: const Icon(Icons.account_tree_outlined),
-                  title: const Text('إدارة الجهات'),
-                  subtitle: const Text('الهيكل التنظيمي وإنشاء الجهات'),
+                  leading: const Icon(Icons.dashboard_outlined),
+                  title: const Text('لوحة التحكم'),
+                  selected: section == 0,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() => section = 0);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.call_made_outlined),
+                  title: const Text('البرقيات الصادرة'),
+                  selected: section == 1,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() => section = 1);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.call_received_outlined),
+                  title: const Text('البرقيات الواردة'),
+                  selected: section == 2,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() => section = 2);
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.map_outlined),
+                  title: const Text('المواقع والوحدات والموارد والأرشيف'),
+                  subtitle: const Text('متابعة العمل الميداني'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            NativeOrganizationManagementPage(api: widget.api),
+                        builder: (_) => NativeOperationsPage(api: widget.api),
+                      ),
+                    );
+                  },
+                ),
+                if (widget.account['role'] == 'admin') ...[
+                  ListTile(
+                    leading: const Icon(Icons.account_tree_outlined),
+                    title: const Text('إدارة الجهات'),
+                    subtitle: const Text('الهيكل التنظيمي وإنشاء الجهات'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              NativeOrganizationManagementPage(api: widget.api),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.manage_accounts_outlined),
+                    title: const Text('إدارة المستخدمين'),
+                    subtitle: const Text('حسابات الجهات والصلاحيات'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              NativeUserManagementPage(api: widget.api),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.tune_outlined),
+                    title: const Text('إعدادات الجهة'),
+                    subtitle: const Text('هوية الجهة والترقيم والتوقيت'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DepartmentSettingsPage(api: widget.api),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+                ListTile(
+                  leading: const Icon(Icons.notifications_none),
+                  title: const Text('الإشعارات'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NotificationsPage(api: widget.api),
                       ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.manage_accounts_outlined),
-                  title: const Text('إدارة المستخدمين'),
-                  subtitle: const Text('حسابات الجهات والصلاحيات'),
+                  leading: const Icon(Icons.assessment_outlined),
+                  title: const Text('التقارير'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            NativeUserManagementPage(api: widget.api),
+                        builder: (_) => ReportsPage(api: widget.api),
                       ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.tune_outlined),
-                  title: const Text('إعدادات الجهة'),
-                  subtitle: const Text('هوية الجهة والترقيم والتوقيت'),
+                  leading: const Icon(Icons.system_update_alt),
+                  title: const Text('تحديث التطبيق'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DepartmentSettingsPage(api: widget.api),
+                        builder: (_) => const AppUpdatePage(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.file_download_outlined),
+                  title: const Text('استيراد وتصدير السجل'),
+                  subtitle: const Text('ملفات CSV متوافقة مع سجل البرقيات'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TelegramCsvPage(api: widget.api),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: const Text('الإعدادات والملف الشخصي'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfileSettingsPage(api: widget.api),
                       ),
                     );
                   },
                 ),
               ],
-              ListTile(
-                leading: const Icon(Icons.notifications_none),
-                title: const Text('الإشعارات'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => NotificationsPage(api: widget.api),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.assessment_outlined),
-                title: const Text('التقارير'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ReportsPage(api: widget.api),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.system_update_alt),
-                title: const Text('تحديث التطبيق'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AppUpdatePage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.file_download_outlined),
-                title: const Text('استيراد وتصدير السجل'),
-                subtitle: const Text('ملفات CSV متوافقة مع سجل البرقيات'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TelegramCsvPage(api: widget.api),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: const Text('الإعدادات والملف الشخصي'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileSettingsPage(api: widget.api),
-                    ),
-                  );
-                },
-              ),
-            ],
             ),
           ),
         ),

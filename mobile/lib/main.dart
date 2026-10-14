@@ -272,7 +272,11 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       await widget.api.call(
         'notifications.registerMobileToken',
-        input: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+        mutation: true,
+        input: {
+          'token': token,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+        },
       );
     } catch (_) {
       // A temporary registration failure must not block the user interface.

@@ -1056,11 +1056,15 @@ class _DashboardPageState extends State<DashboardPage> {
             row['serialCode'] ?? row['serialNumber'] ?? row['number'];
         final rawStatus = '${row['status'] ?? 'draft'}'.toLowerCase();
         final status = switch (rawStatus) {
-          'pending' => 'قيد المراجعة',
+          'pending' || 'in_review' => 'قيد المراجعة',
           'in_progress' => 'قيد التنفيذ',
           'resolved' || 'completed' => 'منجزة',
+          'submitted' => 'مرسلة',
+          'forwarded' => 'محالة',
+          'returned' => 'معادة',
           'approved' => 'معتمدة',
           'rejected' => 'مرفوضة',
+          'archived' => 'مؤرشفة',
           'draft' => 'مسودة',
           _ => rawStatus == 'null' ? 'مسودة' : rawStatus,
         };
@@ -1070,20 +1074,41 @@ class _DashboardPageState extends State<DashboardPage> {
             row['organizationName'];
         final receiver = row['toOrganizationName'] ??
             row['receiverOrganizationName'] ??
-            row['currentOrganizationName'];
+            row['currentOrganizationName'] ??
+            row['recipient'];
         final subject = '${row['subject'] ?? 'برقية بدون موضوع'}';
         final creator =
             row['senderName'] ??
+            row['creatorName'] ??
             row['createdByName'] ??
             widget.account['name'] ??
             widget.account['username'] ??
             '';
+        final rawCategory = row['category'];
+        final category = rawCategory == null
+            ? null
+            : switch ('$rawCategory'.toLowerCase()) {
+                'criminal' => 'جنائي',
+                'administrative' => 'إداري',
+                'traffic' => 'مروري',
+                'security' => 'أمني',
+                'tactical' => 'تكتيكي',
+                'intelligence' => 'استخباراتي',
+                'emergency' => 'طوارئ',
+                'public_order' => 'حفظ النظام',
+                'personnel' => 'شؤون الأفراد',
+                'logistics' => 'إمداد ودعم',
+                'training' => 'تدريب',
+                'community' => 'مجتمعي',
+                'other' => 'أخرى',
+                _ => '$rawCategory',
+              };
         final rawPriority = row['priority'] ?? row['urgency'];
         final priority = rawPriority == null
             ? null
             : switch ('$rawPriority'.toLowerCase()) {
                 'urgent' || 'critical' || 'high' => 'عاجل',
-                'normal' || 'standard' => 'عادي',
+                'normal' || 'standard' || 'slow' => 'عادي',
                 'low' => 'منخفض',
                 _ => '$rawPriority',
               };
@@ -1175,6 +1200,13 @@ class _DashboardPageState extends State<DashboardPage> {
                           const Color(0xFFEAF0FF),
                           const Color(0xFF315FC4),
                           icon: Icons.shield_outlined,
+                        ),
+                      if (category != null && '$category'.trim().isNotEmpty)
+                        _telegramChip(
+                          '$category',
+                          const Color(0xFFE7F6F7),
+                          const Color(0xFF17899A),
+                          icon: Icons.category_outlined,
                         ),
                       _telegramChip(
                         status,

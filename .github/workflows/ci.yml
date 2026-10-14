@@ -30,10 +30,7 @@ jobs:
 
       - name: Check mobile formatting
         working-directory: mobile
-        run: |
-          dart format lib/mobile_pages.dart
-          git -C .. diff -- mobile/lib/mobile_pages.dart
-          dart format --output=none --set-exit-if-changed lib test
+        run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze mobile application
         working-directory: mobile

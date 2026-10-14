@@ -952,7 +952,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF667085),
+                  ),
                 ),
               ),
               CircleAvatar(

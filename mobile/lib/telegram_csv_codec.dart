@@ -14,8 +14,7 @@ class TelegramCsvCodec {
     return '\uFEFF$encoded\r\n';
   }
 
-  static String _escapeCell(String value) =>
-      '"${value.replaceAll('"', '""')}"';
+  static String _escapeCell(String value) => '"${value.replaceAll('"', '""')}"';
 
   static CsvImportResult parseImport(String source) {
     final matrix = _decodeRows(source.replaceFirst('\uFEFF', ''));
@@ -40,77 +39,59 @@ class TelegramCsvCodec {
     for (final cells in matrix.skip(1)) {
       if (cells.every((cell) => cell.trim().isEmpty)) continue;
 
-      final body = getCell(
-        cells,
-        const [
-          'body',
-          'text',
-          'content',
-          'المتن',
-          'نص البرقية',
-          'النص',
-        ],
-      );
+      final body = getCell(cells, const [
+        'body',
+        'text',
+        'content',
+        'المتن',
+        'نص البرقية',
+        'النص',
+      ]);
       if (body.length < 3) {
         invalidRows++;
         continue;
       }
 
-      final direction = getCell(
-        cells,
-        const [
-          'sheetname',
-          'direction',
-          'الاتجاه',
-          'نوع البرقية',
-        ],
-      ).toLowerCase();
+      final direction = getCell(cells, const [
+        'sheetname',
+        'direction',
+        'الاتجاه',
+        'نوع البرقية',
+      ]).toLowerCase();
       final isIncoming =
           direction.contains('وارد') || direction.contains('incoming');
 
       rows.add({
-        'originalSerial': getCell(
-          cells,
-          const [
-            'originalserial',
-            'serial',
-            'serialnumber',
-            'الرقم',
-            'الرقم الأصلي',
-            'رقم البرقية',
-          ],
-        ),
+        'originalSerial': getCell(cells, const [
+          'originalserial',
+          'serial',
+          'serialnumber',
+          'الرقم',
+          'الرقم الأصلي',
+          'رقم البرقية',
+        ]),
         'time': getCell(cells, const ['time', 'الوقت']),
-        'sender': getCell(
-          cells,
-          const [
-            'sender',
-            'creator',
-            'المرسل',
-            'اسم المرسل',
-          ],
-        ),
+        'sender': getCell(cells, const [
+          'sender',
+          'creator',
+          'المرسل',
+          'اسم المرسل',
+        ]),
         'date': getCell(cells, const ['date', 'التاريخ']),
         'body': body,
-        'recipient': getCell(
-          cells,
-          const [
-            'recipient',
-            'receiver',
-            'المستلم',
-            'الجهة المستلمة',
-          ],
-        ),
+        'recipient': getCell(cells, const [
+          'recipient',
+          'receiver',
+          'المستلم',
+          'الجهة المستلمة',
+        ]),
         'signature': getCell(cells, const ['signature', 'التوقيع']),
-        'notes': getCell(
-          cells,
-          const [
-            'notes',
-            'workflowreason',
-            'ملاحظات',
-            'الملاحظات',
-          ],
-        ),
+        'notes': getCell(cells, const [
+          'notes',
+          'workflowreason',
+          'ملاحظات',
+          'الملاحظات',
+        ]),
         'sheetName': isIncoming ? 'وارد' : 'صادر',
       });
     }

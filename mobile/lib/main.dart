@@ -220,6 +220,13 @@ class _LoginPageState extends State<LoginPage> {
   bool busy = false;
   String? error;
 
+  @override
+  void dispose() {
+    username.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
   Future<void> login() async {
     if (username.text.trim().isEmpty || password.text.isEmpty) return;
     setState(() {

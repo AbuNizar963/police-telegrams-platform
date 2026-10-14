@@ -53,7 +53,7 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
       }
       final csv = '\uFEFF' + rows.map((r) => r.map(escapeCsv).join(',')).join('\r\n') + '\r\n';
       final date = DateTime.now().toIso8601String().substring(0, 10);
-      final path = await FilePicker.platform.saveFile(
+      final path = await FilePicker.saveFile(
         dialogTitle: 'حفظ سجل البرقيات', fileName: 'سجل-البرقيات-' + date + '.csv',
         type: FileType.custom, allowedExtensions: ['csv'],
         bytes: Uint8List.fromList(utf8.encode(csv)),
@@ -67,7 +67,7 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
   Future<void> chooseCsv() async {
     setState(() { busy = true; message = null; error = null; preview = []; invalidRows = 0; });
     try {
-      final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['csv'], withData: true);
+      final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['csv'], withData: true);
       if (picked == null || picked.files.isEmpty) return;
       final bytes = picked.files.single.bytes;
       if (bytes == null) throw Exception('تعذر قراءة محتوى الملف المحدد.');

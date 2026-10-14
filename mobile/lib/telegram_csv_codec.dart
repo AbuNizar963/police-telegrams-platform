@@ -111,8 +111,8 @@ class TelegramCsvCodec {
         ),
         'sheetName':
             direction.contains('وارد') || direction.contains('incoming')
-            ? 'وارد'
-            : 'صادر',
+                ? 'وارد'
+                : 'صادر',
       });
     }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'api.dart';
 
@@ -18,6 +19,7 @@ class TelegramActionsPanel extends StatefulWidget {
     required this.telegramId,
     required this.onChanged,
   });
+
   final PoliceApi api;
   final int telegramId;
   final VoidCallback onChanged;
@@ -59,6 +61,47 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     } catch (exception) {
       if (mounted) setState(() => error = _actionError(exception));
     }
+  }
+
+  Future<void> shareTelegram() async {
+    await _run(() async {
+      final result = await widget.api.call(
+        'telegrams.get',
+        input: {'id': widget.telegramId},
+      );
+      if (result is! Map) {
+        throw Exception('تعذر تحميل بيانات البرقية للمشاركة.');
+      }
+
+      final telegram = Map<String, dynamic>.from(result);
+      String value(dynamic input, [String fallback = '—']) {
+        if (input == null || '$input'.trim().isEmpty || '$input' == 'null') {
+          return fallback;
+        }
+        return '$input'.trim();
+      }
+
+      final text = [
+        'برقيات الشرطة',
+        'رقم البرقية: ${value(telegram['serialCode'] ?? telegram['serialNumber'] ?? telegram['number'])}',
+        'الموضوع: ${value(telegram['subject'], 'بدون موضوع')}',
+        'الجهة المستلمة: ${value(telegram['recipient'])}',
+        'الحالة: ${value(telegram['status'])}',
+        'الأولوية: ${value(telegram['priority'])}',
+        'التصنيف: ${value(telegram['classification'])}',
+        'تاريخ الإنشاء: ${value(telegram['createdAt'])}',
+        '',
+        'نص البرقية:',
+        value(telegram['body'], 'لا يوجد نص'),
+      ].join('\n');
+
+      await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          subject: 'برقية الشرطة — ${value(telegram['subject'], 'بدون موضوع')}',
+        ),
+      );
+    });
   }
 
   Future<void> transition(String status) async {
@@ -146,8 +189,13 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   Future<void> pickAttachment() async {
     final result = await FilePicker.pickFiles(withData: true);
-    if (result == null || result.files.single.bytes == null) return;
+    if (result == null || result.files.isEmpty) return;
     final file = result.files.single;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      _show('تعذر قراءة الملف المحدد.');
+      return;
+    }
     final contentType = _contentType(file.extension);
     if (contentType == null) {
       _show('نوع الملف غير مدعوم');
@@ -165,7 +213,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'telegramId': widget.telegramId,
           'fileName': file.name,
           'contentType': contentType,
-          'base64': base64Encode(file.bytes!),
+          'base64': base64Encode(bytes),
         },
       );
       await load();
@@ -183,25 +231,37 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         input: {'attachmentId': id},
       );
       final url = result is Map ? result['url'] : null;
-      if (url != null && mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('رابط المرفق'),
-            content: SelectableText('$url'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
-              ),
-            ],
-          ),
-        );
+      if (url == null || '$url'.trim().isEmpty) {
+        throw Exception('لم يُرجع الخادم رابط تنزيل المرفق.');
       }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('رابط المرفق'),
+          content: SelectableText('$url'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إغلاق'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                await SharePlus.instance.share(
+                  ShareParams(text: '$url', subject: 'رابط مرفق البرقية'),
+                );
+              },
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('مشاركة الرابط'),
+            ),
+          ],
+        ),
+      );
     });
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -244,9 +304,14 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
+                onPressed: busy ? null : shareTelegram,
+                icon: const Icon(Icons.share_outlined),
+                label: const Text('مشاركة البرقية'),
+              ),
+              OutlinedButton.icon(
                 onPressed: busy ? null : () => transition('in_review'),
                 icon: const Icon(Icons.pending_actions),
-                label: const Text('قيد المراجعة'),
+                label: const Text('إرسال للمراجعة'),
               ),
               OutlinedButton.icon(
                 onPressed: busy ? null : () => transition('completed'),
@@ -270,6 +335,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               ),
             ],
           ),
+          if (busy) ...[
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(),
+          ],
           if (routes.isNotEmpty) ...[
             const Divider(height: 28),
             const Text(
@@ -278,12 +347,17 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             ),
             ...routes.map(_routeTile),
           ],
-          if (attachments.isNotEmpty) ...[
-            const Divider(height: 28),
-            const Text(
-              'المرفقات',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
+          const Divider(height: 28),
+          const Text(
+            'المرفقات',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          if (attachments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('لا توجد مرفقات لهذه البرقية.'),
+            )
+          else
             ...attachments.map((item) {
               final attachment = Map<String, dynamic>.from(item as Map);
               return ListTile(
@@ -299,12 +373,12 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   '${attachment['sizeBytes'] ?? attachment['size'] ?? '—'} بايت',
                 ),
                 trailing: IconButton(
+                  tooltip: 'تنزيل المرفق',
                   onPressed: busy ? null : () => downloadAttachment(attachment),
                   icon: const Icon(Icons.download_outlined),
                 ),
               );
             }),
-          ],
         ],
       ),
     ),

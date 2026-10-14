@@ -44,7 +44,7 @@ class PoliceTelegramsApp extends StatelessWidget {
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: Colors.white,
+          color: navy,
           fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
@@ -756,28 +756,35 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 13),
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.55,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          Column(
             children: [
-              _stat(
-                'إجمالي البرقيات',
-                stats['total'] ?? stats['totalTelegrams'] ?? 0,
-                Icons.description_outlined,
+              Row(
+                children: [
+                  Expanded(
+                    child: _stat(
+                      'إجمالي البرقيات',
+                      stats['total'] ?? stats['totalTelegrams'] ?? 0,
+                      Icons.description_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _stat(
+                      'قيد المراجعة',
+                      stats['inReview'] ?? stats['pending'] ?? 0,
+                      Icons.pending_actions_outlined,
+                    ),
+                  ),
+                ],
               ),
-              _stat(
-                'قيد المراجعة',
-                stats['inReview'] ?? stats['pending'] ?? 0,
-                Icons.pending_actions_outlined,
-              ),
-              _stat(
-                'مكتملة',
-                stats['completed'] ?? stats['approved'] ?? 0,
-                Icons.verified_outlined,
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: _stat(
+                  'البرقيات المكتملة',
+                  stats['completed'] ?? stats['approved'] ?? 0,
+                  Icons.verified_outlined,
+                ),
               ),
             ],
           ),

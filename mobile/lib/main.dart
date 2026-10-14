@@ -264,10 +264,13 @@ class _LoginPageState extends State<LoginPage> {
                         color: navy,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.shield_outlined,
-                        color: gold,
-                        size: 42,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/police-telegrams-icon.png',
+                          width: 78,
+                          height: 78,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -512,7 +515,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.shield_outlined, color: gold, size: 36),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/police-telegrams-icon.png',
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     const Text(
                       'برقيات الشرطة',

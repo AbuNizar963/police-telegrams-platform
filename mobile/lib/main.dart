@@ -1433,9 +1433,7 @@ class _DashboardPageState extends State<DashboardPage> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: accent.withValues(alpha: 0.035),
-          border: Border(
-            top: BorderSide(color: accent, width: 3),
-          ),
+          border: Border(top: BorderSide(color: accent, width: 3)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),

@@ -70,6 +70,22 @@ class PoliceApi {
     return Map<String, dynamic>.from(data['json'] ?? data);
   }
 
+  Future<Map<String, dynamic>?> restoreSession() async {
+    final cookie = await _storage.read(key: 'session_cookie');
+    if (cookie == null || cookie.trim().isEmpty) return null;
+
+    try {
+      final user = await call('auth.me');
+      if (user is Map) return Map<String, dynamic>.from(user);
+      await _storage.delete(key: 'session_cookie');
+      return null;
+    } catch (_) {
+      // A network failure is not proof that the session expired. Keep the
+      // cookie so the next launch can retry instead of forcing a new login.
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await call('auth.logout', mutation: true);

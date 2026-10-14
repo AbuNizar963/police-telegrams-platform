@@ -1046,7 +1046,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                         MapEntry('arabic', 'عربية ١٢٣'),
                       ],
                       (value) {
-                        if (value != null) setState(() => _numberSystem = value);
+                        if (value != null) {
+                          setState(() => _numberSystem = value);
+                        }
                       },
                     ),
                     if (_settings['nextOutgoingSerial'] != null ||

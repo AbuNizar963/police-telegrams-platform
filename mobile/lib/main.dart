@@ -642,9 +642,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF12385D),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF315579),
-                          ),
+                          border: Border.all(color: const Color(0xFF315579)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,

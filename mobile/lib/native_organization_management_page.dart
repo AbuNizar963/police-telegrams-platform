@@ -362,7 +362,6 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    final organization = widget.organization;
     final payload = <String, dynamic>{
       'code': _code.text.trim().toUpperCase(),
       'name': _name.text.trim(),
@@ -416,7 +415,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _type,
+                    initialValue: _type,
                     decoration: const InputDecoration(labelText: 'نوع الجهة'),
                     items: _organizationTypes.entries
                         .map(
@@ -432,7 +431,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _parentId,
+                    initialValue: _parentId,
                     decoration: const InputDecoration(labelText: 'الجهة الأب'),
                     items: [
                       const DropdownMenuItem(
@@ -455,7 +454,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _destinationId,
+                    initialValue: _destinationId,
                     decoration: const InputDecoration(
                       labelText: 'جهة استلام البرقيات (اختياري)',
                     ),

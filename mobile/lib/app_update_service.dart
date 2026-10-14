@@ -89,7 +89,10 @@ class _MobileRelease {
 
 /// Checks for a newer signed Android release and offers an in-app download.
 /// Android still displays its own confirmation screen before installing an APK.
-Future<void> checkAndPromptForAppUpdate(BuildContext context) async {
+Future<void> checkAndPromptForAppUpdate(
+  BuildContext context, {
+  bool showResult = false,
+}) async {
   if (!Platform.isAndroid || !context.mounted) return;
 
   try {
@@ -118,7 +121,12 @@ Future<void> checkAndPromptForAppUpdate(BuildContext context) async {
     final updateAvailable =
         comparison > 0 ||
         (comparison == 0 && release.buildNumber > currentBuild);
-    if (!updateAvailable || !context.mounted) return;
+    if (!updateAvailable || !context.mounted) {
+      if (showResult && context.mounted) {
+        _showUpdateMessage(context, 'أنت تستخدم أحدث إصدار منشور.');
+      }
+      return;
+    }
 
     final shouldUpdate = await showDialog<bool>(
       context: context,
@@ -369,7 +377,7 @@ class _DownloadProgressState extends State<_DownloadProgress> {
           mainAxisSize: MainAxisSize.min,
           children: [
             LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
+              value: progress.clamp(0.0, 1.0).toDouble(),
               color: _updateGold,
               backgroundColor: const Color(0xFFE5E7EB),
             ),

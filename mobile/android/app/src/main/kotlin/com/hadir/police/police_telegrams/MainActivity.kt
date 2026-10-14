@@ -80,14 +80,16 @@ class MainActivity : FlutterActivity() {
                         installApk
                     )
                     val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-                        setData(apkUri)
+                        setDataAndType(
+                            apkUri,
+                            "application/vnd.android.package-archive"
+                        )
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        putExtra(Intent.EXTRA_RETURN_RESULT, true)
                     }
-                    if (installIntent.resolveActivity(packageManager) == null) {
-                        throw IOException("لم يعثر Android على مُثبّت حزم متاح.")
-                    }
+                    // Avoid resolveActivity(): Android 11+ package visibility can hide
+                    // the system installer even when it is available. startActivity()
+                    // is authoritative and throws if no activity can handle this intent.
                     startActivity(installIntent)
                     result.success("launched")
                 } catch (error: Exception) {

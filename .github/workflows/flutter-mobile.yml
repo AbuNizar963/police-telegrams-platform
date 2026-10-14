@@ -47,6 +47,7 @@ jobs:
       - name: Format and inspect Dart sources
         run: |
           set -euo pipefail
+          dart fix --apply
           dart format lib test
           for path in lib/app_update_page.dart lib/native_operations_page.dart lib/native_user_management_page.dart lib/telegram_csv_page.dart; do
             echo "FORMATTED_FILE_BEGIN:$path"

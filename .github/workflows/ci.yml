@@ -32,7 +32,7 @@ jobs:
         working-directory: mobile
         run: |
           dart format lib/main.dart lib/telegram_edit_dialog.dart
-          git diff -- main.dart telegram_edit_dialog.dart
+          git -C .. diff -- mobile/lib/main.dart mobile/lib/telegram_edit_dialog.dart
           exit 1
 
       - name: Check mobile formatting

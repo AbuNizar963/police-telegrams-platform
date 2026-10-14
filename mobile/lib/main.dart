@@ -932,14 +932,62 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            'آخر البرقيات',
+            'سجل البرقيات الكامل',
             style: TextStyle(
               color: navy,
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          const Text(
+            'متابعة البرقيات الواردة والصادرة وحالتها',
+            style: TextStyle(color: Color(0xFF7A8493), fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('كل البرقيات'),
+                selected: section == 0,
+                onSelected: (selected) {
+                  if (!selected || section == 0) return;
+                  setState(() {
+                    section = 0;
+                    telegramPage = 1;
+                  });
+                  refresh(showLoading: false);
+                },
+              ),
+              ChoiceChip(
+                label: const Text('الصادرة'),
+                selected: section == 1,
+                onSelected: (selected) {
+                  if (!selected || section == 1) return;
+                  setState(() {
+                    section = 1;
+                    telegramPage = 1;
+                  });
+                  refresh(showLoading: false);
+                },
+              ),
+              ChoiceChip(
+                label: const Text('الواردة'),
+                selected: section == 2,
+                onSelected: (selected) {
+                  if (!selected || section == 2) return;
+                  setState(() {
+                    section = 2;
+                    telegramPage = 1;
+                  });
+                  refresh(showLoading: false);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           _searchField(),
           const SizedBox(height: 10),
           _telegramCards(telegrams),

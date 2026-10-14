@@ -270,12 +270,20 @@ class _ReportsPageState extends State<ReportsPage> {
 
     String cell(dynamic value) {
       var text = value == null || value == 'null' ? '' : '$value';
-      if (RegExp(r'^[=+\\-@]').hasMatch(text)) text = "'$text";
+      if (RegExp(r'^[=+\-@]').hasMatch(text)) text = "'$text";
       return '"${text.replaceAll('"', '""')}"';
     }
 
     final rows = <List<String>>[
-      ['رقم البرقية', 'الموضوع', 'الجهة', 'الحالة', 'السرية', 'الأولوية', 'تاريخ الإنشاء'],
+      [
+        'رقم البرقية',
+        'الموضوع',
+        'الجهة',
+        'الحالة',
+        'السرية',
+        'الأولوية',
+        'تاريخ الإنشاء',
+      ],
       ...raw.whereType<Map>().map((item) {
         final row = Map<String, dynamic>.from(item);
         return [
@@ -289,7 +297,7 @@ class _ReportsPageState extends State<ReportsPage> {
         ];
       }),
     ];
-    final csv = '\\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\\r\\n')}\\r\\n';
+    final csv = '\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n';
 
     try {
       final date = DateTime.now().toIso8601String().substring(0, 10);

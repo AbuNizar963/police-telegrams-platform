@@ -136,16 +136,19 @@ async function notifyFirebaseOrganization(input: {
     console.warn("[Notification] Firebase delivery failed", error);
     return { sent: 0, removed: 0, configured: true };
   }
-  const invalidTokens = response.responses
-    .map((result, index) =>
-      !result.success &&
-      (result.error?.code === "messaging/registration-token-not-registered" ||
-        result.error?.code === "messaging/invalid-registration-token")
-        ? tokens[index]?.token
-        : null
+  const invalidTokens = response.responses.flatMap((result, index) => {
+    const token = tokens[index];
+    const isInvalidRegistration =
+      result.error?.code === "messaging/registration-token-not-registered" ||
+      result.error?.code === "messaging/invalid-registration-token";
+
+    return !result.success && isInvalidRegistration && token ? [token] : [];
+  });
+  await Promise.all(
+    invalidTokens.map(token =>
+      deleteMobilePushToken(token.token, token.userId)
     )
-    .filter((token): token is string => Boolean(token));
-  await Promise.all(invalidTokens.map(token => deleteMobilePushToken(token)));
+  );
   return {
     sent: response.successCount,
     removed: invalidTokens.length,

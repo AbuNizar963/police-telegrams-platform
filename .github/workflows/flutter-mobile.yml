@@ -79,19 +79,29 @@ jobs:
             release_version="${existing_tag#v}"
             release_version="${release_version%-build.*}"
           else
-            latest_version="$(git tag --list 'v[0-9]*' | sed -nE 's/^v([0-9]+\.[0-9]+\.[0-9]+)(-build\.[0-9]+)?$/\1/p' | sort -V | tail -n 1)"
-            if [ -z "$latest_version" ]; then
-              latest_version="$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+)(\+[0-9]+)?$/\1/p' mobile/pubspec.yaml | head -n 1)"
-            fi
-            if ! [[ "$latest_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Could not determine a valid previous release version."
+            # Only build tags count as versions already published by this workflow.
+            # A newer pubspec version is honored instead of being overwritten by an older tag.
+            latest_built_version="$(git tag --list 'v[0-9]*-build.[0-9]*' | sed -nE 's/^v([0-9]+\.[0-9]+\.[0-9]+)-build\.[0-9]+$/\1/p' | sort -V | tail -n 1)"
+            pubspec_version="$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+)(\+[0-9]+)?$/\1/p' mobile/pubspec.yaml | head -n 1)"
+
+            if ! [[ "$pubspec_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Could not determine a valid version from mobile/pubspec.yaml."
               exit 1
             fi
-            IFS='.' read -r major minor patch <<< "$latest_version"
-            release_version="${major}.${minor}.$((patch + 1))"
+
+            if [ -z "$latest_built_version" ]; then
+              release_version="$pubspec_version"
+            else
+              newest_version="$(printf '%s\n%s\n' "$latest_built_version" "$pubspec_version" | sort -V | tail -n 1)"
+              if [ "$newest_version" != "$latest_built_version" ]; then
+                release_version="$pubspec_version"
+              else
+                IFS='.' read -r major minor patch <<< "$latest_built_version"
+                release_version="${major}.${minor}.$((patch + 1))"
+              fi
+            fi
           fi
 
-          release_tag="v${release_version}-build.${GITHUB_RUN_NUMBER}"
           echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "Release version: $release_version"

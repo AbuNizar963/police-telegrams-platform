@@ -645,7 +645,9 @@ export async function listTelegrams(
   to?: string,
   page = 1,
   pageSize = 50,
-  organizationScopeIds: string[] | null = null
+  organizationScopeIds: string[] | null = null,
+  direction?: "incoming" | "outgoing",
+  directionOrganizationId: string | null = null
 ): Promise<TelegramListItem[]> {
   const safePage = Math.max(1, Math.floor(page));
   const safePageSize = Math.min(1000, Math.max(1, Math.floor(pageSize)));
@@ -671,6 +673,15 @@ export async function listTelegrams(
     query = query.or(
       `organizationId.in.(${ids}),currentOrganizationId.in.(${ids})`
     );
+  }
+  if (direction && directionOrganizationId) {
+    if (direction === "incoming") {
+      query = query
+        .eq("currentOrganizationId", directionOrganizationId)
+        .neq("organizationId", directionOrganizationId);
+    } else {
+      query = query.eq("organizationId", directionOrganizationId);
+    }
   }
   if (classification) query = query.eq("classification", classification);
   if (priority) query = query.eq("priority", priority);

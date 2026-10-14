@@ -205,9 +205,9 @@ class _SessionGateState extends State<SessionGate> {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, PoliceApi? api}) : _api = api;
+  const LoginPage({super.key, this.api});
 
-  final PoliceApi? _api;
+  final PoliceApi? api;
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -215,7 +215,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final username = TextEditingController();
   final password = TextEditingController();
-  late final PoliceApi api = widget._api ?? PoliceApi();
+  late final PoliceApi api = widget.api ?? PoliceApi();
   bool busy = false;
   String? error;
 

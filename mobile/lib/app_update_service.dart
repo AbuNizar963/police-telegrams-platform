@@ -203,6 +203,12 @@ Future<void> checkAndPromptForAppUpdate(
   } catch (error) {
     // Update checks must never prevent access to the app if GitHub is offline.
     debugPrint('App update check failed: $error');
+    if (showResult && context.mounted) {
+      _showUpdateMessage(
+        context,
+        'تعذر التحقق من التحديث الآن. تحقق من الاتصال ثم أعد المحاولة.',
+      );
+    }
   }
 }
 

@@ -362,6 +362,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   int section = 0;
+  int telegramPage = 1;
+  bool hasNextTelegramPage = false;
   String searchQuery = '';
   final searchController = TextEditingController();
   final push = PushNotificationService();
@@ -428,17 +430,22 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
-        widget.api.call('telegrams.list', input: {'page': 1, 'pageSize': 20}),
+        widget.api.call(
+          'telegrams.list',
+          input: {'page': telegramPage, 'pageSize': 20},
+        ),
       ]);
       final list = results[1];
+      final rows = list is Map && list['items'] is List
+          ? list['items'] as List
+          : list is List
+          ? list
+          : <dynamic>[];
       if (mounted) {
         setState(() {
           stats = Map<String, dynamic>.from(results[0] as Map);
-          telegrams = list is Map && list['items'] is List
-              ? list['items'] as List
-              : list is List
-              ? list
-              : [];
+          telegrams = rows;
+          hasNextTelegramPage = rows.length >= 20;
           error = null;
         });
       }
@@ -824,6 +831,8 @@ class _DashboardPageState extends State<DashboardPage> {
           _searchField(),
           const SizedBox(height: 10),
           _telegramCards(telegrams),
+          const SizedBox(height: 12),
+          _paginationControls(),
         ],
       );
     }
@@ -856,6 +865,8 @@ class _DashboardPageState extends State<DashboardPage> {
         _searchField(),
         const SizedBox(height: 10),
         _telegramCards(rows),
+        const SizedBox(height: 12),
+        _paginationControls(),
       ],
     );
   }
@@ -963,6 +974,39 @@ class _DashboardPageState extends State<DashboardPage> {
       }).toList(),
     );
   }
+
+  Widget _paginationControls() => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        'صفحة $telegramPage',
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+      Row(
+        children: [
+          OutlinedButton(
+            onPressed: telegramPage <= 1 || loading || _refreshInProgress
+                ? null
+                : () {
+                    setState(() => telegramPage--);
+                    refresh();
+                  },
+            child: const Text('السابق'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: !hasNextTelegramPage || loading || _refreshInProgress
+                ? null
+                : () {
+                    setState(() => telegramPage++);
+                    refresh();
+                  },
+            child: const Text('التالي'),
+          ),
+        ],
+      ),
+    ],
+  );
 
   Widget _stat(String title, dynamic value, IconData icon) => Card(
     margin: EdgeInsets.zero,

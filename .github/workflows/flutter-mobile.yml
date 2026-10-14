@@ -102,6 +102,7 @@ jobs:
             fi
           fi
 
+          release_tag="v${release_version}-build.${GITHUB_RUN_NUMBER}"
           echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "Release version: $release_version"

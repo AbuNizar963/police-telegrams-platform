@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -364,11 +365,17 @@ class _DashboardPageState extends State<DashboardPage> {
   String searchQuery = '';
   final searchController = TextEditingController();
   final push = PushNotificationService();
+  Timer? _refreshTimer;
+  bool _refreshInProgress = false;
 
   @override
   void initState() {
     super.initState();
     refresh();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => refresh(showLoading: false),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkAndPromptForAppUpdate(context);
     });
@@ -408,14 +415,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     searchController.dispose();
     push.dispose();
     super.dispose();
   }
 
-  Future<void> refresh() async {
-    if (!mounted) return;
-    setState(() => loading = true);
+  Future<void> refresh({bool showLoading = true}) async {
+    if (!mounted || _refreshInProgress) return;
+    _refreshInProgress = true;
+    if (showLoading) setState(() => loading = true);
     try {
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
@@ -438,7 +447,8 @@ class _DashboardPageState extends State<DashboardPage> {
         setState(() => error = e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
-      if (mounted) setState(() => loading = false);
+      _refreshInProgress = false;
+      if (mounted && showLoading) setState(() => loading = false);
     }
   }
 

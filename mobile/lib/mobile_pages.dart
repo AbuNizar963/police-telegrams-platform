@@ -626,16 +626,6 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     return '$value';
   }
 
-  String _choice(
-    dynamic value,
-    List<MapEntry<String, String>> options,
-    String fallback,
-  ) {
-    for (final option in options) {
-      if (option.key == value) return option.key;
-    }
-    return fallback;
-  }
 
   List<MapEntry<String, String>> _withCurrent(
     List<MapEntry<String, String>> options,
@@ -772,7 +762,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   }
 
   Future<void> _uploadLogo() async {
-    final selection = await FilePicker.platform.pickFiles(
+    final selection = await FilePicker.pickFiles(
       type: FileType.image,
       withData: true,
     );

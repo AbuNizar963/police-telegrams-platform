@@ -219,14 +219,25 @@ Future<void> _downloadAndInstall(
   BuildContext context,
   _MobileRelease release,
 ) async {
-  final progressKey = GlobalKey<_DownloadProgressState>();
-  var downloadDialogOpen = true;
-  unawaited(
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) =>
-          _DownloadProgress(key: progressKey, total: release.apkSize),
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  messenger?.showSnackBar(
+    const SnackBar(
+      duration: Duration(hours: 1),
+      behavior: SnackBarBehavior.floating,
+      content: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(child: Text('جارٍ تنزيل التحديث في الخلفية؛ يمكنك متابعة استخدام التطبيق.')),
+        ],
+      ),
     ),
   );
 
@@ -255,7 +266,6 @@ Future<void> _downloadAndInstall(
         )) {
           sink.add(chunk);
           received += chunk.length;
-          progressKey.currentState?.update(received);
         }
         await sink.flush();
       } finally {
@@ -280,9 +290,8 @@ Future<void> _downloadAndInstall(
       client.close();
     }
 
-    if (downloadDialogOpen && context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      downloadDialogOpen = false;
+    if (context.mounted) {
+      messenger?.hideCurrentSnackBar();
     }
     if (!context.mounted) return;
 
@@ -319,11 +328,8 @@ Future<void> _downloadAndInstall(
       _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
     }
   } catch (error) {
-    if (downloadDialogOpen && context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      downloadDialogOpen = false;
-    }
     if (context.mounted) {
+      messenger?.hideCurrentSnackBar();
       _showUpdateMessage(
         context,
         error.toString().replaceFirst('Exception: ', ''),
@@ -372,44 +378,3 @@ int _compareVersion(String latest, String current) {
   return 0;
 }
 
-class _DownloadProgress extends StatefulWidget {
-  const _DownloadProgress({super.key, required this.total});
-
-  final int total;
-
-  @override
-  State<_DownloadProgress> createState() => _DownloadProgressState();
-}
-
-class _DownloadProgressState extends State<_DownloadProgress> {
-  int _received = 0;
-
-  void update(int received) {
-    if (mounted) setState(() => _received = received);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = widget.total > 0 ? _received / widget.total : 0.0;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: AlertDialog(
-        title: const Text('جارٍ تنزيل التحديث'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0).toDouble(),
-              color: _updateGold,
-              backgroundColor: const Color(0xFFE5E7EB),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${(_received / (1024 * 1024)).toStringAsFixed(1)} / ${(widget.total / (1024 * 1024)).toStringAsFixed(1)} ميغابايت',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

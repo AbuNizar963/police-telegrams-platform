@@ -368,6 +368,7 @@ class _DashboardPageState extends State<DashboardPage> {
   String? error;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
+  String? activeOrganizationId;
   int section = 0;
   int telegramPage = 1;
   bool hasNextTelegramPage = false;
@@ -444,6 +445,7 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
+        widget.api.call('organizations.context'),
         widget.api.call(
           'telegrams.list',
           input: {
@@ -453,7 +455,8 @@ class _DashboardPageState extends State<DashboardPage> {
           },
         ),
       ]);
-      final list = results[1];
+      final organizationContext = results[1];
+      final list = results[2];
       final rows = list is Map && list['items'] is List
           ? list['items'] as List
           : list is List
@@ -462,6 +465,9 @@ class _DashboardPageState extends State<DashboardPage> {
       if (mounted) {
         setState(() {
           stats = Map<String, dynamic>.from(results[0] as Map);
+          activeOrganizationId = organizationContext is Map
+              ? organizationContext['organizationId']?.toString()
+              : null;
           telegrams = rows;
           hasNextTelegramPage = rows.length >= 20;
           error = null;
@@ -894,10 +900,20 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   bool _isIncoming(Map<String, dynamic> row) {
-    final direction = '${row['direction'] ?? row['type'] ?? ''}'.toLowerCase();
+    final direction = '${row['direction'] ?? row['type'] ?? ''}'
+        .trim()
+        .toLowerCase();
     if (direction == 'incoming' || direction == 'واردة') return true;
     if (direction == 'outgoing' || direction == 'صادرة') return false;
-    return row['organizationId'] != row['currentOrganizationId'];
+
+    final organizationId = activeOrganizationId;
+    if (organizationId == null || organizationId.isEmpty) return false;
+
+    final senderOrganizationId = row['organizationId']?.toString();
+    final receiverOrganizationId = row['currentOrganizationId']?.toString();
+    if (senderOrganizationId == organizationId) return false;
+    if (receiverOrganizationId == organizationId) return true;
+    return false;
   }
 
   Widget _searchField() => TextField(

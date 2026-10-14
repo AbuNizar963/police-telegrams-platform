@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -218,10 +219,13 @@ Future<void> _downloadAndInstall(
 ) async {
   final progressKey = GlobalKey<_DownloadProgressState>();
   var downloadDialogOpen = true;
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => _DownloadProgress(key: progressKey, total: release.apkSize),
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          _DownloadProgress(key: progressKey, total: release.apkSize),
+    ),
   );
 
   try {

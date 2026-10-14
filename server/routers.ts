@@ -2704,7 +2704,12 @@ export const appRouter = router({
           }
         }
 
-        return { created, skipped, errors: errors.slice(0, 25) };
+        return {
+          created,
+          skipped,
+          errorCount: errors.length,
+          errors: errors.slice(0, 25),
+        };
       }),
   }),
 });

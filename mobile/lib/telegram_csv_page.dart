@@ -32,7 +32,10 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
       error = null;
     });
     try {
-      final result = await widget.api.call('telegrams.exportRows');
+      final result = await widget.api.call(
+        'telegrams.exportRows',
+        input: const {},
+      );
       final items = result is List
           ? result
           : result is Map && result['items'] is List
@@ -184,7 +187,10 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
         if (result is Map) {
           created += int.tryParse('${result['created']}') ?? 0;
           skipped += int.tryParse('${result['skipped']}') ?? 0;
-          if (result['errors'] is List) {
+          final errorCount = result['errorCount'];
+          if (errorCount is num) {
+            failed += errorCount.toInt();
+          } else if (result['errors'] is List) {
             failed += (result['errors'] as List).length;
           }
         }

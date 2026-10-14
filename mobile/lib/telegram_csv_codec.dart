@@ -109,10 +109,10 @@ class TelegramCsvCodec {
             'الملاحظات',
           ],
         ),
-        'sheetName':
-            direction.contains('وارد') || direction.contains('incoming')
-                ? 'وارد'
-                : 'صادر',
+        'sheetName': direction.contains('وارد') ||
+                direction.contains('incoming')
+            ? 'وارد'
+            : 'صادر',
       });
     }
 

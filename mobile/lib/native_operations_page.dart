@@ -20,6 +20,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   bool _loading = true;
   String? _error;
   String _archiveSearch = '';
+  final _archiveSearchController = TextEditingController();
   List<Map<String, dynamic>> _telegrams = [];
   List<Map<String, dynamic>> _archived = [];
   List<Map<String, dynamic>> _units = [];
@@ -35,6 +36,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   @override
   void dispose() {
     _tabs.dispose();
+    _archiveSearchController.dispose();
     super.dispose();
   }
 
@@ -240,7 +242,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                   overflow: TextOverflow.ellipsis,
                 ),
                 subtitle: Text(
-                  '${_value(row['serialCode'] ?? row['serialNumber'])}\\n'
+                  '${_value(row['serialCode'] ?? row['serialNumber'])}\n'
                   'خط العرض: $lat · خط الطول: $lng',
                 ),
                 isThreeLine: true,
@@ -398,6 +400,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
       padding: const EdgeInsets.all(16),
       children: [
         TextField(
+          controller: _archiveSearchController,
           onChanged: (value) => setState(() => _archiveSearch = value),
           decoration: InputDecoration(
             hintText: 'البحث في الأرشيف بالرقم أو الموضوع أو الجهة',
@@ -406,7 +409,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 ? null
                 : IconButton(
                     tooltip: 'مسح البحث',
-                    onPressed: () => setState(() => _archiveSearch = ''),
+                    onPressed: () {
+                      _archiveSearchController.clear();
+                      setState(() => _archiveSearch = '');
+                    },
                     icon: const Icon(Icons.close),
                   ),
           ),

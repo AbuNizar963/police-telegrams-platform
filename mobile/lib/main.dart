@@ -1039,7 +1039,8 @@ class _DashboardPageState extends State<DashboardPage> {
       children: filteredRows.map((item) {
         final row = Map<String, dynamic>.from(item as Map);
         final incoming = _isIncoming(row);
-        final serial = row['serialCode'] ?? row['serialNumber'] ?? row['number'];
+        final serial =
+            row['serialCode'] ?? row['serialNumber'] ?? row['number'];
         final status = '${row['status'] ?? 'مسودة'}';
         final sender = row['fromOrganizationName'] ??
             row['senderOrganizationName'] ??
@@ -1093,7 +1094,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         incoming ? 'واردة' : 'صادرة',
                         const Color(0xFFE8F0FF),
                         const Color(0xFF2458C6),
-                        icon: incoming ? Icons.south_west_rounded : Icons.north_east_rounded,
+                        icon: incoming
+                            ? Icons.south_west_rounded
+                            : Icons.north_east_rounded,
                       ),
                     ],
                   ),
@@ -1119,7 +1122,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           const Color(0xFFB42332),
                           icon: Icons.priority_high_rounded,
                         ),
-                      if (confidentiality != null && '$confidentiality'.trim().isNotEmpty)
+                      if (confidentiality != null &&
+                          '$confidentiality'.trim().isNotEmpty)
                         _telegramChip(
                           '$confidentiality',
                           const Color(0xFFEAF0FF),
@@ -1137,7 +1141,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 9),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 15, color: Color(0xFF87909D)),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 15,
+                        color: Color(0xFF87909D),
+                      ),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
@@ -1150,7 +1158,10 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF9AA3AF)),
+                      const Icon(
+                        Icons.chevron_left_rounded,
+                        color: Color(0xFF9AA3AF),
+                      ),
                     ],
                   ),
                 ],
@@ -1162,7 +1173,11 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _telegramDetailLine(String label, String value, {bool strong = true}) =>
+  Widget _telegramDetailLine(
+    String label,
+    String value, {
+    bool strong = true,
+  }) =>
       RichText(
         textAlign: TextAlign.right,
         text: TextSpan(
@@ -1177,7 +1192,9 @@ class _DashboardPageState extends State<DashboardPage> {
             TextSpan(
               text: value,
               style: TextStyle(
-                color: strong ? const Color(0xFF626E7D) : const Color(0xFF263243),
+                color: strong
+                    ? const Color(0xFF626E7D)
+                    : const Color(0xFF263243),
                 fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
               ),
             ),

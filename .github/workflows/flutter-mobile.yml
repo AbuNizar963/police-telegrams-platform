@@ -43,6 +43,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Temporary formatter capture for branch-only source cleanup.
       - name: Format and inspect Dart sources
         run: |
           set -euo pipefail

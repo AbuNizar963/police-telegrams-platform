@@ -226,15 +226,14 @@ Future<void> _downloadAndInstall(
         'requestUpdateNotificationPermission',
       );
     } on PlatformException catch (error) {
-      debugPrint('Update notification permission unavailable: ${error.message}');
+      debugPrint(
+        'Update notification permission unavailable: ${error.message}',
+      );
     }
 
     final downloadId = await _installerChannel.invokeMethod<int>(
       'enqueueBackgroundDownload',
-      {
-        'url': release.apkUrl.toString(),
-        'expectedSize': release.apkSize,
-      },
+      {'url': release.apkUrl.toString(), 'expectedSize': release.apkSize},
     );
     if (downloadId == null || downloadId <= 0) {
       throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
@@ -293,9 +292,10 @@ Future<void> _downloadAndInstall(
       }
       if (!context.mounted) return;
 
-      final result = await _installerChannel.invokeMethod<String>('installApk', {
-        'path': localPath,
-      });
+      final result = await _installerChannel.invokeMethod<String>(
+        'installApk',
+        {'path': localPath},
+      );
       if (result == 'permission_required' && context.mounted) {
         await showDialog<void>(
           context: context,

@@ -98,8 +98,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       await SharePlus.instance.share(
         ShareParams(
           text: text,
-          subject:
-              'برقية الشرطة — ${value(telegram['subject'], 'بدون موضوع')}',
+          subject: 'برقية الشرطة — ${value(telegram['subject'], 'بدون موضوع')}',
         ),
       );
     });
@@ -349,10 +348,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             ...routes.map(_routeTile),
           ],
           const Divider(height: 28),
-          const Text(
-            'المرفقات',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
+          const Text('المرفقات', style: TextStyle(fontWeight: FontWeight.w800)),
           if (attachments.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
@@ -375,9 +371,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                 ),
                 trailing: IconButton(
                   tooltip: 'تنزيل المرفق',
-                  onPressed: busy
-                      ? null
-                      : () => downloadAttachment(attachment),
+                  onPressed: busy ? null : () => downloadAttachment(attachment),
                   icon: const Icon(Icons.download_outlined),
                 ),
               );

@@ -943,9 +943,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         children: [
                           Text(
                             error!,
-                            style: const TextStyle(
-                              color: Color(0xFF704800),
-                            ),
+                            style: const TextStyle(color: Color(0xFF704800)),
                           ),
                           const SizedBox(height: 8),
                           Align(

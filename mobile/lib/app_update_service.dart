@@ -279,7 +279,10 @@ Future<void> _downloadAndInstall(
         )) {
           sink.add(chunk);
           received += chunk.length;
-          final percent = (received * 100 / release.apkSize).floor().clamp(0, 100);
+          final percent = (received * 100 / release.apkSize).floor().clamp(
+            0,
+            100,
+          );
           if (percent != lastReportedPercent) {
             lastReportedPercent = percent;
             try {
@@ -326,9 +329,7 @@ Future<void> _downloadAndInstall(
         // Preserve the original download error if cleanup also fails.
       }
       try {
-        await _installerChannel.invokeMethod<void>(
-          'failUpdateNotification',
-        );
+        await _installerChannel.invokeMethod<void>('failUpdateNotification');
       } on PlatformException catch (error) {
         debugPrint(
           'Could not clear failed download notification: ${error.message}',

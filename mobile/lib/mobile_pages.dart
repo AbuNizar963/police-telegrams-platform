@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -258,6 +259,56 @@ class _ReportsPageState extends State<ReportsPage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _exportCsv() async {
+    final raw = report?['rows'] ?? report?['items'] ?? report?['telegrams'];
+    if (raw is! List || raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد سجلات لتصديرها.')),
+      );
+      return;
+    }
+
+    String cell(dynamic value) {
+      var text = value == null || value == 'null' ? '' : '$value';
+      if (RegExp(r'^[=+\\-@]').hasMatch(text)) text = "'$text";
+      return '"${text.replaceAll('"', '""')}"';
+    }
+
+    final rows = <List<String>>[
+      ['رقم البرقية', 'الموضوع', 'الجهة', 'الحالة', 'السرية', 'الأولوية', 'تاريخ الإنشاء'],
+      ...raw.whereType<Map>().map((item) {
+        final row = Map<String, dynamic>.from(item);
+        return [
+          '${row['serialCode'] ?? row['serialNumber'] ?? ''}',
+          '${row['subject'] ?? ''}',
+          '${row['recipient'] ?? row['organizationName'] ?? ''}',
+          _statuses['${row['status']}'] ?? '${row['status'] ?? ''}',
+          '${row['classification'] ?? ''}',
+          '${row['priority'] ?? ''}',
+          '${row['createdAt'] ?? ''}',
+        ];
+      }),
+    ];
+    final csv = '\\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\\r\\n')}\\r\\n';
+
+    try {
+      final date = DateTime.now().toIso8601String().substring(0, 10);
+      await FilePicker.saveFile(
+        dialogTitle: 'تصدير تقرير البرقيات',
+        fileName: 'telegram-report-$date.csv',
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+        bytes: Uint8List.fromList(utf8.encode(csv)),
+      );
+    } catch (exception) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تصدير التقرير: ${_errorMessage(exception)}')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
@@ -270,6 +321,11 @@ class _ReportsPageState extends State<ReportsPage> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
+          IconButton(
+            tooltip: 'تصدير التقرير CSV',
+            onPressed: loading || report == null ? null : _exportCsv,
+            icon: const Icon(Icons.file_download_outlined),
+          ),
           IconButton(
             tooltip: 'تحديث التقرير',
             onPressed: loading ? null : load,

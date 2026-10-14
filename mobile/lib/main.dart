@@ -21,7 +21,10 @@ const canvas = Color(0xFFF5F7FA);
 void main() => runApp(const PoliceTelegramsApp());
 
 class PoliceTelegramsApp extends StatelessWidget {
-  const PoliceTelegramsApp({super.key});
+  const PoliceTelegramsApp({super.key, this.api});
+
+  final PoliceApi? api;
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -98,24 +101,27 @@ class PoliceTelegramsApp extends StatelessWidget {
         thickness: 1,
       ),
     ),
-    home: const SessionGate(),
+    home: SessionGate(api: api),
   );
 }
 
 class SessionGate extends StatefulWidget {
-  const SessionGate({super.key});
+  const SessionGate({super.key, this.api});
+
+  final PoliceApi? api;
 
   @override
   State<SessionGate> createState() => _SessionGateState();
 }
 
 class _SessionGateState extends State<SessionGate> {
-  final PoliceApi _api = PoliceApi();
+  late final PoliceApi _api;
   late Future<Map<String, dynamic>?> _session;
 
   @override
   void initState() {
     super.initState();
+    _api = widget.api ?? PoliceApi();
     _session = _api.restoreSession();
   }
 

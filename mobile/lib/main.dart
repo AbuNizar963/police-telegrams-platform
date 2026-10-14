@@ -1039,9 +1039,13 @@ class _DashboardPageState extends State<DashboardPage> {
           padding: const EdgeInsets.all(20),
           child: Center(
             child: Text(
-              query.isEmpty
-                  ? 'لا توجد برقيات في هذا القسم'
-                  : 'لا توجد نتائج مطابقة لعبارة البحث',
+              query.isNotEmpty
+                  ? 'لا توجد نتائج مطابقة لعبارة البحث في الصفحة الحالية'
+                  : section == 0
+                  ? 'لا توجد برقيات في هذه الصفحة'
+                  : hasNextTelegramPage
+                  ? 'لا توجد برقيات مطابقة في هذه الصفحة. انتقل إلى الصفحة التالية للتحقق من بقية النتائج.'
+                  : 'لا توجد برقيات في هذا القسم',
               textAlign: TextAlign.center,
             ),
           ),

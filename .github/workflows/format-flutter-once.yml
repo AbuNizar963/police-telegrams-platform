@@ -1,0 +1,48 @@
+name: Format Flutter Dart sources (one-time maintenance)
+
+on:
+  push:
+    branches:
+      - flutter-mobile-app
+    paths:
+      - ".github/workflows/format-flutter-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format-dart:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[formatter-bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout maintenance branch
+        uses: actions/checkout@v4
+        with:
+          ref: flutter-mobile-app
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      - name: Format Dart sources
+        working-directory: mobile
+        run: dart format lib test
+
+      - name: Commit formatter output if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/lib/app_update_service.dart mobile/lib/main.dart mobile/lib/telegram_actions.dart
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git commit -m "style(flutter): apply official Dart formatting [formatter-bot]"
+          git push origin HEAD:flutter-mobile-app

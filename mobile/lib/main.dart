@@ -9,6 +9,7 @@ import 'native_operations_page.dart';
 import 'native_user_management_page.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
+import 'telegram_csv_page.dart';
 
 const navy = Color(0xFF101C35);
 const gold = Color(0xFFC9A45C);
@@ -498,6 +499,20 @@ class _DashboardPageState extends State<DashboardPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ReportsPage(api: widget.api),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_download_outlined),
+                title: const Text('استيراد وتصدير السجل'),
+                subtitle: const Text('ملفات CSV متوافقة مع سجل البرقيات'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TelegramCsvPage(api: widget.api),
                     ),
                   );
                 },

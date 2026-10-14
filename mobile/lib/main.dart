@@ -863,9 +863,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     if (saved != true || !mounted) return;
     await load();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ تعديلات البرقية.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('تم حفظ تعديلات البرقية.')));
   }
 
   @override

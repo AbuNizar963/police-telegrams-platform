@@ -156,10 +156,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
     child: AlertDialog(
       title: const Text(
         'تعديل بيانات البرقية',
-        style: TextStyle(
-          color: _editNavy,
-          fontWeight: FontWeight.w900,
-        ),
+        style: TextStyle(color: _editNavy, fontWeight: FontWeight.w900),
       ),
       content: SizedBox(
         width: 460,

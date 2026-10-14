@@ -28,13 +28,6 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: Diagnose mobile formatter changes
-        working-directory: mobile
-        run: |
-          dart format lib/main.dart lib/telegram_edit_dialog.dart
-          git -C .. diff -- mobile/lib/main.dart mobile/lib/telegram_edit_dialog.dart
-          exit 1
-
       - name: Check mobile formatting
         working-directory: mobile
         run: dart format --output=none --set-exit-if-changed lib test

@@ -172,13 +172,13 @@ class _NativeOrganizationManagementPageState
           actions: [
             IconButton(
               tooltip: 'تحديث',
-              onPressed: _loading ? null : load,
+              onPressed: _loading || _saving ? null : load,
               icon: const Icon(Icons.refresh),
             ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: _saving ? null : () => _editOrganization(),
+          onPressed: _loading || _saving ? null : () => _editOrganization(),
           icon: const Icon(Icons.add_business_outlined),
           label: const Text('جهة جديدة'),
         ),
@@ -191,6 +191,13 @@ class _NativeOrganizationManagementPageState
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   hintText: 'ابحث باسم الجهة أو رمزها',
+                  suffixIcon: _search.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'مسح البحث',
+                          onPressed: () => setState(() => _search = ''),
+                          icon: const Icon(Icons.close),
+                        ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

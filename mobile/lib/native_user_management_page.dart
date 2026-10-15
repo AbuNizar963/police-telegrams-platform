@@ -615,7 +615,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     child: AlertDialog(
       title: Text(_editing ? 'تعديل بيانات الحساب' : 'إنشاء حساب جهة'),
       content: SizedBox(
-        width: 460,
+        width: MediaQuery.sizeOf(context).width * 0.82,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

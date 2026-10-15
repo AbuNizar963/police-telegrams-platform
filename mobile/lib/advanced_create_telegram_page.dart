@@ -272,8 +272,21 @@ class _AdvancedCreateTelegramSheetState
                               keyboardType: TextInputType.number,
                               onChanged: (_) => _serialEdited = true,
                               decoration: const InputDecoration(
-                                hintText: 'يوضع الرقم التالي تلقائيًا',
+                                hintText: 'رقم البرقية',
                                 prefixIcon: Icon(Icons.numbers_outlined),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 5),
+                              child: Text(
+                                'يوضع الرقم التالي تلقائيًا، ويمكن تعديله قبل الحفظ. يمنع النظام تكرار الرقم داخل الجهة.',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      height: 1.5,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -303,7 +316,10 @@ class _AdvancedCreateTelegramSheetState
                               Card(
                                 margin: EdgeInsets.zero,
                                 color: _broadcast
-                                    ? const Color(0xFFFFF8E8)
+                                    ? (Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? const Color(0xFF3C301A)
+                                          : const Color(0xFFFFF8E8))
                                     : null,
                                 child: CheckboxListTile(
                                   value: _broadcast,
@@ -376,9 +392,11 @@ class _AdvancedCreateTelegramSheetState
                             _fieldLabel('نص البرقية'),
                             TextField(
                               controller: _body,
-                              minLines: 8,
-                              maxLines: 14,
+                              minLines: 9,
+                              maxLines: 18,
                               textAlignVertical: TextAlignVertical.top,
+                              textCapitalization: TextCapitalization.none,
+                              autocorrect: false,
                               decoration: const InputDecoration(
                                 hintText: 'اكتب تفاصيل البلاغ...',
                                 alignLabelWithHint: true,
@@ -411,23 +429,61 @@ class _AdvancedCreateTelegramSheetState
                                   label: const Text('إزالة المرفق'),
                                 ),
                               ),
-                            const SizedBox(height: 14),
-                            FilledButton.icon(
-                              onPressed: _saving ? null : _submit,
-                              icon: _saving
-                                  ? const SizedBox.square(
-                                      dimension: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send_outlined),
-                              label: Text(
-                                _saving
-                                    ? 'جارٍ الحفظ والإرسال...'
-                                    : 'حفظ وإرسال البرقية',
-                              ),
+                            const SizedBox(height: 20),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compact = constraints.maxWidth < 380;
+                                final cancel = OutlinedButton.icon(
+                                  onPressed: _saving
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('إلغاء'),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(46),
+                                  ),
+                                );
+                                final send = FilledButton.icon(
+                                  onPressed: _saving ? null : _submit,
+                                  icon: _saving
+                                      ? const SizedBox.square(
+                                          dimension: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.send_outlined),
+                                  label: Text(
+                                    _saving
+                                        ? 'جارٍ الإرسال...'
+                                        : 'إرسال البرقية',
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: _composerNavy,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size.fromHeight(46),
+                                  ),
+                                );
+                                if (compact) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      send,
+                                      const SizedBox(height: 8),
+                                      cancel,
+                                    ],
+                                  );
+                                }
+                                return Row(
+                                  children: [
+                                    Expanded(child: cancel),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: send),
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -471,8 +527,8 @@ class _AdvancedCreateTelegramSheetState
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(
       label,
-      style: const TextStyle(
-        color: _composerNavy,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 13,
         fontWeight: FontWeight.w800,
       ),
@@ -500,15 +556,19 @@ class _AdvancedCreateTelegramSheetState
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     backgroundColor: entry.key == selected
-                        ? const Color(0xFFFFF8E8)
+                        ? (Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF3C301A)
+                              : const Color(0xFFFFF8E8))
                         : null,
                     foregroundColor: entry.key == selected
-                        ? const Color(0xFF7A5C1E)
-                        : _composerNavy,
+                        ? (Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFE7CC8C)
+                              : const Color(0xFF7A5C1E))
+                        : Theme.of(context).colorScheme.onSurface,
                     side: BorderSide(
                       color: entry.key == selected
                           ? _composerGold
-                          : const Color(0xFFD9DEE7),
+                          : Theme.of(context).colorScheme.outlineVariant,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

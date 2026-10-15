@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 
@@ -120,6 +121,22 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   List<Map<String, dynamic>> get _locations => _telegrams.where((row) {
     return row['gpsLatitude'] != null && row['gpsLongitude'] != null;
   }).toList();
+
+  Future<void> _openMap(dynamic latitude, dynamic longitude) async {
+    final lat = double.tryParse('$latitude');
+    final lng = double.tryParse('$longitude');
+    if (lat == null || lng == null) return;
+    final uri = Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': '$lat,$lng',
+    });
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح الموقع في خرائط Google.')),
+      );
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredArchive {
     final query = _archiveSearch.trim().toLowerCase();
@@ -246,6 +263,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
             final lng = row['gpsLongitude'];
             return Card(
               child: ListTile(
+                onTap: () => _openMap(lat, lng),
                 leading: const CircleAvatar(
                   backgroundColor: Color(0xFFF1E8D5),
                   child: Icon(Icons.location_on_outlined, color: _navy),

@@ -1007,6 +1007,16 @@ class _DashboardPageState extends State<DashboardPage>
                             final notification = Map<String, dynamic>.from(
                               visibleRows[index] as Map,
                             );
+                            final telegramId = int.tryParse(
+                              '${notification['telegramId'] ?? ''}',
+                            );
+                            final notificationId = int.tryParse(
+                              '${notification['id'] ?? ''}',
+                            );
+                            final read = notification['readAt'] != null;
+                            final requiresAction =
+                                notification['type'] == 'route.approved' ||
+                                notification['type'] == 'route.requested';
                             return ListTile(
                               dense: true,
                               leading: const CircleAvatar(
@@ -1032,6 +1042,37 @@ class _DashboardPageState extends State<DashboardPage>
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              trailing: !read && requiresAction
+                                  ? const Chip(
+                                      label: Text(
+                                        'إجراء مطلوب',
+                                        style: TextStyle(fontSize: 9),
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    )
+                                  : null,
+                              onTap: telegramId == null
+                                  ? null
+                                  : () async {
+                                      if (!read &&
+                                          !requiresAction &&
+                                          notificationId != null) {
+                                        try {
+                                          await widget.api.call(
+                                            'notifications.markRead',
+                                            mutation: true,
+                                            input: {'id': notificationId},
+                                          );
+                                        } catch (_) {
+                                          // Opening the telegram still helps
+                                          // the user recover from a mark-read
+                                          // request failure.
+                                        }
+                                      }
+                                      if (!dialogContext.mounted) return;
+                                      Navigator.pop(dialogContext);
+                                      await _openIncomingTelegram(telegramId);
+                                    },
                             );
                           },
                         );
@@ -1044,7 +1085,14 @@ class _DashboardPageState extends State<DashboardPage>
                       onPressed: () {
                         Navigator.pop(dialogContext);
                         if (!mounted) return;
-                        _pushPage(NotificationsPage(api: widget.api));
+                        _pushPage(
+                          NotificationsPage(
+                            api: widget.api,
+                            onOpenTelegram: (id) {
+                              _openIncomingTelegram(id);
+                            },
+                          ),
+                        );
                       },
                       child: const Text('عرض جميع الإشعارات'),
                     ),

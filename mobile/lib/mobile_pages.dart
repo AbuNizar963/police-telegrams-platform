@@ -12,14 +12,18 @@ const _gold = Color(0xFFD8C38E);
 String _errorMessage(Object error) =>
     error.toString().replaceFirst('Exception: ', '');
 
+bool _requiresNotificationAction(dynamic type) =>
+    type == 'route.approved' || type == 'route.requested';
+
 String _stringValue(dynamic value, [String fallback = '—']) {
   final text = '$value'.trim();
   return text.isEmpty || text == 'null' ? fallback : text;
 }
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key, required this.api});
+  const NotificationsPage({super.key, required this.api, this.onOpenTelegram});
   final PoliceApi api;
+  final ValueChanged<int>? onOpenTelegram;
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
@@ -95,7 +99,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         item as Map,
                       );
                       final id = int.tryParse('${notification['id']}');
+                      final telegramId = int.tryParse(
+                        '${notification['telegramId'] ?? ''}',
+                      );
                       final read = notification['readAt'] != null;
+                      final requiresAction = _requiresNotificationAction(
+                        notification['type'],
+                      );
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
@@ -116,10 +126,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             ),
                           ),
                           subtitle: Text(
-                            '${_stringValue(notification['body'] ?? notification['content'])}\n${_stringValue(notification['createdAt'])}',
+                            '${_stringValue(notification['body'] ?? notification['content'])}\n${_stringValue(notification['createdAt'])}${requiresAction && !read ? '\nبانتظار تأكيد الاستلام أو الرفض' : ''}',
                           ),
                           isThreeLine: true,
-                          trailing: !read && id != null
+                          onTap:
+                              telegramId != null &&
+                                  widget.onOpenTelegram != null
+                              ? () {
+                                  if (!read && !requiresAction && id != null) {
+                                    markRead(id);
+                                  }
+                                  widget.onOpenTelegram!(telegramId);
+                                }
+                              : null,
+                          trailing: !read && id != null && !requiresAction
                               ? IconButton(
                                   tooltip: 'تحديد كمقروء',
                                   onPressed: () => markRead(id),

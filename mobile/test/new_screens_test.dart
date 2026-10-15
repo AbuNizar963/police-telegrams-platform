@@ -115,9 +115,9 @@ void main() {
     await tester.pumpWidget(_host(AdvancedCreateTelegramSheet(api: api)));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('عاجل'), 420);
+    await tester.ensureVisible(find.text('عاجل').first);
     await tester.tap(find.text('عاجل'));
-    await tester.scrollUntilVisible(find.text('كافة الوحدات'), -420);
+    await tester.ensureVisible(find.text('كافة الوحدات').first);
     await tester.tap(find.text('كافة الوحدات'));
     await tester.pump();
 

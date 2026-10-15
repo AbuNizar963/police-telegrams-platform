@@ -110,7 +110,9 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
           Text(
             'منصة رسمية لإدارة البرقيات والعمليات',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 28),
           Card(
@@ -225,7 +227,9 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                           )
                         : const Icon(Icons.manage_search_rounded),
                     label: Text(
-                      _checking ? 'جارٍ البحث عن التحديثات...' : 'البحث عن تحديث',
+                      _checking
+                          ? 'جارٍ البحث عن التحديثات...'
+                          : 'البحث عن تحديث',
                     ),
                   ),
                   const SizedBox(height: 10),

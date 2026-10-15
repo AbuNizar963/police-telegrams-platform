@@ -319,8 +319,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F7F2),
-        foregroundColor: _userNavy,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         title: const Text(
           'إدارة المستخدمين',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -335,7 +335,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: _userGold,
-        foregroundColor: _userNavy,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         onPressed: _loading || _saving ? null : _createUser,
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('إضافة حساب'),

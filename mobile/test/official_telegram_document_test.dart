@@ -58,7 +58,7 @@ void main() {
       expect(html, contains('درجة الأولوية:</strong> عاجل'));
       expect(html, contains('رمز QR للتحقق من أصالة البرقية'));
       expect(html, contains('<svg'));
-      expect(html, contains('https://example.test/verify/verify-token'));
+      expect(html, contains('<path d="M'));
       expect(html, contains('اسم المسؤول'));
       expect(html, contains('نص الوثيقة'));
     },

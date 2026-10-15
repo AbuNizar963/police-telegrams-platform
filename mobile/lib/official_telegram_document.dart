@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -196,7 +194,7 @@ class _OfficialTelegramDocumentPageState
   Future<void> _printPdf() => _perform(() async {
     final bytes = await _getPdfBytes();
     await Printing.layoutPdf(
-      name: '${_fileBaseName}.pdf',
+      name: '$_fileBaseName.pdf',
       onLayout: (_) async => bytes,
     );
   });
@@ -205,7 +203,7 @@ class _OfficialTelegramDocumentPageState
     final bytes = await _getPdfBytes();
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ الوثيقة الرسمية',
-      fileName: '${_fileBaseName}.pdf',
+      fileName: '$_fileBaseName.pdf',
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
       bytes: bytes,
@@ -220,7 +218,7 @@ class _OfficialTelegramDocumentPageState
 
   Future<void> _sharePdf() => _perform(() async {
     final bytes = await _getPdfBytes();
-    await Printing.sharePdf(bytes: bytes, filename: '${_fileBaseName}.pdf');
+    await Printing.sharePdf(bytes: bytes, filename: '$_fileBaseName.pdf');
   });
 
   Future<void> _shareImage() => _perform(() async {
@@ -231,7 +229,7 @@ class _OfficialTelegramDocumentPageState
         files: [
           XFile.fromData(
             bytes,
-            name: '${_fileBaseName}.png',
+            name: '$_fileBaseName.png',
             mimeType: 'image/png',
           ),
         ],
@@ -246,7 +244,7 @@ class _OfficialTelegramDocumentPageState
     if (bytes == null) throw Exception('صورة المعاينة غير جاهزة.');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',
-      fileName: '${_fileBaseName}.png',
+      fileName: '$_fileBaseName.png',
       type: FileType.custom,
       allowedExtensions: const ['png'],
       bytes: bytes,
@@ -616,7 +614,7 @@ String _createQrSvg(String value) {
       if (image.isDark(row, column)) {
         final x = (column + margin) * cell;
         final y = (row + margin) * cell;
-        path.write('M$x $y h$cell v$cell h-${cell} z ');
+        path.write('M$x $y h$cell v$cell h-$cell z ');
       }
     }
   }

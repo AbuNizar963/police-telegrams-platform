@@ -1516,7 +1516,7 @@ class _DashboardPageState extends State<DashboardPage>
                 value: 'about',
                 child: _AccountMenuItem(
                   icon: Icons.info_outline,
-                  title: 'حول التطبيق وتحديثاته',
+                  title: 'حول النظام وميزاته',
                 ),
               ),
               const PopupMenuItem(

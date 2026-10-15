@@ -119,9 +119,10 @@ String _cleanReleaseNotes(String raw) {
         .trim()
         .toLowerCase();
     if (normalized.isEmpty ||
-        RegExp(r'^(what.s changed|full changelog|التغييرات)',
-                caseSensitive: false)
-            .hasMatch(normalized)) {
+        RegExp(
+          r'^(what.s changed|full changelog|التغييرات)',
+          caseSensitive: false,
+        ).hasMatch(normalized)) {
       continue;
     }
 
@@ -137,11 +138,9 @@ String _cleanReleaseNotes(String raw) {
     line = line.replaceAll(RegExp(r'[*_`#]'), '').trim();
     if (line.isEmpty) continue;
 
-    final key = line
-        .replaceAll(RegExp(r'[*_`#]'), '')
-        .trim()
-        .toLowerCase();
-    final arabic = knownTranslations[key] ??
+    final key = line.replaceAll(RegExp(r'[*_`#]'), '').trim().toLowerCase();
+    final arabic =
+        knownTranslations[key] ??
         (RegExp(r'[\u0600-\u06ff]').hasMatch(line)
             ? line
             : _genericArabicReleaseNote(key));

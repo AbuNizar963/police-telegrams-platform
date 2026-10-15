@@ -12,7 +12,7 @@ class _TestPoliceApi extends PoliceApi {
 
   @override
   Future<Map<String, dynamic>?> restoreSession() async =>
-      signedIn ? {'id': 1, 'name': 'مشغل النظام', 'role': 'user'} : null;
+      signedIn ? {'id': 1, 'name': 'مشغل النظام', 'role': 'admin'} : null;
 
   @override
   Future<dynamic> call(
@@ -29,11 +29,16 @@ class _TestPoliceApi extends PoliceApi {
         'urgent': 1,
         'pending': 2,
         'resolved': 3,
+        'today': 4,
+        'todayUrgent': 1,
+        'todayIncoming': 2,
+        'inProgress': 2,
         'urgentAwaitingReceipt': 0,
       },
       'organizations.context' => {
         'organizationId': 'org-1',
         'organizationName': 'إدارة الاختبار',
+        'role': 'organization_admin',
       },
       'telegrams.list' => {'items': <dynamic>[]},
       'notifications.inbox' => <dynamic>[],
@@ -56,24 +61,35 @@ void main() {
     expect(find.text('اسم المستخدم'), findsOneWidget);
   });
 
-  testWidgets('dashboard quick actions and stat cards are interactive', (
+  testWidgets('dashboard matches reference layout and KPI filters work', (
     tester,
   ) async {
     final api = _TestPoliceApi(signedIn: true);
     await tester.pumpWidget(PoliceTelegramsApp(api: api));
     await tester.pumpAndSettle();
 
-    expect(find.text('إنشاء برقية'), findsOneWidget);
-    expect(find.text('الإشعارات'), findsWidgets);
-    expect(find.text('التقارير'), findsOneWidget);
+    expect(find.byTooltip('إنشاء برقية'), findsOneWidget);
+    expect(find.text('تقرير البرقيات'), findsOneWidget);
+    expect(find.text('تخصيص العرض'), findsOneWidget);
+    expect(find.text('الفلاتر'), findsOneWidget);
+    expect(find.text('الواردة اليوم'), findsOneWidget);
+    expect(find.text('مرحبًا مشغل النظام'), findsNothing);
 
-    final incomingStat = find.text('البرقيات الواردة').first;
+    final incomingStat = find.text('الواردة اليوم');
     await tester.tap(
       find.ancestor(of: incomingStat, matching: find.byType(InkWell)).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('البرقيات الواردة'), findsOneWidget);
     expect(api.calls['telegrams.list']?['direction'], 'incoming');
+    expect(api.calls['telegrams.list']?['from'], isA<String>());
+    expect(api.calls['telegrams.list']?['to'], isA<String>());
+
+    await tester.scrollUntilVisible(
+      find.text('سجل البرقيات الكامل'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('سجل البرقيات الكامل'), findsOneWidget);
   });
 }

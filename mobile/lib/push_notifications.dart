@@ -23,14 +23,11 @@ class PushNotificationService {
     try {
       await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-      await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-      final token = await _messaging.getToken();
-      if (token != null && token.isNotEmpty) onToken(token);
+      final settings = await _messaging.getNotificationSettings();
+      if (_isAuthorized(settings.authorizationStatus)) {
+        final token = await _messaging.getToken();
+        if (token != null && token.isNotEmpty) onToken(token);
+      }
 
       // A foreground delivery is not a user tap. Refresh the inbox/dashboard
       // without navigating away from the screen the user is currently using.
@@ -57,6 +54,49 @@ class PushNotificationService {
     final raw = message.data['telegramId'] ?? message.data['telegram_id'];
     return int.tryParse('$raw');
   }
+
+  Future<bool> notificationsEnabled() async {
+    try {
+      await Firebase.initializeApp();
+      final settings = await _messaging.getNotificationSettings();
+      return _isAuthorized(settings.authorizationStatus);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> enableNotifications({
+    required void Function(String token) onToken,
+  }) async {
+    try {
+      await Firebase.initializeApp();
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      if (!_isAuthorized(settings.authorizationStatus)) return false;
+      final token = await _messaging.getToken();
+      if (token == null || token.isEmpty) return false;
+      onToken(token);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> disableNotifications() async {
+    try {
+      await _messaging.deleteToken();
+    } catch (_) {
+      // The server registration is still removed if Firebase is unavailable.
+    }
+  }
+
+  bool _isAuthorized(AuthorizationStatus status) =>
+      status == AuthorizationStatus.authorized ||
+      status == AuthorizationStatus.provisional;
 
   /// Returns the current device token when Firebase is configured.
   /// A missing or unavailable Firebase configuration must not block logout.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -34,6 +36,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   int _totalPages = 1;
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _organizations = [];
+  Timer? _searchDebounce;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -59,10 +63,13 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   }
 
   Future<void> load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    final generation = ++_loadGeneration;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final results = await Future.wait([
         widget.api.call(
@@ -71,7 +78,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
         ),
         widget.api.call('organizations.all'),
       ]);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       final userResult = results[0];
       setState(() {
         _users = _rows(userResult);
@@ -81,14 +88,33 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
             : 1;
       });
     } catch (exception) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _error = exception.toString().replaceFirst('Exception: ', '');
         });
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _search = value;
+      _page = 1;
+    });
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) load();
+    });
   }
 
   Future<String?> _confirmPassword(String title) async {
@@ -319,13 +345,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _search = value;
-                  _page = 1;
-                });
-                load();
-              },
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو اسم المستخدم أو الرقم الوظيفي',
                 prefixIcon: const Icon(Icons.search),
@@ -333,6 +353,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                     ? null
                     : IconButton(
                         onPressed: () {
+                          _searchDebounce?.cancel();
                           setState(() {
                             _search = '';
                             _page = 1;

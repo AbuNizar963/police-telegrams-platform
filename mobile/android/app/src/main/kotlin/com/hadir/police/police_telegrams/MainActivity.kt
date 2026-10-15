@@ -21,6 +21,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 
 class MainActivity : FlutterActivity() {
     private val installerChannel =
@@ -40,6 +41,11 @@ class MainActivity : FlutterActivity() {
                     }
                     "enqueueBackgroundDownload" -> enqueueBackgroundDownload(call, result)
                     "queryBackgroundDownload" -> queryBackgroundDownload(call, result)
+                    "getPendingUpdate" -> getPendingUpdate(result)
+                    "clearPendingUpdate" -> {
+                        clearPendingUpdate()
+                        result.success(null)
+                    }
                     "startUpdateNotification" -> {
                         showUpdateNotification(
                             title = "جارٍ تنزيل تحديث برقيات الشرطة",
@@ -109,8 +115,27 @@ class MainActivity : FlutterActivity() {
         val url = call.argument<String>("url")
         val expectedSize = call.argument<Long>("expectedSize")
             ?: call.argument<Int>("expectedSize")?.toLong()
-        if (url.isNullOrBlank() || !url.startsWith("https://github.com/")) {
+        val expectedSha256 = call.argument<String>("expectedSha256")
+            ?.trim()
+            ?.lowercase(java.util.Locale.ROOT)
+        val releaseVersion = call.argument<String>("version")?.trim()
+        val buildNumber = call.argument<Int>("buildNumber") ?: 0
+        val downloadUri = url?.let { Uri.parse(it) }
+        if (downloadUri == null || downloadUri.scheme != "https" ||
+            downloadUri.host != "github.com" ||
+            !downloadUri.path.orEmpty().contains("/releases/download/")
+        ) {
             result.error("INVALID_DOWNLOAD_URL", "رابط التحديث غير صالح.", null)
+            return
+        }
+        if (expectedSha256 == null || !SHA256_PATTERN.matches(expectedSha256)) {
+            result.error("INVALID_CHECKSUM", "بصمة ملف التحديث غير صالحة.", null)
+            return
+        }
+        if (expectedSize == null || expectedSize <= 0L || releaseVersion.isNullOrBlank() ||
+            buildNumber <= 0
+        ) {
+            result.error("INVALID_UPDATE_METADATA", "بيانات إصدار التحديث غير مكتملة.", null)
             return
         }
         try {
@@ -134,7 +159,10 @@ class MainActivity : FlutterActivity() {
             getSharedPreferences("app_update", Context.MODE_PRIVATE)
                 .edit()
                 .putLong("download_id", id)
-                .putLong("expected_size", expectedSize ?: -1L)
+                .putLong("expected_size", expectedSize)
+                .putString("expected_sha256", expectedSha256)
+                .putString("release_version", releaseVersion)
+                .putInt("release_build_number", buildNumber)
                 .apply()
             result.success(id)
         } catch (error: Exception) {
@@ -144,6 +172,41 @@ class MainActivity : FlutterActivity() {
                 null
             )
         }
+    }
+
+    private fun getPendingUpdate(result: MethodChannel.Result) {
+        val preferences = getSharedPreferences("app_update", Context.MODE_PRIVATE)
+        val id = preferences.getLong("download_id", -1L)
+        if (id < 0L) {
+            result.success(null)
+            return
+        }
+        result.success(
+            mapOf(
+                "id" to id,
+                "expectedSize" to preferences.getLong("expected_size", -1L),
+                "expectedSha256" to preferences.getString("expected_sha256", null),
+                "version" to preferences.getString("release_version", null),
+                "buildNumber" to preferences.getInt("release_build_number", 0)
+            )
+        )
+    }
+
+    private fun clearPendingUpdate() {
+        val preferences = getSharedPreferences("app_update", Context.MODE_PRIVATE)
+        val id = preferences.getLong("download_id", -1L)
+        if (id >= 0L) {
+            try {
+                (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).remove(id)
+            } catch (_: Exception) {
+                // The system may already have removed an expired download record.
+            }
+        }
+        preferences.edit().clear().apply()
+        getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+            ?.let { File(it, "police-telegrams-update.apk").delete() }
+        File(cacheDir, "updates/police-telegrams-update.apk").delete()
+        cancelUpdateNotification()
     }
 
     private fun queryBackgroundDownload(
@@ -309,8 +372,15 @@ class MainActivity : FlutterActivity() {
 
     private fun installApk(call: io.flutter.plugin.common.MethodCall, result: MethodChannel.Result) {
         val path = call.argument<String>("path")
+        val expectedSha256 = call.argument<String>("expectedSha256")
+            ?.trim()
+            ?.lowercase(java.util.Locale.ROOT)
         if (path.isNullOrBlank()) {
             result.error("INVALID_PATH", "مسار ملف التحديث غير صالح.", null)
+            return
+        }
+        if (expectedSha256 == null || !SHA256_PATTERN.matches(expectedSha256)) {
+            result.error("INVALID_CHECKSUM", "بصمة ملف التحديث غير صالحة.", null)
             return
         }
 
@@ -325,6 +395,14 @@ class MainActivity : FlutterActivity() {
         }
 
         try {
+            if (sha256(downloadedApk) != expectedSha256) {
+                result.error(
+                    "APK_CHECKSUM_MISMATCH",
+                    "لا تطابق بصمة ملف التحديث البصمة المنشورة؛ أُوقف التثبيت حفاظًا على سلامة التطبيق.",
+                    null
+                )
+                return
+            }
             val updateDirectory = File(cacheDir, "updates")
             if (!updateDirectory.exists() && !updateDirectory.mkdirs()) {
                 throw IOException("تعذر تجهيز مجلد تثبيت التحديث.")
@@ -341,6 +419,15 @@ class MainActivity : FlutterActivity() {
             if (!installApk.isFile || installApk.length() != downloadedApk.length()) {
                 installApk.delete()
                 throw IOException("تعذر تجهيز ملف التحديث للتثبيت.")
+            }
+            if (sha256(installApk) != expectedSha256) {
+                installApk.delete()
+                result.error(
+                    "APK_CHECKSUM_MISMATCH",
+                    "فشل التحقق من سلامة نسخة التثبيت؛ أُوقف التثبيت.",
+                    null
+                )
+                return
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
@@ -371,7 +458,23 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+    }
+
     companion object {
         private const val NOTIFICATION_PERMISSION_REQUEST = 4108
+        private val SHA256_PATTERN = Regex("^[a-f0-9]{64}$")
     }
 }

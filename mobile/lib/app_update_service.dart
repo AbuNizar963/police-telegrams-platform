@@ -22,6 +22,7 @@ class _MobileRelease {
     required this.notes,
     required this.apkUrl,
     required this.apkSize,
+    required this.apkSha256,
   });
 
   final String version;
@@ -29,6 +30,7 @@ class _MobileRelease {
   final String notes;
   final Uri apkUrl;
   final int apkSize;
+  final String apkSha256;
 
   factory _MobileRelease.fromJson(Map<String, dynamic> json) {
     final tag = json['tag_name'];
@@ -47,6 +49,7 @@ class _MobileRelease {
 
     Uri? apkUrl;
     int? apkSize;
+    String? apkSha256;
     if (assets is List) {
       for (final item in assets.whereType<Map>()) {
         final name = item['name'];
@@ -63,15 +66,23 @@ class _MobileRelease {
             if (item['size'] is int && (item['size'] as int) > 0) {
               apkSize = item['size'] as int;
             }
+            final digest = item['digest'];
+            if (digest is String &&
+                RegExp(
+                  r'^sha256:[a-f0-9]{64}$',
+                  caseSensitive: false,
+                ).hasMatch(digest)) {
+              apkSha256 = digest.substring('sha256:'.length).toLowerCase();
+            }
             break;
           }
         }
       }
     }
 
-    if (apkUrl == null || apkSize == null) {
+    if (apkUrl == null || apkSize == null || apkSha256 == null) {
       throw const FormatException(
-        'الإصدار منشور، لكن ملف APK غير متوفر للتنزيل.',
+        'الإصدار المنشور لا يتضمن ملف APK أو بصمة SHA-256 صالحة؛ أُوقف التحديث حفاظًا على السلامة.',
       );
     }
 
@@ -84,6 +95,50 @@ class _MobileRelease {
           : 'لا توجد ملاحظات مرفقة لهذا الإصدار.',
       apkUrl: apkUrl,
       apkSize: apkSize,
+      apkSha256: apkSha256,
+    );
+  }
+}
+
+class _PendingMobileUpdate {
+  const _PendingMobileUpdate({
+    required this.id,
+    required this.version,
+    required this.buildNumber,
+    required this.expectedSize,
+    required this.expectedSha256,
+  });
+
+  final int id;
+  final String version;
+  final int buildNumber;
+  final int expectedSize;
+  final String expectedSha256;
+
+  factory _PendingMobileUpdate.fromMap(Map<String, dynamic> map) {
+    final id = (map['id'] as num?)?.toInt();
+    final version = map['version'];
+    final buildNumber = (map['buildNumber'] as num?)?.toInt();
+    final expectedSize = (map['expectedSize'] as num?)?.toInt();
+    final hash = map['expectedSha256'];
+    if (id == null ||
+        id <= 0 ||
+        version is! String ||
+        !RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version) ||
+        buildNumber == null ||
+        buildNumber <= 0 ||
+        expectedSize == null ||
+        expectedSize <= 0 ||
+        hash is! String ||
+        !RegExp(r'^[a-f0-9]{64}$', caseSensitive: false).hasMatch(hash)) {
+      throw const FormatException('بيانات التحديث المحفوظة غير صالحة.');
+    }
+    return _PendingMobileUpdate(
+      id: id,
+      version: version,
+      buildNumber: buildNumber,
+      expectedSize: expectedSize,
+      expectedSha256: hash.toLowerCase(),
     );
   }
 }
@@ -98,6 +153,9 @@ Future<void> checkAndPromptForAppUpdate(
 
   try {
     final packageInfo = await PackageInfo.fromPlatform();
+    final resumed = await _resumePendingUpdate(context, packageInfo);
+    if (resumed || !context.mounted) return;
+
     final response = await http
         .get(
           Uri.parse(_releaseApi),
@@ -233,7 +291,13 @@ Future<void> _downloadAndInstall(
 
     final downloadId = await _installerChannel.invokeMethod<int>(
       'enqueueBackgroundDownload',
-      {'url': release.apkUrl.toString(), 'expectedSize': release.apkSize},
+      {
+        'url': release.apkUrl.toString(),
+        'expectedSize': release.apkSize,
+        'expectedSha256': release.apkSha256,
+        'version': release.version,
+        'buildNumber': release.buildNumber,
+      },
     );
     if (downloadId == null || downloadId <= 0) {
       throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
@@ -249,8 +313,29 @@ Future<void> _downloadAndInstall(
       ),
     );
 
-    // Android DownloadManager owns the network transfer. It continues when
-    // Flutter is paused or the app process is reclaimed by the system.
+    await _watchBackgroundDownload(
+      context,
+      downloadId: downloadId,
+      expectedSize: release.apkSize,
+      expectedSha256: release.apkSha256,
+    );
+  } catch (error) {
+    if (context.mounted) {
+      messenger?.hideCurrentSnackBar();
+      _showUpdateMessage(context, _updateErrorMessage(error));
+    }
+  }
+}
+
+Future<void> _watchBackgroundDownload(
+  BuildContext context, {
+  required int downloadId,
+  required int expectedSize,
+  required String expectedSha256,
+}) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    // DownloadManager owns the transfer and retains it when this process exits.
     while (context.mounted) {
       await Future<void>.delayed(const Duration(seconds: 2));
       if (!context.mounted) return;
@@ -264,6 +349,7 @@ Future<void> _downloadAndInstall(
       final state = status['status'];
       if (state == 'failed' || state == 'not_found') {
         final reason = status['reason'];
+        await _installerChannel.invokeMethod<void>('clearPendingUpdate');
         throw Exception(
           'فشل تنزيل التحديث في الخلفية'
           '${reason == null ? '.' : ' (رمز الخطأ: $reason).'}',
@@ -273,8 +359,9 @@ Future<void> _downloadAndInstall(
 
       final downloaded = (status['downloaded'] as num?)?.toInt() ?? 0;
       final reportedTotal = (status['total'] as num?)?.toInt() ?? 0;
-      if (downloaded != release.apkSize ||
-          (reportedTotal > 0 && reportedTotal != release.apkSize)) {
+      if (downloaded != expectedSize ||
+          (reportedTotal > 0 && reportedTotal != expectedSize)) {
+        await _installerChannel.invokeMethod<void>('clearPendingUpdate');
         throw Exception('حجم ملف التحديث لا يطابق الإصدار المنشور.');
       }
 
@@ -287,78 +374,88 @@ Future<void> _downloadAndInstall(
         throw Exception('مسار ملف التحديث الذي أعاده Android غير صالح.');
       }
 
-      if (context.mounted) {
-        messenger?.hideCurrentSnackBar();
-      }
+      messenger?.hideCurrentSnackBar();
       if (!context.mounted) return;
-
       final result = await _installerChannel.invokeMethod<String>(
         'installApk',
-        {'path': localPath},
+        {'path': localPath, 'expectedSha256': expectedSha256},
       );
       if (result == 'permission_required' && context.mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (dialogContext) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              title: const Text('السماح بتثبيت التحديث'),
-              content: const Text(
-                'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر. بعد العودة، اضغط «إعادة محاولة التثبيت».',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('لاحقًا'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await _installerChannel.invokeMethod<String>(
-                        'openInstallSettings',
-                      );
-                    } on PlatformException catch (error) {
-                      if (context.mounted) {
-                        _showUpdateMessage(
-                          context,
-                          error.message ?? 'تعذر فتح إعدادات التثبيت.',
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('فتح الإعدادات'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(dialogContext);
-                    await _retryInstall(context, localPath);
-                  },
-                  child: const Text('إعادة محاولة التثبيت'),
-                ),
-              ],
-            ),
-          ),
-        );
+        await _showInstallPermissionDialog(context, localPath, expectedSha256);
       } else if (result != 'launched' && context.mounted) {
         _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
       }
       return;
     }
   } catch (error) {
+    if (error is PlatformException && error.code == 'APK_CHECKSUM_MISMATCH') {
+      await _installerChannel.invokeMethod<void>('clearPendingUpdate');
+    }
     if (context.mounted) {
       messenger?.hideCurrentSnackBar();
-      _showUpdateMessage(
-        context,
-        error.toString().replaceFirst('Exception: ', ''),
-      );
+      _showUpdateMessage(context, _updateErrorMessage(error));
     }
   }
 }
 
-Future<void> _retryInstall(BuildContext context, String path) async {
+Future<void> _showInstallPermissionDialog(
+  BuildContext context,
+  String localPath,
+  String expectedSha256,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('السماح بتثبيت التحديث'),
+        content: const Text(
+          'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر. بعد العودة، اضغط «إعادة محاولة التثبيت».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('لاحقًا'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _installerChannel.invokeMethod<String>(
+                  'openInstallSettings',
+                );
+              } on PlatformException catch (error) {
+                if (context.mounted) {
+                  _showUpdateMessage(
+                    context,
+                    error.message ?? 'تعذر فتح إعدادات التثبيت.',
+                  );
+                }
+              }
+            },
+            child: const Text('فتح الإعدادات'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _retryInstall(context, localPath, expectedSha256);
+            },
+            child: const Text('إعادة محاولة التثبيت'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _retryInstall(
+  BuildContext context,
+  String path,
+  String expectedSha256,
+) async {
   try {
     final result = await _installerChannel.invokeMethod<String>('installApk', {
       'path': path,
+      'expectedSha256': expectedSha256,
     });
     if (result == 'permission_required' && context.mounted) {
       _showUpdateMessage(
@@ -370,15 +467,125 @@ Future<void> _retryInstall(BuildContext context, String path) async {
     }
   } on PlatformException catch (error) {
     if (context.mounted) {
+      if (error.code == 'APK_CHECKSUM_MISMATCH') {
+        await _installerChannel.invokeMethod<void>('clearPendingUpdate');
+      }
       _showUpdateMessage(context, error.message ?? 'تعذر بدء التثبيت.');
     }
   }
+}
+
+String _updateErrorMessage(Object error) {
+  if (error is PlatformException) {
+    return error.message ?? 'تعذر متابعة تثبيت التحديث.';
+  }
+  return error.toString().replaceFirst('Exception: ', '');
 }
 
 void _showUpdateMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
   );
+}
+
+Future<bool> _resumePendingUpdate(
+  BuildContext context,
+  PackageInfo packageInfo,
+) async {
+  final raw = await _installerChannel.invokeMapMethod<String, dynamic>(
+    'getPendingUpdate',
+  );
+  if (raw == null) return false;
+
+  late final _PendingMobileUpdate pending;
+  try {
+    pending = _PendingMobileUpdate.fromMap(raw);
+  } on FormatException catch (error) {
+    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
+    if (context.mounted) {
+      _showUpdateMessage(context, error.message);
+    }
+    return false;
+  }
+
+  final installedVersion = _compareVersion(
+    packageInfo.version,
+    pending.version,
+  );
+  final installedBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+  if (installedVersion > 0 ||
+      (installedVersion == 0 && installedBuild >= pending.buildNumber)) {
+    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
+    return false;
+  }
+
+  final status = await _installerChannel.invokeMapMethod<String, dynamic>(
+    'queryBackgroundDownload',
+    {'id': pending.id},
+  );
+  final state = status?['status'];
+  if (state == null || state == 'not_found' || state == 'failed') {
+    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'تعذر استعادة تنزيل التحديث السابق. يمكنك التحقق من التحديثات والمحاولة مجددًا.',
+      );
+    }
+    return false;
+  }
+
+  if (!context.mounted) return true;
+  final downloaded = state == 'successful';
+  final shouldResume = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: Text(downloaded ? 'التحديث جاهز للتثبيت' : 'تنزيل تحديث محفوظ'),
+        content: Text(
+          downloaded
+              ? 'عُثر على ملف التحديث ${pending.version}+${pending.buildNumber} الذي اكتمل تنزيله سابقًا. سيُتحقق من حجمه وبصمته قبل فتح مُثبّت Android.'
+              : 'عُثر على تنزيل التحديث ${pending.version}+${pending.buildNumber} (${_downloadStateLabel(state)}). يمكنك متابعة التنزيل أو تركه يعمل في الخلفية والعودة لاحقًا.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('لاحقًا'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: Icon(downloaded ? Icons.system_update_alt : Icons.download),
+            label: Text(downloaded ? 'التحقق والتثبيت' : 'متابعة التنزيل'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (shouldResume == true && context.mounted) {
+    await _watchBackgroundDownload(
+      context,
+      downloadId: pending.id,
+      expectedSize: pending.expectedSize,
+      expectedSha256: pending.expectedSha256,
+    );
+  }
+  return true;
+}
+
+String _downloadStateLabel(dynamic state) {
+  switch (state) {
+    case 'running':
+      return 'قيد التنزيل';
+    case 'pending':
+      return 'بانتظار بدء التنزيل';
+    case 'paused':
+      return 'متوقف مؤقتًا بانتظار الشبكة';
+    default:
+      return 'قيد المعالجة';
+  }
 }
 
 int _compareVersion(String latest, String current) {

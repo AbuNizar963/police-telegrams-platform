@@ -277,7 +277,7 @@ class _AdvancedCreateTelegramSheetState
                           const SizedBox(height: 14),
                           _fieldLabel('الجهة الموجهة إليها'),
                           DropdownButtonFormField<String>(
-                            value: _broadcast ? null : _recipientId,
+                            initialValue: _broadcast ? null : _recipientId,
                             isExpanded: true,
                             decoration: const InputDecoration(
                               hintText: 'اختر الجهة المستلمة من دليل التوجيه',
@@ -339,7 +339,7 @@ class _AdvancedCreateTelegramSheetState
                           const SizedBox(height: 14),
                           _fieldLabel('تصنيف البلاغ'),
                           DropdownButtonFormField<String>(
-                            value: _category,
+                            initialValue: _category,
                             isExpanded: true,
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.category_outlined),

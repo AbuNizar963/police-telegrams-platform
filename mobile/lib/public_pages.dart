@@ -300,8 +300,9 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
               : 'تعذر التحقق من رمز الوثيقة.',
         );
       }
-      if (mounted)
+      if (mounted) {
         setState(() => _result = Map<String, dynamic>.from(decoded as Map));
+      }
     } catch (exception) {
       if (mounted) setState(() => _error = _message(exception));
     } finally {

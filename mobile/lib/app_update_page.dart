@@ -59,7 +59,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('تحديث التطبيق'),
+        title: const Text('حول التطبيق والتحديثات'),
         backgroundColor: _updateNavy,
         foregroundColor: Colors.white,
       ),
@@ -198,7 +198,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'تحديث التطبيق',
+                          'التحديثات المتاحة',
                           style: TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),

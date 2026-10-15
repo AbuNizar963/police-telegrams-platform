@@ -59,7 +59,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('حول التطبيق'),
+        title: const Text('حول النظام وميزاته'),
         backgroundColor: _updateNavy,
         foregroundColor: Colors.white,
       ),
@@ -246,6 +246,55 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
             ),
           ),
           const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.widgets_outlined, color: _updateGold),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'ميزات النظام',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _SystemFeatureRow(
+                    icon: Icons.dashboard_outlined,
+                    title: 'لوحة التحكم',
+                    description: 'ملخص البرقيات والإحصاءات والتنبيهات المهمة.',
+                  ),
+                  _SystemFeatureRow(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'إدارة البرقيات',
+                    description: 'متابعة سجل البرقيات والبحث فيها ومراجعة تفاصيلها.',
+                  ),
+                  _SystemFeatureRow(
+                    icon: Icons.account_tree_outlined,
+                    title: 'الجهات والوحدات',
+                    description: 'الوصول إلى إعدادات الجهة وإدارة المستخدمين والوحدات بحسب الصلاحيات.',
+                  ),
+                  _SystemFeatureRow(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'الإشعارات',
+                    description: 'إدارة إشعارات البرقيات ومتابعة التنبيهات.',
+                  ),
+                  _SystemFeatureRow(
+                    icon: Icons.system_update_alt_rounded,
+                    title: 'تحديث التطبيق',
+                    description: 'التحقق من الإصدارات الجديدة ومعرفة رقم الإصدار المثبت.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             'يتم التحقق تلقائيًا من وجود إصدار أحدث عند تشغيل التطبيق بعد تسجيل الدخول.',
             textAlign: TextAlign.center,
@@ -256,6 +305,48 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
           ),
         ],
       ),
+    ),
+  );
+}
+
+
+class _SystemFeatureRow extends StatelessWidget {
+  const _SystemFeatureRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: _updateNavy, size: 22),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(
+                description,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }

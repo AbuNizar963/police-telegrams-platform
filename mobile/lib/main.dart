@@ -237,6 +237,56 @@ class PoliceTelegramsApp extends StatelessWidget {
           toolbarHeight: 58,
           shape: Border(bottom: BorderSide(color: Color(0xFF2A384B))),
         ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: gold,
+            foregroundColor: navy,
+            minimumSize: const Size(48, 46),
+            textStyle: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFF5F6F8),
+            side: const BorderSide(color: Color(0xFF52627A)),
+            minimumSize: const Size(44, 44),
+            textStyle: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: gold,
+            textStyle: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        chipTheme: ThemeData.dark().chipTheme.copyWith(
+          backgroundColor: const Color(0xFF26364B),
+          selectedColor: const Color(0xFF3B4658),
+          labelStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Color(0xFF182538),
+          indicatorColor: Color(0xFF34445B),
+          labelTextStyle: WidgetStatePropertyAll(
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
         cardTheme: CardThemeData(
           color: const Color(0xFF182538),
           elevation: 0,

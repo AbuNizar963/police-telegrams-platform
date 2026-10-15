@@ -87,17 +87,84 @@ class _MobileRelease {
     }
 
     final body = json['body'];
+    final notes = _cleanReleaseNotes(body is String ? body : '');
     return _MobileRelease(
       version: match.group(1)!,
       buildNumber: int.tryParse(match.group(2) ?? '') ?? 0,
-      notes: body is String && body.trim().isNotEmpty
-          ? body.trim()
-          : 'لا توجد ملاحظات مرفقة لهذا الإصدار.',
+      notes: notes.isNotEmpty
+          ? notes
+          : 'يتضمن هذا الإصدار تحسينات وتحديثات جديدة.',
       apkUrl: apkUrl,
       apkSize: apkSize,
       apkSha256: apkSha256,
     );
   }
+}
+
+String _cleanReleaseNotes(String raw) {
+  final translated = <String>[];
+  const knownTranslations = <String, String>{
+    'close mobile notification and map parity gaps':
+        'إغلاق فجوات التكافؤ في إشعارات الهاتف والخرائط.',
+    'add native excel import and export to mobile':
+        'إضافة استيراد وتصدير ملفات Excel أصليًا إلى تطبيق الهاتف.',
+  };
+
+  for (final sourceLine in raw.replaceAll('\r\n', '\n').split('\n')) {
+    var line = sourceLine.trim();
+    if (line.isEmpty) continue;
+    line = line.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim();
+    final normalized = line
+        .replaceAll(RegExp(r'[*_`#]'), '')
+        .trim()
+        .toLowerCase();
+    if (normalized.isEmpty ||
+        RegExp(
+          r'^(what.s changed|full changelog|التغييرات)',
+          caseSensitive: false,
+        ).hasMatch(normalized)) {
+      continue;
+    }
+
+    line = line.replaceFirst(
+      RegExp(r'(?:\s+|\*)by\s+@[\w-]+.*$', caseSensitive: false),
+      '',
+    );
+    line = line.replaceFirst(
+      RegExp(r'\s+in\s+https?://\S+.*$', caseSensitive: false),
+      '',
+    );
+    line = line.replaceAll(RegExp(r'https?://\S+'), '').trim();
+    line = line.replaceAll(RegExp(r'[*_`#]'), '').trim();
+    if (line.isEmpty) continue;
+
+    final key = line.replaceAll(RegExp(r'[*_`#]'), '').trim().toLowerCase();
+    final arabic =
+        knownTranslations[key] ??
+        (RegExp(r'[\u0600-\u06ff]').hasMatch(line)
+            ? line
+            : _genericArabicReleaseNote(key));
+    if (arabic.isNotEmpty && !translated.contains(arabic)) {
+      translated.add(arabic);
+    }
+  }
+  return translated.join('\n');
+}
+
+String _genericArabicReleaseNote(String normalized) {
+  if (normalized.startsWith('add ')) {
+    return 'إضافة ميزات جديدة إلى تطبيق الهاتف.';
+  }
+  if (normalized.startsWith('fix ') || normalized.startsWith('repair ')) {
+    return 'إصلاحات وتحسينات لثبات التطبيق.';
+  }
+  if (normalized.startsWith('improve ') || normalized.startsWith('update ')) {
+    return 'تحسينات وتحديثات على وظائف التطبيق.';
+  }
+  if (normalized.startsWith('remove ') || normalized.startsWith('close ')) {
+    return 'تحسينات على تجربة الاستخدام ومعالجة الفجوات.';
+  }
+  return 'تحسينات وتحديثات جديدة في تطبيق الهاتف.';
 }
 
 class _PendingMobileUpdate {

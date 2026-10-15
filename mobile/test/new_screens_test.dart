@@ -256,11 +256,9 @@ void main() {
     await tester.tap(find.text('تغيير كلمة المرور'));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('تأكيد كلمة المرور غير مطابق.'),
-      160,
-      scrollable: find.byType(Scrollable).first,
-    );
+    // Validation errors are rendered near the top of the profile form.
+    // Assert directly rather than scrolling for an element that may already
+    // be visible (scrollUntilVisible can fail when the target is not mounted).
     expect(find.text('تأكيد كلمة المرور غير مطابق.'), findsOneWidget);
     expect(api.calls, isNot(contains('profile.changePassword')));
 

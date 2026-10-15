@@ -148,8 +148,10 @@ class MainActivity : FlutterActivity() {
             val request = DownloadManager.Request(Uri.parse(url)).apply {
                 setTitle("تحديث برقيات الشرطة")
                 setDescription("يستمر تنزيل التحديث في الخلفية")
+                // Keep Android's DownloadManager notification visible during
+                // the transfer so users can track progress from the notification shade.
                 setNotificationVisibility(
-                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                    DownloadManager.Request.VISIBILITY_VISIBLE
                 )
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(false)

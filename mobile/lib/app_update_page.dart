@@ -273,7 +273,8 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                   _SystemFeatureRow(
                     icon: Icons.receipt_long_outlined,
                     title: 'إدارة البرقيات',
-                    description: 'متابعة سجل البرقيات والبحث فيها ومراجعة تفاصيلها.',
+                    description:
+                        'متابعة سجل البرقيات والبحث فيها ومراجعة تفاصيلها.',
                   ),
                   _SystemFeatureRow(
                     icon: Icons.account_tree_outlined,
@@ -308,7 +309,6 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
     ),
   );
 }
-
 
 class _SystemFeatureRow extends StatelessWidget {
   const _SystemFeatureRow({

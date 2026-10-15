@@ -1907,11 +1907,7 @@ class _DashboardPageState extends State<DashboardPage>
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: gold.withValues(alpha: 0.45)),
                 ),
-                child: const Icon(
-                  Icons.shield_outlined,
-                  color: gold,
-                  size: 23,
-                ),
+                child: const Icon(Icons.shield_outlined, color: gold, size: 23),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1941,11 +1937,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.verified_user_outlined,
-                color: gold,
-                size: 21,
-              ),
+              const Icon(Icons.verified_user_outlined, color: gold, size: 21),
             ],
           ),
         ),

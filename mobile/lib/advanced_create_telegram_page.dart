@@ -196,7 +196,9 @@ class _AdvancedCreateTelegramSheetState
               final parts = <String>['${row['name'] ?? 'جهة بدون اسم'}'];
               final visited = <String>{row['id'].toString()};
               var parentId = row['parentOrganizationId']?.toString();
-              while (parentId != null && parentId.isNotEmpty && visited.add(parentId)) {
+              while (parentId != null &&
+                  parentId.isNotEmpty &&
+                  visited.add(parentId)) {
                 final parent = byId[parentId];
                 if (parent == null) break;
                 parts.insert(0, '${parent['name'] ?? 'جهة بدون اسم'}');
@@ -210,7 +212,8 @@ class _AdvancedCreateTelegramSheetState
               if (normalized.isEmpty) return true;
               final name = '${row['name'] ?? ''}'.toLowerCase();
               final code = '${row['code'] ?? ''}'.toLowerCase();
-              return name.contains(normalized) || code.contains(normalized) ||
+              return name.contains(normalized) ||
+                  code.contains(normalized) ||
                   pathFor(row).toLowerCase().contains(normalized);
             }).toList()..sort((a, b) => pathFor(a).compareTo(pathFor(b)));
 
@@ -220,27 +223,47 @@ class _AdvancedCreateTelegramSheetState
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(children: [
-                      const Expanded(child: Text('اختيار من الهيكل التنظيمي', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
-                      IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close), tooltip: 'إغلاق'),
-                    ]),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'اختيار من الهيكل التنظيمي',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                          tooltip: 'إغلاق',
+                        ),
+                      ],
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
                       autofocus: true,
                       onChanged: (value) => setSheetState(() => query = value),
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث بالاسم أو الرمز أو المسار'),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'ابحث بالاسم أو الرمز أو المسار',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: filtered.isEmpty
-                        ? const Center(child: Text('لا توجد جهات مطابقة للبحث.'))
+                        ? const Center(
+                            child: Text('لا توجد جهات مطابقة للبحث.'),
+                          )
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 4),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 4),
                             itemBuilder: (context, index) {
                               final row = filtered[index];
                               final id = row['id'].toString();
@@ -249,12 +272,43 @@ class _AdvancedCreateTelegramSheetState
                               final code = '${row['code'] ?? ''}';
                               return ListTile(
                                 dense: true,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: selected ? _composerGold : Theme.of(context).colorScheme.outlineVariant)),
-                                tileColor: selected ? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF3C301A) : const Color(0xFFFFF8E8)) : null,
-                                leading: const Icon(Icons.account_tree_outlined, color: _composerGold),
-                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                subtitle: Text('${pathFor(row)}${code.isNotEmpty ? ' · $code' : ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                                trailing: selected ? const Icon(Icons.check_circle, color: _composerGold) : null,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: selected
+                                        ? _composerGold
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .outlineVariant,
+                                  ),
+                                ),
+                                tileColor: selected
+                                    ? (Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? const Color(0xFF3C301A)
+                                          : const Color(0xFFFFF8E8))
+                                    : null,
+                                leading: const Icon(
+                                  Icons.account_tree_outlined,
+                                  color: _composerGold,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${pathFor(row)}${code.isNotEmpty ? ' · $code' : ''}',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: selected
+                                    ? const Icon(
+                                        Icons.check_circle,
+                                        color: _composerGold,
+                                      )
+                                    : null,
                                 onTap: () => Navigator.pop(sheetContext, id),
                               );
                             },
@@ -269,6 +323,7 @@ class _AdvancedCreateTelegramSheetState
     );
     if (selected != null && mounted) _selectRecipient(selected);
   }
+
   void _selectRecipient(String? id) {
     setState(() {
       _broadcast = false;
@@ -382,14 +437,37 @@ class _AdvancedCreateTelegramSheetState
                             const SizedBox(height: 14),
                             _fieldLabel('الجهة الموجهة إليها'),
                             OutlinedButton(
-                              onPressed: _saving || _routingDirectory.isEmpty ? null : _openRecipientPicker,
-                              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52), alignment: AlignmentDirectional.centerStart, padding: const EdgeInsets.symmetric(horizontal: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                              child: Row(children: [
-                                const Icon(Icons.account_tree_outlined),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(_broadcast ? 'كافة الوحدات' : (_recipient.text.isEmpty ? 'اختر الجهة من الهيكل التنظيمي' : _recipient.text), maxLines: 2, overflow: TextOverflow.ellipsis)),
-                                const Icon(Icons.expand_more),
-                              ]),
+                              onPressed: _saving || _routingDirectory.isEmpty
+                                  ? null
+                                  : _openRecipientPicker,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                alignment: AlignmentDirectional.centerStart,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.account_tree_outlined),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _broadcast
+                                          ? 'كافة الوحدات'
+                                          : (_recipient.text.isEmpty
+                                                ? 'اختر الجهة من الهيكل التنظيمي'
+                                                : _recipient.text),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Icon(Icons.expand_more),
+                                ],
+                              ),
                             ),
                             if (_descendants.isNotEmpty) ...[
                               const SizedBox(height: 8),

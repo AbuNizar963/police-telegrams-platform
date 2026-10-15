@@ -113,8 +113,48 @@ String _cleanReleaseNotes(String raw) {
     if (line.isEmpty) continue;
 
     final normalized = line.toLowerCase();
-    if (RegExp(r'^#{1,6}\s*(new contributors|contributors)\s*
+    if (RegExp(r'^#{1,6}\s*(new contributors|contributors)\s*$')
+        .hasMatch(normalized)) {
+      inContributorSection = true;
+      continue;
+    }
+    if (RegExp(r'^#{1,6}\s+').hasMatch(line)) {
+      inContributorSection = false;
+      if (RegExp(r'^#{1,6}\s*(what.s changed|full changelog)\s*$',
+              caseSensitive: false)
+          .hasMatch(line)) {
+        continue;
+      }
+    }
+    if (inContributorSection ||
+        RegExp(r'^\*\*full changelog\*\*\s*:', caseSensitive: false)
+            .hasMatch(line) ||
+        RegExp(r'^full changelog\s*:', caseSensitive: false).hasMatch(line) ||
+        RegExp(r'^(?:[-*]\s*)?workflows?\s+by\s+@', caseSensitive: false)
+            .hasMatch(line)) {
+      continue;
+    }
 
+    final withoutAttribution = line.replaceFirst(
+      RegExp(r'\s+by\s+@[^\s]+\s+in\s+https?://\S+.*$',
+          caseSensitive: false),
+      '',
+    );
+    final description = withoutAttribution
+        .replaceFirst(
+          RegExp(r'\s+in\s+https?://github\.com/\S+.*$',
+              caseSensitive: false),
+          '',
+        )
+        .trim();
+    if (description.isEmpty || description == '-' || description == '*') {
+      continue;
+    }
+    cleanedLines.add(description);
+  }
+
+  return cleanedLines.join('\n').trim();
+}
 class _PendingMobileUpdate {
   const _PendingMobileUpdate({
     required this.id,

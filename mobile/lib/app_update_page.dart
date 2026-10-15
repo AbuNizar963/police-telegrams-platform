@@ -3,8 +3,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app_update_service.dart';
 
-const _updateNavy = Color(0xFF101C35);
-const _updateGold = Color(0xFFC9A45C);
+const _updateNavy = Color(0xFF10233F);
+const _updateGold = Color(0xFFD8C38E);
 
 class AppUpdatePage extends StatefulWidget {
   const AppUpdatePage({super.key});

@@ -153,6 +153,7 @@ Future<void> checkAndPromptForAppUpdate(
 
   try {
     final packageInfo = await PackageInfo.fromPlatform();
+    if (!context.mounted) return;
     final resumed = await _resumePendingUpdate(context, packageInfo);
     if (resumed || !context.mounted) return;
 
@@ -302,6 +303,7 @@ Future<void> _downloadAndInstall(
     if (downloadId == null || downloadId <= 0) {
       throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
     }
+    if (!context.mounted) return;
 
     messenger?.showSnackBar(
       const SnackBar(
@@ -470,6 +472,7 @@ Future<void> _retryInstall(
       if (error.code == 'APK_CHECKSUM_MISMATCH') {
         await _installerChannel.invokeMethod<void>('clearPendingUpdate');
       }
+      if (!context.mounted) return;
       _showUpdateMessage(context, error.message ?? 'تعذر بدء التثبيت.');
     }
   }

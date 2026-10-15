@@ -56,14 +56,6 @@ class _ScreenTestApi extends PoliceApi {
         return {'name': 'مشغل الاختبار', 'mustChangePassword': true};
       case 'profile.changePassword':
         return {'success': true};
-      case 'organizations.routingDirectory':
-        return [
-          {
-            'id': 'destination-1',
-            'name': 'الجهة المستلمة',
-            'isSelectable': true,
-          },
-        ];
       default:
         throw StateError('Unexpected test procedure: $procedure');
     }

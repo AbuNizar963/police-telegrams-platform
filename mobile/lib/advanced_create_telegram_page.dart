@@ -262,7 +262,7 @@ class _AdvancedCreateTelegramSheetState
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 4),
                             itemBuilder: (context, index) {
                               final row = filtered[index];

@@ -639,8 +639,8 @@ String _dashboardRefreshError(Object error) {
 class _DashboardPageState extends State<DashboardPage>
     with WidgetsBindingObserver {
   String get _greetingName =>
-      (widget.account['name'] ?? widget.account['username'] ?? 'أبو نزار')
-          .toString();
+      (_account['name'] ?? _account['username'] ?? 'أبو نزار').toString();
+  late final Map<String, dynamic> _account;
   bool loading = true;
   String? error;
   Map<String, dynamic> stats = {};
@@ -648,6 +648,7 @@ class _DashboardPageState extends State<DashboardPage>
   String? activeOrganizationId;
   String? activeOrganizationName;
   String? activeOrganizationRole;
+  bool activeOrganizationIsOwner = false;
   int unreadNotificationCount = 0;
   bool _pushEnabled = false;
   bool _pushBusy = false;
@@ -676,6 +677,7 @@ class _DashboardPageState extends State<DashboardPage>
   @override
   void initState() {
     super.initState();
+    _account = Map<String, dynamic>.from(widget.account);
     WidgetsBinding.instance.addObserver(this);
     refresh();
     _loadUnreadNotificationCount();
@@ -783,7 +785,13 @@ class _DashboardPageState extends State<DashboardPage>
   void _handleAccountAction(String action) {
     switch (action) {
       case 'profile':
-        _pushPage(ProfileSettingsPage(api: widget.api));
+        _pushPage(
+          ProfileSettingsPage(
+            api: widget.api,
+            onLogout: _logout,
+            onProfileUpdated: _updateAccountProfile,
+          ),
+        );
         break;
       case 'theme':
         widget.onToggleTheme?.call();
@@ -823,6 +831,16 @@ class _DashboardPageState extends State<DashboardPage>
 
   void _pushPage(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  void _updateAccountProfile(Map<String, dynamic> profile) {
+    if (!mounted) return;
+    setState(() {
+      if (profile['name'] != null) _account['name'] = profile['name'];
+      if (profile['mustChangePassword'] != null) {
+        _account['mustChangePassword'] = profile['mustChangePassword'];
+      }
+    });
   }
 
   Future<void> _loadUnreadNotificationCount() async {
@@ -1049,7 +1067,9 @@ class _DashboardPageState extends State<DashboardPage>
         builder: (_) => TelegramDetailsPage(
           api: widget.api,
           telegramId: telegramId,
-          officialDocument: true,
+          account: _account,
+          organizationRole: activeOrganizationRole,
+          organizationIsOwner: activeOrganizationIsOwner,
         ),
       ),
     );
@@ -1122,6 +1142,9 @@ class _DashboardPageState extends State<DashboardPage>
           activeOrganizationRole = organizationContext is Map
               ? organizationContext['role']?.toString()
               : null;
+          activeOrganizationIsOwner =
+              organizationContext is Map &&
+              organizationContext['isOwner'] == true;
           telegrams = visibleRows;
           hasNextTelegramPage = hasMoreRows;
           error = null;
@@ -1187,7 +1210,7 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   bool get _canViewReports =>
-      widget.account['role'] == 'admin' ||
+      _account['role'] == 'admin' ||
       const {
         'system_admin',
         'organization_admin',
@@ -1522,7 +1545,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
               ),
-              if (widget.account['role'] == 'admin' || _canViewReports)
+              if (_account['role'] == 'admin' || _canViewReports)
                 const PopupMenuItem(
                   value: 'department',
                   child: _AccountMenuItem(
@@ -1530,7 +1553,7 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إعدادات الجهة',
                   ),
                 ),
-              if (widget.account['role'] == 'admin') ...[
+              if (_account['role'] == 'admin') ...[
                 const PopupMenuItem<String>(
                   enabled: false,
                   height: 34,
@@ -1703,7 +1726,7 @@ class _DashboardPageState extends State<DashboardPage>
                     );
                   },
                 ),
-                if (widget.account['role'] == 'admin' || _canViewReports)
+                if (_account['role'] == 'admin' || _canViewReports)
                   ListTile(
                     leading: const Icon(Icons.manage_accounts_outlined),
                     title: const Text('إدارة المستخدمين'),
@@ -2536,8 +2559,8 @@ class _DashboardPageState extends State<DashboardPage>
         row['creatorName'] ??
         row['senderName'] ??
         row['createdByName'] ??
-        widget.account['name'] ??
-        widget.account['username'] ??
+        _account['name'] ??
+        _account['username'] ??
         '';
     final rawPriority = row['priority'] ?? row['urgency'];
     final rawConfidentiality = row['confidentiality'] ?? row['classification'];
@@ -2559,7 +2582,9 @@ class _DashboardPageState extends State<DashboardPage>
                   builder: (_) => TelegramDetailsPage(
                     api: widget.api,
                     telegramId: row['id'] as int,
-                    officialDocument: true,
+                    account: _account,
+                    organizationRole: activeOrganizationRole,
+                    organizationIsOwner: activeOrganizationIsOwner,
                   ),
                 ),
               );
@@ -2881,10 +2906,16 @@ class TelegramDetailsPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.telegramId,
+    required this.account,
+    required this.organizationRole,
+    required this.organizationIsOwner,
     this.officialDocument = false,
   });
   final PoliceApi api;
   final int telegramId;
+  final Map<String, dynamic> account;
+  final String? organizationRole;
+  final bool organizationIsOwner;
   final bool officialDocument;
   @override
   State<TelegramDetailsPage> createState() => _TelegramDetailsPageState();
@@ -2894,6 +2925,81 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   bool loading = true;
   String? error;
   Map<String, dynamic>? telegram;
+
+  bool get _isAdmin => widget.account['role'] == 'admin';
+  bool get _canOperate =>
+      _isAdmin ||
+      const {
+        'system_admin',
+        'organization_admin',
+        'regional_admin',
+        'organization_supervisor',
+        'reviewer',
+        'dispatcher',
+      }.contains(widget.organizationRole);
+
+  bool get _managementExpired {
+    final createdAt = DateTime.tryParse('${telegram?['createdAt'] ?? ''}');
+    return !_isAdmin &&
+        !widget.organizationIsOwner &&
+        createdAt != null &&
+        DateTime.now().difference(createdAt) > const Duration(hours: 48);
+  }
+
+  String _statusLabel(dynamic value) => switch ('$value'.toLowerCase()) {
+    'draft' => 'مسودة',
+    'submitted' => 'مرسلة للمراجعة',
+    'in_review' => 'قيد المراجعة',
+    'approved' => 'معتمدة',
+    'returned' => 'معادة للتصحيح',
+    'rejected' => 'مرفوضة',
+    'forwarded' => 'محالة',
+    'pending' => 'قيد الانتظار',
+    'in_progress' => 'قيد الإجراء',
+    'resolved' => 'منجزة',
+    'completed' => 'مكتملة',
+    'archived' => 'مؤرشفة',
+    _ => '$value',
+  };
+
+  String _priorityLabel(dynamic value) => switch ('$value'.toLowerCase()) {
+    'urgent' => 'عاجل',
+    'slow' => 'بطيء',
+    'normal' => 'عادي',
+    _ => '$value',
+  };
+
+  String _classificationLabel(dynamic value) =>
+      switch ('$value'.toLowerCase()) {
+        'secret' || 'confidential' || 'restricted' => 'سري',
+        'top_secret' || 'top secret' => 'سري للغاية',
+        'normal' || 'public' => 'عادي',
+        _ => '$value',
+      };
+
+  String _categoryLabel(dynamic value) => switch ('$value'.toLowerCase()) {
+    'criminal' => 'جنائي',
+    'administrative' => 'إداري',
+    'traffic' => 'مروري',
+    'security' => 'أمني',
+    'tactical' => 'عملياتي',
+    'intelligence' => 'استخباراتي',
+    'emergency' => 'طوارئ',
+    'public_order' => 'حفظ النظام',
+    'personnel' => 'شؤون الأفراد',
+    'logistics' => 'إمداد ودعم',
+    'training' => 'تدريب وتأهيل',
+    'community' => 'مجتمعي وشكاوى',
+    'other' => 'أخرى',
+    _ => '$value',
+  };
+
+  String _formatDate(dynamic value) {
+    final date = DateTime.tryParse('$value');
+    if (date == null) return '$value';
+    final local = date.toLocal();
+    return '${local.year}/${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   void initState() {
@@ -2922,6 +3028,16 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   Future<void> _editTelegram() async {
     final currentTelegram = telegram;
     if (currentTelegram == null) return;
+    if (_managementExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'انتهت مهلة تعديل البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final saved = await showDialog<bool>(
       context: context,
@@ -2941,6 +3057,16 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   }
 
   Future<void> _deleteTelegram() async {
+    if (_managementExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'انتهت مهلة حذف البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
+          ),
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -3067,7 +3193,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          '${data?['serialCode'] ?? data?['serialNumber'] ?? '—'}',
+                          '${data?['organizationSerialCode'] ?? data?['serialCode'] ?? data?['serialNumber'] ?? '—'}',
                           style: const TextStyle(
                             color: gold,
                             fontSize: 14,
@@ -3087,7 +3213,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: Chip(
-                            label: Text('${data?['status'] ?? 'غير محددة'}'),
+                            label: Text(
+                              _statusLabel(data?['status'] ?? 'draft'),
+                            ),
                           ),
                         ),
                       ],
@@ -3102,10 +3230,24 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                           '—',
                     ),
                     _infoRow('الجهة المستلمة', data?['recipient'] ?? '—'),
-                    _infoRow('الأولوية', data?['priority'] ?? 'normal'),
-                    _infoRow('التصنيف', data?['classification'] ?? 'normal'),
-                    _infoRow('الفئة', data?['category'] ?? 'administrative'),
-                    _infoRow('تاريخ الإنشاء', data?['createdAt'] ?? '—'),
+                    _infoRow(
+                      'الأولوية',
+                      _priorityLabel(data?['priority'] ?? 'normal'),
+                    ),
+                    _infoRow(
+                      'درجة السرية',
+                      _classificationLabel(data?['classification'] ?? 'normal'),
+                    ),
+                    _infoRow(
+                      'التصنيف',
+                      _categoryLabel(data?['category'] ?? 'administrative'),
+                    ),
+                    _infoRow(
+                      'تاريخ الإنشاء',
+                      _formatDate(data?['createdAt'] ?? '—'),
+                    ),
+                    if (data?['creatorName'] != null)
+                      _infoRow('منشئ البرقية', data?['creatorName']),
                   ]),
                   const SizedBox(height: 12),
                   _infoCard('نص البرقية', [
@@ -3121,6 +3263,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                   TelegramActionsPanel(
                     api: widget.api,
                     telegramId: widget.telegramId,
+                    telegramStatus: '${data?['status'] ?? 'draft'}',
+                    canOperate: _canOperate,
+                    isAdmin: _isAdmin,
                     onChanged: load,
                   ),
                 ],

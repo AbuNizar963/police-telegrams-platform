@@ -561,8 +561,15 @@ class _ReportRows extends StatelessWidget {
 }
 
 class ProfileSettingsPage extends StatefulWidget {
-  const ProfileSettingsPage({super.key, required this.api});
+  const ProfileSettingsPage({
+    super.key,
+    required this.api,
+    required this.onLogout,
+    required this.onProfileUpdated,
+  });
   final PoliceApi api;
+  final Future<void> Function() onLogout;
+  final ValueChanged<Map<String, dynamic>> onProfileUpdated;
 
   @override
   State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
@@ -577,8 +584,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   final bio = TextEditingController();
   final currentPassword = TextEditingController();
   final newPassword = TextEditingController();
+  final confirmPassword = TextEditingController();
   bool loading = true;
   bool saving = false;
+  bool mustChangePassword = false;
   String? error;
 
   @override
@@ -598,6 +607,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       bio,
       currentPassword,
       newPassword,
+      confirmPassword,
     ]) {
       controller.dispose();
     }
@@ -614,6 +624,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       rank.text = _stringValue(profile['rank'], '');
       unit.text = _stringValue(profile['unit'], '');
       bio.text = _stringValue(profile['bio'], '');
+      mustChangePassword = profile['mustChangePassword'] == true;
     } catch (exception) {
       if (mounted) setState(() => error = _errorMessage(exception));
     } finally {
@@ -622,6 +633,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   }
 
   Future<void> saveProfile() async {
+    if (name.text.trim().length < 2) {
+      setState(() => error = 'الاسم الكامل يجب ألا يقل عن محرفين.');
+      return;
+    }
     setState(() {
       saving = true;
       error = null;
@@ -639,6 +654,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           'bio': bio.text.trim().isEmpty ? null : bio.text.trim(),
         },
       );
+      widget.onProfileUpdated({'name': name.text.trim()});
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('تم حفظ الملف الشخصي')));
@@ -652,7 +668,11 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
 
   Future<void> changePassword() async {
     if (currentPassword.text.isEmpty || newPassword.text.length < 12) {
-      setState(() => error = 'كلمة المرور الجديدة يجب ألا تقل عن 12 محرفًا');
+      setState(() => error = 'كلمة المرور الجديدة يجب ألا تقل عن 12 محرفًا.');
+      return;
+    }
+    if (newPassword.text != confirmPassword.text) {
+      setState(() => error = 'تأكيد كلمة المرور غير مطابق.');
       return;
     }
     setState(() {
@@ -670,6 +690,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       );
       currentPassword.clear();
       newPassword.clear();
+      confirmPassword.clear();
+      mustChangePassword = false;
+      widget.onProfileUpdated({
+        'name': name.text.trim(),
+        'mustChangePassword': false,
+      });
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -699,21 +725,44 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (mustChangePassword)
+                  const Card(
+                    color: Color(0xFFFFF4D6),
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        'هذه كلمة مرور مؤقتة للحساب الرئيسي للجهة. يجب تغييرها قبل متابعة العمل.',
+                        style: TextStyle(
+                          color: Color(0xFF704E00),
+                          fontWeight: FontWeight.w700,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (mustChangePassword) const SizedBox(height: 14),
                 if (error != null) _ErrorCard(message: error!),
                 _FormCard(
-                  title: 'بيانات الحساب',
+                  title: 'المعلومات الشخصية',
                   children: [
-                    _input(name, 'الاسم'),
-                    _input(badge, 'الرقم الوظيفي'),
-                    _input(phone, 'الهاتف'),
-                    _input(rank, 'الرتبة'),
-                    _input(unit, 'الوحدة'),
-                    _input(bio, 'نبذة', maxLines: 3),
+                    _input(name, 'الاسم الكامل', maxLength: 255),
+                    _input(badge, 'الرقم الوظيفي', maxLength: 80),
+                    _input(
+                      phone,
+                      'رقم الهاتف',
+                      maxLength: 32,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    _input(rank, 'الرتبة', maxLength: 120),
+                    _input(unit, 'القسم أو الوحدة', maxLength: 255),
+                    _input(bio, 'نبذة تعريفية', maxLines: 4, maxLength: 1000),
                     const SizedBox(height: 8),
                     FilledButton.icon(
-                      onPressed: saving ? null : saveProfile,
+                      onPressed: saving || name.text.trim().length < 2
+                          ? null
+                          : saveProfile,
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text('حفظ بيانات الحساب'),
+                      label: const Text('حفظ البيانات'),
                     ),
                   ],
                 ),
@@ -725,13 +774,50 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       currentPassword,
                       'كلمة المرور الحالية',
                       obscure: true,
+                      maxLength: 256,
                     ),
-                    _input(newPassword, 'كلمة المرور الجديدة', obscure: true),
-                    const SizedBox(height: 8),
+                    _input(
+                      newPassword,
+                      'كلمة المرور الجديدة',
+                      obscure: true,
+                      maxLength: 256,
+                    ),
+                    _input(
+                      confirmPassword,
+                      'تأكيد كلمة المرور',
+                      obscure: true,
+                      maxLength: 256,
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '12 محرفًا على الأقل.',
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
+                      ),
+                    ),
                     OutlinedButton.icon(
                       onPressed: saving ? null : changePassword,
                       icon: const Icon(Icons.lock_reset),
                       label: const Text('تغيير كلمة المرور'),
+                    ),
+                    const Divider(height: 28),
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'إنهاء الجلسة',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        'يُسجّل خروجك من هذا الجهاز فورًا حتى قبل انتهاء مدة الشهر.',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: saving ? null : widget.onLogout,
+                      icon: const Icon(Icons.logout, color: Colors.red),
+                      label: const Text(
+                        'تسجيل الخروج',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -745,12 +831,16 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     String label, {
     bool obscure = false,
     int maxLines = 1,
+    int? maxLength,
+    TextInputType? keyboardType,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: TextField(
       controller: controller,
       obscureText: obscure,
       maxLines: obscure ? 1 : maxLines,
+      maxLength: maxLength,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

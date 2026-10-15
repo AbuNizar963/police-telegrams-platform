@@ -96,11 +96,11 @@ void main() {
     );
     expect(find.text('إرفاق صورة أو PDF أو ملف صوتي'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('حفظ وإرسال البرقية'),
+      find.text('إرسال البرقية'),
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('حفظ وإرسال البرقية'), findsOneWidget);
+    expect(find.text('إرسال البرقية'), findsOneWidget);
     expect(api.calls, contains('organizations.routingDirectory'));
   });
 
@@ -112,11 +112,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('حفظ وإرسال البرقية'),
+      find.text('إرسال البرقية'),
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('حفظ وإرسال البرقية'));
+    await tester.tap(find.text('إرسال البرقية'));
     await tester.pump();
 
     expect(find.text('أكمل الموضوع والجهة ونص البرقية.'), findsOneWidget);
@@ -161,11 +161,11 @@ void main() {
     );
     await tester.tap(find.text('عاجل').first);
     await tester.scrollUntilVisible(
-      find.text('حفظ وإرسال البرقية'),
+      find.text('إرسال البرقية'),
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('حفظ وإرسال البرقية'));
+    await tester.tap(find.text('إرسال البرقية'));
     await tester.pumpAndSettle();
 
     expect(api.lastInput?['requestedOrganizationSerialNumber'], 73);
@@ -256,6 +256,11 @@ void main() {
     await tester.tap(find.text('تغيير كلمة المرور'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('تأكيد كلمة المرور غير مطابق.'),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('تأكيد كلمة المرور غير مطابق.'), findsOneWidget);
     expect(api.calls, isNot(contains('profile.changePassword')));
 

@@ -1369,7 +1369,7 @@ class _DashboardPageState extends State<DashboardPage>
             const SizedBox(width: 8),
             const Flexible(
               child: Text(
-                'مركز البرقيات',
+                'نظام برقيات الشرطة',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),

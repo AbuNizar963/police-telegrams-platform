@@ -59,6 +59,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         mutation: true,
         input: {'id': id},
       );
+      if (!mounted) return;
       await load();
     } catch (exception) {
       if (mounted) {

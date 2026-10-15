@@ -1902,42 +1902,59 @@ class _DashboardPageState extends State<DashboardPage>
         _dashboardActions(),
         _urgentAlert(),
         const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.48,
-          children: [
-            for (final item in values)
-              _stat(
-                item.$1,
-                stats[item.$2] ?? 0,
-                item.$4,
-                detail: item.$3,
-                accent: item.$5,
-                active:
-                    _activeKpi ==
-                    switch (item.$2) {
-                      'total' => 'total',
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final columns = width >= 1100
+                ? 4
+                : width >= 700
+                ? 3
+                : width < 340
+                ? 1
+                : 2;
+            final aspectRatio = columns == 1
+                ? 3.1
+                : width < 390
+                ? 1.28
+                : 1.48;
+            return GridView.count(
+              crossAxisCount: columns,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: aspectRatio,
+              children: [
+                for (final item in values)
+                  _stat(
+                    item.$1,
+                    stats[item.$2] ?? 0,
+                    item.$4,
+                    detail: item.$3,
+                    accent: item.$5,
+                    active:
+                        _activeKpi ==
+                        switch (item.$2) {
+                          'total' => 'total',
+                          'today' => 'today',
+                          'todayUrgent' => 'urgent',
+                          'todayIncoming' => 'incoming',
+                          'inProgress' => 'in-progress',
+                          'resolved' => 'resolved',
+                          _ => null,
+                        },
+                    onTap: () => _applyStatFilter(switch (item.$2) {
                       'today' => 'today',
                       'todayUrgent' => 'urgent',
                       'todayIncoming' => 'incoming',
                       'inProgress' => 'in-progress',
                       'resolved' => 'resolved',
-                      _ => null,
-                    },
-                onTap: () => _applyStatFilter(switch (item.$2) {
-                  'today' => 'today',
-                  'todayUrgent' => 'urgent',
-                  'todayIncoming' => 'incoming',
-                  'inProgress' => 'in-progress',
-                  'resolved' => 'resolved',
-                  _ => 'total',
-                }),
-              ),
-          ],
+                      _ => 'total',
+                    }),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 14),
         Card(

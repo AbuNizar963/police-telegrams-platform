@@ -759,8 +759,17 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F7F2),
         foregroundColor: navy,
-        titleSpacing: 4,
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'فتح القائمة الجانبية',
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: const Icon(Icons.space_dashboard_outlined),
+          ),
+        ),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             ClipOval(
               child: Image.asset(
@@ -770,7 +779,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 9),
+            const SizedBox(width: 8),
             const Flexible(
               child: Text(
                 'مركز البرقيات',
@@ -788,22 +797,14 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.notifications_none_rounded),
           ),
           PopupMenuButton<String>(
-            tooltip: 'قائمة الحساب',
+            tooltip: 'إعدادات الحساب',
             onSelected: _handleAccountAction,
-            icon: CircleAvatar(
-              radius: 18,
-              backgroundColor: navy,
-              child: const Icon(
-                Icons.person_outline_rounded,
-                size: 20,
-                color: Colors.white,
-              ),
-            ),
+            icon: const Icon(Icons.menu_rounded),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'profile',
                 child: _AccountMenuItem(
-                  icon: Icons.badge_outlined,
+                  icon: Icons.person_outline_rounded,
                   title: 'الملف الشخصي',
                 ),
               ),
@@ -814,8 +815,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   title: 'تحديث البيانات',
                 ),
               ),
+              const PopupMenuDivider(),
               if (widget.account['role'] == 'admin') ...[
-                const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'department',
                   child: _AccountMenuItem(
@@ -834,11 +835,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   value: 'users',
                   child: _AccountMenuItem(
                     icon: Icons.manage_accounts_outlined,
-                    title: 'إدارة المستخدمين',
+                    title: 'إدارة المستخدمين وإضافة الحسابات',
                   ),
                 ),
+                const PopupMenuDivider(),
               ],
-              const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'logout',
                 child: _AccountMenuItem(
@@ -913,76 +914,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     ],
                   ),
                 ),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF07152B),
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          'assets/police-telegrams-icon.png',
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'برقيات الشرطة',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.account['name'] ?? widget.account['username'] ?? ''}',
-                        style: const TextStyle(color: Colors.white70),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF12385D),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF315579)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.verified_user_outlined,
-                              size: 14,
-                              color: Color(0xFF9CC7F2),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              widget.account['role'] == 'admin'
-                                  ? 'مدير النظام'
-                                  : 'حساب مستخدم',
-                              style: const TextStyle(
-                                color: Color(0xFFE5F0FF),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 8),
+                const Divider(color: Color(0xFF29415E)),
                 ListTile(
                   leading: const Icon(Icons.dashboard_outlined),
                   title: const Text('لوحة التحكم'),
@@ -1164,57 +1097,6 @@ class _DashboardPageState extends State<DashboardPage> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(onRefresh: refresh, child: _sectionBody()),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: section,
-        onDestinationSelected: (index) {
-          if (index < 3) {
-            setState(() {
-              section = index;
-              telegramPage = 1;
-            });
-            refresh(showLoading: false);
-            return;
-          }
-          final page = switch (index) {
-            3 => NotificationsPage(api: widget.api),
-            4 => ReportsPage(api: widget.api),
-            _ => ProfileSettingsPage(api: widget.api),
-          };
-          Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'الرئيسية',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.call_made_outlined),
-            selectedIcon: Icon(Icons.call_made),
-            label: 'الصادرة',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.call_received_outlined),
-            selectedIcon: Icon(Icons.call_received),
-            label: 'الواردة',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_none),
-            selectedIcon: Icon(Icons.notifications),
-            label: 'الإشعارات',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.assessment_outlined),
-            selectedIcon: Icon(Icons.assessment),
-            label: 'التقارير',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'الإعدادات',
-          ),
-        ],
-      ),
     ),
   );
 

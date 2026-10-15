@@ -398,7 +398,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
       child: AlertDialog(
         title: Text(_editing ? 'تعديل الجهة' : 'إنشاء جهة جديدة'),
         content: SizedBox(
-          width: 480,
+          width: MediaQuery.sizeOf(context).width * 0.82,
           child: SingleChildScrollView(
             child: Form(
               key: _formKey,

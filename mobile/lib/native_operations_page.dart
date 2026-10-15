@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-const _navy = Color(0xFF101C35);
-const _gold = Color(0xFFC9A45C);
+const _navy = Color(0xFF10233F);
+const _gold = Color(0xFFD8C38E);
 
 class NativeOperationsPage extends StatefulWidget {
   const NativeOperationsPage({

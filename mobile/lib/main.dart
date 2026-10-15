@@ -387,6 +387,10 @@ class _DashboardPageState extends State<DashboardPage> {
   int telegramPage = 1;
   bool hasNextTelegramPage = false;
   String searchQuery = '';
+  String statusFilter = 'all';
+  String priorityFilter = 'all';
+  String classificationFilter = 'all';
+  String categoryFilter = 'all';
   final searchController = TextEditingController();
   final push = PushNotificationService();
   Timer? _refreshTimer;
@@ -424,6 +428,231 @@ class _DashboardPageState extends State<DashboardPage> {
     } catch (_) {
       // A temporary registration failure must not block the user interface.
     }
+  }
+
+  void _handleAccountAction(String action) {
+    switch (action) {
+      case 'profile':
+        _pushPage(ProfileSettingsPage(api: widget.api));
+        break;
+      case 'refresh':
+        refresh();
+        break;
+      case 'department':
+        _pushPage(DepartmentSettingsPage(api: widget.api));
+        break;
+      case 'organizations':
+        _pushPage(NativeOrganizationManagementPage(api: widget.api));
+        break;
+      case 'users':
+        _pushPage(NativeUserManagementPage(api: widget.api));
+        break;
+      case 'logout':
+        _logout();
+        break;
+    }
+  }
+
+  void _pushPage(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _logout() async {
+    final navigator = Navigator.of(context);
+    try {
+      final token = await push.currentToken();
+      if (token != null) {
+        await widget.api.call(
+          'notifications.unregisterMobileToken',
+          mutation: true,
+          input: {'token': token},
+        );
+      }
+    } catch (_) {
+      // Continue with local logout if push cleanup cannot reach the server.
+    }
+    try {
+      await widget.api.logout();
+    } catch (_) {
+      // PoliceApi.logout clears the local session in its finally block.
+    }
+    if (!mounted) return;
+    navigator.pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
+  Future<void> _showNotificationsPreview() async {
+    final notifications = widget.api.call('notifications.inbox');
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
+        final panelWidth = screenWidth < 440 ? screenWidth - 32 : 408.0;
+        return Dialog(
+          alignment: AlignmentDirectional.topEnd,
+          insetPadding: const EdgeInsets.fromLTRB(12, 76, 12, 12),
+          child: SizedBox(
+            width: panelWidth,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.notifications_none_rounded, color: navy),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'الإشعارات',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'إغلاق',
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  SizedBox(
+                    height: 236,
+                    child: FutureBuilder<dynamic>(
+                      future: notifications,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const Center(
+                            child: CircularProgressIndicator(color: navy),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.cloud_off_outlined,
+                                    color: Color(0xFF7A8493),
+                                    size: 30,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _dashboardRefreshError(snapshot.error!),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      if (mounted) _showNotificationsPreview();
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text('إعادة المحاولة'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        final rows = snapshot.data is List
+                            ? snapshot.data as List
+                            : const <dynamic>[];
+                        if (rows.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_none_rounded,
+                                    size: 34,
+                                    color: Color(0xFF7A8493),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'لا توجد تنبيهات جديدة',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'ستظهر هنا طلبات الإحالة وقرارات الجهات.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF7A8493),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        final visibleRows = rows.take(4).toList();
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: visibleRows.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final notification = Map<String, dynamic>.from(
+                              visibleRows[index] as Map,
+                            );
+                            return ListTile(
+                              dense: true,
+                              leading: const CircleAvatar(
+                                radius: 17,
+                                backgroundColor: Color(0xFFF1E8D5),
+                                child: Icon(
+                                  Icons.notifications_active_outlined,
+                                  color: navy,
+                                  size: 18,
+                                ),
+                              ),
+                              title: Text(
+                                '${notification['title'] ?? 'إشعار جديد'}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${notification['body'] ?? notification['content'] ?? ''}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        if (!mounted) return;
+                        _pushPage(NotificationsPage(api: widget.api));
+                      },
+                      child: const Text('عرض جميع الإشعارات'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openIncomingTelegram(int telegramId) async {
@@ -470,6 +699,11 @@ class _DashboardPageState extends State<DashboardPage> {
             if (section == 1) 'direction': 'outgoing',
             if (section == 2) 'direction': 'incoming',
             if (searchQuery.trim().isNotEmpty) 'search': searchQuery.trim(),
+            if (statusFilter != 'all') 'status': statusFilter,
+            if (priorityFilter != 'all') 'priority': priorityFilter,
+            if (classificationFilter != 'all')
+              'classification': classificationFilter,
+            if (categoryFilter != 'all') 'category': categoryFilter,
           },
         ),
       ]);
@@ -549,51 +783,70 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           IconButton(
             tooltip: 'الإشعارات',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => NotificationsPage(api: widget.api),
-              ),
-            ),
+            onPressed: _showNotificationsPreview,
             icon: const Icon(Icons.notifications_none_rounded),
           ),
-          IconButton(
-            tooltip: 'تحديث البيانات',
-            onPressed: refresh,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
-            tooltip: 'تسجيل الخروج',
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-
-              // Remove the device token while the authenticated session is
-              // still available. Logout must remain possible if push cleanup
-              // fails because the device is offline or Firebase is unavailable.
-              try {
-                final token = await push.currentToken();
-                if (token != null) {
-                  await widget.api.call(
-                    'notifications.unregisterMobileToken',
-                    mutation: true,
-                    input: {'token': token},
-                  );
-                }
-              } catch (_) {
-                // Continue with local logout even if remote token cleanup fails.
-              }
-
-              try {
-                await widget.api.logout();
-              } catch (_) {
-                // PoliceApi.logout clears the locally stored session in finally.
-              }
-              if (!mounted) return;
-              navigator.pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
-            },
-            icon: const Icon(Icons.logout),
+          PopupMenuButton<String>(
+            tooltip: 'قائمة الحساب',
+            onSelected: _handleAccountAction,
+            icon: CircleAvatar(
+              radius: 18,
+              backgroundColor: navy,
+              child: const Icon(
+                Icons.person_outline_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'profile',
+                child: _AccountMenuItem(
+                  icon: Icons.badge_outlined,
+                  title: 'الملف الشخصي',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'refresh',
+                child: _AccountMenuItem(
+                  icon: Icons.refresh_rounded,
+                  title: 'تحديث البيانات',
+                ),
+              ),
+              if (widget.account['role'] == 'admin') ...[
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'department',
+                  child: _AccountMenuItem(
+                    icon: Icons.settings_outlined,
+                    title: 'إعدادات الجهة',
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'organizations',
+                  child: _AccountMenuItem(
+                    icon: Icons.account_tree_outlined,
+                    title: 'إدارة الجهات',
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'users',
+                  child: _AccountMenuItem(
+                    icon: Icons.manage_accounts_outlined,
+                    title: 'إدارة المستخدمين',
+                  ),
+                ),
+              ],
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'logout',
+                child: _AccountMenuItem(
+                  icon: Icons.logout_rounded,
+                  title: 'تسجيل الخروج',
+                  color: Color(0xFFB42332),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -614,6 +867,51 @@ class _DashboardPageState extends State<DashboardPage> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                  child: Row(
+                    children: [
+                      ClipOval(
+                        child: Image.asset(
+                          'assets/police-telegrams-icon.png',
+                          width: 34,
+                          height: 34,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'القائمة الجانبية',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              'إدارة نظام البرقيات الشرطية',
+                              style: TextStyle(
+                                color: Color(0xFFB8C5D6),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'إغلاق القائمة',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 Container(
                   decoration: const BoxDecoration(
                     color: Color(0xFF07152B),
@@ -1072,6 +1370,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 10),
           _searchField(),
           const SizedBox(height: 10),
+          _filterControls(),
+          const SizedBox(height: 10),
           _telegramCards(telegrams),
           const SizedBox(height: 12),
           _paginationControls(),
@@ -1102,6 +1402,8 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(height: 14),
         _searchField(),
         const SizedBox(height: 10),
+        _filterControls(),
+        const SizedBox(height: 10),
         _telegramCards(telegrams),
         const SizedBox(height: 12),
         _paginationControls(),
@@ -1125,6 +1427,156 @@ class _DashboardPageState extends State<DashboardPage> {
     if (receiverOrganizationId == organizationId) return true;
     return false;
   }
+
+  void _setTelegramFilter({
+    String? status,
+    String? priority,
+    String? classification,
+    String? category,
+  }) {
+    setState(() {
+      if (status != null) statusFilter = status;
+      if (priority != null) priorityFilter = priority;
+      if (classification != null) classificationFilter = classification;
+      if (category != null) categoryFilter = category;
+      telegramPage = 1;
+    });
+    refresh(showLoading: false);
+  }
+
+  Widget _filterControls() {
+    final hasFilters =
+        statusFilter != 'all' ||
+        priorityFilter != 'all' ||
+        classificationFilter != 'all' ||
+        categoryFilter != 'all';
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.filter_list_rounded, color: navy, size: 20),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'تصفية سجل البرقيات',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                ),
+                if (hasFilters)
+                  TextButton(
+                    onPressed: () => _setTelegramFilter(
+                      status: 'all',
+                      priority: 'all',
+                      classification: 'all',
+                      category: 'all',
+                    ),
+                    child: const Text('مسح الفلاتر'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _filterDropdown('الحالة', statusFilter, const [
+                    ('all', 'كل الحالات'),
+                    ('draft', 'مسودة'),
+                    ('submitted', 'مرسلة'),
+                    ('in_review', 'قيد المراجعة'),
+                    ('approved', 'معتمدة'),
+                    ('returned', 'معادة'),
+                    ('rejected', 'مرفوضة'),
+                    ('forwarded', 'محالة'),
+                    ('pending', 'معلقة'),
+                    ('in_progress', 'قيد التنفيذ'),
+                    ('resolved', 'تمت المعالجة'),
+                    ('completed', 'مكتملة'),
+                    ('archived', 'مؤرشفة'),
+                  ], (value) => _setTelegramFilter(status: value)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _filterDropdown('الأولوية', priorityFilter, const [
+                    ('all', 'كل الأولويات'),
+                    ('urgent', 'عاجل'),
+                    ('normal', 'عادي'),
+                    ('slow', 'بطيء'),
+                  ], (value) => _setTelegramFilter(priority: value)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _filterDropdown('السرية', classificationFilter, const [
+                    ('all', 'كل المستويات'),
+                    ('normal', 'عادي'),
+                    ('secret', 'سري'),
+                  ], (value) => _setTelegramFilter(classification: value)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _filterDropdown('التصنيف', categoryFilter, const [
+                    ('all', 'كل التصنيفات'),
+                    ('criminal', 'جنائي'),
+                    ('administrative', 'إداري'),
+                    ('traffic', 'مروري'),
+                    ('security', 'أمني'),
+                    ('tactical', 'تكتيكي'),
+                    ('intelligence', 'استخباراتي'),
+                    ('emergency', 'طوارئ'),
+                    ('public_order', 'حفظ النظام'),
+                    ('personnel', 'شؤون الأفراد'),
+                    ('logistics', 'إمداد ودعم'),
+                    ('training', 'تدريب'),
+                    ('community', 'مجتمعي'),
+                    ('other', 'أخرى'),
+                  ], (value) => _setTelegramFilter(category: value)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterDropdown(
+    String label,
+    String value,
+    List<(String, String)> options,
+    ValueChanged<String> onChanged,
+  ) => DropdownButtonFormField<String>(
+    key: ValueKey<String>(value),
+    initialValue: value,
+    isExpanded: true,
+    decoration: InputDecoration(
+      labelText: label,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    ),
+    items: options
+        .map(
+          (option) => DropdownMenuItem<String>(
+            value: option.$1,
+            child: Text(
+              option.$2,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        )
+        .toList(),
+    onChanged: (selected) {
+      if (selected != null) onChanged(selected);
+    },
+  );
 
   Widget _searchField() => TextField(
     controller: searchController,
@@ -1567,6 +2019,28 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+}
+
+class _AccountMenuItem extends StatelessWidget {
+  const _AccountMenuItem({required this.icon, required this.title, this.color});
+
+  final IconData icon;
+  final String title;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 216,
+    child: Row(
+      children: [
+        Icon(icon, size: 18, color: color ?? const Color(0xFF667085)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(title, style: TextStyle(color: color, fontSize: 13)),
+        ),
+      ],
+    ),
+  );
 }
 
 class TelegramDetailsPage extends StatefulWidget {

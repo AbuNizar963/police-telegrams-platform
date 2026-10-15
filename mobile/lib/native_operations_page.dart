@@ -158,8 +158,12 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
           controller: _tabs,
           isScrollable: true,
           indicatorColor: _gold,
+          indicatorWeight: 3,
+          indicatorSize: TabBarIndicatorSize.label,
           labelColor: _navy,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w800),
           unselectedLabelColor: const Color(0xFF7A8493),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
             Tab(icon: Icon(Icons.map_outlined), text: 'المواقع'),
             Tab(icon: Icon(Icons.groups_outlined), text: 'الوحدات'),

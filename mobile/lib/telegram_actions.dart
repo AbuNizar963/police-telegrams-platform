@@ -2,12 +2,13 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 
 import 'api.dart';
 
-const _navy = Color(0xFF101C35);
-const _gold = Color(0xFFC9A45C);
+const _navy = Color(0xFF10233F);
+const _gold = Color(0xFFD8C38E);
 
 String _actionError(Object error) =>
     error.toString().replaceFirst('Exception: ', '');
@@ -17,11 +18,17 @@ class TelegramActionsPanel extends StatefulWidget {
     super.key,
     required this.api,
     required this.telegramId,
+    required this.telegramStatus,
+    required this.canOperate,
+    required this.isAdmin,
     required this.onChanged,
   });
 
   final PoliceApi api;
   final int telegramId;
+  final String telegramStatus;
+  final bool canOperate;
+  final bool isAdmin;
   final VoidCallback onChanged;
 
   @override
@@ -33,6 +40,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   String? error;
   List<dynamic> routes = const [];
   List<dynamic> attachments = const [];
+  List<Map<String, dynamic>> routingDirectory = const [];
 
   @override
   void initState() {
@@ -42,7 +50,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   Future<void> load() async {
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         widget.api.call(
           'telegrams.incomingRoutes',
           input: {'telegramId': widget.telegramId},
@@ -51,11 +59,20 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'telegrams.attachments',
           input: {'telegramId': widget.telegramId},
         ),
+        widget.api
+            .call('organizations.routingDirectory')
+            .catchError((_) => <dynamic>[]),
       ]);
       if (!mounted) return;
       setState(() {
         routes = results[0] is List ? results[0] as List : const [];
         attachments = results[1] is List ? results[1] as List : const [];
+        routingDirectory = results[2] is List
+            ? (results[2] as List)
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList()
+            : const [];
         error = null;
       });
     } catch (exception) {
@@ -108,7 +125,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     final reason = await _reasonDialog(
       context,
       title: 'تغيير حالة البرقية',
-      requiredReason: status == 'rejected',
+      requiredReason: status == 'rejected' || status == 'returned',
     );
     if (reason == null) return;
     await _run(() async {
@@ -126,18 +143,13 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   }
 
   Future<void> routeTelegram() async {
-    final organizationId = await _textDialog(
-      context,
-      title: 'إحالة البرقية',
-      label: 'معرّف الجهة المستلمة',
-      hint: 'UUID الجهة من دليل التوجيه',
-    );
-    if (organizationId == null || organizationId.trim().isEmpty) return;
+    final organizationId = await _chooseRouteTarget();
+    if (organizationId == null || organizationId.isEmpty) return;
     if (!mounted) return;
     final note = await _textDialog(
       context,
-      title: 'ملاحظة الإحالة',
-      label: 'الملاحظة الاختيارية',
+      title: 'طلب إحالة عبر السلطة الأعلى',
+      label: 'ملاحظة الإحالة (اختياري)',
     );
     await _run(() async {
       await widget.api.call(
@@ -145,7 +157,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         mutation: true,
         input: {
           'id': widget.telegramId,
-          'toOrganizationId': organizationId.trim(),
+          'toOrganizationId': organizationId,
           'note': note?.trim().isEmpty == true ? null : note?.trim(),
         },
       );
@@ -153,16 +165,110 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     });
   }
 
-  Future<void> receive(int routeId) async {
-    await _run(() async {
-      await widget.api.call(
-        'telegrams.receiveRoute',
-        mutation: true,
-        input: {'routeId': routeId},
-      );
-      await load();
-      widget.onChanged();
-    });
+  Future<String?> _chooseRouteTarget() async {
+    final targets = routingDirectory
+        .where((row) => row['isSelectable'] == true)
+        .toList();
+    if (targets.isEmpty) {
+      _show('لا توجد جهات متاحة للإحالة من جهة العمل الحالية.');
+      return null;
+    }
+    var query = '';
+    final byId = <String, Map<String, dynamic>>{
+      for (final row in routingDirectory) '${row['id']}': row,
+    };
+    String pathFor(Map<String, dynamic> row) {
+      final parts = <String>['${row['name'] ?? 'جهة بدون اسم'}'];
+      final visited = <String>{'${row['id']}'};
+      var parentId = row['parentOrganizationId']?.toString();
+      while (parentId != null && parentId.isNotEmpty && visited.add(parentId)) {
+        final parent = byId[parentId];
+        if (parent == null) break;
+        parts.insert(0, '${parent['name'] ?? 'جهة بدون اسم'}');
+        parentId = parent['parentOrganizationId']?.toString();
+      }
+      return parts.join(' ← ');
+    }
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final normalized = query.trim().toLowerCase();
+          final options = targets.where((row) {
+            if (normalized.isEmpty) return true;
+            final name = '${row['name'] ?? ''}'.toLowerCase();
+            final code = '${row['code'] ?? ''}'.toLowerCase();
+            return name.contains(normalized) ||
+                code.contains(normalized) ||
+                pathFor(row).toLowerCase().contains(normalized);
+          }).toList()..sort((a, b) => pathFor(a).compareTo(pathFor(b)));
+          return FractionallySizedBox(
+            heightFactor: 0.86,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'اختيار الجهة المستلمة',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                        tooltip: 'إغلاق',
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    autofocus: true,
+                    onChanged: (value) => setSheetState(() => query = value),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'ابحث بالاسم أو الرمز أو المسار',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: options.isEmpty
+                      ? const Center(child: Text('لا توجد جهات مطابقة للبحث.'))
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+                          itemCount: options.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 4),
+                          itemBuilder: (context, index) {
+                            final row = options[index];
+                            final code = row['code']?.toString();
+                            return ListTile(
+                              leading: const Icon(Icons.account_tree_outlined),
+                              title: Text('${row['name'] ?? 'جهة بدون اسم'}'),
+                              subtitle: Text(
+                                '${pathFor(row)}${code == null || code.isEmpty ? '' : ' · $code'}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () =>
+                                  Navigator.pop(sheetContext, '${row['id']}'),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> decide(int routeId, bool accepted) async {
@@ -234,29 +340,24 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       if (url == null || '$url'.trim().isEmpty) {
         throw Exception('لم يُرجع الخادم رابط تنزيل المرفق.');
       }
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('رابط المرفق'),
-          content: SelectableText('$url'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('إغلاق'),
-            ),
-            FilledButton.icon(
-              onPressed: () async {
-                await SharePlus.instance.share(
-                  ShareParams(text: '$url', subject: 'رابط مرفق البرقية'),
-                );
-              },
-              icon: const Icon(Icons.share_outlined),
-              label: const Text('مشاركة الرابط'),
-            ),
-          ],
-        ),
+      final uri = Uri.tryParse('$url');
+      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+        throw Exception('رابط تنزيل المرفق غير صالح أو غير آمن.');
+      }
+      final response = await http.get(uri);
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw Exception('تعذر تنزيل ملف المرفق من مساحة التخزين.');
+      }
+      final fileName =
+          '${attachment['originalName'] ?? attachment['fileName'] ?? 'telegram-attachment'}';
+      final savedPath = await FilePicker.saveFile(
+        dialogTitle: 'حفظ مرفق البرقية',
+        fileName: fileName,
+        bytes: response.bodyBytes,
       );
+      if (mounted) {
+        _show(savedPath == null ? 'تم إلغاء حفظ المرفق.' : 'تم حفظ المرفق.');
+      }
     });
   }
 
@@ -276,6 +377,75 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  List<Widget> _transitionButtons() {
+    final status = widget.telegramStatus.toLowerCase();
+    final transitions = <(String, String, IconData)>[];
+    if (widget.isAdmin) {
+      if (status == 'draft') {
+        transitions.add(('submitted', 'إرسال للمراجعة', Icons.send_outlined));
+      } else if (status == 'submitted') {
+        transitions.add(('in_review', 'بدء المراجعة', Icons.pending_actions));
+      } else if (status == 'pending') {
+        transitions.add(('in_progress', 'بدء الإجراء', Icons.play_arrow));
+      } else if (status == 'in_review') {
+        transitions.add(('approved', 'اعتماد', Icons.verified_outlined));
+        transitions.add(('returned', 'إرجاع بسبب', Icons.undo_outlined));
+        transitions.add(('rejected', 'رفض', Icons.cancel_outlined));
+      } else if ({'in_progress', 'approved', 'forwarded'}.contains(status)) {
+        transitions.add((
+          'completed',
+          'إكمال المعالجة',
+          Icons.check_circle_outline,
+        ));
+      } else if ({'resolved', 'completed'}.contains(status)) {
+        transitions.add(('archived', 'أرشفة', Icons.archive_outlined));
+      }
+    } else if (widget.canOperate) {
+      if (status == 'draft') {
+        transitions.add(('submitted', 'إرسال للمراجعة', Icons.send_outlined));
+      } else if (status == 'submitted') {
+        transitions.add(('in_review', 'بدء المراجعة', Icons.pending_actions));
+      } else if (status == 'in_review') {
+        transitions.add(('approved', 'اعتماد', Icons.verified_outlined));
+        transitions.add(('returned', 'إرجاع بسبب', Icons.undo_outlined));
+        transitions.add(('rejected', 'رفض', Icons.cancel_outlined));
+      } else if ({'approved', 'in_progress', 'forwarded'}.contains(status)) {
+        transitions.add((
+          'completed',
+          'إكمال المعالجة',
+          Icons.check_circle_outline,
+        ));
+      }
+    }
+    return transitions
+        .map(
+          (action) => OutlinedButton.icon(
+            onPressed: busy ? null : () => transition(action.$1),
+            icon: Icon(action.$3),
+            label: Text(action.$2),
+          ),
+        )
+        .toList();
+  }
+
+  bool get _canRoute =>
+      widget.canOperate &&
+      const {
+        'approved',
+        'in_progress',
+        'forwarded',
+      }.contains(widget.telegramStatus.toLowerCase()) &&
+      routingDirectory.any((row) => row['isSelectable'] == true);
+
+  String _attachmentSummary(Map<String, dynamic> attachment) {
+    final size =
+        int.tryParse('${attachment['sizeBytes'] ?? attachment['size']}') ?? 0;
+    final hash = '${attachment['sha256'] ?? ''}';
+    final hashPrefix = hash.substring(0, hash.length < 12 ? hash.length : 12);
+    final mime = '${attachment['mimeType'] ?? 'ملف'}';
+    return '$mime · ${(size / 1024).ceil()} كيلوبايت · SHA-256 $hashPrefix...';
   }
 
   @override
@@ -308,26 +478,13 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                 icon: const Icon(Icons.share_outlined),
                 label: const Text('مشاركة البرقية'),
               ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () => transition('in_review'),
-                icon: const Icon(Icons.pending_actions),
-                label: const Text('إرسال للمراجعة'),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () => transition('completed'),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('إكمال'),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () => transition('rejected'),
-                icon: const Icon(Icons.cancel_outlined),
-                label: const Text('رفض'),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : routeTelegram,
-                icon: const Icon(Icons.forward_to_inbox),
-                label: const Text('إحالة'),
-              ),
+              ..._transitionButtons(),
+              if (_canRoute)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : routeTelegram,
+                  icon: const Icon(Icons.forward_to_inbox),
+                  label: const Text('إرسال طلب إحالة'),
+                ),
               OutlinedButton.icon(
                 onPressed: busy ? null : pickAttachment,
                 icon: const Icon(Icons.attach_file),
@@ -367,7 +524,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   '${attachment['originalName'] ?? attachment['fileName'] ?? 'مرفق'}',
                 ),
                 subtitle: Text(
-                  '${attachment['sizeBytes'] ?? attachment['size'] ?? '—'} بايت',
+                  _attachmentSummary(attachment),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: IconButton(
                   tooltip: 'تنزيل المرفق',
@@ -384,7 +543,27 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   Widget _routeTile(dynamic item) {
     final route = Map<String, dynamic>.from(item as Map);
     final routeId = int.tryParse('${route['id']}');
-    final approval = '${route['approvalStatus'] ?? route['status'] ?? ''}';
+    final status = '${route['status'] ?? route['approvalStatus'] ?? ''}';
+    final statusText = switch (status) {
+      'received' => 'تم تأكيد استلام الإحالة',
+      'rejected' => 'تم رفض استلام الإحالة',
+      'sent' => 'بانتظار تأكيد الجهة المستقبلة',
+      _ => status,
+    };
+    final details = <String>[statusText];
+    if (status == 'received' && route['receivedAt'] != null) {
+      details.add('وقت الاستلام: ${route['receivedAt']}');
+    } else if (status == 'rejected') {
+      details.add(
+        'سبب الرفض: ${route['receiverDecisionReason'] ?? 'غير محدد'}',
+      );
+    }
+    if (route['routeSerialCode'] != null) {
+      details.add('صادر الجهة المحيلة: ${route['routeSerialCode']}');
+    }
+    if (route['incomingSerialCode'] != null) {
+      details.add('وارد الجهة المستقبلة: ${route['incomingSerialCode']}');
+    }
     return Card(
       color: Colors.grey.shade50,
       child: ListTile(
@@ -392,20 +571,16 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         title: Text(
           '${route['toOrganizationName'] ?? route['toOrganizationId'] ?? 'جهة مستلمة'}',
         ),
-        subtitle: Text('الحالة: $approval'),
-        trailing: routeId == null
+        subtitle: Text(details.join('\n')),
+        isThreeLine: details.length > 1,
+        trailing: routeId == null || status != 'sent'
             ? null
             : PopupMenuButton<String>(
                 onSelected: (value) {
-                  if (value == 'receive') receive(routeId);
                   if (value == 'accept') decide(routeId, true);
                   if (value == 'reject') decide(routeId, false);
                 },
                 itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: 'receive',
-                    child: Text('تسجيل الاستلام'),
-                  ),
                   PopupMenuItem(value: 'accept', child: Text('قبول الإحالة')),
                   PopupMenuItem(value: 'reject', child: Text('رفض الإحالة')),
                 ],

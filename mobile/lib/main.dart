@@ -1352,7 +1352,7 @@ class _DashboardPageState extends State<DashboardPage>
           builder: (context) => IconButton(
             tooltip: 'فتح القائمة الجانبية',
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu_rounded),
+            icon: const Icon(Icons.view_sidebar_rounded),
           ),
         ),
         title: Row(
@@ -1369,7 +1369,7 @@ class _DashboardPageState extends State<DashboardPage>
             const SizedBox(width: 8),
             const Flexible(
               child: Text(
-                'نظام برقيات الشرطة',
+                'مركز البرقيات',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),

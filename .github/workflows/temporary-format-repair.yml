@@ -1,0 +1,36 @@
+name: Temporary Dart formatting repair
+on:
+  push:
+    branches:
+      - flutter-mobile-app
+    paths:
+      - '.github/workflows/temporary-format-repair.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: flutter-mobile-app
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+      - name: Format Dart sources
+        working-directory: mobile
+        run: dart format lib/advanced_create_telegram_page.dart lib/app_update_page.dart lib/main.dart
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/lib/advanced_create_telegram_page.dart mobile/lib/app_update_page.dart mobile/lib/main.dart
+          if git diff --cached --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git commit -m "style(mobile): apply Dart formatter"
+          git push origin HEAD:flutter-mobile-app

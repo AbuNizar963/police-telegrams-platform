@@ -19,8 +19,8 @@ import 'telegram_actions.dart';
 import 'telegram_csv_page.dart';
 import 'telegram_edit_dialog.dart';
 
-const navy = Color(0xFF101C35);
-const gold = Color(0xFFC9A45C);
+const navy = Color(0xFF10233F);
+const gold = Color(0xFFD8C38E);
 const canvas = Color(0xFFF5F7FA);
 
 void main() {

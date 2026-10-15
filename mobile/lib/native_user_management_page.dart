@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-const _userNavy = Color(0xFF101C35);
-const _userGold = Color(0xFFC9A45C);
+const _userNavy = Color(0xFF10233F);
+const _userGold = Color(0xFFD8C38E);
 
 const _roles = <String, String>{
   'dispatcher': 'موظف تشغيل',

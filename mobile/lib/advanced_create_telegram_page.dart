@@ -410,6 +410,11 @@ class _AdvancedCreateTelegramSheetState
                                           if (_broadcast) {
                                             _recipientId = null;
                                             _recipient.text = 'كافة الوحدات';
+                                          } else {
+                                            // Do not leave the broadcast label as
+                                            // a valid recipient after opting out.
+                                            _recipientId = null;
+                                            _recipient.clear();
                                           }
                                         }),
                                   title: const Text(

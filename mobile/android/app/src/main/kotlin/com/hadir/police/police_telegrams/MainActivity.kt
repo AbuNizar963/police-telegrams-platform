@@ -56,9 +56,15 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "updateDownloadNotification" -> {
-                        val progress = (call.argument<Int>("progress") ?: 0).coerceIn(0, 100)
-                        val received = call.argument<Int>("received") ?: 0
-                        val total = call.argument<Int>("total") ?: 0
+                        // StandardMessageCodec may decode Dart integers as either
+                        // java.lang.Integer or java.lang.Long. Read numeric channel
+                        // values through Number to avoid a runtime ClassCastException.
+                        val progress = (call.argument<Number>("progress")?.toInt() ?: 0)
+                            .coerceIn(0, 100)
+                        val received = (call.argument<Number>("received")?.toLong() ?: 0L)
+                            .coerceAtLeast(0L)
+                        val total = (call.argument<Number>("total")?.toLong() ?: 0L)
+                            .coerceAtLeast(0L)
                         val message = if (total > 0) {
                             "اكتمل $progress% • ${formatBytes(received)} من ${formatBytes(total)}"
                         } else {
@@ -118,7 +124,7 @@ class MainActivity : FlutterActivity() {
             ?.trim()
             ?.lowercase(java.util.Locale.ROOT)
         val releaseVersion = call.argument<String>("version")?.trim()
-        val buildNumber = call.argument<Int>("buildNumber") ?: 0
+        val buildNumber = call.argument<Number>("buildNumber")?.toInt() ?: 0
         val downloadUri = url?.let { Uri.parse(it) }
         if (downloadUri == null || downloadUri.scheme != "https" ||
             downloadUri.host != "github.com" ||
@@ -364,7 +370,7 @@ class MainActivity : FlutterActivity() {
         NotificationManagerCompat.from(this).cancel(updateNotificationId)
     }
 
-    private fun formatBytes(bytes: Int): String {
+    private fun formatBytes(bytes: Long): String {
         val megabytes = bytes / (1024.0 * 1024.0)
         return String.format(java.util.Locale.ROOT, "%.1f MB", megabytes)
     }

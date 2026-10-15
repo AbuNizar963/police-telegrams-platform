@@ -21,10 +21,16 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.telegramId,
+    this.onEdit,
+    this.onDelete,
+    this.onSubmitForReview,
   });
 
   final PoliceApi api;
   final int telegramId;
+  final Future<void> Function()? onEdit;
+  final Future<void> Function()? onDelete;
+  final Future<void> Function()? onSubmitForReview;
 
   @override
   State<OfficialTelegramDocumentPage> createState() =>
@@ -257,12 +263,139 @@ class _OfficialTelegramDocumentPageState
     );
   });
 
+  Future<void> _attachFile() => _perform(() async {
+    final result = await FilePicker.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const [
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'pdf',
+        'mp3',
+        'wav',
+        'webm',
+      ],
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.single;
+    if (file.bytes == null || file.bytes!.isEmpty) {
+      throw Exception('تعذر قراءة الملف المحدد.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw Exception('حجم المرفق يتجاوز 10 ميغابايت.');
+    }
+    final contentType = _attachmentContentType(file.extension);
+    if (contentType == null) throw Exception('نوع الملف غير مدعوم.');
+    await widget.api.call(
+      'telegrams.uploadAttachment',
+      mutation: true,
+      input: {
+        'telegramId': widget.telegramId,
+        'fileName': file.name,
+        'contentType': contentType,
+        'base64': base64Encode(file.bytes!),
+      },
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرفاق الملف بالبرقية.')));
+    }
+  });
+
+  String? _attachmentContentType(String? extension) {
+    switch ((extension ?? '').toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'pdf':
+        return 'application/pdf';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'webm':
+        return 'audio/webm';
+    }
+    return null;
+  }
+
+  Future<void> _showLocation() async {
+    final latitude = telegram?['gpsLatitude'];
+    final longitude = telegram?['gpsLongitude'];
+    final message = latitude == null || longitude == null
+        ? 'لا يوجد موقع مسجل لهذه البرقية.'
+        : 'إحداثيات الموقع: $latitude, $longitude';
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('موقع البرقية'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _documentAction({
+    required String label,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    bool primary = false,
+    bool danger = false,
+  }) {
+    final foreground = danger || primary
+        ? Colors.white
+        : const Color(0xFF101C35);
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: danger
+            ? const Color(0xFFE33D3D)
+            : primary
+            ? const Color(0xFF10233F)
+            : Colors.white,
+        foregroundColor: foreground,
+        side: BorderSide(
+          color: danger
+              ? const Color(0xFFE33D3D)
+              : primary
+              ? const Color(0xFF10233F)
+              : const Color(0xFFD8DCE2),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+      icon: Icon(icon, size: 19),
+      label: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('الوثيقة الرسمية للطباعة'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF101C35),
+        elevation: 0,
+        title: Text(
+          _value(telegram?['subject'], fallback: 'عرض البرقية'),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
         actions: [
           IconButton(
             tooltip: busy ? 'جارٍ تجهيز الوثيقة' : 'طباعة الوثيقة',
@@ -309,28 +442,15 @@ class _OfficialTelegramDocumentPageState
             )
           : Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  color: const Color(0xFFF1F3F5),
-                  child: const Text(
-                    'معاينة A4 مطابقة لقالب الويب — يمكن التكبير والتمرير',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Color(0xFF667085)),
-                  ),
-                ),
                 Expanded(
                   child: Container(
-                    color: const Color(0xFFE8EBEF),
+                    color: const Color(0xFFF8F8F6),
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       minScale: 1,
                       maxScale: 4,
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                         child: Center(
                           child: Image.memory(
                             preview!,
@@ -348,36 +468,72 @@ class _OfficialTelegramDocumentPageState
                 SafeArea(
                   top: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 3.25,
                       children: [
-                        FilledButton.icon(
-                          onPressed: busy ? null : _printPdf,
-                          icon: const Icon(Icons.print_outlined),
-                          label: Text(busy ? 'جارٍ التجهيز...' : 'طباعة'),
+                        _documentAction(
+                          label: busy ? 'جارٍ التجهيز...' : 'طباعة',
+                          icon: Icons.print_outlined,
+                          primary: true,
+                          onPressed: busy ? null : () => _printPdf(),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: busy ? null : _savePdf,
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: const Text('حفظ PDF'),
+                        _documentAction(
+                          label: 'إرفاق ملف',
+                          icon: Icons.attach_file,
+                          onPressed: busy ? null : () => _attachFile(),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: busy ? null : _sharePdf,
-                          icon: const Icon(Icons.share_outlined),
-                          label: const Text('مشاركة PDF'),
+                        _documentAction(
+                          label: 'صورة عالية الدقة',
+                          icon: Icons.image_outlined,
+                          onPressed: busy ? null : () => _saveImage(),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: busy ? null : _saveImage,
-                          icon: const Icon(Icons.image_outlined),
-                          label: const Text('حفظ صورة عالية الدقة'),
+                        _documentAction(
+                          label: 'PDF مطابق للطباعة',
+                          icon: Icons.picture_as_pdf_outlined,
+                          onPressed: busy ? null : () => _savePdf(),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: busy ? null : _shareImage,
-                          icon: const Icon(Icons.share_outlined),
-                          label: const Text('مشاركة صورة'),
+                        _documentAction(
+                          label: 'مشاركة صورة',
+                          icon: Icons.share_outlined,
+                          onPressed: busy ? null : () => _shareImage(),
+                        ),
+                        _documentAction(
+                          label: 'مشاركة PDF',
+                          icon: Icons.share_outlined,
+                          onPressed: busy ? null : () => _sharePdf(),
+                        ),
+                        _documentAction(
+                          label: 'تعديل البرقية',
+                          icon: Icons.save_outlined,
+                          onPressed: busy || widget.onEdit == null
+                              ? null
+                              : () => widget.onEdit!(),
+                        ),
+                        _documentAction(
+                          label: 'الموقع',
+                          icon: Icons.my_location_outlined,
+                          onPressed: busy ? null : () => _showLocation(),
+                        ),
+                        _documentAction(
+                          label: 'حذف نهائي',
+                          icon: Icons.delete_outline,
+                          danger: true,
+                          onPressed: busy || widget.onDelete == null
+                              ? null
+                              : () => widget.onDelete!(),
+                        ),
+                        _documentAction(
+                          label: 'إرسال للمراجعة',
+                          icon: Icons.send_outlined,
+                          onPressed: busy || widget.onSubmitForReview == null
+                              ? null
+                              : () => widget.onSubmitForReview!(),
                         ),
                       ],
                     ),

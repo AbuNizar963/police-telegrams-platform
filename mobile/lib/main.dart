@@ -664,8 +664,11 @@ class _DashboardPageState extends State<DashboardPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            TelegramDetailsPage(api: widget.api, telegramId: telegramId),
+        builder: (_) => TelegramDetailsPage(
+          api: widget.api,
+          telegramId: telegramId,
+          officialDocument: true,
+        ),
       ),
     );
     if (mounted) await refresh();
@@ -1661,6 +1664,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         builder: (_) => TelegramDetailsPage(
                           api: widget.api,
                           telegramId: row['id'] as int,
+                          officialDocument: true,
                         ),
                       ),
                     );
@@ -1968,9 +1972,11 @@ class TelegramDetailsPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.telegramId,
+    this.officialDocument = false,
   });
   final PoliceApi api;
   final int telegramId;
+  final bool officialDocument;
   @override
   State<TelegramDetailsPage> createState() => _TelegramDetailsPageState();
 }
@@ -2073,6 +2079,22 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final data = telegram;
+    if (widget.officialDocument && !loading && error == null && data != null) {
+      return OfficialTelegramDocumentPage(
+        api: widget.api,
+        telegramId: widget.telegramId,
+        onEdit: _editTelegram,
+        onDelete: _deleteTelegram,
+        onSubmitForReview: () async {
+          await widget.api.call(
+            'telegrams.transition',
+            mutation: true,
+            input: {'id': widget.telegramId, 'toStatus': 'submitted'},
+          );
+          await load();
+        },
+      );
+    }
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(

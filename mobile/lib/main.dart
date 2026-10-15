@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
 import 'app_update_service.dart';
 import 'mobile_pages.dart';
@@ -12,6 +13,7 @@ import 'native_organization_management_page.dart';
 import 'native_user_management_page.dart';
 import 'official_telegram_document.dart';
 import 'push_notifications.dart';
+import 'public_pages.dart';
 import 'telegram_actions.dart';
 import 'telegram_csv_page.dart';
 import 'telegram_edit_dialog.dart';
@@ -747,7 +749,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => CreateTelegramSheet(api: widget.api),
+      builder: (_) => AdvancedCreateTelegramSheet(api: widget.api),
     );
     if (result == true) refresh();
   }
@@ -1039,6 +1041,41 @@ class _DashboardPageState extends State<DashboardPage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => ReportsPage(api: widget.api),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('حول النظام وميزاته'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AboutPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.gavel_outlined),
+                  title: const Text('الشروط والأحكام'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TermsPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.verified_outlined),
+                  title: const Text('التحقق من البرقية'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VerifyTelegramPage(api: widget.api),
                       ),
                     );
                   },

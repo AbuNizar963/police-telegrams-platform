@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -111,12 +112,85 @@ class PoliceApi {
     }
   }
 
+  Future<Uint8List> renderTelegramDocument(
+    String html, {
+    required String format,
+  }) async {
+    if (format != 'pdf' && format != 'png') {
+      throw ArgumentError.value(format, 'format', 'Expected pdf or png');
+    }
+    final cookie = await _storage.read(key: 'session_cookie');
+    final headers = <String, String>{
+      'content-type': 'application/json',
+      'accept': format == 'pdf' ? 'application/pdf' : 'image/png',
+    };
+    if (cookie != null && cookie.isNotEmpty) headers['cookie'] = cookie;
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/telegram-render'),
+      headers: headers,
+      body: jsonEncode({'format': format, 'html': html}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        response.statusCode,
+        _message(utf8.decode(response.bodyBytes, allowMalformed: true)),
+      );
+    }
+    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+    final expectedType = format == 'pdf' ? 'application/pdf' : 'image/png';
+    if (!contentType.startsWith(expectedType)) {
+      throw const ApiException(502, 'استجابة إنشاء الوثيقة غير صالحة');
+    }
+    return response.bodyBytes;
+  }
+
+  Future<Uint8List?> fetchImageAsset(String source) async {
+    final value = source.trim();
+    if (value.isEmpty) return null;
+    final baseUri = Uri.parse(baseUrl);
+    final parsed = Uri.tryParse(value);
+    final uri = parsed != null && parsed.hasScheme
+        ? parsed
+        : baseUri.resolve(value);
+    if (!uri.isScheme('http') && !uri.isScheme('https')) return null;
+    final headers = <String, String>{};
+    final cookie = await _storage.read(key: 'session_cookie');
+    if (cookie != null && cookie.isNotEmpty && uri.origin == baseUri.origin) {
+      headers['cookie'] = cookie;
+    }
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    final contentType =
+        response.headers['content-type']
+            ?.split(';')
+            .first
+            .trim()
+            .toLowerCase() ??
+        '';
+    if (!const {
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+    }.contains(contentType)) {
+      return null;
+    }
+    return response.bodyBytes;
+  }
+
   String _message(String body) {
     try {
       final data = jsonDecode(body);
-      return data['error']?['json']?['message']?.toString() ??
-          data['error']?['message']?.toString() ??
-          'تعذر الاتصال بالخادم';
+      if (data is Map) {
+        final error = data['error'];
+        if (error is String && error.trim().isNotEmpty) return error;
+        if (error is Map) {
+          return error['json']?['message']?.toString() ??
+              error['message']?.toString() ??
+              'تعذر الاتصال بالخادم';
+        }
+      }
+      return 'تعذر الاتصال بالخادم';
     } catch (_) {
       return 'تعذر الاتصال بالخادم';
     }

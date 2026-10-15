@@ -10,6 +10,7 @@ import 'mobile_pages.dart';
 import 'native_operations_page.dart';
 import 'native_organization_management_page.dart';
 import 'native_user_management_page.dart';
+import 'official_telegram_document.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
 import 'telegram_csv_page.dart';
@@ -2164,6 +2165,20 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
           actions: [
+            IconButton(
+              tooltip: 'معاينة وطباعة الوثيقة الرسمية',
+              onPressed: loading || data == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => OfficialTelegramDocumentPage(
+                          api: widget.api,
+                          telegramId: widget.telegramId,
+                        ),
+                      ),
+                    ),
+              icon: const Icon(Icons.print_outlined),
+            ),
             IconButton(
               tooltip: 'تعديل البرقية',
               onPressed: loading || data == null ? null : _editTelegram,

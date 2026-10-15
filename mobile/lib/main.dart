@@ -818,10 +818,13 @@ class _DashboardPageState extends State<DashboardPage>
         _pushPage(const TermsPage());
         break;
       case 'system_about':
-        _pushPage(const AppUpdatePage());
+        _pushPage(const AboutPage());
         break;
       case 'app_about':
         _pushPage(const AppAboutPage());
+        break;
+      case 'app_update':
+        _pushPage(const AppUpdatePage());
         break;
       case 'logout':
         _logout();
@@ -1217,6 +1220,7 @@ class _DashboardPageState extends State<DashboardPage>
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (_) => AdvancedCreateTelegramSheet(api: widget.api),
     );
     if (result == true) refresh();
@@ -1649,6 +1653,13 @@ class _DashboardPageState extends State<DashboardPage>
                 child: _AccountMenuItem(
                   icon: Icons.phone_android_rounded,
                   title: 'حول التطبيق',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'app_update',
+                child: _AccountMenuItem(
+                  icon: Icons.system_update_alt_rounded,
+                  title: 'تحديث التطبيق',
                 ),
               ),
               const PopupMenuItem(

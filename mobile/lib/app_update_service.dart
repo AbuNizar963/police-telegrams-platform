@@ -659,15 +659,6 @@ int _compareVersion(String latest, String current) {
   }
   return 0;
 }
-)
-        .hasMatch(normalized)) {
-      inContributorSection = true;
-      continue;
-    }
-    if (RegExp(r'^#{1,6}\\s+').hasMatch(line)) {
-      inContributorSection = false;
-      // GitHub's generic section title does not describe an actual change.
-      if (RegExp(r'^#{1,6}\\s*(what.s changed|full changelog)\\s*
 
 class _PendingMobileUpdate {
   const _PendingMobileUpdate({

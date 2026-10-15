@@ -17,7 +17,7 @@ import 'official_telegram_document.dart';
 import 'push_notifications.dart';
 import 'public_pages.dart';
 import 'telegram_actions.dart';
-import 'telegram_csv_page.dart';
+import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 
 const navy = Color(0xFF10233F);
@@ -1769,7 +1769,7 @@ class _DashboardPageState extends State<DashboardPage>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => TelegramCsvPage(api: widget.api),
+                        builder: (_) => TelegramExcelPage(api: widget.api),
                       ),
                     );
                   },

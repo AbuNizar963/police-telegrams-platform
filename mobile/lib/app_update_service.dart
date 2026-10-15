@@ -108,12 +108,12 @@ String _cleanReleaseNotes(String raw) {
   final cleanedLines = <String>[];
   var inContributorSection = false;
 
-  for (final sourceLine in raw.replaceAll('\\r\\n', '\\n').split('\\n')) {
+  for (final sourceLine in raw.replaceAll('\r\n', '\n').split('\n')) {
     final line = sourceLine.trim();
     if (line.isEmpty) continue;
 
     final normalized = line.toLowerCase();
-    if (RegExp(r'^#{1,6}\\s*(new contributors|contributors)\\s*
+    if (RegExp(r'^#{1,6}\s*(new contributors|contributors)\s*
 
 class _PendingMobileUpdate {
   const _PendingMobileUpdate({

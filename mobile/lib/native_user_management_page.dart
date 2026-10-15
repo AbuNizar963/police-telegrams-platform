@@ -293,8 +293,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _userNavy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _userNavy,
         title: const Text(
           'إدارة المستخدمين',
           style: TextStyle(fontWeight: FontWeight.w900),

@@ -216,8 +216,8 @@ class _TelegramCsvPageState extends State<TelegramCsvPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'استيراد وتصدير السجل',
           style: TextStyle(fontWeight: FontWeight.w900),

@@ -73,8 +73,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'الإشعارات',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -327,8 +327,8 @@ class _ReportsPageState extends State<ReportsPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'التقارير',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -686,8 +686,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'الإعدادات والملف الشخصي',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -1128,8 +1128,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'إعدادات الجهة',
           style: TextStyle(fontWeight: FontWeight.w900),

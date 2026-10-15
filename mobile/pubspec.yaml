@@ -29,7 +29,14 @@ flutter:
   uses-material-design: true
   assets:
     - assets/police-telegrams-icon.png
-    - assets/fonts/cairo-400.ttf
-    - assets/fonts/cairo-500.ttf
-    - assets/fonts/cairo-600.ttf
-    - assets/fonts/cairo-700.ttf
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/cairo-400.ttf
+          weight: 400
+        - asset: assets/fonts/cairo-500.ttf
+          weight: 500
+        - asset: assets/fonts/cairo-600.ttf
+          weight: 600
+        - asset: assets/fonts/cairo-700.ttf
+          weight: 700

@@ -131,8 +131,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8F7F2),
+        foregroundColor: _navy,
         title: const Text(
           'متابعة العمل الميداني',
           style: TextStyle(fontWeight: FontWeight.w900),

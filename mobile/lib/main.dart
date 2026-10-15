@@ -35,6 +35,7 @@ class PoliceTelegramsApp extends StatelessWidget {
     title: 'برقيات الشرطة',
     theme: ThemeData(
       useMaterial3: true,
+      fontFamily: 'Cairo',
       scaffoldBackgroundColor: const Color(0xFFF8F7F2),
       colorScheme: ColorScheme.fromSeed(
         seedColor: navy,
@@ -42,14 +43,29 @@ class PoliceTelegramsApp extends StatelessWidget {
         secondary: gold,
         surface: const Color(0xFFFFFEFC),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF8F7F2),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(fontSize: 14, height: 1.55),
+        bodyMedium: TextStyle(fontSize: 13, height: 1.5),
+        titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: const Color(0xFFF8F7F2),
         foregroundColor: navy,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        titleTextStyle: TextStyle(
+        toolbarHeight: 58,
+        titleSpacing: 8,
+        iconTheme: const IconThemeData(color: navy, size: 22),
+        actionsIconTheme: const IconThemeData(color: navy, size: 21),
+        shape: const Border(bottom: BorderSide(color: Color(0xFFE4E6EA))),
+        titleTextStyle: const TextStyle(
           color: navy,
-          fontSize: 18,
+          fontFamily: 'Cairo',
+          fontSize: 16,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -57,8 +73,9 @@ class PoliceTelegramsApp extends StatelessWidget {
         color: const Color(0xFFFFFEFC),
         elevation: 0,
         margin: const EdgeInsets.symmetric(vertical: 5),
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: Color(0xFFE1E5EB)),
         ),
       ),
@@ -86,12 +103,72 @@ class PoliceTelegramsApp extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: navy,
           foregroundColor: Colors.white,
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(48, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: navy,
+          minimumSize: const Size(44, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          side: const BorderSide(color: Color(0xFFD5DAE2)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: navy,
+          textStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFEFF1F4),
+        selectedColor: const Color(0xFFE8F0FF),
+        secondarySelectedColor: const Color(0xFFE7F6F7),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        labelStyle: const TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide.none,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: const Color(0xFFFFFEFC),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE1E5EB)),
+        ),
+        textStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+      ),
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: navy,
+        width: 306,
+        elevation: 8,
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: Color(0xFFFFFEFC),
@@ -770,7 +847,7 @@ class _DashboardPageState extends State<DashboardPage> {
           builder: (context) => IconButton(
             tooltip: 'فتح القائمة الجانبية',
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.space_dashboard_outlined),
+            icon: const Icon(Icons.menu_rounded),
           ),
         ),
         title: Row(
@@ -1126,13 +1203,13 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'إنشاء برقية',
         backgroundColor: navy,
         foregroundColor: Colors.white,
         elevation: 4,
         onPressed: create,
-        icon: const Icon(Icons.add_comment_outlined),
-        label: const Text('إنشاء برقية'),
+        child: const Icon(Icons.add_comment_outlined),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -2099,8 +2176,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: navy,
-          foregroundColor: Colors.white,
+          backgroundColor: const Color(0xFFF8F7F2),
+          foregroundColor: navy,
           title: const Text(
             'تفاصيل البرقية',
             style: TextStyle(fontWeight: FontWeight.w900),

@@ -586,6 +586,9 @@ String _dashboardRefreshError(Object error) {
 }
 
 class _DashboardPageState extends State<DashboardPage>
+  String get _greetingName =>
+      (widget.account['name'] ?? widget.account['username'] ?? 'أبو نزار')
+          .toString();
     with WidgetsBindingObserver {
   bool loading = true;
   String? error;
@@ -1855,7 +1858,7 @@ class _DashboardPageState extends State<DashboardPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'مرحباً، ${(widget.account['name'] ?? widget.account['username'] ?? 'أبو نزار').toString()}',
+                      'مرحباً، $_greetingName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

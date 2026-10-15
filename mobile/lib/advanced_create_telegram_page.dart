@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-const _composerNavy = Color(0xFF101C35);
-const _composerGold = Color(0xFFC9A45C);
+const _composerNavy = Color(0xFF10233F);
+const _composerGold = Color(0xFFD8C38E);
 
 class AdvancedCreateTelegramSheet extends StatefulWidget {
   const AdvancedCreateTelegramSheet({super.key, required this.api});

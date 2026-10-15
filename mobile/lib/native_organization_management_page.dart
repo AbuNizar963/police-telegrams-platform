@@ -274,7 +274,7 @@ class _NativeOrganizationManagementPageState
                               isThreeLine: true,
                               trailing: IconButton(
                                 tooltip: 'تعديل الجهة',
-                                onPressed: _saving
+                                onPressed: _loading || _saving
                                     ? null
                                     : () => _editOrganization(organization),
                                 icon: const Icon(Icons.edit_outlined),

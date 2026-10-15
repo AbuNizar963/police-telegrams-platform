@@ -457,7 +457,8 @@ String _dashboardRefreshError(Object error) {
   return 'تعذر تحديث بيانات لوحة التحكم. تحقق من الاتصال ثم أعد المحاولة.';
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage>
+    with WidgetsBindingObserver {
   bool loading = true;
   String? error;
   Map<String, dynamic> stats = {};
@@ -479,16 +480,15 @@ class _DashboardPageState extends State<DashboardPage> {
   Timer? _searchDebounce;
   bool _refreshInProgress = false;
   bool _refreshQueued = false;
+  DateTime? _lastUpdatedAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     refresh();
     _loadUnreadNotificationCount();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      refresh(showLoading: false);
-      _loadUnreadNotificationCount();
-    });
+    _startRefreshTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkAndPromptForAppUpdate(context);
     });
@@ -499,6 +499,29 @@ class _DashboardPageState extends State<DashboardPage> {
         refresh();
       },
     );
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      refresh(showLoading: false);
+      _loadUnreadNotificationCount();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startRefreshTimer();
+      refresh(showLoading: false);
+      _loadUnreadNotificationCount();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    }
   }
 
   Future<void> _registerPushToken(String token) async {
@@ -518,11 +541,6 @@ class _DashboardPageState extends State<DashboardPage> {
       case 'profile':
         _pushPage(ProfileSettingsPage(api: widget.api));
         break;
-      case 'theme':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الوضع الليلي قيد الإعداد للحساب.')),
-        );
-        break;
       case 'notifications':
         _pushPage(NotificationsPage(api: widget.api));
         break;
@@ -537,9 +555,6 @@ class _DashboardPageState extends State<DashboardPage> {
         break;
       case 'users':
         _pushPage(NativeUserManagementPage(api: widget.api));
-        break;
-      case 'owner':
-        _pushPage(NativeOrganizationManagementPage(api: widget.api));
         break;
       case 'regions':
         _pushPage(NativeOperationsPage(api: widget.api, initialTab: 1));
@@ -793,6 +808,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _searchDebounce?.cancel();
     searchController.dispose();
@@ -853,6 +869,7 @@ class _DashboardPageState extends State<DashboardPage> {
           telegrams = visibleRows;
           hasNextTelegramPage = hasMoreRows;
           error = null;
+          _lastUpdatedAt = DateTime.now();
         });
       }
     } catch (e) {
@@ -879,10 +896,118 @@ class _DashboardPageState extends State<DashboardPage> {
     if (result == true) refresh();
   }
 
+  void _applyStatFilter(String filter) {
+    setState(() {
+      telegramPage = 1;
+      searchQuery = '';
+      searchController.clear();
+      statusFilter = 'all';
+      priorityFilter = 'all';
+      classificationFilter = 'all';
+      categoryFilter = 'all';
+      if (filter == 'incoming') {
+        section = 2;
+      } else if (filter == 'outgoing') {
+        section = 1;
+      } else {
+        section = 0;
+        if (filter == 'urgent') priorityFilter = 'urgent';
+        if (filter == 'pending') statusFilter = 'pending';
+        if (filter == 'resolved') statusFilter = 'resolved';
+      }
+    });
+    refresh(showLoading: false);
+  }
+
+  Widget _quickActions() => Row(
+    children: [
+      Expanded(
+        child: _quickAction(
+          icon: Icons.add_comment_outlined,
+          label: 'إنشاء برقية',
+          onTap: create,
+          primary: true,
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _quickAction(
+          icon: Icons.notifications_none_rounded,
+          label: 'الإشعارات',
+          onTap: () => _pushPage(NotificationsPage(api: widget.api)),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _quickAction(
+          icon: Icons.insights_outlined,
+          label: 'التقارير',
+          onTap: () => _pushPage(ReportsPage(api: widget.api)),
+        ),
+      ),
+    ],
+  );
+
+  Widget _quickAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool primary = false,
+  }) => Material(
+    color: primary ? navy : const Color(0xFFFFFEFC),
+    borderRadius: BorderRadius.circular(14),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: primary ? navy : const Color(0xFFE1E5EB)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 21,
+              color: primary ? gold : const Color(0xFF344054),
+            ),
+            const SizedBox(height: 5),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: primary ? Colors.white : navy,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
   Widget _dashboardWelcomeCard() {
     final accountName =
         '${widget.account['name'] ?? widget.account['username'] ?? 'المستخدم'}';
     final organization = activeOrganizationName?.trim();
+    final isConnected = _lastUpdatedAt != null && error == null;
+    final statusLabel = isConnected
+        ? 'متصل'
+        : error != null
+        ? 'غير متصل'
+        : 'جار الاتصال';
+    final statusColor = isConnected
+        ? const Color(0xFF16836B)
+        : error != null
+        ? const Color(0xFFB42332)
+        : const Color(0xFF9A6700);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 14),
       decoration: BoxDecoration(
@@ -936,11 +1061,23 @@ class _DashboardPageState extends State<DashboardPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 3),
+                Text(
+                  _lastUpdatedAt == null
+                      ? 'بانتظار أول مزامنة'
+                      : 'آخر مزامنة ${TimeOfDay.fromDateTime(_lastUpdatedAt!).format(context)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF7A8493),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          _statusPill('النظام متصل', const Color(0xFF16836B)),
+          _statusPill(statusLabel, statusColor),
         ],
       ),
     );
@@ -1118,17 +1255,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const PopupMenuItem(
-                value: 'theme',
-                child: _AccountMenuItem(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'تفعيل الوضع الليلي',
-                ),
-              ),
-              const PopupMenuItem(
                 value: 'notifications',
                 child: _AccountMenuItem(
                   icon: Icons.notifications_none_rounded,
-                  title: 'تفعيل إشعارات البرقيات',
+                  title: 'الإشعارات',
                 ),
               ),
               const PopupMenuDivider(),
@@ -1148,14 +1278,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     title: 'إعدادات الجهة',
                   ),
                 ),
-                if (widget.account['isPlatformOwner'] == true)
-                  const PopupMenuItem(
-                    value: 'owner',
-                    child: _AccountMenuItem(
-                      icon: Icons.admin_panel_settings_outlined,
-                      title: 'إعدادات المالك',
-                    ),
-                  ),
                 const PopupMenuItem(
                   value: 'organizations',
                   child: _AccountMenuItem(
@@ -1603,6 +1725,8 @@ class _DashboardPageState extends State<DashboardPage> {
           _dashboardWelcomeCard(),
           _urgentAlert(),
           const SizedBox(height: 14),
+          _quickActions(),
+          const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -1615,31 +1739,37 @@ class _DashboardPageState extends State<DashboardPage> {
                 'إجمالي البرقيات',
                 stats['total'] ?? 0,
                 Icons.description_outlined,
+                onTap: () => _applyStatFilter('all'),
               ),
               _stat(
                 'البرقيات الواردة',
                 stats['incoming'] ?? 0,
                 Icons.call_received_outlined,
+                onTap: () => _applyStatFilter('incoming'),
               ),
               _stat(
                 'البرقيات الصادرة',
                 stats['outgoing'] ?? 0,
                 Icons.call_made_outlined,
+                onTap: () => _applyStatFilter('outgoing'),
               ),
               _stat(
                 'البرقيات العاجلة',
                 stats['urgent'] ?? 0,
                 Icons.priority_high_rounded,
+                onTap: () => _applyStatFilter('urgent'),
               ),
               _stat(
                 'قيد المراجعة',
                 stats['pending'] ?? 0,
                 Icons.pending_actions_outlined,
+                onTap: () => _applyStatFilter('pending'),
               ),
               _stat(
                 'البرقيات المنجزة',
                 stats['resolved'] ?? 0,
                 Icons.verified_outlined,
+                onTap: () => _applyStatFilter('resolved'),
               ),
             ],
           ),
@@ -2281,7 +2411,12 @@ class _DashboardPageState extends State<DashboardPage> {
     ],
   );
 
-  Widget _stat(String title, dynamic value, IconData icon) {
+  Widget _stat(
+    String title,
+    dynamic value,
+    IconData icon, {
+    VoidCallback? onTap,
+  }) {
     final accent = switch (icon) {
       Icons.call_received_outlined => const Color(0xFF16836B),
       Icons.call_made_outlined => const Color(0xFF356AC3),
@@ -2298,56 +2433,59 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: accent.withValues(alpha: 0.18)),
       ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: 0.035),
-          border: Border(top: BorderSide(color: accent, width: 3)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.35,
-                        color: Color(0xFF667085),
-                        fontWeight: FontWeight.w600,
+      child: InkWell(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.035),
+            border: Border(top: BorderSide(color: accent, width: 3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: Color(0xFF667085),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: accent.withValues(alpha: 0.11),
-                    child: Icon(icon, color: accent, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  '$value',
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
+                    const SizedBox(width: 6),
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: accent.withValues(alpha: 0.11),
+                      child: Icon(icon, color: accent, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    '$value',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

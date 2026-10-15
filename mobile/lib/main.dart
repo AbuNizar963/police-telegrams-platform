@@ -586,10 +586,10 @@ String _dashboardRefreshError(Object error) {
 }
 
 class _DashboardPageState extends State<DashboardPage>
+    with WidgetsBindingObserver {
   String get _greetingName =>
       (widget.account['name'] ?? widget.account['username'] ?? 'أبو نزار')
           .toString();
-    with WidgetsBindingObserver {
   bool loading = true;
   String? error;
   Map<String, dynamic> stats = {};

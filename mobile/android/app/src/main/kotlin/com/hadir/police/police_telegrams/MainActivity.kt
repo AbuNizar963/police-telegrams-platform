@@ -113,8 +113,7 @@ class MainActivity : FlutterActivity() {
         result: MethodChannel.Result
     ) {
         val url = call.argument<String>("url")
-        val expectedSize = call.argument<Long>("expectedSize")
-            ?: call.argument<Int>("expectedSize")?.toLong()
+        val expectedSize = (call.argument<Number>("expectedSize"))?.toLong()
         val expectedSha256 = call.argument<String>("expectedSha256")
             ?.trim()
             ?.lowercase(java.util.Locale.ROOT)
@@ -213,7 +212,7 @@ class MainActivity : FlutterActivity() {
         call: io.flutter.plugin.common.MethodCall,
         result: MethodChannel.Result
     ) {
-        val id = call.argument<Long>("id") ?: call.argument<Int>("id")?.toLong()
+        val id = call.argument<Number>("id")?.toLong()
             ?: getSharedPreferences("app_update", Context.MODE_PRIVATE)
                 .getLong("download_id", -1L)
         if (id < 0L) {

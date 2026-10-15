@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
+import 'app_about_page.dart';
 import 'app_update_service.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
@@ -758,8 +759,11 @@ class _DashboardPageState extends State<DashboardPage>
       case 'terms':
         _pushPage(const TermsPage());
         break;
-      case 'about':
+      case 'system_about':
         _pushPage(const AppUpdatePage());
+        break;
+      case 'app_about':
+        _pushPage(const AppAboutPage());
         break;
       case 'logout':
         _logout();
@@ -1513,10 +1517,17 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               const PopupMenuItem(
-                value: 'about',
+                value: 'system_about',
                 child: _AccountMenuItem(
-                  icon: Icons.info_outline,
+                  icon: Icons.account_tree_outlined,
                   title: 'حول النظام وميزاته',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'app_about',
+                child: _AccountMenuItem(
+                  icon: Icons.phone_android_rounded,
+                  title: 'حول التطبيق',
                 ),
               ),
               const PopupMenuItem(

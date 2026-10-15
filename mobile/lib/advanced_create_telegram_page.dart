@@ -259,172 +259,178 @@ class _AdvancedCreateTelegramSheetState
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : Form(
-                      child: ListView(
+                      child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        children: [
-                          if (_error != null) _errorCard(_error!),
-                          _offlineStyleNotice(),
-                          _fieldLabel('رقم البرقية'),
-                          TextField(
-                            controller: _serial,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => _serialEdited = true,
-                            decoration: const InputDecoration(
-                              hintText: 'يوضع الرقم التالي تلقائيًا',
-                              prefixIcon: Icon(Icons.numbers_outlined),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_error != null) _errorCard(_error!),
+                            _offlineStyleNotice(),
+                            _fieldLabel('رقم البرقية'),
+                            TextField(
+                              controller: _serial,
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => _serialEdited = true,
+                              decoration: const InputDecoration(
+                                hintText: 'يوضع الرقم التالي تلقائيًا',
+                                prefixIcon: Icon(Icons.numbers_outlined),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          _fieldLabel('الجهة الموجهة إليها'),
-                          DropdownButtonFormField<String>(
-                            initialValue: _broadcast ? null : _recipientId,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              hintText: 'اختر الجهة المستلمة من دليل التوجيه',
-                              prefixIcon: Icon(Icons.account_tree_outlined),
+                            const SizedBox(height: 14),
+                            _fieldLabel('الجهة الموجهة إليها'),
+                            DropdownButtonFormField<String>(
+                              initialValue: _broadcast ? null : _recipientId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                hintText: 'اختر الجهة المستلمة من دليل التوجيه',
+                                prefixIcon: Icon(Icons.account_tree_outlined),
+                              ),
+                              items: _routingDirectory
+                                  .map(
+                                    (row) => DropdownMenuItem<String>(
+                                      value: '${row['id']}',
+                                      child: Text(
+                                        '${row['name'] ?? 'جهة بدون اسم'}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: _saving ? null : _selectRecipient,
                             ),
-                            items: _routingDirectory
-                                .map(
-                                  (row) => DropdownMenuItem<String>(
-                                    value: '${row['id']}',
-                                    child: Text(
-                                      '${row['name'] ?? 'جهة بدون اسم'}',
-                                      overflow: TextOverflow.ellipsis,
+                            if (_descendants.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Card(
+                                margin: EdgeInsets.zero,
+                                color: _broadcast
+                                    ? const Color(0xFFFFF8E8)
+                                    : null,
+                                child: CheckboxListTile(
+                                  value: _broadcast,
+                                  onChanged: _saving
+                                      ? null
+                                      : (value) => setState(() {
+                                          _broadcast = value ?? false;
+                                          if (_broadcast) {
+                                            _recipientId = null;
+                                            _recipient.text = 'كافة الوحدات';
+                                          }
+                                        }),
+                                  title: const Text(
+                                    'كافة الوحدات',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                )
-                                .toList(),
-                            onChanged: _saving ? null : _selectRecipient,
-                          ),
-                          if (_descendants.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Card(
-                              margin: EdgeInsets.zero,
-                              color: _broadcast
-                                  ? const Color(0xFFFFF8E8)
-                                  : null,
-                              child: CheckboxListTile(
-                                value: _broadcast,
-                                onChanged: _saving
-                                    ? null
-                                    : (value) => setState(() {
-                                        _broadcast = value ?? false;
-                                        if (_broadcast) {
-                                          _recipientId = null;
-                                          _recipient.text = 'كافة الوحدات';
-                                        }
-                                      }),
-                                title: const Text(
-                                  'كافة الوحدات',
-                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  subtitle: Text(
+                                    'إرسال نسخة إلى الجهات التابعة مباشرة (${_descendants.length})',
+                                  ),
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
                                 ),
-                                subtitle: Text(
-                                  'إرسال نسخة إلى الجهات التابعة مباشرة (${_descendants.length})',
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            _fieldLabel('درجة السرية'),
+                            _choiceGrid(_classifications, _classification, (v) {
+                              setState(() => _classification = v);
+                            }, columns: 2),
+                            const SizedBox(height: 14),
+                            _fieldLabel('درجة الأولوية'),
+                            _choiceGrid(_priorities, _priority, (v) {
+                              setState(() => _priority = v);
+                            }, columns: 3),
+                            const SizedBox(height: 14),
+                            _fieldLabel('تصنيف البلاغ'),
+                            DropdownButtonFormField<String>(
+                              initialValue: _category,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.category_outlined),
+                              ),
+                              items: _categories.entries
+                                  .map(
+                                    (entry) => DropdownMenuItem(
+                                      value: entry.key,
+                                      child: Text(entry.value),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: _saving
+                                  ? null
+                                  : (value) => setState(() {
+                                      if (value != null) _category = value;
+                                    }),
+                            ),
+                            const SizedBox(height: 14),
+                            _fieldLabel('الموضوع'),
+                            TextField(
+                              controller: _subject,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                hintText: 'عنوان مختصر ودقيق للبلاغ',
+                                prefixIcon: Icon(Icons.title_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _fieldLabel('نص البرقية'),
+                            TextField(
+                              controller: _body,
+                              minLines: 8,
+                              maxLines: 14,
+                              textAlignVertical: TextAlignVertical.top,
+                              decoration: const InputDecoration(
+                                hintText: 'اكتب تفاصيل البلاغ...',
+                                alignLabelWithHint: true,
+                                prefixIcon: Padding(
+                                  padding: EdgeInsets.only(bottom: 120),
+                                  child: Icon(Icons.article_outlined),
                                 ),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: _saving ? null : _chooseAttachment,
+                              icon: const Icon(Icons.attach_file),
+                              label: Text(
+                                _attachment == null
+                                    ? 'إرفاق صورة أو PDF أو ملف صوتي'
+                                    : 'تغيير المرفق: ${_attachment!.name}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (_attachment != null)
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: TextButton.icon(
+                                  onPressed: _saving
+                                      ? null
+                                      : () =>
+                                            setState(() => _attachment = null),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('إزالة المرفق'),
+                                ),
+                              ),
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              onPressed: _saving ? null : _submit,
+                              icon: _saving
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_outlined),
+                              label: Text(
+                                _saving
+                                    ? 'جارٍ الحفظ والإرسال...'
+                                    : 'حفظ وإرسال البرقية',
                               ),
                             ),
                           ],
-                          const SizedBox(height: 14),
-                          _fieldLabel('درجة السرية'),
-                          _choiceGrid(_classifications, _classification, (v) {
-                            setState(() => _classification = v);
-                          }, columns: 2),
-                          const SizedBox(height: 14),
-                          _fieldLabel('درجة الأولوية'),
-                          _choiceGrid(_priorities, _priority, (v) {
-                            setState(() => _priority = v);
-                          }, columns: 3),
-                          const SizedBox(height: 14),
-                          _fieldLabel('تصنيف البلاغ'),
-                          DropdownButtonFormField<String>(
-                            initialValue: _category,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.category_outlined),
-                            ),
-                            items: _categories.entries
-                                .map(
-                                  (entry) => DropdownMenuItem(
-                                    value: entry.key,
-                                    child: Text(entry.value),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: _saving
-                                ? null
-                                : (value) => setState(() {
-                                    if (value != null) _category = value;
-                                  }),
-                          ),
-                          const SizedBox(height: 14),
-                          _fieldLabel('الموضوع'),
-                          TextField(
-                            controller: _subject,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              hintText: 'عنوان مختصر ودقيق للبلاغ',
-                              prefixIcon: Icon(Icons.title_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _fieldLabel('نص البرقية'),
-                          TextField(
-                            controller: _body,
-                            minLines: 8,
-                            maxLines: 14,
-                            textAlignVertical: TextAlignVertical.top,
-                            decoration: const InputDecoration(
-                              hintText: 'اكتب تفاصيل البلاغ...',
-                              alignLabelWithHint: true,
-                              prefixIcon: Padding(
-                                padding: EdgeInsets.only(bottom: 120),
-                                child: Icon(Icons.article_outlined),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          OutlinedButton.icon(
-                            onPressed: _saving ? null : _chooseAttachment,
-                            icon: const Icon(Icons.attach_file),
-                            label: Text(
-                              _attachment == null
-                                  ? 'إرفاق صورة أو PDF أو ملف صوتي'
-                                  : 'تغيير المرفق: ${_attachment!.name}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (_attachment != null)
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: TextButton.icon(
-                                onPressed: _saving
-                                    ? null
-                                    : () => setState(() => _attachment = null),
-                                icon: const Icon(Icons.close),
-                                label: const Text('إزالة المرفق'),
-                              ),
-                            ),
-                          const SizedBox(height: 14),
-                          FilledButton.icon(
-                            onPressed: _saving ? null : _submit,
-                            icon: _saving
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.send_outlined),
-                            label: Text(
-                              _saving
-                                  ? 'جارٍ الحفظ والإرسال...'
-                                  : 'حفظ وإرسال البرقية',
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
             ),
@@ -478,37 +484,44 @@ class _AdvancedCreateTelegramSheetState
     String selected,
     ValueChanged<String> onChanged, {
     required int columns,
-  }) => GridView.count(
-    crossAxisCount: columns,
-    crossAxisSpacing: 8,
-    mainAxisSpacing: 8,
-    childAspectRatio: columns == 3 ? 2.3 : 2.6,
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    children: options.entries
-        .map(
-          (entry) => OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: entry.key == selected
-                  ? const Color(0xFFFFF8E8)
-                  : null,
-              foregroundColor: entry.key == selected
-                  ? const Color(0xFF7A5C1E)
-                  : _composerNavy,
-              side: BorderSide(
-                color: entry.key == selected
-                    ? _composerGold
-                    : const Color(0xFFD9DEE7),
+  }) => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = 8.0;
+      final itemWidth =
+          (constraints.maxWidth - (gap * (columns - 1))) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: options.entries
+            .map(
+              (entry) => SizedBox(
+                width: itemWidth,
+                height: 46,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: entry.key == selected
+                        ? const Color(0xFFFFF8E8)
+                        : null,
+                    foregroundColor: entry.key == selected
+                        ? const Color(0xFF7A5C1E)
+                        : _composerNavy,
+                    side: BorderSide(
+                      color: entry.key == selected
+                          ? _composerGold
+                          : const Color(0xFFD9DEE7),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: _saving ? null : () => onChanged(entry.key),
+                  child: Text(entry.value),
+                ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => onChanged(entry.key),
-            child: Text(entry.value),
-          ),
-        )
-        .toList(),
+            )
+            .toList(),
+      );
+    },
   );
 
   Widget _offlineStyleNotice() => const Padding(

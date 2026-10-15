@@ -518,6 +518,14 @@ class _DashboardPageState extends State<DashboardPage> {
       case 'profile':
         _pushPage(ProfileSettingsPage(api: widget.api));
         break;
+      case 'theme':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الوضع الليلي قيد الإعداد للحساب.')),
+        );
+        break;
+      case 'notifications':
+        _pushPage(NotificationsPage(api: widget.api));
+        break;
       case 'refresh':
         refresh();
         break;
@@ -529,6 +537,18 @@ class _DashboardPageState extends State<DashboardPage> {
         break;
       case 'users':
         _pushPage(NativeUserManagementPage(api: widget.api));
+        break;
+      case 'owner':
+        _pushPage(NativeOrganizationManagementPage(api: widget.api));
+        break;
+      case 'regions':
+        _pushPage(NativeOperationsPage(api: widget.api, initialTab: 1));
+        break;
+      case 'terms':
+        _pushPage(const TermsPage());
+        break;
+      case 'about':
+        _pushPage(const AboutPage());
         break;
       case 'logout':
         _logout();
@@ -1098,6 +1118,21 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'theme',
+                child: _AccountMenuItem(
+                  icon: Icons.dark_mode_outlined,
+                  title: 'تفعيل الوضع الليلي',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'notifications',
+                child: _AccountMenuItem(
+                  icon: Icons.notifications_none_rounded,
+                  title: 'تفعيل إشعارات البرقيات',
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
                 value: 'refresh',
                 child: _AccountMenuItem(
                   icon: Icons.refresh_rounded,
@@ -1113,22 +1148,51 @@ class _DashboardPageState extends State<DashboardPage> {
                     title: 'إعدادات الجهة',
                   ),
                 ),
+                if (widget.account['isPlatformOwner'] == true)
+                  const PopupMenuItem(
+                    value: 'owner',
+                    child: _AccountMenuItem(
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: 'إعدادات المالك',
+                    ),
+                  ),
                 const PopupMenuItem(
                   value: 'organizations',
                   child: _AccountMenuItem(
                     icon: Icons.account_tree_outlined,
-                    title: 'إدارة الجهات',
+                    title: 'إدارة الجهات وإضافة الحسابات',
                   ),
                 ),
                 const PopupMenuItem(
                   value: 'users',
                   child: _AccountMenuItem(
                     icon: Icons.manage_accounts_outlined,
-                    title: 'إدارة المستخدمين وإضافة الحسابات',
+                    title: 'إدارة المستخدمين',
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'regions',
+                  child: _AccountMenuItem(
+                    icon: Icons.account_tree_outlined,
+                    title: 'إدارة المناطق والأقسام والمحاضر',
                   ),
                 ),
                 const PopupMenuDivider(),
               ],
+              const PopupMenuItem(
+                value: 'terms',
+                child: _AccountMenuItem(
+                  icon: Icons.gavel_outlined,
+                  title: 'الشروط والأحكام',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'about',
+                child: _AccountMenuItem(
+                  icon: Icons.info_outline,
+                  title: 'حول النظام وميزاته',
+                ),
+              ),
               const PopupMenuItem(
                 value: 'logout',
                 child: _AccountMenuItem(
@@ -1205,6 +1269,17 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 const SizedBox(height: 8),
                 const Divider(color: Color(0xFF29415E)),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: Text(
+                    'التنقل الرئيسي',
+                    style: TextStyle(
+                      color: Color(0xFF7F9AB8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
                 ListTile(
                   leading: const Icon(Icons.dashboard_outlined),
                   title: const Text('لوحة التحكم'),
@@ -1216,6 +1291,27 @@ class _DashboardPageState extends State<DashboardPage> {
                       telegramPage = 1;
                     });
                     refresh(showLoading: false);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_outlined),
+                  title: const Text('إنشاء برقية'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    create();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.file_download_outlined),
+                  title: const Text('استيراد وتصدير السجل'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TelegramCsvPage(api: widget.api),
+                      ),
+                    );
                   },
                 ),
                 ListTile(
@@ -1247,14 +1343,64 @@ class _DashboardPageState extends State<DashboardPage> {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.map_outlined),
-                  title: const Text('المواقع والوحدات والموارد والأرشيف'),
-                  subtitle: const Text('متابعة العمل الميداني'),
+                  title: const Text('خريطة البلاغات والمواقع الجغرافية'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => NativeOperationsPage(api: widget.api),
+                        builder: (_) => NativeOperationsPage(
+                          api: widget.api,
+                          initialTab: 0,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.groups_outlined),
+                  title: const Text('الوحدات الميدانية'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NativeOperationsPage(
+                          api: widget.api,
+                          initialTab: 1,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.query_stats_outlined),
+                  title: const Text('إدارة الموارد'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NativeOperationsPage(
+                          api: widget.api,
+                          initialTab: 2,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.archive_outlined),
+                  title: const Text('الأرشيف والسجلات المغلقة'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NativeOperationsPage(
+                          api: widget.api,
+                          initialTab: 3,
+                        ),
                       ),
                     );
                   },
@@ -1375,20 +1521,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const AppUpdatePage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.file_download_outlined),
-                  title: const Text('استيراد وتصدير السجل'),
-                  subtitle: const Text('ملفات CSV متوافقة مع سجل البرقيات'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TelegramCsvPage(api: widget.api),
-                      ),
                     );
                   },
                 ),

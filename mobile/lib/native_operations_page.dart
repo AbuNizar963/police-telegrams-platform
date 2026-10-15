@@ -6,9 +6,14 @@ const _navy = Color(0xFF101C35);
 const _gold = Color(0xFFC9A45C);
 
 class NativeOperationsPage extends StatefulWidget {
-  const NativeOperationsPage({super.key, required this.api});
+  const NativeOperationsPage({
+    super.key,
+    required this.api,
+    this.initialTab = 0,
+  });
 
   final PoliceApi api;
+  final int initialTab;
 
   @override
   State<NativeOperationsPage> createState() => _NativeOperationsPageState();
@@ -29,7 +34,12 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    final initialTab = widget.initialTab < 0
+        ? 0
+        : widget.initialTab > 3
+        ? 3
+        : widget.initialTab;
+    _tabs = TabController(length: 4, vsync: this, initialIndex: initialTab);
     load();
   }
 

@@ -485,13 +485,10 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     refresh();
     _loadUnreadNotificationCount();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) {
-        refresh(showLoading: false);
-        _loadUnreadNotificationCount();
-      },
-    );
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      refresh(showLoading: false);
+      _loadUnreadNotificationCount();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkAndPromptForAppUpdate(context);
     });
@@ -958,7 +955,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _urgentAlert() {
     final count = stats['urgentAwaitingReceipt'] ?? stats['todayUrgent'] ?? 0;
-    final numericCount = count is num ? count.toInt() : int.tryParse('$count') ?? 0;
+    final numericCount = count is num
+        ? count.toInt()
+        : int.tryParse('$count') ?? 0;
     if (numericCount <= 0) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.only(top: 12),

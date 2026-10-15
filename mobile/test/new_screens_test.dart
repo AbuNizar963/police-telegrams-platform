@@ -67,9 +67,29 @@ void main() {
     expect(find.text('73'), findsOneWidget);
     expect(find.text('قيادة الأمن الداخلي'), findsOneWidget);
     expect(find.text('درجة السرية'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('درجة الأولوية'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('درجة الأولوية'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('تصنيف البلاغ'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('تصنيف البلاغ'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('إرفاق صورة أو PDF أو ملف صوتي'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('إرفاق صورة أو PDF أو ملف صوتي'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('حفظ وإرسال البرقية'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('حفظ وإرسال البرقية'), findsOneWidget);
     expect(api.calls, contains('organizations.routingDirectory'));
   });
@@ -81,6 +101,11 @@ void main() {
     await tester.pumpWidget(_host(AdvancedCreateTelegramSheet(api: api)));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('حفظ وإرسال البرقية'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('حفظ وإرسال البرقية'));
     await tester.pump();
 
@@ -93,12 +118,43 @@ void main() {
     await tester.pumpWidget(_host(AdvancedCreateTelegramSheet(api: api)));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).at(1), 'بلاغ اختباري');
+    await tester.scrollUntilVisible(
+      find.text('الموضوع'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.enterText(
-      find.byType(TextField).at(2),
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'عنوان مختصر ودقيق للبلاغ',
+      ),
+      'بلاغ اختباري',
+    );
+    await tester.scrollUntilVisible(
+      find.text('نص البرقية'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'اكتب تفاصيل البلاغ...',
+      ),
       'تفاصيل البلاغ للاختبار',
     );
-    await tester.tap(find.text('عاجل'));
+    await tester.scrollUntilVisible(
+      find.text('عاجل').first,
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('عاجل').first);
+    await tester.scrollUntilVisible(
+      find.text('حفظ وإرسال البرقية'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('حفظ وإرسال البرقية'));
     await tester.pumpAndSettle();
 
@@ -115,10 +171,18 @@ void main() {
     await tester.pumpWidget(_host(AdvancedCreateTelegramSheet(api: api)));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('عاجل').first);
-    await tester.tap(find.text('عاجل'));
-    await tester.ensureVisible(find.text('كافة الوحدات').first);
-    await tester.tap(find.text('كافة الوحدات'));
+    await tester.scrollUntilVisible(
+      find.text('عاجل').first,
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('عاجل').first);
+    await tester.scrollUntilVisible(
+      find.text('كافة الوحدات').first,
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('كافة الوحدات').first);
     await tester.pump();
 
     expect(

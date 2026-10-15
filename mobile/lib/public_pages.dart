@@ -85,7 +85,9 @@ class AboutPage extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -145,15 +147,42 @@ class TermsPage extends StatelessWidget {
   const TermsPage({super.key});
 
   static const _sections = [
-    ('1. نطاق التطبيق والقبول', 'ينظم هذا النظام استخدام المستخدمين المصرح لهم والجهات الشرطية أو الأمنية التي تديره. ويُعد الدخول إلى النظام أو استخدام وظائفه قبولًا بسياسات الجهة والقوانين النافذة.'),
-    ('2. الاستخدام المصرح والمهني', 'يُستخدم النظام فقط للمهام الرسمية المصرح بها، وبالقدر اللازم لأداء الواجب، ووفق مبدأ الحاجة إلى المعرفة وأقل صلاحية ممكنة. يحظر إدخال بيانات مختلقة أو مشاركة الحسابات أو التحايل على الصلاحيات.'),
-    ('3. السرية والمعلومات الحساسة', 'تُعد المعلومات التشغيلية والإدارية والتقنية وبيانات الأفراد والمرفقات وسجلات التدقيق معلومات حساسة ما لم يُصرح بخلاف ذلك. يحظر النسخ أو النقل أو الإفصاح لأي طرف غير مصرح له.'),
-    ('4. النزاهة وسلسلة الحيازة الرقمية', 'كل برقية يجب أن تُنشأ وتُحدّث وتُحال وفق المسار الرسمي. تُحفظ هوية المنشئ والتوقيت والإجراءات في سجل التدقيق، ولا يجوز العبث بالسجلات أو المرفقات.'),
-    ('5. حماية الحساب والوصول', 'الحساب شخصي وغير قابل للإعارة. يلتزم المستخدم بحماية كلمة المرور وتسجيل الخروج عند استخدام جهاز مشترك والإبلاغ عن فقدان الجهاز أو الاشتباه في اختراق الحساب.'),
-    ('6. الإبلاغ عن الحوادث والامتثال', 'يجب الإبلاغ فورًا عن أي وصول غير مصرح به أو تسريب أو فقدان أو استخدام خاطئ إلى مسؤول النظام والجهة المختصة، مع الالتزام بالقوانين وسياسات أمن المعلومات.'),
-    ('7. مبادئ الاستخدام الشرطي المسؤول', 'يجب أن يكون جمع البيانات والوصول إليها واستخدامها ضروريًا ومتناسبًا وله أساس قانوني وغاية محددة، مع احترام الكرامة وحقوق الإنسان والخصوصية وقرينة البراءة.'),
-    ('8. المراجعة والتدقيق والإفصاح', 'تخضع المواد أو التقارير التي تتضمن معلومات حساسة لمراجعة الجهة قبل الإرسال خارج نطاقها. لا يجوز الإفصاح لطرف ثالث إلا بتفويض مكتوب أو التزام قانوني.'),
-    ('9. المخالفات والإجراءات', 'قد تؤدي مخالفة هذه الشروط إلى سحب الصلاحيات أو تعليق الحساب أو التحقيق الإداري أو الإحالة إلى الجهات المختصة، مع احتفاظ الجهة المالكة بحق تحديث الشروط.'),
+    (
+      '1. نطاق التطبيق والقبول',
+      'ينظم هذا النظام استخدام المستخدمين المصرح لهم والجهات الشرطية أو الأمنية التي تديره. ويُعد الدخول إلى النظام أو استخدام وظائفه قبولًا بسياسات الجهة والقوانين النافذة.',
+    ),
+    (
+      '2. الاستخدام المصرح والمهني',
+      'يُستخدم النظام فقط للمهام الرسمية المصرح بها، وبالقدر اللازم لأداء الواجب، ووفق مبدأ الحاجة إلى المعرفة وأقل صلاحية ممكنة. يحظر إدخال بيانات مختلقة أو مشاركة الحسابات أو التحايل على الصلاحيات.',
+    ),
+    (
+      '3. السرية والمعلومات الحساسة',
+      'تُعد المعلومات التشغيلية والإدارية والتقنية وبيانات الأفراد والمرفقات وسجلات التدقيق معلومات حساسة ما لم يُصرح بخلاف ذلك. يحظر النسخ أو النقل أو الإفصاح لأي طرف غير مصرح له.',
+    ),
+    (
+      '4. النزاهة وسلسلة الحيازة الرقمية',
+      'كل برقية يجب أن تُنشأ وتُحدّث وتُحال وفق المسار الرسمي. تُحفظ هوية المنشئ والتوقيت والإجراءات في سجل التدقيق، ولا يجوز العبث بالسجلات أو المرفقات.',
+    ),
+    (
+      '5. حماية الحساب والوصول',
+      'الحساب شخصي وغير قابل للإعارة. يلتزم المستخدم بحماية كلمة المرور وتسجيل الخروج عند استخدام جهاز مشترك والإبلاغ عن فقدان الجهاز أو الاشتباه في اختراق الحساب.',
+    ),
+    (
+      '6. الإبلاغ عن الحوادث والامتثال',
+      'يجب الإبلاغ فورًا عن أي وصول غير مصرح به أو تسريب أو فقدان أو استخدام خاطئ إلى مسؤول النظام والجهة المختصة، مع الالتزام بالقوانين وسياسات أمن المعلومات.',
+    ),
+    (
+      '7. مبادئ الاستخدام الشرطي المسؤول',
+      'يجب أن يكون جمع البيانات والوصول إليها واستخدامها ضروريًا ومتناسبًا وله أساس قانوني وغاية محددة، مع احترام الكرامة وحقوق الإنسان والخصوصية وقرينة البراءة.',
+    ),
+    (
+      '8. المراجعة والتدقيق والإفصاح',
+      'تخضع المواد أو التقارير التي تتضمن معلومات حساسة لمراجعة الجهة قبل الإرسال خارج نطاقها. لا يجوز الإفصاح لطرف ثالث إلا بتفويض مكتوب أو التزام قانوني.',
+    ),
+    (
+      '9. المخالفات والإجراءات',
+      'قد تؤدي مخالفة هذه الشروط إلى سحب الصلاحيات أو تعليق الحساب أو التحقيق الإداري أو الإحالة إلى الجهات المختصة، مع احتفاظ الجهة المالكة بحق تحديث الشروط.',
+    ),
   ];
 
   @override
@@ -258,7 +287,9 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
     });
     try {
       final response = await http.get(
-        Uri.parse('${widget.api.baseUrl}/api/verify/${Uri.encodeComponent(token)}'),
+        Uri.parse(
+          '${widget.api.baseUrl}/api/verify/${Uri.encodeComponent(token)}',
+        ),
         headers: const {'accept': 'application/json'},
       );
       final decoded = jsonDecode(response.body);
@@ -269,7 +300,8 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
               : 'تعذر التحقق من رمز الوثيقة.',
         );
       }
-      if (mounted) setState(() => _result = Map<String, dynamic>.from(decoded as Map));
+      if (mounted)
+        setState(() => _result = Map<String, dynamic>.from(decoded as Map));
     } catch (exception) {
       if (mounted) setState(() => _error = _message(exception));
     } finally {
@@ -305,7 +337,11 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
                   SizedBox(height: 10),
                   Text(
                     'التحقق من الوثيقة الرسمية',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -333,7 +369,10 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
             icon: _loading
                 ? const SizedBox.square(
                     dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.search),
             label: Text(_loading ? 'جارٍ التحقق...' : 'تحقق من البرقية'),
@@ -360,27 +399,42 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
   Widget _resultCard(Map<String, dynamic> result) {
     final valid = result['valid'] == true;
     final archived = result['status'] == 'archived';
-    final color = valid ? (archived ? Colors.amber.shade800 : Colors.green.shade700) : Colors.red.shade700;
+    final color = valid
+        ? (archived ? Colors.amber.shade800 : Colors.green.shade700)
+        : Colors.red.shade700;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            Icon(valid ? (archived ? Icons.help_outline : Icons.check_circle_outline) : Icons.cancel_outlined, color: color, size: 54),
+            Icon(
+              valid
+                  ? (archived ? Icons.help_outline : Icons.check_circle_outline)
+                  : Icons.cancel_outlined,
+              color: color,
+              size: 54,
+            ),
             const SizedBox(height: 10),
             Text(
               valid
                   ? archived
-                      ? 'الوثيقة صحيحة لكنها مؤرشفة'
-                      : 'تم التحقق من صحة البرقية'
+                        ? 'الوثيقة صحيحة لكنها مؤرشفة'
+                        : 'تم التحقق من صحة البرقية'
                   : 'تعذر التحقق من البرقية',
               textAlign: TextAlign.center,
-              style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             if (valid) ...[
               const SizedBox(height: 14),
               _detail('اسم الوحدة الشرطية', result['unitName']),
-              _detail('رقم البرقية', result['displaySerialCode'] ?? result['serialNumber']),
+              _detail(
+                'رقم البرقية',
+                result['displaySerialCode'] ?? result['serialNumber'],
+              ),
               _detail('تاريخ الإنشاء', result['createdAt']),
             ],
           ],
@@ -394,14 +448,23 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
     child: Row(
       children: [
         Text('$label: ', style: const TextStyle(color: Colors.black54)),
-        Expanded(child: Text('${value ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w700))),
+        Expanded(
+          child: Text(
+            '${value ?? '—'}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
       ],
     ),
   );
 }
 
 class _PublicScaffold extends StatelessWidget {
-  const _PublicScaffold({required this.title, required this.subtitle, required this.child});
+  const _PublicScaffold({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
   final String title;
   final String subtitle;
   final Widget child;
@@ -418,7 +481,14 @@ class _PublicScaffold extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(title, style: const TextStyle(color: _publicNavy, fontSize: 24, fontWeight: FontWeight.w900)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: _publicNavy,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(subtitle, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 16),

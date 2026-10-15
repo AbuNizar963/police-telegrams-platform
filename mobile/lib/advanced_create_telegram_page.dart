@@ -419,7 +419,9 @@ class _AdvancedCreateTelegramSheetState
                                   )
                                 : const Icon(Icons.send_outlined),
                             label: Text(
-                              _saving ? 'جارٍ الحفظ والإرسال...' : 'حفظ وإرسال البرقية',
+                              _saving
+                                  ? 'جارٍ الحفظ والإرسال...'
+                                  : 'حفظ وإرسال البرقية',
                             ),
                           ),
                         ],

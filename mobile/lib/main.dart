@@ -463,6 +463,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
+  String? activeOrganizationName;
+  int unreadNotificationCount = 0;
   int section = 0;
   int telegramPage = 1;
   bool hasNextTelegramPage = false;
@@ -482,9 +484,13 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     refresh();
+    _loadUnreadNotificationCount();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 15),
-      (_) => refresh(showLoading: false),
+      (_) {
+        refresh(showLoading: false);
+        _loadUnreadNotificationCount();
+      },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkAndPromptForAppUpdate(context);
@@ -535,6 +541,23 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _pushPage(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      final result = await widget.api.call('notifications.inbox');
+      final rows = result is List
+          ? result
+          : result is Map && result['items'] is List
+          ? result['items'] as List
+          : const <dynamic>[];
+      final unread = rows.where((item) {
+        return item is Map && item['readAt'] == null;
+      }).length;
+      if (mounted) setState(() => unreadNotificationCount = unread);
+    } catch (_) {
+      // The badge is optional and must never block the dashboard.
+    }
   }
 
   Future<void> _logout() async {
@@ -805,6 +828,11 @@ class _DashboardPageState extends State<DashboardPage> {
           activeOrganizationId = organizationContext is Map
               ? organizationContext['organizationId']?.toString()
               : null;
+          activeOrganizationName = organizationContext is Map
+              ? (organizationContext['organizationName'] ??
+                        organizationContext['name'])
+                    ?.toString()
+              : null;
           telegrams = visibleRows;
           hasNextTelegramPage = hasMoreRows;
           error = null;
@@ -832,6 +860,151 @@ class _DashboardPageState extends State<DashboardPage> {
       builder: (_) => AdvancedCreateTelegramSheet(api: widget.api),
     );
     if (result == true) refresh();
+  }
+
+  Widget _dashboardWelcomeCard() {
+    final accountName =
+        '${widget.account['name'] ?? widget.account['username'] ?? 'المستخدم'}';
+    final organization = activeOrganizationName?.trim();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFEFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE1E5EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A101C35),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: navy,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.shield_outlined, color: gold, size: 25),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'مرحبًا $accountName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: navy,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  organization?.isNotEmpty == true
+                      ? organization!
+                      : 'مركز البرقيات',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF667085),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _statusPill('النظام متصل', const Color(0xFF16836B)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusPill(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _urgentAlert() {
+    final count = stats['urgentAwaitingReceipt'] ?? stats['todayUrgent'] ?? 0;
+    final numericCount = count is num ? count.toInt() : int.tryParse('$count') ?? 0;
+    if (numericCount <= 0) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF1C5C8)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFB42332),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.priority_high_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'تنبيه أمني: توجد $numericCount برقية عاجلة تحتاج إلى متابعة.',
+              style: const TextStyle(
+                color: Color(0xFF8A1C28),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                section = 0;
+                priorityFilter = 'urgent';
+                telegramPage = 1;
+              });
+              refresh(showLoading: false);
+            },
+            child: const Text('عرض'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -876,12 +1049,47 @@ class _DashboardPageState extends State<DashboardPage> {
           IconButton(
             tooltip: 'الإشعارات',
             onPressed: _showNotificationsPreview,
-            icon: const Icon(Icons.notifications_none_rounded),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none_rounded),
+                if (unreadNotificationCount > 0)
+                  Positioned(
+                    top: -5,
+                    right: -6,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 17),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 17,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB42332),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFF8F7F2),
+                          width: 2,
+                        ),
+                      ),
+                      child: Text(
+                        unreadNotificationCount > 99
+                            ? '99+'
+                            : '$unreadNotificationCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           PopupMenuButton<String>(
             tooltip: 'إعدادات الحساب',
             onSelected: _handleAccountAction,
-            icon: const Icon(Icons.menu_rounded),
+            icon: const Icon(Icons.person_outline_rounded),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'profile',
@@ -1261,15 +1469,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-          Text(
-            'مرحبًا ${widget.account['name'] ?? widget.account['username'] ?? ''}',
-            style: const TextStyle(
-              color: navy,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 13),
+          _dashboardWelcomeCard(),
+          _urgentAlert(),
+          const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,

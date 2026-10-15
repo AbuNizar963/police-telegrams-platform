@@ -1,0 +1,320 @@
+import 'package:excel/excel.dart';
+
+const telegramExcelHeaders = [
+  'الرقم المتسلسل',
+  'ساعة الأرسال أو الوصول',
+  'الجهة المرسلة واسم المرسل',
+  'تاريخ البرقية',
+  'نـــــــــــص البرقيــــــــــــــــــــــــة',
+  'الجهة المرسلة واسم المستلم',
+  'توقيع المرسل أو المستلم',
+  'ملاحظات',
+];
+
+class TelegramExcelRow {
+  const TelegramExcelRow({
+    required this.originalSerial,
+    required this.time,
+    required this.sender,
+    required this.date,
+    required this.body,
+    required this.recipient,
+    required this.signature,
+    required this.notes,
+    required this.sheetName,
+  });
+
+  final String originalSerial;
+  final String time;
+  final String sender;
+  final String date;
+  final String body;
+  final String recipient;
+  final String signature;
+  final String notes;
+  final String sheetName;
+
+  Map<String, dynamic> toImportMap() => {
+    'originalSerial': originalSerial,
+    'time': time,
+    'sender': sender,
+    'date': date,
+    'body': body,
+    'recipient': recipient,
+    'signature': signature,
+    'notes': notes,
+    'sheetName': sheetName,
+  };
+}
+
+class TelegramExcelIssue {
+  const TelegramExcelIssue({
+    required this.rowNumber,
+    required this.sheetName,
+    required this.reason,
+    this.value = '',
+  });
+
+  final int rowNumber;
+  final String sheetName;
+  final String reason;
+  final String value;
+}
+
+class TelegramExcelParseResult {
+  const TelegramExcelParseResult({
+    required this.rows,
+    required this.skippedRows,
+    required this.duplicateRows,
+    required this.issues,
+    required this.sheets,
+  });
+
+  final List<TelegramExcelRow> rows;
+  final int skippedRows;
+  final int duplicateRows;
+  final List<TelegramExcelIssue> issues;
+  final List<String> sheets;
+}
+
+String _text(dynamic value) {
+  if (value == null) return '';
+  if (value is TextCellValue) return value.value.text?.trim() ?? '';
+  if (value is IntCellValue) return '${value.value}';
+  if (value is DoubleCellValue) {
+    final number = value.value;
+    return number == number.roundToDouble()
+        ? number.toInt().toString()
+        : number.toString();
+  }
+  if (value is DateCellValue) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+  }
+  if (value is DateTimeCellValue) {
+    final date = value.asDateTimeLocal();
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')} '
+        '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}';
+  }
+  if (value is TimeCellValue) {
+    return '${value.hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')}';
+  }
+  return '$value'.trim();
+}
+
+String _normalized(String value) => value
+    .replaceAll(RegExp(r'[\s_ـ]+'), '')
+    .replaceAll(RegExp('[أإآ]'), 'ا')
+    .replaceAll('ى', 'ي')
+    .toLowerCase();
+
+Map<String, int> _headerIndexes(List<dynamic> header) {
+  final normalized = header.map((cell) => _normalized(_text(cell))).toList();
+  int find(List<String> aliases) {
+    return normalized.indexWhere(
+      (header) => aliases.any((alias) => header.contains(_normalized(alias))),
+    );
+  }
+
+  return {
+    'serial': find(['الرقم المتسلسل', 'رقم البرقية', 'الرقم']),
+    'time': find(['ساعة الأرسال أو الوصول', 'ساعة الإرسال أو الوصول', 'الوقت']),
+    'sender': find(['الجهة المرسلة واسم المرسل', 'الجهة والمرسل', 'المرسل']),
+    'date': find(['تاريخ البرقية', 'تاريخ']),
+    'body': find(['نص البرقية', 'نص البرقية الرسمي', 'نص']),
+    'recipient': find([
+      'الجهة المرسلة واسم المستلم',
+      'الجهة والمستلم',
+      'المستلم',
+    ]),
+    'signature': find(['توقيع المرسل أو المستلم', 'التوقيع']),
+    'notes': find(['ملاحظات', 'الملاحظة']),
+  };
+}
+
+String _cell(List<dynamic> row, int index) =>
+    index >= 0 && index < row.length ? _text(row[index]) : '';
+
+List<CellValue> _excelRow(List<String> values) =>
+    values.map(TextCellValue.new).toList();
+
+List<int> buildTelegramWorkbook(
+  List<Map<String, String>> rows, {
+  String fileName = 'سجل-البرقيات.xlsx',
+}) {
+  final workbook = Excel.createExcel();
+  if (workbook.tables.containsKey('Sheet1')) workbook.delete('Sheet1');
+
+  for (final sheetName in ['صادر', 'وارد']) {
+    final sheet = workbook[sheetName];
+    sheet.appendRow(_excelRow(telegramExcelHeaders));
+    for (final row in rows.where((row) => row['direction'] == sheetName)) {
+      sheet.appendRow(
+        _excelRow([
+          row['serial'] ?? '',
+          row['time'] ?? '',
+          row['sender'] ?? '',
+          row['date'] ?? '',
+          row['body'] ?? '',
+          row['recipient'] ?? '',
+          row['signature'] ?? '',
+          row['notes'] ?? '',
+        ]),
+      );
+    }
+    for (var column = 0; column < telegramExcelHeaders.length; column++) {
+      sheet.setColumnWidth(
+        column,
+        [16, 22, 28, 18, 100, 28, 24, 34][column].toDouble(),
+      );
+    }
+  }
+  workbook.setDefaultSheet('صادر');
+  return workbook.save(fileName: fileName) ?? <int>[];
+}
+
+TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
+  if (bytes.length > 15 * 1024 * 1024) {
+    throw const FormatException(
+      'حجم ملف Excel أكبر من الحد المسموح وهو 15 ميغابايت.',
+    );
+  }
+  final workbook = Excel.decodeBytes(bytes);
+  final rows = <TelegramExcelRow>[];
+  final issues = <TelegramExcelIssue>[];
+  final fingerprints = <String>{};
+  var skippedRows = 0;
+  var duplicateRows = 0;
+
+  for (final sheetName in workbook.tables.keys) {
+    final direction = sheetName.trim() == 'وارد' ? 'وارد' : 'صادر';
+    final sheet = workbook.tables[sheetName]!;
+    final matrix = sheet.rows
+        .map((row) => row.map((cell) => cell?.value).toList())
+        .toList();
+    if (matrix.isEmpty) continue;
+
+    var headerIndex = matrix.indexWhere(
+      (row) => row.any(
+        (value) => _normalized(_text(value)).contains('الرقمالتسلسلي'),
+      ),
+    );
+    if (headerIndex < 0) headerIndex = 0;
+    if (headerIndex > 10) headerIndex = 10;
+    final indexes = _headerIndexes(matrix[headerIndex]);
+    final hasDate = (indexes['date'] ?? -1) >= 0;
+    final fallback = {
+      'serial': (indexes['serial'] ?? -1) >= 0 ? indexes['serial']! : 0,
+      'time': (indexes['time'] ?? -1) >= 0 ? indexes['time']! : 1,
+      'sender': (indexes['sender'] ?? -1) >= 0 ? indexes['sender']! : 2,
+      'date': hasDate ? indexes['date']! : -1,
+      'body': (indexes['body'] ?? -1) >= 0
+          ? indexes['body']!
+          : hasDate
+          ? 4
+          : 3,
+      'recipient': (indexes['recipient'] ?? -1) >= 0
+          ? indexes['recipient']!
+          : hasDate
+          ? 5
+          : 4,
+      'signature': (indexes['signature'] ?? -1) >= 0
+          ? indexes['signature']!
+          : hasDate
+          ? 6
+          : 5,
+      'notes': (indexes['notes'] ?? -1) >= 0
+          ? indexes['notes']!
+          : hasDate
+          ? 7
+          : 6,
+    };
+
+    for (var offset = headerIndex + 1; offset < matrix.length; offset++) {
+      final row = matrix[offset];
+      final body = _cell(row, fallback['body']!);
+      final sender = _cell(row, fallback['sender']!);
+      final recipient = _cell(row, fallback['recipient']!);
+      final notes = _cell(row, fallback['notes']!);
+      if (body.isEmpty &&
+          sender.isEmpty &&
+          recipient.isEmpty &&
+          notes.isEmpty) {
+        continue;
+      }
+      final rowNumber = offset + 1;
+      if (body.length < 3) {
+        skippedRows++;
+        issues.add(
+          TelegramExcelIssue(
+            rowNumber: rowNumber,
+            sheetName: sheetName,
+            reason: 'نص البرقية فارغ أو أقصر من الحد الأدنى.',
+            value: body,
+          ),
+        );
+        continue;
+      }
+      final originalSerial = _cell(row, fallback['serial']!);
+      final date = _cell(row, fallback['date']!);
+      final time = _cell(row, fallback['time']!);
+      final fingerprint = [
+        direction,
+        _normalized(originalSerial),
+        _normalized(date),
+        _normalized(time),
+        _normalized(body),
+      ].join('|');
+      if (!fingerprints.add(fingerprint)) {
+        duplicateRows++;
+        issues.add(
+          TelegramExcelIssue(
+            rowNumber: rowNumber,
+            sheetName: sheetName,
+            reason: 'صف مكرر داخل الملف وتم استبعاده تلقائياً.',
+            value: originalSerial.isEmpty
+                ? body.substring(0, body.length > 80 ? 80 : body.length)
+                : originalSerial,
+          ),
+        );
+        continue;
+      }
+      rows.add(
+        TelegramExcelRow(
+          originalSerial: originalSerial,
+          time: time,
+          sender: sender,
+          date: date,
+          body: body,
+          recipient: recipient,
+          signature: _cell(row, fallback['signature']!),
+          notes: notes,
+          sheetName: direction,
+        ),
+      );
+    }
+  }
+
+  if (rows.isEmpty) {
+    throw const FormatException(
+      'لم يعثر النظام على صفوف برقيات صالحة. تأكد من وجود عمود نص البرقية وعدم رفع قالب فارغ.',
+    );
+  }
+  if (rows.length > 1000) {
+    throw const FormatException(
+      'الحد الأقصى للاستيراد في العملية الواحدة هو 1000 برقية.',
+    );
+  }
+  return TelegramExcelParseResult(
+    rows: rows,
+    skippedRows: skippedRows,
+    duplicateRows: duplicateRows,
+    issues: issues.take(100).toList(),
+    sheets: workbook.tables.keys.toList(),
+  );
+}

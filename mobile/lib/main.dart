@@ -17,7 +17,7 @@ import 'official_telegram_document.dart';
 import 'push_notifications.dart';
 import 'public_pages.dart';
 import 'telegram_actions.dart';
-import 'telegram_csv_page.dart';
+import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 
 const navy = Color(0xFF10233F);
@@ -818,10 +818,13 @@ class _DashboardPageState extends State<DashboardPage>
         _pushPage(const TermsPage());
         break;
       case 'system_about':
-        _pushPage(const AppUpdatePage());
+        _pushPage(const AboutPage());
         break;
       case 'app_about':
         _pushPage(const AppAboutPage());
+        break;
+      case 'app_update':
+        _pushPage(const AppUpdatePage());
         break;
       case 'logout':
         _logout();
@@ -1217,6 +1220,7 @@ class _DashboardPageState extends State<DashboardPage>
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (_) => AdvancedCreateTelegramSheet(api: widget.api),
     );
     if (result == true) refresh();
@@ -1652,6 +1656,13 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               const PopupMenuItem(
+                value: 'app_update',
+                child: _AccountMenuItem(
+                  icon: Icons.system_update_alt_rounded,
+                  title: 'تحديث التطبيق',
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'logout',
                 child: _AccountMenuItem(
                   icon: Icons.logout_rounded,
@@ -1769,7 +1780,7 @@ class _DashboardPageState extends State<DashboardPage>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => TelegramCsvPage(api: widget.api),
+                        builder: (_) => TelegramExcelPage(api: widget.api),
                       ),
                     );
                   },

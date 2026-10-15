@@ -1825,6 +1825,66 @@ class _DashboardPageState extends State<DashboardPage>
               ),
             ),
           ),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: navy,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF29415E)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: gold.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: gold.withValues(alpha: 0.45)),
+                ),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: gold,
+                  size: 23,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مرحباً، ${(widget.account['name'] ?? widget.account['username'] ?? 'أبو نزار').toString()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'نظام برقيات الشرطة — لوحة التحكم',
+                      style: TextStyle(
+                        color: Color(0xFFD4DCE7),
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.verified_user_outlined,
+                color: gold,
+                size: 21,
+              ),
+            ],
+          ),
+        ),
         _dashboardActions(),
         _urgentAlert(),
         const SizedBox(height: 12),

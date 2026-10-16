@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
@@ -114,6 +115,10 @@ class _TestOfficialTelegramDocumentRenderer
 
   @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
+
+  @override
+  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes) async =>
+      _testPng;
 }
 
 void main() {
@@ -220,5 +225,31 @@ void main() {
       'Cairo',
     );
     expect(api.calls['telegrams.get'], {'id': 7});
+  });
+
+  testWidgets('uses the web Lucide icon set on the home screen and drawer', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    await tester.pumpWidget(
+      PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(LucideIcons.panelLeft), findsOneWidget);
+    expect(find.byIcon(LucideIcons.siren), findsOneWidget);
+    await tester.tap(find.byTooltip('فتح القائمة الجانبية'));
+    await tester.pumpAndSettle();
+
+    for (final icon in [
+      LucideIcons.layoutDashboard,
+      LucideIcons.plus,
+      LucideIcons.fileSpreadsheet,
+      LucideIcons.mapPinned,
+      LucideIcons.activity,
+      LucideIcons.archive,
+    ]) {
+      expect(find.byIcon(icon), findsWidgets);
+    }
   });
 }

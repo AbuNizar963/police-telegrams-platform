@@ -79,7 +79,7 @@ class TelegramOutbox {
     : _storage = storage ?? const FlutterSecureStorage();
 
   static const _storageKey = 'telegram_outbox_v1';
-  static const _maxAttachmentBytes = 2 * 1024 * 1024;
+  static const maxOfflineAttachmentBytes = 2 * 1024 * 1024;
   static const _uuid = Uuid();
   final FlutterSecureStorage _storage;
 
@@ -110,12 +110,9 @@ class TelegramOutbox {
     required Map<String, dynamic> payload,
     Map<String, dynamic>? attachment,
   }) async {
-    if (attachment?['base64'] is String &&
-        (attachment!['base64'] as String).length >
-            _maxAttachmentBytes * 4 / 3) {
-      throw const FormatException(
-        'لا يمكن حفظ مرفق بهذا الحجم دون اتصال. أعد المحاولة مع اتصال الإنترنت أو اختر مرفقًا أصغر من 2 ميغابايت.',
-      );
+    final encodedAttachment = attachment?['base64'];
+    if (encodedAttachment is String) {
+      validateOfflineAttachmentBase64(encodedAttachment);
     }
     final entry = TelegramOutboxEntry(
       id: _uuid.v4(),
@@ -130,6 +127,21 @@ class TelegramOutbox {
     entries.add(entry);
     await _save(entries);
     return entry;
+  }
+
+  static void validateOfflineAttachmentBase64(String base64) {
+    final estimatedBytes =
+        (base64.length * 3 ~/ 4) -
+        (base64.endsWith('==')
+            ? 2
+            : base64.endsWith('=')
+            ? 1
+            : 0);
+    if (estimatedBytes > maxOfflineAttachmentBytes) {
+      throw const FormatException(
+        'لا يمكن حفظ مرفق بهذا الحجم دون اتصال. أعد المحاولة مع اتصال الإنترنت أو اختر مرفقًا أصغر من 2 ميغابايت.',
+      );
+    }
   }
 
   Future<TelegramOutboxSyncResult> sync(PoliceApi api) async {

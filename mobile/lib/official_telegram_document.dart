@@ -29,13 +29,12 @@ class NativeOfficialTelegramDocumentRenderer
   const NativeOfficialTelegramDocumentRenderer();
 
   @override
-  Future<Uint8List> renderPdf(String html) async =>
-      Uint8List.fromList(
-        await HtmlToPdfConverter().convertHtmlToPdfBytes(
-          html: html,
-          pageSize: PdfPageSize.a4,
-        ),
-      );
+  Future<Uint8List> renderPdf(String html) async => Uint8List.fromList(
+    await HtmlToPdfConverter().convertHtmlToPdfBytes(
+      html: html,
+      pageSize: PdfPageSize.a4,
+    ),
+  );
 
   @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async {

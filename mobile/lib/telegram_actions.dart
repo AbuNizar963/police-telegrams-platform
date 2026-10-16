@@ -374,7 +374,8 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       if (isPdf && !_hasPdfSignature(bytes)) {
         throw Exception('محتوى الملف المستلم ليس ملف PDF صالحًا.');
       }
-      if (isImage && !mimeType.startsWith('image/') &&
+      if (isImage &&
+          !mimeType.startsWith('image/') &&
           !_isSupportedImageExtension(extension)) {
         throw Exception('صيغة الصورة غير مدعومة داخل التطبيق.');
       }
@@ -386,7 +387,11 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         builder: (dialogContext) => Dialog.fullscreen(
           child: Scaffold(
             appBar: AppBar(
-              title: Text(fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               leading: IconButton(
                 tooltip: 'إغلاق المعاينة',
                 onPressed: () => Navigator.of(dialogContext).pop(),

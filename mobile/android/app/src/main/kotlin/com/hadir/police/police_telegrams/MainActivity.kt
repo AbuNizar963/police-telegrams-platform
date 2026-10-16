@@ -250,10 +250,17 @@ class MainActivity : FlutterActivity() {
                 DownloadManager.STATUS_FAILED -> "failed"
                 else -> "unknown"
             }
-            val uri = if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                cursor.getString(
-                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)
-                )
+            // DownloadManager may expose COLUMN_LOCAL_URI as a content:// URI.
+            // Dart's Uri.toFilePath() cannot convert that URI, which prevented the
+            // installer from opening an otherwise completed download. The request
+            // uses setDestinationInExternalFilesDir(), so resolve that known target
+            // directly and return a file:// URI that Dart can safely convert.
+            val downloadedApk = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                ?.let { File(it, "police-telegrams-update.apk") }
+            val uri = if (status == DownloadManager.STATUS_SUCCESSFUL &&
+                downloadedApk != null && downloadedApk.isFile
+            ) {
+                Uri.fromFile(downloadedApk).toString()
             } else null
             val reason = if (status == DownloadManager.STATUS_FAILED) {
                 cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))

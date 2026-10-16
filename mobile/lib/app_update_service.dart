@@ -145,7 +145,7 @@ String _cleanReleaseNotes(String raw) {
         .trim()
         .replaceFirst(
           RegExp(
-            r'^(?:feat|fix|refactor|style|chore|test)(?:\\([^)]*\\))?:\\s*',
+            r'^(?:feat|fix|refactor|style|chore|test)(?:\([^)]*\))?:\s*',
             caseSensitive: false,
           ),
           '',

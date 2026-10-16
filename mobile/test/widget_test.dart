@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,11 +7,6 @@ import 'package:police_telegrams/main.dart';
 import 'package:police_telegrams/push_notifications.dart';
 
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
-final _testPng = Uint8List.fromList(
-  base64Decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
-  ),
-);
 
 Map<String, dynamic> _sampleTelegram() => {
   'id': 7,
@@ -101,11 +95,6 @@ class _TestPoliceApi extends PoliceApi {
     };
   }
 
-  @override
-  Future<Uint8List> renderTelegramDocument(
-    String html, {
-    required String format,
-  }) async => _testPng;
 }
 
 void main() {

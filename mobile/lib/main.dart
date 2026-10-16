@@ -3114,9 +3114,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     final currentTelegram = telegram;
     if (currentTelegram == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error ?? 'تعذر تحميل بيانات البرقية للتعديل.'),
-        ),
+        SnackBar(content: Text(error ?? 'تعذر تحميل بيانات البرقية للتعديل.')),
       );
       return;
     }
@@ -3153,9 +3151,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     if (!mounted) return;
     if (telegram == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error ?? 'تعذر تحميل بيانات البرقية للحذف.'),
-        ),
+        SnackBar(content: Text(error ?? 'تعذر تحميل بيانات البرقية للحذف.')),
       );
       return;
     }

@@ -20,6 +20,7 @@ import 'telegram_display.dart';
 import 'telegram_actions.dart';
 import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
+import 'telegram_outbox.dart';
 
 const navy = Color(0xFF10233F);
 const gold = Color(0xFFD8C38E);
@@ -675,6 +676,9 @@ class _DashboardPageState extends State<DashboardPage>
   String categoryFilter = 'all';
   final searchController = TextEditingController();
   final push = PushNotificationService();
+  final _outbox = TelegramOutbox();
+  int _pendingOutbox = 0;
+  bool _outboxSyncing = false;
   Timer? _refreshTimer;
   Timer? _searchDebounce;
   bool _refreshInProgress = false;
@@ -687,6 +691,7 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.addObserver(this);
     unawaited(_loadNumberSystem());
     refresh();
+    unawaited(_syncOutbox());
     _loadUnreadNotificationCount();
     _startRefreshTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -734,6 +739,7 @@ class _DashboardPageState extends State<DashboardPage>
     if (state == AppLifecycleState.resumed) {
       _startRefreshTimer();
       refresh(showLoading: false);
+      unawaited(_syncOutbox());
       _loadUnreadNotificationCount();
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
@@ -753,6 +759,24 @@ class _DashboardPageState extends State<DashboardPage>
       );
     } catch (_) {
       // A temporary registration failure must not block the user interface.
+    }
+  }
+
+  Future<void> _syncOutbox() async {
+    if (_outboxSyncing) return;
+    _outboxSyncing = true;
+    try {
+      final result = await _outbox.sync(widget.api);
+      final pending = await _outbox.pendingCount();
+      if (!mounted) return;
+      setState(() => _pendingOutbox = pending);
+      if (result.synced > 0) await refresh(showLoading: false);
+    } catch (_) {
+      if (!mounted) return;
+      final pending = await _outbox.pendingCount();
+      if (mounted) setState(() => _pendingOutbox = pending);
+    } finally {
+      _outboxSyncing = false;
     }
   }
 
@@ -1246,9 +1270,13 @@ class _DashboardPageState extends State<DashboardPage>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => AdvancedCreateTelegramSheet(api: widget.api),
+      builder: (_) =>
+          AdvancedCreateTelegramSheet(api: widget.api, outbox: _outbox),
     );
-    if (result == true) refresh();
+    if (result == true) {
+      await _syncOutbox();
+      refresh();
+    }
   }
 
   void _applyStatFilter(String filter) {
@@ -1488,6 +1516,40 @@ class _DashboardPageState extends State<DashboardPage>
             },
             child: const Text('عرض'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _outboxAlert() {
+    if (_pendingOutbox <= 0 && !_outboxSyncing) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F2E8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE4D4AE)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.sync_outlined, color: navy),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _outboxSyncing
+                  ? 'جارٍ مزامنة البرقيات المحفوظة محليًا...'
+                  : '$_pendingOutbox برقية محفوظة محليًا بانتظار المزامنة.',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (!_outboxSyncing)
+            TextButton(
+              onPressed: _syncOutbox,
+              child: const Text('مزامنة الآن'),
+            ),
         ],
       ),
     );
@@ -2042,6 +2104,7 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
         _dashboardActions(),
+        _outboxAlert(),
         _urgentAlert(),
         const SizedBox(height: 12),
         LayoutBuilder(

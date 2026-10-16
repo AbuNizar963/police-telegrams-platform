@@ -4,13 +4,19 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'telegram_outbox.dart';
 
 const _composerNavy = Color(0xFF10233F);
 const _composerGold = Color(0xFFD8C38E);
 
 class AdvancedCreateTelegramSheet extends StatefulWidget {
-  const AdvancedCreateTelegramSheet({super.key, required this.api});
+  const AdvancedCreateTelegramSheet({
+    super.key,
+    required this.api,
+    this.outbox,
+  });
   final PoliceApi api;
+  final TelegramOutbox? outbox;
 
   @override
   State<AdvancedCreateTelegramSheet> createState() =>
@@ -352,22 +358,23 @@ class _AdvancedCreateTelegramSheetState
       _saving = true;
       _error = null;
     });
+    final payload = <String, dynamic>{
+      'subject': _subject.text.trim(),
+      'recipient': _recipient.text.trim(),
+      if (_recipientId != null && !_broadcast)
+        'recipientOrganizationId': _recipientId,
+      if (_broadcast) 'broadcastToDescendants': true,
+      'body': _body.text.trim(),
+      'classification': _classification,
+      'priority': _priority,
+      'category': _category,
+      'requestedOrganizationSerialNumber': serial,
+    };
     try {
       final result = await widget.api.call(
         'telegrams.create',
         mutation: true,
-        input: {
-          'subject': _subject.text.trim(),
-          'recipient': _recipient.text.trim(),
-          if (_recipientId != null && !_broadcast)
-            'recipientOrganizationId': _recipientId,
-          if (_broadcast) 'broadcastToDescendants': true,
-          'body': _body.text.trim(),
-          'classification': _classification,
-          'priority': _priority,
-          'category': _category,
-          'requestedOrganizationSerialNumber': serial,
-        },
+        input: payload,
       );
       final id = result is Map ? int.tryParse('${result['id']}') : null;
       final attachment = _attachment;
@@ -385,7 +392,32 @@ class _AdvancedCreateTelegramSheetState
       }
       if (mounted) Navigator.pop(context, true);
     } catch (exception) {
-      if (mounted) setState(() => _error = _message(exception));
+      final canQueue =
+          exception is! ApiException ||
+          (exception.statusCode >= 500 && exception.statusCode <= 599);
+      if (canQueue) {
+        try {
+          final attachment = _attachment;
+          await (widget.outbox ?? TelegramOutbox()).enqueue(
+            payload: payload,
+            attachment: attachment?.bytes == null
+                ? null
+                : {
+                    'fileName': attachment!.name,
+                    'contentType': _contentType(attachment.extension),
+                    'base64': base64Encode(attachment.bytes!),
+                  },
+          );
+          if (mounted) {
+            Navigator.pop(context, true);
+          }
+          return;
+        } catch (queueException) {
+          if (mounted) setState(() => _error = _message(queueException));
+        }
+      } else if (mounted) {
+        setState(() => _error = _message(exception));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

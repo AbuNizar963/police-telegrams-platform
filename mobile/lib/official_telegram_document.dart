@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,6 +17,56 @@ import 'telegram_display.dart';
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
+
+/// Rendering boundary for the official document.
+abstract interface class OfficialTelegramDocumentRenderer {
+  Future<Uint8List> renderPdf(String html);
+  Future<Uint8List> renderPreview(Uint8List pdfBytes);
+}
+
+class NativeOfficialTelegramDocumentRenderer
+    implements OfficialTelegramDocumentRenderer {
+  const NativeOfficialTelegramDocumentRenderer();
+
+  @override
+  Future<Uint8List> renderPdf(String html) async => Uint8List.fromList(
+    await HtmlToPdfConverter().convertHtmlToPdfBytes(
+      html: html,
+      pageSize: PdfPageSize.a4,
+    ),
+  );
+
+  @override
+  Future<Uint8List> renderPreview(Uint8List pdfBytes) async {
+    final firstPage = await Printing.raster(
+      pdfBytes,
+      pages: const [0],
+      dpi: 96,
+    ).first;
+    return firstPage.toPng();
+  }
+}
+
+class OfficialTelegramDocumentRendererScope extends InheritedWidget {
+  const OfficialTelegramDocumentRendererScope({
+    super.key,
+    required this.renderer,
+    required super.child,
+  });
+
+  final OfficialTelegramDocumentRenderer renderer;
+
+  static OfficialTelegramDocumentRenderer? maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<
+            OfficialTelegramDocumentRendererScope
+          >()
+          ?.renderer;
+
+  @override
+  bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
+      renderer != oldWidget.renderer;
+}
 
 class OfficialTelegramDocumentPage extends StatefulWidget {
   const OfficialTelegramDocumentPage({
@@ -48,6 +99,16 @@ class _OfficialTelegramDocumentPageState
   Map<String, dynamic>? settings;
   String? documentHtml;
   Uint8List? cachedPdf;
+  OfficialTelegramDocumentRenderer _renderer =
+      const NativeOfficialTelegramDocumentRenderer();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _renderer =
+        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+        const NativeOfficialTelegramDocumentRenderer();
+  }
 
   @override
   void initState() {
@@ -101,15 +162,22 @@ class _OfficialTelegramDocumentPageState
         fontDataUrls: fontDataUrls,
         logoDataUrl: logoDataUrl,
       );
-      final image = await widget.api.renderTelegramDocument(
-        html,
-        format: 'png',
-      );
+      // The same locally generated PDF powers preview, print, save, and
+      // sharing. Tests can replace the native renderer through the scope.
+      final pdfBytes = await _renderer.renderPdf(html);
+      if (pdfBytes.isEmpty) {
+        throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
+      }
+      final image = await _renderer.renderPreview(pdfBytes);
+      if (image.isEmpty) {
+        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      }
       if (!mounted) return;
       setState(() {
         telegram = telegramData;
         settings = settingsData;
         documentHtml = html;
+        cachedPdf = pdfBytes;
         preview = image;
         loading = false;
       });
@@ -173,7 +241,12 @@ class _OfficialTelegramDocumentPageState
     if (cached != null) return cached;
     final html = documentHtml;
     if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
-    final bytes = await widget.api.renderTelegramDocument(html, format: 'pdf');
+    // Fallback for callers that reach PDF export before initial rendering
+    // has populated the cache. Conversion stays entirely on the device.
+    final bytes = await _renderer.renderPdf(html);
+    if (bytes.isEmpty) {
+      throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
+    }
     if (mounted) setState(() => cachedPdf = bytes);
     return bytes;
   }

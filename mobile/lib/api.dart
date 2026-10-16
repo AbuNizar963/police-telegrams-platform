@@ -112,38 +112,6 @@ class PoliceApi {
     }
   }
 
-  Future<Uint8List> renderTelegramDocument(
-    String html, {
-    required String format,
-  }) async {
-    if (format != 'pdf' && format != 'png') {
-      throw ArgumentError.value(format, 'format', 'Expected pdf or png');
-    }
-    final cookie = await _storage.read(key: 'session_cookie');
-    final headers = <String, String>{
-      'content-type': 'application/json',
-      'accept': format == 'pdf' ? 'application/pdf' : 'image/png',
-    };
-    if (cookie != null && cookie.isNotEmpty) headers['cookie'] = cookie;
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/telegram-render'),
-      headers: headers,
-      body: jsonEncode({'format': format, 'html': html}),
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
-        response.statusCode,
-        _message(utf8.decode(response.bodyBytes, allowMalformed: true)),
-      );
-    }
-    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
-    final expectedType = format == 'pdf' ? 'application/pdf' : 'image/png';
-    if (!contentType.startsWith(expectedType)) {
-      throw const ApiException(502, 'استجابة إنشاء الوثيقة غير صالحة');
-    }
-    return response.bodyBytes;
-  }
-
   Future<Uint8List?> fetchImageAsset(String source) async {
     final value = source.trim();
     if (value.isEmpty) return null;

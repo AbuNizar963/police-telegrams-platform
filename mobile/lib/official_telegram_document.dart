@@ -99,6 +99,16 @@ class _OfficialTelegramDocumentPageState
   Map<String, dynamic>? settings;
   String? documentHtml;
   Uint8List? cachedPdf;
+  OfficialTelegramDocumentRenderer _renderer =
+      const NativeOfficialTelegramDocumentRenderer();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _renderer =
+        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+        const NativeOfficialTelegramDocumentRenderer();
+  }
 
   @override
   void initState() {
@@ -154,14 +164,11 @@ class _OfficialTelegramDocumentPageState
       );
       // The same locally generated PDF powers preview, print, save, and
       // sharing. Tests can replace the native renderer through the scope.
-      final renderer =
-          OfficialTelegramDocumentRendererScope.maybeOf(context) ??
-          const NativeOfficialTelegramDocumentRenderer();
-      final pdfBytes = await renderer.renderPdf(html);
+      final pdfBytes = await _renderer.renderPdf(html);
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final image = await renderer.renderPreview(pdfBytes);
+      final image = await _renderer.renderPreview(pdfBytes);
       if (image.isEmpty) {
         throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
       }
@@ -236,10 +243,7 @@ class _OfficialTelegramDocumentPageState
     if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
     // Fallback for callers that reach PDF export before initial rendering
     // has populated the cache. Conversion stays entirely on the device.
-    final renderer =
-        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
-        const NativeOfficialTelegramDocumentRenderer();
-    final bytes = await renderer.renderPdf(html);
+    final bytes = await _renderer.renderPdf(html);
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
     }

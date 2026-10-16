@@ -18,6 +18,57 @@ const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
 
+/// Rendering boundary for the official document.
+abstract interface class OfficialTelegramDocumentRenderer {
+  Future<Uint8List> renderPdf(String html);
+  Future<Uint8List> renderPreview(Uint8List pdfBytes);
+}
+
+class NativeOfficialTelegramDocumentRenderer
+    implements OfficialTelegramDocumentRenderer {
+  const NativeOfficialTelegramDocumentRenderer();
+
+  @override
+  Future<Uint8List> renderPdf(String html) async =>
+      Uint8List.fromList(
+        await HtmlToPdfConverter().convertHtmlToPdfBytes(
+          html: html,
+          pageSize: PdfPageSize.a4,
+        ),
+      );
+
+  @override
+  Future<Uint8List> renderPreview(Uint8List pdfBytes) async {
+    final firstPage = await Printing.raster(
+      pdfBytes,
+      pages: const [0],
+      dpi: 96,
+    ).first;
+    return firstPage.toPng();
+  }
+}
+
+class OfficialTelegramDocumentRendererScope extends InheritedWidget {
+  const OfficialTelegramDocumentRendererScope({
+    super.key,
+    required this.renderer,
+    required super.child,
+  });
+
+  final OfficialTelegramDocumentRenderer renderer;
+
+  static OfficialTelegramDocumentRenderer? maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<
+            OfficialTelegramDocumentRendererScope
+          >()
+          ?.renderer;
+
+  @override
+  bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
+      renderer != oldWidget.renderer;
+}
+
 class OfficialTelegramDocumentPage extends StatefulWidget {
   const OfficialTelegramDocumentPage({
     super.key,
@@ -102,21 +153,19 @@ class _OfficialTelegramDocumentPageState
         fontDataUrls: fontDataUrls,
         logoDataUrl: logoDataUrl,
       );
-      // Render the official document on-device using the platform WebView.
-      // The same locally generated PDF powers preview, print, save, and sharing.
-      final pdfBytes = await HtmlToPdfConverter().convertHtmlToPdfBytes(
-        html: html,
-        pageSize: PdfPageSize.a4,
-      );
+      // The same locally generated PDF powers preview, print, save, and
+      // sharing. Tests can replace the native renderer through the scope.
+      final renderer =
+          OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+          const NativeOfficialTelegramDocumentRenderer();
+      final pdfBytes = await renderer.renderPdf(html);
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final firstPage = await Printing.raster(
-        pdfBytes,
-        pages: const [0],
-        dpi: 96,
-      ).first;
-      final image = await firstPage.toPng();
+      final image = await renderer.renderPreview(pdfBytes);
+      if (image.isEmpty) {
+        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      }
       if (!mounted) return;
       setState(() {
         telegram = telegramData;
@@ -188,10 +237,10 @@ class _OfficialTelegramDocumentPageState
     if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
     // Fallback for callers that reach PDF export before initial rendering
     // has populated the cache. Conversion stays entirely on the device.
-    final bytes = await HtmlToPdfConverter().convertHtmlToPdfBytes(
-      html: html,
-      pageSize: PdfPageSize.a4,
-    );
+    final renderer =
+        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+        const NativeOfficialTelegramDocumentRenderer();
+    final bytes = await renderer.renderPdf(html);
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
     }

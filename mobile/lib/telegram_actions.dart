@@ -376,9 +376,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         throw Exception('رابط المرفق غير صالح أو غير آمن.');
       }
 
-      final response = await http
-          .get(uri)
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 30),
+      );
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw Exception('تعذر تحميل المرفق للمعاينة.');
       }

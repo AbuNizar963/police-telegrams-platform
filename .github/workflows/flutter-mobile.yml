@@ -247,7 +247,11 @@ jobs:
           tag_name: ${{ needs.build-android-apk.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
           name: Police Telegrams ${{ needs.build-android-apk.outputs.release_version }} (build ${{ github.run_number }})
-          generate_release_notes: true
+          # Prefer the actual triggering commit message over GitHub's generated
+          # Full Changelog boilerplate, which can be the only release-note text
+          # when changes were pushed directly to the mobile branch.
+          body: ${{ github.event.head_commit.message || 'تحسينات وإصلاحات لتطبيق الهاتف.' }}
+          generate_release_notes: false
           make_latest: true
           fail_on_unmatched_files: true
           overwrite_files: true

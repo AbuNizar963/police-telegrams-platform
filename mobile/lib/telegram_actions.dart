@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'api.dart';
@@ -327,6 +328,115 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     });
   }
 
+  Future<void> viewAttachment(Map<String, dynamic> attachment) async {
+    final id = int.tryParse('${attachment['id']}');
+    if (id == null) {
+      _show('معرّف المرفق غير صالح.');
+      return;
+    }
+
+    final fileName =
+        '${attachment['originalName'] ?? attachment['fileName'] ?? 'مرفق البرقية'}';
+    final extension = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : '';
+    final mimeType = '${attachment['mimeType'] ?? ''}'.toLowerCase();
+    final isPdf = mimeType == 'application/pdf' || extension == 'pdf';
+    const supportedImageMimeTypes = {'image/jpeg', 'image/png', 'image/webp'};
+    final hasSupportedImageExtension = _isSupportedImageExtension(extension);
+    final hasSupportedImageMimeType = supportedImageMimeTypes.contains(
+      mimeType,
+    );
+    final isImage =
+        !isPdf &&
+        (hasSupportedImageMimeType ||
+            (mimeType.isEmpty && hasSupportedImageExtension));
+
+    if (!isPdf && !isImage) {
+      _show('معاينة هذا النوع من الملفات غير مدعومة داخل التطبيق.');
+      return;
+    }
+
+    await _run(() async {
+      final result = await widget.api.call(
+        'telegrams.downloadAttachment',
+        mutation: true,
+        input: {'attachmentId': id},
+      );
+      final url = result is Map ? result['url'] : null;
+      if (url == null || '$url'.trim().isEmpty) {
+        throw Exception('لم يُرجع الخادم رابط المرفق.');
+      }
+      final uri = Uri.tryParse('$url');
+      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+        throw Exception('رابط المرفق غير صالح أو غير آمن.');
+      }
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw Exception('تعذر تحميل المرفق للمعاينة.');
+      }
+      final bytes = response.bodyBytes;
+      if (isPdf && !_hasPdfSignature(bytes)) {
+        throw Exception('محتوى الملف المستلم ليس ملف PDF صالحًا.');
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog.fullscreen(
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(
+                fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              leading: IconButton(
+                tooltip: 'إغلاق المعاينة',
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+            body: isPdf
+                ? PdfPreview(
+                    build: (_) async => bytes,
+                    allowPrinting: false,
+                    allowSharing: false,
+                    canChangePageFormat: false,
+                    canChangeOrientation: false,
+                  )
+                : Center(
+                    child: InteractiveViewer(
+                      minScale: 0.5,
+                      maxScale: 5,
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('تعذر عرض الصورة؛ قد يكون الملف تالفًا.'),
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      );
+    });
+  }
+
+  bool _hasPdfSignature(List<int> bytes) =>
+      bytes.length >= 5 &&
+      bytes[0] == 0x25 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x44 &&
+      bytes[3] == 0x46 &&
+      bytes[4] == 0x2D;
+
+  bool _isSupportedImageExtension(String extension) =>
+      const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension);
+
   Future<void> downloadAttachment(Map<String, dynamic> attachment) async {
     final id = int.tryParse('${attachment['id']}');
     if (id == null) return;
@@ -528,10 +638,22 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                trailing: IconButton(
-                  tooltip: 'تنزيل المرفق',
-                  onPressed: busy ? null : () => downloadAttachment(attachment),
-                  icon: const Icon(Icons.download_outlined),
+                trailing: Wrap(
+                  spacing: 0,
+                  children: [
+                    IconButton(
+                      tooltip: 'معاينة داخل التطبيق',
+                      onPressed: busy ? null : () => viewAttachment(attachment),
+                      icon: const Icon(Icons.visibility_outlined),
+                    ),
+                    IconButton(
+                      tooltip: 'تنزيل المرفق',
+                      onPressed: busy
+                          ? null
+                          : () => downloadAttachment(attachment),
+                      icon: const Icon(Icons.download_outlined),
+                    ),
+                  ],
                 ),
               );
             }),

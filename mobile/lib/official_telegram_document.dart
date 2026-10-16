@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
@@ -18,8 +17,8 @@ import 'telegram_display.dart';
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
-const _documentPreviewDpi = 150;
-const _documentImageExportDpi = 300;
+const _documentPreviewDpi = 150.0;
+const _documentImageExportDpi = 300.0;
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
@@ -69,7 +68,7 @@ class NativeOfficialTelegramDocumentRenderer
 
   Future<Uint8List> _renderFirstPage(
     Uint8List pdfBytes, {
-    required int dpi,
+    required double dpi,
   }) async {
     final firstPage = await Printing.raster(
       pdfBytes,

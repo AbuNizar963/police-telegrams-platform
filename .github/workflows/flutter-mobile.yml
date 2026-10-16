@@ -43,6 +43,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Diagnose formatter output (temporary)
+        run: |
+          cp lib/telegram_actions.dart "$RUNNER_TEMP/telegram_actions.dart"
+          dart format lib/telegram_actions.dart
+          git diff -- lib/telegram_actions.dart
+          cp "$RUNNER_TEMP/telegram_actions.dart" lib/telegram_actions.dart
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
 

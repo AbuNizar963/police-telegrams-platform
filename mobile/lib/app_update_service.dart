@@ -108,6 +108,8 @@ String _cleanReleaseNotes(String raw) {
         'إغلاق فجوات التكافؤ في إشعارات الهاتف والخرائط.',
     'add native excel import and export to mobile':
         'إضافة استيراد وتصدير ملفات Excel أصليًا إلى تطبيق الهاتف.',
+    'match telegram details and serial display with web':
+        'تحسين عرض تفاصيل البرقية والرقم التسلسلي ليتوافق مع نظام الويب.',
   };
 
   for (final sourceLine in raw.replaceAll('\r\n', '\n').split('\n')) {
@@ -138,7 +140,16 @@ String _cleanReleaseNotes(String raw) {
     line = line.replaceAll(RegExp(r'[*_`#]'), '').trim();
     if (line.isEmpty) continue;
 
-    final key = line.replaceAll(RegExp(r'[*_`#]'), '').trim().toLowerCase();
+    final key = line
+        .replaceAll(RegExp(r'[*_`#]'), '')
+        .trim()
+        .replaceFirst(
+          RegExp(r'^(?:feat|fix|refactor|style|chore|test)(?:\([^)]*\))?:\s*',
+              caseSensitive: false),
+          '',
+        )
+        .trim()
+        .toLowerCase();
     final arabic =
         knownTranslations[key] ??
         (RegExp(r'[\u0600-\u06ff]').hasMatch(line)

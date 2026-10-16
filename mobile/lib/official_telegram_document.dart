@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
@@ -101,15 +102,27 @@ class _OfficialTelegramDocumentPageState
         fontDataUrls: fontDataUrls,
         logoDataUrl: logoDataUrl,
       );
-      final image = await widget.api.renderTelegramDocument(
-        html,
-        format: 'png',
+      // Render the official document on-device using the platform WebView.
+      // The same locally generated PDF powers preview, print, save, and sharing.
+      final pdfBytes = await HtmlToPdfConverter().convertHtmlToPdfBytes(
+        html: html,
+        pageSize: PdfPageSize.a4,
       );
+      if (pdfBytes.isEmpty) {
+        throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
+      }
+      final firstPage = await Printing.raster(
+        pdfBytes,
+        pages: const [0],
+        dpi: 96,
+      ).first;
+      final image = await firstPage.toPng();
       if (!mounted) return;
       setState(() {
         telegram = telegramData;
         settings = settingsData;
         documentHtml = html;
+        cachedPdf = pdfBytes;
         preview = image;
         loading = false;
       });
@@ -173,7 +186,15 @@ class _OfficialTelegramDocumentPageState
     if (cached != null) return cached;
     final html = documentHtml;
     if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
-    final bytes = await widget.api.renderTelegramDocument(html, format: 'pdf');
+    // Fallback for callers that reach PDF export before initial rendering
+    // has populated the cache. Conversion stays entirely on the device.
+    final bytes = await HtmlToPdfConverter().convertHtmlToPdfBytes(
+      html: html,
+      pageSize: PdfPageSize.a4,
+    );
+    if (bytes.isEmpty) {
+      throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
+    }
     if (mounted) setState(() => cachedPdf = bytes);
     return bytes;
   }

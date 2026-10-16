@@ -43,11 +43,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Diagnose formatting (temporary)
-        run: |
-          dart format lib/telegram_actions.dart
-          git diff -- lib/telegram_actions.dart
-          git diff --check
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze Dart source
         run: flutter analyze

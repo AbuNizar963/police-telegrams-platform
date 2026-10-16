@@ -81,8 +81,14 @@ class _OfficialTelegramDocumentPageState
                 .toList()
           : <Map<String, dynamic>>[];
 
-      final fontDataUrls = await _loadFontDataUrls();
-      final logoDataUrl = await _loadLogoDataUrl(settingsData['logoUrl']);
+      // Fonts and the optional organization logo are independent resources.
+      // Load them together so preview generation does not wait for them in series.
+      final resources = await Future.wait<Object?>([
+        _loadFontDataUrls(),
+        _loadLogoDataUrl(settingsData['logoUrl']),
+      ]);
+      final fontDataUrls = resources[0] as Map<int, String>;
+      final logoDataUrl = resources[1] as String?;
       final token = _value(telegramData['verificationToken']);
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')

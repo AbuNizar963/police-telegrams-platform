@@ -3109,8 +3109,17 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   }
 
   Future<void> _editTelegram() async {
+    if (telegram == null) await load();
+    if (!mounted) return;
     final currentTelegram = telegram;
-    if (currentTelegram == null) return;
+    if (currentTelegram == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'تعذر تحميل بيانات البرقية للتعديل.'),
+        ),
+      );
+      return;
+    }
     if (_managementExpired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -3140,6 +3149,16 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   }
 
   Future<void> _deleteTelegram() async {
+    if (telegram == null) await load();
+    if (!mounted) return;
+    if (telegram == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'تعذر تحميل بيانات البرقية للحذف.'),
+        ),
+      );
+      return;
+    }
     if (_managementExpired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -3197,16 +3216,13 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final data = telegram;
-    final displaySerial = getTelegramDisplayNumber(
-      getTelegramSerialCode(data ?? const {}),
-    );
-    if (widget.officialDocument && !loading && error == null && data != null) {
+    if (widget.officialDocument) {
       return OfficialTelegramDocumentPage(
         api: widget.api,
         telegramId: widget.telegramId,
         onEdit: _editTelegram,
         onDelete: _deleteTelegram,
-        onSubmitForReview: _canOperate && data['status'] == 'draft'
+        onSubmitForReview: _canOperate && data?['status'] == 'draft'
             ? () async {
                 await widget.api.call(
                   'telegrams.transition',
@@ -3218,6 +3234,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
             : null,
       );
     }
+    final displaySerial = getTelegramDisplayNumber(
+      getTelegramSerialCode(data ?? const {}),
+    );
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(

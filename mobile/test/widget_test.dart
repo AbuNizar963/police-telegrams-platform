@@ -9,22 +9,22 @@ import 'package:police_telegrams/push_notifications.dart';
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
 
 Map<String, dynamic> _sampleTelegram() => {
-      'id': 7,
-      'organizationSerialCode': 'UNIT-00072',
-      'serialCode': 'POL-2026-09-30-00690',
-      'subject': _telegramSubject,
-      'senderOrganizationName': 'قسم شرطة الشهباء',
-      'recipient': 'قيادة الأمن الداخلي في محافظة حلب',
-      'body': 'نص اختبار للبرقية.',
-      'status': 'draft',
-      'priority': 'normal',
-      'classification': 'normal',
-      'category': 'administrative',
-      'createdAt': '2026-10-15T14:22:00.000Z',
-      'verificationToken': 'test-verification-token',
-      'organizationId': 'org-1',
-      'currentOrganizationId': 'org-1',
-      'creatorName': 'مشغل النظام',
+  'id': 7,
+  'organizationSerialCode': 'UNIT-00072',
+  'serialCode': 'POL-2026-09-30-00690',
+  'subject': _telegramSubject,
+  'senderOrganizationName': 'قسم شرطة الشهباء',
+  'recipient': 'قيادة الأمن الداخلي في محافظة حلب',
+  'body': 'نص اختبار للبرقية.',
+  'status': 'draft',
+  'priority': 'normal',
+  'classification': 'normal',
+  'category': 'administrative',
+  'createdAt': '2026-10-15T14:22:00.000Z',
+  'verificationToken': 'test-verification-token',
+  'organizationId': 'org-1',
+  'currentOrganizationId': 'org-1',
+  'creatorName': 'مشغل النظام',
     };
 
 void _setMobileViewport(WidgetTester tester) {

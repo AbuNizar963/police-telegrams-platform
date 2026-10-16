@@ -691,6 +691,7 @@ class _DashboardPageState extends State<DashboardPage>
           onForegroundTelegram: (_) {
             refresh();
           },
+          onAppUpdate: _openAppUpdate,
         )
         .then((_) async {
           final enabled = await push.notificationsEnabled();
@@ -830,6 +831,11 @@ class _DashboardPageState extends State<DashboardPage>
 
   void _pushPage(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  void _openAppUpdate() {
+    if (!mounted) return;
+    _pushPage(const AppUpdatePage());
   }
 
   void _updateAccountProfile(Map<String, dynamic> profile) {

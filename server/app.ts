@@ -9,6 +9,7 @@ import { registerTelegramExportRoutes } from "./telegramExport";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { ENV } from "./_core/env";
+import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
 
 const verificationAttempts = new Map<
@@ -212,6 +213,57 @@ export function createApp(
       database: "supabase-postgres",
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.post("/api/internal/mobile-release", async (req, res) => {
+    const configuredSecret = ENV.releaseNotificationSecret;
+    const requestSecret = req.get("x-release-notification-secret") ?? "";
+    if (!configuredSecret || requestSecret !== configuredSecret) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const version =
+      typeof req.body?.version === "string" ? req.body.version.trim() : "";
+    const buildNumber = Number(req.body?.buildNumber);
+    const releaseUrl =
+      typeof req.body?.releaseUrl === "string"
+        ? req.body.releaseUrl.trim()
+        : "";
+    if (
+      !/^\d+\.\d+\.\d+$/.test(version) ||
+      !Number.isSafeInteger(buildNumber) ||
+      buildNumber <= 0
+    ) {
+      return res.status(400).json({ error: "Invalid release version" });
+    }
+
+    let parsedReleaseUrl: URL;
+    try {
+      parsedReleaseUrl = new URL(releaseUrl);
+    } catch {
+      return res.status(400).json({ error: "Invalid release URL" });
+    }
+    if (
+      parsedReleaseUrl.protocol !== "https:" ||
+      parsedReleaseUrl.hostname !== "github.com" ||
+      !parsedReleaseUrl.pathname.includes("/releases/")
+    ) {
+      return res.status(400).json({ error: "Invalid release URL" });
+    }
+
+    try {
+      const result = await notifyMobileRelease({
+        version,
+        buildNumber,
+        releaseUrl,
+        title: typeof req.body?.title === "string" ? req.body.title : undefined,
+        body: typeof req.body?.body === "string" ? req.body.body : undefined,
+      });
+      return res.status(202).json(result);
+    } catch (error) {
+      console.error("Mobile release notification failed:", error);
+      return res.status(500).json({ error: "Notification dispatch failed" });
+    }
   });
 
   app.use(

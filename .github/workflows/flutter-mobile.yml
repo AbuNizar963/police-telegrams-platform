@@ -255,3 +255,29 @@ jobs:
             release-assets/app-release.apk
             release-assets/SHA256SUMS.txt
 
+      - name: Notify mobile devices about the new release
+        env:
+          RELEASE_NOTIFICATION_URL: ${{ vars.RELEASE_NOTIFICATION_URL || 'https://police-telegrams-platform.vercel.app' }}
+          RELEASE_NOTIFICATION_SECRET: ${{ secrets.RELEASE_NOTIFICATION_SECRET }}
+          RELEASE_VERSION: ${{ needs.build-android-apk.outputs.release_version }}
+          RELEASE_TAG: ${{ needs.build-android-apk.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELEASE_NOTIFICATION_SECRET:-}" ]; then
+            echo "::warning::RELEASE_NOTIFICATION_SECRET is not configured; skipping mobile release notification."
+            exit 0
+          fi
+          release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+          payload="$(jq -cn \
+            --arg version "$RELEASE_VERSION" \
+            --arg buildNumber "$GITHUB_RUN_NUMBER" \
+            --arg releaseUrl "$release_url" \
+            --arg title "تحديث جديد لتطبيق برقيات الشرطة" \
+            --arg body "الإصدار ${RELEASE_VERSION} متوفر الآن. اضغط لمعرفة التفاصيل." \
+            '{version:$version, buildNumber:($buildNumber|tonumber), releaseUrl:$releaseUrl, title:$title, body:$body}')"
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-delay 2 --max-time 30 \
+            -X POST "${RELEASE_NOTIFICATION_URL%/}/api/internal/mobile-release" \
+            -H "content-type: application/json" \
+            -H "x-release-notification-secret: ${RELEASE_NOTIFICATION_SECRET}" \
+            --data "$payload"

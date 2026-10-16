@@ -19,6 +19,7 @@ class PushNotificationService {
     required void Function(int telegramId) onTelegramOpened,
     required void Function(int telegramId) onForegroundTelegram,
     required void Function(String token) onToken,
+    void Function()? onAppUpdate,
   }) async {
     try {
       await Firebase.initializeApp();
@@ -32,16 +33,28 @@ class PushNotificationService {
       // A foreground delivery is not a user tap. Refresh the inbox/dashboard
       // without navigating away from the screen the user is currently using.
       _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
+        if (_isAppUpdate(message)) {
+          onAppUpdate?.call();
+          return;
+        }
         final id = _telegramId(message);
         if (id != null) onForegroundTelegram(id);
       });
       _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen((
         message,
       ) {
+        if (_isAppUpdate(message)) {
+          onAppUpdate?.call();
+          return;
+        }
         final id = _telegramId(message);
         if (id != null) onTelegramOpened(id);
       });
       final initial = await _messaging.getInitialMessage();
+      if (initial != null && _isAppUpdate(initial)) {
+        onAppUpdate?.call();
+        return;
+      }
       final initialId = initial == null ? null : _telegramId(initial);
       if (initialId != null) onTelegramOpened(initialId);
     } on FirebaseException {
@@ -54,6 +67,9 @@ class PushNotificationService {
     final raw = message.data['telegramId'] ?? message.data['telegram_id'];
     return int.tryParse('$raw');
   }
+
+  bool _isAppUpdate(RemoteMessage message) =>
+      message.data['type'] == 'app.update';
 
   Future<bool> notificationsEnabled() async {
     try {

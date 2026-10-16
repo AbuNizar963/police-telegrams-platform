@@ -1078,6 +1078,17 @@ export async function listMobilePushTokens(
   return (data ?? []) as MobilePushTokenRecord[];
 }
 
+export async function listAllMobilePushTokens(): Promise<
+  MobilePushTokenRecord[]
+> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("mobile_push_tokens")
+    .select("id, userId, organizationId, token, platform")
+    .order("lastUsedAt", { ascending: false });
+  throwIfError(error, "Failed to list all mobile push tokens");
+  return (data ?? []) as MobilePushTokenRecord[];
+}
+
 export async function transitionTelegram(input: {
   telegramId: number;
   actorUserId: number;

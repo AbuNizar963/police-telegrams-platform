@@ -144,8 +144,10 @@ String _cleanReleaseNotes(String raw) {
         .replaceAll(RegExp(r'[*_`#]'), '')
         .trim()
         .replaceFirst(
-          RegExp(r'^(?:feat|fix|refactor|style|chore|test)(?:\([^)]*\))?:\s*',
-              caseSensitive: false),
+          RegExp(
+            r'^(?:feat|fix|refactor|style|chore|test)(?:\\([^)]*\\))?:\\s*',
+            caseSensitive: false,
+          ),
           '',
         )
         .trim()

@@ -342,9 +342,19 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         : '';
     final mimeType = '${attachment['mimeType'] ?? ''}'.toLowerCase();
     final isPdf = mimeType == 'application/pdf' || extension == 'pdf';
+    const supportedImageMimeTypes = {
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    };
+    final hasSupportedImageExtension = _isSupportedImageExtension(extension);
+    final hasSupportedImageMimeType = supportedImageMimeTypes.contains(
+      mimeType,
+    );
     final isImage =
-        mimeType.startsWith('image/') ||
-        const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension);
+        !isPdf &&
+        (hasSupportedImageMimeType ||
+            (mimeType.isEmpty && hasSupportedImageExtension));
 
     if (!isPdf && !isImage) {
       _show('معاينة هذا النوع من الملفات غير مدعومة داخل التطبيق.');
@@ -366,7 +376,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         throw Exception('رابط المرفق غير صالح أو غير آمن.');
       }
 
-      final response = await http.get(uri);
+      final response = await http
+          .get(uri)
+          .timeout(const Duration(seconds: 30));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw Exception('تعذر تحميل المرفق للمعاينة.');
       }
@@ -374,12 +386,6 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       if (isPdf && !_hasPdfSignature(bytes)) {
         throw Exception('محتوى الملف المستلم ليس ملف PDF صالحًا.');
       }
-      if (isImage &&
-          !mimeType.startsWith('image/') &&
-          !_isSupportedImageExtension(extension)) {
-        throw Exception('صيغة الصورة غير مدعومة داخل التطبيق.');
-      }
-
       if (!mounted) return;
       await showDialog<void>(
         context: context,

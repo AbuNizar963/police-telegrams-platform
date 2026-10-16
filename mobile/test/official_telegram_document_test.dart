@@ -89,7 +89,7 @@ void main() {
     expect(html, contains('z-index:1'));
   });
 
-  testWidgets('keeps the organization logo aspect ratio when normalizing it', (
+  testWidgets('preserves source logo resolution and aspect ratio', (
     tester,
   ) async {
     final recorder = ui.PictureRecorder();
@@ -115,8 +115,8 @@ void main() {
     try {
       final frame = await codec.getNextFrame();
       try {
-        expect(frame.image.width, 600);
-        expect(frame.image.height, 300);
+        expect(frame.image.width, 120);
+        expect(frame.image.height, 60);
       } finally {
         frame.image.dispose();
       }

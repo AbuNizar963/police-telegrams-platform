@@ -18,13 +18,14 @@ import 'telegram_display.dart';
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
+const _documentPreviewDpi = 150;
+const _documentImageExportDpi = 300;
 
 @visibleForTesting
-Future<Uint8List> normalizeOfficialDocumentLogo(
-  Uint8List bytes, {
-  int targetWidth = 600,
-}) async {
-  final codec = await ui.instantiateImageCodec(bytes, targetWidth: targetWidth);
+Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
+  // Decode at the source resolution. The previous forced 600x600 decode
+  // distorted non-square logos and discarded detail from larger originals.
+  final codec = await ui.instantiateImageCodec(bytes);
   try {
     final frame = await codec.getNextFrame();
     try {
@@ -43,6 +44,7 @@ Future<Uint8List> normalizeOfficialDocumentLogo(
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
+  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes);
 }
 
 class NativeOfficialTelegramDocumentRenderer
@@ -58,11 +60,21 @@ class NativeOfficialTelegramDocumentRenderer
   );
 
   @override
-  Future<Uint8List> renderPreview(Uint8List pdfBytes) async {
+  Future<Uint8List> renderPreview(Uint8List pdfBytes) =>
+      _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
+
+  @override
+  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes) =>
+      _renderFirstPage(pdfBytes, dpi: _documentImageExportDpi);
+
+  Future<Uint8List> _renderFirstPage(
+    Uint8List pdfBytes, {
+    required int dpi,
+  }) async {
     final firstPage = await Printing.raster(
       pdfBytes,
       pages: const [0],
-      dpi: 96,
+      dpi: dpi,
     ).first;
     return firstPage.toPng();
   }
@@ -116,6 +128,7 @@ class _OfficialTelegramDocumentPageState
   bool busy = false;
   String? error;
   Uint8List? preview;
+  Uint8List? highResolutionImage;
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
   String? documentHtml;
@@ -143,6 +156,7 @@ class _OfficialTelegramDocumentPageState
         loading = true;
         error = null;
         preview = null;
+        highResolutionImage = null;
         cachedPdf = null;
       });
     }
@@ -255,6 +269,19 @@ class _OfficialTelegramDocumentPageState
     return bytes;
   }
 
+  Future<Uint8List> _getHighResolutionImage() async {
+    final cached = highResolutionImage;
+    if (cached != null) return cached;
+    final image = await _renderer.renderHighResolutionImage(
+      await _getPdfBytes(),
+    );
+    if (image.isEmpty) {
+      throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
+    }
+    if (mounted) setState(() => highResolutionImage = image);
+    return image;
+  }
+
   String get _fileBaseName {
     final serial = _displaySerial == '—' ? 'telegram' : _displaySerial;
     final safe = serial.replaceAll(RegExp(r'[\\/:*?"<>|\u0000-\u001f]'), '-');
@@ -314,8 +341,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _shareImage() => _perform(() async {
-    final bytes = preview;
-    if (bytes == null) throw Exception('صورة المعاينة غير جاهزة.');
+    final bytes = await _getHighResolutionImage();
     await SharePlus.instance.share(
       ShareParams(
         files: [
@@ -332,8 +358,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _saveImage() => _perform(() async {
-    final bytes = preview;
-    if (bytes == null) throw Exception('صورة المعاينة غير جاهزة.');
+    final bytes = await _getHighResolutionImage();
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',
       fileName: '$_fileBaseName.png',
@@ -579,6 +604,7 @@ class _OfficialTelegramDocumentPageState
                           child: Image.memory(
                             preview!,
                             fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
                             width: double.infinity,
                             semanticLabel: 'معاينة الوثيقة الرسمية للبرقية',
                             errorBuilder: (context, exception, stackTrace) =>

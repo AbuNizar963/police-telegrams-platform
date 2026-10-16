@@ -719,8 +719,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   void _show(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String? _contentType(String? extension) {

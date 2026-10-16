@@ -21,6 +21,7 @@ import 'telegram_actions.dart';
 import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 import 'telegram_outbox.dart';
+import 'telegram_outbox_page.dart';
 
 const navy = Color(0xFF10233F);
 const gold = Color(0xFFD8C38E);
@@ -778,6 +779,10 @@ class _DashboardPageState extends State<DashboardPage>
     } finally {
       _outboxSyncing = false;
     }
+  }
+
+  void _openOutbox() {
+    _pushPage(TelegramOutboxPage(api: widget.api, outbox: _outbox));
   }
 
   Future<void> _togglePushNotifications() async {
@@ -1546,9 +1551,15 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
           if (!_outboxSyncing)
-            TextButton(
-              onPressed: _syncOutbox,
-              child: const Text('مزامنة الآن'),
+            Wrap(
+              spacing: 2,
+              children: [
+                TextButton(
+                  onPressed: _openOutbox,
+                  child: const Text('التفاصيل'),
+                ),
+                TextButton(onPressed: _syncOutbox, child: const Text('مزامنة')),
+              ],
             ),
         ],
       ),

@@ -25,7 +25,7 @@ Map<String, dynamic> _sampleTelegram() => {
   'organizationId': 'org-1',
   'currentOrganizationId': 'org-1',
   'creatorName': 'مشغل النظام',
-    };
+};
 
 void _setMobileViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(390, 900);

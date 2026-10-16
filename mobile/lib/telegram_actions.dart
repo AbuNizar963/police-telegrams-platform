@@ -342,11 +342,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         : '';
     final mimeType = '${attachment['mimeType'] ?? ''}'.toLowerCase();
     final isPdf = mimeType == 'application/pdf' || extension == 'pdf';
-    const supportedImageMimeTypes = {
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-    };
+    const supportedImageMimeTypes = {'image/jpeg', 'image/png', 'image/webp'};
     final hasSupportedImageExtension = _isSupportedImageExtension(extension);
     final hasSupportedImageMimeType = supportedImageMimeTypes.contains(
       mimeType,
@@ -376,9 +372,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         throw Exception('رابط المرفق غير صالح أو غير آمن.');
       }
 
-      final response = await http.get(uri).timeout(
-        const Duration(seconds: 30),
-      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw Exception('تعذر تحميل المرفق للمعاينة.');
       }
@@ -649,9 +643,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   children: [
                     IconButton(
                       tooltip: 'معاينة داخل التطبيق',
-                      onPressed: busy
-                          ? null
-                          : () => viewAttachment(attachment),
+                      onPressed: busy ? null : () => viewAttachment(attachment),
                       icon: const Icon(Icons.visibility_outlined),
                     ),
                     IconButton(
@@ -721,9 +713,8 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   void _show(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _contentType(String? extension) {

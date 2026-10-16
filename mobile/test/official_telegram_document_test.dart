@@ -89,9 +89,8 @@ void main() {
     expect(html, contains('z-index:1'));
   });
 
-  testWidgets('preserves source logo resolution and aspect ratio', (
-    tester,
-  ) async {
+  test('preserves source logo resolution and aspect ratio', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
     canvas.drawRect(

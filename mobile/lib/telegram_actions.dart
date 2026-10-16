@@ -643,7 +643,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   children: [
                     IconButton(
                       tooltip: 'معاينة داخل التطبيق',
-                      onPressed: busy ? null : () => viewAttachment(attachment),
+                      onPressed: busy
+                          ? null
+                          : () => viewAttachment(attachment),
                       icon: const Icon(Icons.visibility_outlined),
                     ),
                     IconButton(

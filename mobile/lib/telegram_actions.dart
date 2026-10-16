@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'offline_first.dart';
 
 const _navy = Color(0xFF101C35);
 const _gold = Color(0xFFC9A45C);
@@ -15,10 +16,12 @@ class TelegramActionsPanel extends StatefulWidget {
   const TelegramActionsPanel({
     super.key,
     required this.api,
+    required this.offline,
     required this.telegramId,
     required this.onChanged,
   });
   final PoliceApi api;
+  final OfflineFirstService offline;
   final int telegramId;
   final VoidCallback onChanged;
 
@@ -158,16 +161,27 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       return;
     }
     await _run(() async {
-      await widget.api.call(
-        'telegrams.uploadAttachment',
-        mutation: true,
-        input: {
-          'telegramId': widget.telegramId,
-          'fileName': file.name,
-          'contentType': contentType,
-          'base64': base64Encode(file.bytes!),
-        },
-      );
+      try {
+        await widget.api.call(
+          'telegrams.uploadAttachment',
+          mutation: true,
+          input: {
+            'telegramId': widget.telegramId,
+            'fileName': file.name,
+            'contentType': contentType,
+            'base64': base64Encode(file.bytes!),
+          },
+        );
+      } catch (_) {
+        await widget.offline.enqueueAttachment(
+          telegramId: widget.telegramId,
+          fileName: file.name,
+          contentType: contentType,
+          bytes: file.bytes!,
+        );
+        _show('تم حفظ المرفق محليًا، وسيُرفع عند عودة الاتصال');
+        return;
+      }
       await load();
       _show('تم رفع المرفق بنجاح');
     });

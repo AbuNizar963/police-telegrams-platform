@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'mobile_pages.dart';
+import 'offline_first.dart';
 import 'push_notifications.dart';
 import 'telegram_actions.dart';
 
@@ -40,6 +42,23 @@ class _LoginPageState extends State<LoginPage> {
   final api = PoliceApi();
   bool busy = false;
   String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restoreSession());
+  }
+
+  Future<void> _restoreSession() async {
+    final account = await api.restoreCachedAccount();
+    if (!mounted || account == null) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DashboardPage(api: api, account: account),
+      ),
+    );
+  }
 
   Future<void> login() async {
     if (username.text.trim().isEmpty || password.text.isEmpty) return;
@@ -181,10 +200,15 @@ class _DashboardPageState extends State<DashboardPage> {
   List<dynamic> telegrams = [];
   int section = 0;
   final push = PushNotificationService();
+  late final OfflineFirstService offline;
 
   @override
   void initState() {
     super.initState();
+    offline = OfflineFirstService(api: widget.api);
+    unawaited(offline.start(
+      scope: '${widget.account['id'] ?? widget.account['username'] ?? 'default'}',
+    ));
     refresh();
     push.initialize(
       onToken: _registerPushToken,
@@ -210,7 +234,11 @@ class _DashboardPageState extends State<DashboardPage> {
       context,
       MaterialPageRoute(
         builder: (_) =>
-            TelegramDetailsPage(api: widget.api, telegramId: telegramId),
+            TelegramDetailsPage(
+              api: widget.api,
+              offline: offline,
+              telegramId: telegramId,
+            ),
       ),
     );
   }
@@ -218,6 +246,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     push.dispose();
+    unawaited(offline.dispose());
     super.dispose();
   }
 
@@ -240,9 +269,23 @@ class _DashboardPageState extends State<DashboardPage> {
           error = null;
         });
       }
+      await offline.cacheDashboard(
+        stats: Map<String, dynamic>.from(results[0] as Map),
+        telegrams: telegrams,
+      );
     } catch (e) {
       if (mounted) {
-        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+        final cachedStats = await offline.cachedStats();
+        final cachedTelegrams = await offline.cachedTelegrams();
+        if (cachedStats != null || cachedTelegrams != null) {
+          setState(() {
+            stats = cachedStats ?? stats;
+            telegrams = cachedTelegrams ?? telegrams;
+            error = 'وضع عدم الاتصال — تُعرض آخر نسخة محفوظة محليًا';
+          });
+        } else {
+          setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+        }
       }
     } finally {
       if (mounted) setState(() => loading = false);
@@ -253,7 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => CreateTelegramSheet(api: widget.api),
+      builder: (_) => CreateTelegramSheet(api: widget.api, offline: offline),
     );
     if (result == true) refresh();
   }
@@ -457,6 +500,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     MaterialPageRoute(
                       builder: (_) => TelegramDetailsPage(
                         api: widget.api,
+                        offline: offline,
                         telegramId: row['id'] as int,
                       ),
                     ),
@@ -512,9 +556,11 @@ class TelegramDetailsPage extends StatefulWidget {
   const TelegramDetailsPage({
     super.key,
     required this.api,
+    required this.offline,
     required this.telegramId,
   });
   final PoliceApi api;
+  final OfflineFirstService offline;
   final int telegramId;
   @override
   State<TelegramDetailsPage> createState() => _TelegramDetailsPageState();
@@ -642,6 +688,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                   const SizedBox(height: 12),
                   TelegramActionsPanel(
                     api: widget.api,
+                    offline: widget.offline,
                     telegramId: widget.telegramId,
                     onChanged: load,
                   ),
@@ -693,8 +740,13 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
 }
 
 class CreateTelegramSheet extends StatefulWidget {
-  const CreateTelegramSheet({super.key, required this.api});
+  const CreateTelegramSheet({
+    super.key,
+    required this.api,
+    required this.offline,
+  });
   final PoliceApi api;
+  final OfflineFirstService offline;
   @override
   State<CreateTelegramSheet> createState() => _CreateTelegramSheetState();
 }
@@ -719,18 +771,14 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
       error = null;
     });
     try {
-      await widget.api.call(
-        'telegrams.create',
-        mutation: true,
-        input: {
-          'subject': subject.text.trim(),
-          'recipient': recipient.text.trim(),
-          'body': body.text.trim(),
-          'classification': 'normal',
-          'priority': priority,
-          'category': 'administrative',
-        },
-      );
+      await widget.offline.createTelegram({
+        'subject': subject.text.trim(),
+        'recipient': recipient.text.trim(),
+        'body': body.text.trim(),
+        'classification': 'normal',
+        'priority': priority,
+        'category': 'administrative',
+      });
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {

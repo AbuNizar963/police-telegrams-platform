@@ -3,6 +3,13 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+class NetworkException implements Exception {
+  NetworkException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class PoliceApi {
   PoliceApi({String? baseUrl})
     : baseUrl =
@@ -30,13 +37,19 @@ class PoliceApi {
       'accept': 'application/json',
     };
     if (cookie != null) headers['cookie'] = cookie;
-    final response = mutation
-        ? await http.post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'json': input}),
-          )
-        : await http.get(uri, headers: headers);
+    late final http.Response response;
+    try {
+      response = await (mutation
+              ? http.post(
+                  uri,
+                  headers: headers,
+                  body: jsonEncode({'json': input}),
+                )
+              : http.get(uri, headers: headers))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      throw NetworkException('تعذر الاتصال بالخادم');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_message(response.body));
     }
@@ -67,7 +80,20 @@ class PoliceApi {
     }
     final decoded = jsonDecode(response.body);
     final data = decoded['result']['data'];
-    return Map<String, dynamic>.from(data['json'] ?? data);
+    final account = Map<String, dynamic>.from(data['json'] ?? data);
+    await _storage.write(key: 'cached_account', value: jsonEncode(account));
+    return account;
+  }
+
+  Future<Map<String, dynamic>?> restoreCachedAccount() async {
+    final cookie = await _storage.read(key: 'session_cookie');
+    final raw = await _storage.read(key: 'cached_account');
+    if (cookie == null || raw == null) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> logout() async {
@@ -75,6 +101,7 @@ class PoliceApi {
       await call('auth.logout', mutation: true);
     } finally {
       await _storage.delete(key: 'session_cookie');
+      await _storage.delete(key: 'cached_account');
     }
   }
 

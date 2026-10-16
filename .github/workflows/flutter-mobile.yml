@@ -46,7 +46,7 @@ jobs:
       - name: Diagnose formatting (temporary)
         run: |
           dart format lib/telegram_actions.dart
-          git diff -- mobile/lib/telegram_actions.dart
+          git diff -- lib/telegram_actions.dart
           git diff --check
 
       - name: Analyze Dart source

@@ -11,6 +11,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'api.dart';
+import 'telegram_display.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
@@ -44,6 +45,7 @@ class _OfficialTelegramDocumentPageState
   String? error;
   Uint8List? preview;
   Map<String, dynamic>? telegram;
+  Map<String, dynamic>? settings;
   String? documentHtml;
   Uint8List? cachedPdf;
 
@@ -100,6 +102,7 @@ class _OfficialTelegramDocumentPageState
       if (!mounted) return;
       setState(() {
         telegram = telegramData;
+        settings = settingsData;
         documentHtml = html;
         preview = image;
         loading = false;
@@ -170,15 +173,15 @@ class _OfficialTelegramDocumentPageState
   }
 
   String get _fileBaseName {
-    final serial = _value(
-      telegram?['serialCode'] ??
-          telegram?['serialNumber'] ??
-          telegram?['number'],
-      fallback: 'telegram',
-    );
+    final serial = _displaySerial == '—' ? 'telegram' : _displaySerial;
     final safe = serial.replaceAll(RegExp(r'[\\/:*?"<>|\u0000-\u001f]'), '-');
     return 'telegram-$safe';
   }
+
+  String get _displaySerial => localizeTelegramDigits(
+    getTelegramDisplayNumber(getTelegramSerialCode(telegram ?? const {})),
+    settings?['numberSystem'],
+  );
 
   Future<void> _perform(Future<void> Function() action) async {
     if (busy) return;
@@ -358,27 +361,38 @@ class _OfficialTelegramDocumentPageState
     final foreground = danger || primary
         ? Colors.white
         : const Color(0xFF101C35);
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: danger
-            ? const Color(0xFFE33D3D)
-            : primary
-            ? const Color(0xFF10233F)
-            : Colors.white,
-        foregroundColor: foreground,
-        side: BorderSide(
-          color: danger
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: danger
               ? const Color(0xFFE33D3D)
               : primary
               ? const Color(0xFF10233F)
-              : const Color(0xFFD8DCE2),
+              : Colors.white,
+          foregroundColor: foreground,
+          side: BorderSide(
+            color: danger
+                ? const Color(0xFFE33D3D)
+                : primary
+                ? const Color(0xFF10233F)
+                : const Color(0xFFD8DCE2),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        icon: Icon(icon, size: 19),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+          ),
+        ),
       ),
-      icon: Icon(icon, size: 19),
-      label: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
     );
   }
 
@@ -387,22 +401,49 @@ class _OfficialTelegramDocumentPageState
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        leadingWidth: 0,
+        leading: const SizedBox.shrink(),
+        toolbarHeight: 88,
+        titleSpacing: 8,
+        backgroundColor: const Color(0xFFF8F7F2),
         foregroundColor: const Color(0xFF101C35),
         elevation: 0,
-        title: Text(
-          _value(telegram?['subject'], fallback: 'عرض البرقية'),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w900),
+        surfaceTintColor: Colors.transparent,
+        title: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _displaySerial,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                color: Color(0xFF6B7280),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              _value(telegram?['subject'], fallback: 'عرض البرقية'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                color: Color(0xFF111827),
+                fontSize: 20,
+                height: 1.2,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
-            tooltip: busy ? 'جارٍ تجهيز الوثيقة' : 'طباعة الوثيقة',
-            onPressed: loading || busy || error != null ? null : _printPdf,
-            icon: const Icon(Icons.print_outlined),
+            tooltip: 'إغلاق تفاصيل البرقية',
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.close_rounded, size: 25),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
       ),
       body: loading
@@ -467,75 +508,91 @@ class _OfficialTelegramDocumentPageState
                 ),
                 SafeArea(
                   top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 3.25,
-                      children: [
-                        _documentAction(
-                          label: busy ? 'جارٍ التجهيز...' : 'طباعة',
-                          icon: Icons.print_outlined,
-                          primary: true,
-                          onPressed: busy ? null : () => _printPdf(),
-                        ),
-                        _documentAction(
-                          label: 'إرفاق ملف',
-                          icon: Icons.attach_file,
-                          onPressed: busy ? null : () => _attachFile(),
-                        ),
-                        _documentAction(
-                          label: 'صورة عالية الدقة',
-                          icon: Icons.image_outlined,
-                          onPressed: busy ? null : () => _saveImage(),
-                        ),
-                        _documentAction(
-                          label: 'PDF مطابق للطباعة',
-                          icon: Icons.picture_as_pdf_outlined,
-                          onPressed: busy ? null : () => _savePdf(),
-                        ),
-                        _documentAction(
-                          label: 'مشاركة صورة',
-                          icon: Icons.share_outlined,
-                          onPressed: busy ? null : () => _shareImage(),
-                        ),
-                        _documentAction(
-                          label: 'مشاركة PDF',
-                          icon: Icons.share_outlined,
-                          onPressed: busy ? null : () => _sharePdf(),
-                        ),
-                        _documentAction(
-                          label: 'تعديل البرقية',
-                          icon: Icons.save_outlined,
-                          onPressed: busy || widget.onEdit == null
-                              ? null
-                              : () => widget.onEdit!(),
-                        ),
-                        _documentAction(
-                          label: 'الموقع',
-                          icon: Icons.my_location_outlined,
-                          onPressed: busy ? null : () => _showLocation(),
-                        ),
-                        _documentAction(
-                          label: 'حذف نهائي',
-                          icon: Icons.delete_outline,
-                          danger: true,
-                          onPressed: busy || widget.onDelete == null
-                              ? null
-                              : () => widget.onDelete!(),
-                        ),
-                        _documentAction(
-                          label: 'إرسال للمراجعة',
-                          icon: Icons.send_outlined,
-                          onPressed: busy || widget.onSubmitForReview == null
-                              ? null
-                              : () => widget.onSubmitForReview!(),
+                  minimum: const EdgeInsets.fromLTRB(12, 7, 12, 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFCFCFA),
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(color: const Color(0xFFD8DCE2)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0A182230),
+                          blurRadius: 12,
+                          offset: Offset(0, 2),
                         ),
                       ],
+                    ),
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 3.25,
+                        children: [
+                          _documentAction(
+                            label: busy ? 'جارٍ التجهيز...' : 'طباعة',
+                            icon: Icons.print_outlined,
+                            primary: true,
+                            onPressed: busy ? null : () => _printPdf(),
+                          ),
+                          _documentAction(
+                            label: 'إرفاق ملف',
+                            icon: Icons.attach_file,
+                            onPressed: busy ? null : () => _attachFile(),
+                          ),
+                          _documentAction(
+                            label: 'صورة عالية الدقة',
+                            icon: Icons.image_outlined,
+                            onPressed: busy ? null : () => _saveImage(),
+                          ),
+                          _documentAction(
+                            label: 'PDF مطابق للطباعة',
+                            icon: Icons.picture_as_pdf_outlined,
+                            onPressed: busy ? null : () => _savePdf(),
+                          ),
+                          _documentAction(
+                            label: 'مشاركة صورة',
+                            icon: Icons.share_outlined,
+                            onPressed: busy ? null : () => _shareImage(),
+                          ),
+                          _documentAction(
+                            label: 'مشاركة PDF',
+                            icon: Icons.share_outlined,
+                            onPressed: busy ? null : () => _sharePdf(),
+                          ),
+                          _documentAction(
+                            label: 'تعديل البرقية',
+                            icon: Icons.save_outlined,
+                            onPressed: busy || widget.onEdit == null
+                                ? null
+                                : () => widget.onEdit!(),
+                          ),
+                          _documentAction(
+                            label: 'الموقع',
+                            icon: Icons.my_location_outlined,
+                            onPressed: busy ? null : () => _showLocation(),
+                          ),
+                          _documentAction(
+                            label: 'حذف نهائي',
+                            icon: Icons.delete_outline,
+                            danger: true,
+                            onPressed: busy || widget.onDelete == null
+                                ? null
+                                : () => widget.onDelete!(),
+                          ),
+                          _documentAction(
+                            label: 'إرسال للمراجعة',
+                            icon: Icons.send_outlined,
+                            onPressed: busy || widget.onSubmitForReview == null
+                                ? null
+                                : () => widget.onSubmitForReview!(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -620,13 +677,8 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = _localizeDigits(
-    _displayTelegramNumber(
-      telegram['organizationSerialCode'] ??
-          telegram['serialCode'] ??
-          telegram['serialNumber'] ??
-          telegram['number'],
-    ),
+  final displaySerial = localizeTelegramDigits(
+    getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
     numberSystem,
   );
   final outgoing =
@@ -885,13 +937,6 @@ String _localizeDigits(String value, Object? numberSystem) {
 
 String _label(Map<String, String> labels, Object? key) =>
     labels[_value(key)] ?? 'غير محددة';
-
-String _displayTelegramNumber(Object? source) {
-  final value = _value(source, fallback: '');
-  if (value.isEmpty) return '—';
-  final suffix = value.split('-').last;
-  return int.tryParse(suffix)?.toString() ?? value;
-}
 
 String _value(Object? value, {String fallback = '—'}) {
   if (value == null ||

@@ -15,6 +15,7 @@ import 'native_user_management_page.dart';
 import 'official_telegram_document.dart';
 import 'push_notifications.dart';
 import 'public_pages.dart';
+import 'telegram_display.dart';
 import 'telegram_actions.dart';
 import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
@@ -84,7 +85,7 @@ class PoliceTelegramsApp extends StatelessWidget {
           titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
+        ).apply(fontFamily: 'Cairo'),
         appBarTheme: AppBarTheme(
           backgroundColor: const Color(0xFFF8F7F2),
           foregroundColor: navy,
@@ -209,7 +210,11 @@ class PoliceTelegramsApp extends StatelessWidget {
           backgroundColor: Color(0xFFFFFEFC),
           indicatorColor: Color(0xFFF1E8D5),
           labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         dividerTheme: const DividerThemeData(
@@ -648,6 +653,7 @@ class _DashboardPageState extends State<DashboardPage>
   String? activeOrganizationName;
   String? activeOrganizationRole;
   bool activeOrganizationIsOwner = false;
+  String numberSystem = 'latin';
   int unreadNotificationCount = 0;
   bool _pushEnabled = false;
   bool _pushBusy = false;
@@ -678,6 +684,7 @@ class _DashboardPageState extends State<DashboardPage>
     super.initState();
     _account = Map<String, dynamic>.from(widget.account);
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadNumberSystem());
     refresh();
     _loadUnreadNotificationCount();
     _startRefreshTimer();
@@ -697,6 +704,20 @@ class _DashboardPageState extends State<DashboardPage>
           final enabled = await push.notificationsEnabled();
           if (mounted) setState(() => _pushEnabled = enabled);
         });
+  }
+
+  Future<void> _loadNumberSystem() async {
+    try {
+      final result = await widget.api.call('settings.get');
+      if (!mounted) return;
+      setState(() {
+        numberSystem = result is Map && result['numberSystem'] == 'arabic'
+            ? 'arabic'
+            : 'latin';
+      });
+    } catch (_) {
+      // Keep the web default if this account cannot read its display settings.
+    }
   }
 
   void _startRefreshTimer() {
@@ -1123,6 +1144,7 @@ class _DashboardPageState extends State<DashboardPage>
           account: _account,
           organizationRole: activeOrganizationRole,
           organizationIsOwner: activeOrganizationIsOwner,
+          officialDocument: true,
         ),
       ),
     );
@@ -2597,7 +2619,11 @@ class _DashboardPageState extends State<DashboardPage>
     String Function(dynamic) confidentialityLabel,
   ) {
     final incoming = _isIncoming(row);
-    final serial = row['serialCode'] ?? row['serialNumber'] ?? row['number'];
+    final telegramId = int.tryParse('${row['id']}');
+    final serial = localizeTelegramDigits(
+      getTelegramDisplayNumber(getTelegramSerialCode(row)),
+      numberSystem,
+    );
     final sender =
         row['fromOrganizationName'] ??
         row['senderOrganizationName'] ??
@@ -2627,7 +2653,7 @@ class _DashboardPageState extends State<DashboardPage>
     final category = rawCategory == null ? null : categoryLabel(rawCategory);
 
     return InkWell(
-      onTap: row['id'] == null
+      onTap: telegramId == null
           ? null
           : () async {
               await Navigator.push(
@@ -2635,10 +2661,11 @@ class _DashboardPageState extends State<DashboardPage>
                 MaterialPageRoute(
                   builder: (_) => TelegramDetailsPage(
                     api: widget.api,
-                    telegramId: row['id'] as int,
+                    telegramId: telegramId,
                     account: _account,
                     organizationRole: activeOrganizationRole,
                     organizationIsOwner: activeOrganizationIsOwner,
+                    officialDocument: true,
                   ),
                 ),
               );
@@ -2653,11 +2680,12 @@ class _DashboardPageState extends State<DashboardPage>
               children: [
                 Expanded(
                   child: Text(
-                    'برقية رقم: ${serial ?? '—'}',
+                    'برقية رقم: $serial',
                     textAlign: TextAlign.right,
                     style: const TextStyle(
+                      fontFamily: 'Cairo',
                       color: Color(0xFF182230),
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -2763,6 +2791,7 @@ class _DashboardPageState extends State<DashboardPage>
     textAlign: TextAlign.right,
     text: TextSpan(
       style: TextStyle(
+        fontFamily: 'Cairo',
         color: strong ? const Color(0xFF626E7D) : const Color(0xFF414B59),
         fontSize: 14,
         height: 1.45,
@@ -3168,20 +3197,25 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final data = telegram;
+    final displaySerial = getTelegramDisplayNumber(
+      getTelegramSerialCode(data ?? const {}),
+    );
     if (widget.officialDocument && !loading && error == null && data != null) {
       return OfficialTelegramDocumentPage(
         api: widget.api,
         telegramId: widget.telegramId,
         onEdit: _editTelegram,
         onDelete: _deleteTelegram,
-        onSubmitForReview: () async {
-          await widget.api.call(
-            'telegrams.transition',
-            mutation: true,
-            input: {'id': widget.telegramId, 'toStatus': 'submitted'},
-          );
-          await load();
-        },
+        onSubmitForReview: _canOperate && data['status'] == 'draft'
+            ? () async {
+                await widget.api.call(
+                  'telegrams.transition',
+                  mutation: true,
+                  input: {'id': widget.telegramId, 'toStatus': 'submitted'},
+                );
+                await load();
+              }
+            : null,
       );
     }
     return Directionality(
@@ -3247,8 +3281,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          '${data?['organizationSerialCode'] ?? data?['serialCode'] ?? data?['serialNumber'] ?? '—'}',
+                          'برقية رقم: $displaySerial',
                           style: const TextStyle(
+                            fontFamily: 'Cairo',
                             color: gold,
                             fontSize: 14,
                             fontWeight: FontWeight.w800,

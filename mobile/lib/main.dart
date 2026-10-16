@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'api.dart';
 import 'advanced_create_telegram_page.dart';
@@ -1335,7 +1336,7 @@ class _DashboardPageState extends State<DashboardPage>
       if (_canViewReports) ...[
         Expanded(
           child: _dashboardActionButton(
-            icon: Icons.description_outlined,
+            icon: LucideIcons.fileText,
             label: 'تقرير البرقيات',
             onPressed: () => _pushPage(ReportsPage(api: widget.api)),
           ),
@@ -1344,7 +1345,7 @@ class _DashboardPageState extends State<DashboardPage>
       ],
       Expanded(
         child: _dashboardActionButton(
-          icon: Icons.tune_rounded,
+          icon: LucideIcons.slidersHorizontal,
           label: 'تخصيص العرض',
           onPressed: _showDisplayCustomization,
         ),
@@ -1352,7 +1353,7 @@ class _DashboardPageState extends State<DashboardPage>
       const SizedBox(width: 7),
       Expanded(
         child: _dashboardActionButton(
-          icon: Icons.filter_list_rounded,
+          icon: LucideIcons.listFilter,
           label: 'الفلاتر',
           trailing: _activeFilterCount == 0
               ? null
@@ -1462,7 +1463,7 @@ class _DashboardPageState extends State<DashboardPage>
               color: const Color(0xFFB42332),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.priority_high_rounded, color: Colors.white),
+            child: const Icon(LucideIcons.siren, color: Colors.white),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1505,7 +1506,7 @@ class _DashboardPageState extends State<DashboardPage>
           builder: (context) => IconButton(
             tooltip: 'فتح القائمة الجانبية',
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.view_sidebar_rounded),
+            icon: const Icon(LucideIcons.panelLeft),
           ),
         ),
         title: Row(
@@ -1537,7 +1538,7 @@ class _DashboardPageState extends State<DashboardPage>
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded),
+                const Icon(LucideIcons.bell),
                 if (unreadNotificationCount > 0)
                   Positioned(
                     top: -5,
@@ -1574,7 +1575,7 @@ class _DashboardPageState extends State<DashboardPage>
           PopupMenuButton<String>(
             tooltip: 'إعدادات الحساب',
             onSelected: _handleAccountAction,
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(LucideIcons.ellipsis),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'profile',
@@ -1749,7 +1750,7 @@ class _DashboardPageState extends State<DashboardPage>
                         tooltip: 'إغلاق القائمة',
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
-                          Icons.view_sidebar_outlined,
+                          LucideIcons.panelLeft,
                           color: Colors.white70,
                         ),
                       ),
@@ -1769,7 +1770,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.dashboard_outlined),
+                  leading: const Icon(LucideIcons.layoutDashboard),
                   title: const Text('لوحة التحكم'),
                   selected: true,
                   onTap: () {
@@ -1782,7 +1783,7 @@ class _DashboardPageState extends State<DashboardPage>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.add_comment_outlined),
+                  leading: const Icon(LucideIcons.plus),
                   title: const Text('إنشاء برقية'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1790,7 +1791,7 @@ class _DashboardPageState extends State<DashboardPage>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.file_download_outlined),
+                  leading: const Icon(LucideIcons.fileSpreadsheet),
                   title: const Text('استيراد وتصدير سجل البرقيات'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1804,7 +1805,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 if (_account['role'] == 'admin' || _canViewReports)
                   ListTile(
-                    leading: const Icon(Icons.manage_accounts_outlined),
+                    leading: const Icon(LucideIcons.users),
                     title: const Text('إدارة المستخدمين'),
                     onTap: () {
                       Navigator.pop(context);
@@ -1819,7 +1820,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 const Divider(color: Color(0xFF29415E)),
                 ListTile(
-                  leading: const Icon(Icons.map_outlined),
+                  leading: const Icon(LucideIcons.mapPinned),
                   title: const Text('خريطة البلاغات والمواقع الجغرافية'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1835,7 +1836,7 @@ class _DashboardPageState extends State<DashboardPage>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.groups_outlined),
+                  leading: const Icon(LucideIcons.users),
                   title: const Text('الوحدات الميدانية'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1851,7 +1852,7 @@ class _DashboardPageState extends State<DashboardPage>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.query_stats_outlined),
+                  leading: const Icon(LucideIcons.activity),
                   title: const Text('إدارة الموارد'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1867,7 +1868,7 @@ class _DashboardPageState extends State<DashboardPage>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.archive_outlined),
+                  leading: const Icon(LucideIcons.archive),
                   title: const Text('الأرشيف والسجلات المغلقة'),
                   onTap: () {
                     Navigator.pop(context);
@@ -1893,7 +1894,7 @@ class _DashboardPageState extends State<DashboardPage>
         foregroundColor: Colors.white,
         elevation: 4,
         onPressed: create,
-        child: const Icon(Icons.add_comment_outlined),
+        child: const Icon(LucideIcons.plus),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -1907,42 +1908,42 @@ class _DashboardPageState extends State<DashboardPage>
         'إجمالي البرقيات',
         'total',
         'الرصيد التشغيلي',
-        Icons.description_outlined,
+        LucideIcons.fileText,
         const Color(0xFF687385),
       ),
       (
         'الصادرة اليوم',
         'today',
         'من بداية اليوم',
-        Icons.bolt_outlined,
+        LucideIcons.activity,
         const Color(0xFF356AC3),
       ),
       (
         'أولوية عاجل اليوم',
         'todayUrgent',
         'من بداية اليوم',
-        Icons.priority_high_rounded,
+        LucideIcons.siren,
         const Color(0xFFB54736),
       ),
       (
         'الواردة اليوم',
         'todayIncoming',
         'إلى جهتك منذ بداية اليوم',
-        Icons.inbox_outlined,
+        LucideIcons.inbox,
         const Color(0xFF16836B),
       ),
       (
         'قيد الإجراء',
         'inProgress',
         'قيد المعالجة',
-        Icons.radio_button_checked_outlined,
+        LucideIcons.radio,
         const Color(0xFF17899A),
       ),
       (
         'مكتملة نهائيًا',
         'resolved',
         'تم إغلاقها',
-        Icons.task_alt_outlined,
+        LucideIcons.circleCheck,
         const Color(0xFF16836B),
       ),
     ];
@@ -2006,7 +2007,7 @@ class _DashboardPageState extends State<DashboardPage>
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: gold.withValues(alpha: 0.45)),
                 ),
-                child: const Icon(Icons.shield_outlined, color: gold, size: 23),
+                child: const Icon(LucideIcons.shield, color: gold, size: 23),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2036,7 +2037,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.verified_user_outlined, color: gold, size: 21),
+              const Icon(LucideIcons.shieldCheck, color: gold, size: 21),
             ],
           ),
         ),
@@ -2185,21 +2186,21 @@ class _DashboardPageState extends State<DashboardPage>
                     _telegramViewButton(
                       'كل البرقيات',
                       stats['total'] ?? 0,
-                      Icons.list_alt_rounded,
+                      LucideIcons.listFilter,
                       0,
                     ),
                     const SizedBox(width: 7),
                     _telegramViewButton(
                       'البرقيات الصادرة',
                       stats['outgoing'] ?? 0,
-                      Icons.call_made_rounded,
+                      LucideIcons.send,
                       1,
                     ),
                     const SizedBox(width: 7),
                     _telegramViewButton(
                       'البرقيات الواردة',
                       stats['incoming'] ?? 0,
-                      Icons.call_received_rounded,
+                      LucideIcons.inbox,
                       2,
                     ),
                   ],
@@ -2342,7 +2343,7 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           Row(
             children: [
-              const Icon(Icons.filter_list_rounded, color: navy, size: 20),
+              const Icon(LucideIcons.listFilter, color: navy, size: 20),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(

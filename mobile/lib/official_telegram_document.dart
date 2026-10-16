@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
@@ -17,6 +18,26 @@ import 'telegram_display.dart';
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
+
+@visibleForTesting
+Future<Uint8List> normalizeOfficialDocumentLogo(
+  Uint8List bytes, {
+  int targetWidth = 600,
+}) async {
+  final codec = await ui.instantiateImageCodec(bytes, targetWidth: targetWidth);
+  try {
+    final frame = await codec.getNextFrame();
+    try {
+      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) throw StateError('تعذر تجهيز شعار الوثيقة.');
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } finally {
+      frame.image.dispose();
+    }
+  } finally {
+    codec.dispose();
+  }
+}
 
 /// Rendering boundary for the official document.
 abstract interface class OfficialTelegramDocumentRenderer {
@@ -211,25 +232,8 @@ class _OfficialTelegramDocumentPageState
     try {
       final bytes = await widget.api.fetchImageAsset(url);
       if (bytes == null || bytes.isEmpty) return null;
-      final codec = await ui.instantiateImageCodec(
-        bytes,
-        targetWidth: 600,
-        targetHeight: 600,
-      );
-      try {
-        final frame = await codec.getNextFrame();
-        try {
-          final data = await frame.image.toByteData(
-            format: ui.ImageByteFormat.png,
-          );
-          if (data == null) return null;
-          return 'data:image/png;base64,${base64Encode(data.buffer.asUint8List())}';
-        } finally {
-          frame.image.dispose();
-        }
-      } finally {
-        codec.dispose();
-      }
+      final normalized = await normalizeOfficialDocumentLogo(bytes);
+      return 'data:image/png;base64,${base64Encode(normalized)}';
     } catch (_) {
       // Use the same vector seal as the web template if an optional logo fails.
       return null;
@@ -825,7 +829,7 @@ String buildOfficialTelegramHtml({
 $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
-.telegram-export-page .page-watermark{position:absolute;top:50%;left:50%;z-index:0;width:93.75%;height:93.75%;max-width:none;max-height:none;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;opacity:.12;pointer-events:none}
+.telegram-export-page .page-watermark{position:absolute;top:50%;left:50%;z-index:0;width:560px;height:560px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;opacity:.16;pointer-events:none}
 .telegram-export-page .watermark-logo{display:block;width:100%;height:100%;object-fit:contain}
 .telegram-export-page .watermark-seal{width:100%;height:100%;border:7px solid #9a813c;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9a813c;text-align:center;line-height:1.25}
 .telegram-export-page .watermark-seal span{font-size:68px}.telegram-export-page .watermark-seal strong{font-size:28px}
@@ -852,7 +856,7 @@ $fontFaces
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
-<div class="page-watermark">$watermark</div>
+<div class="page-watermark" aria-hidden="true">$watermark</div>
 <header class="official-header">
 <div class="header-government"><p class="government-name">الجمهورية العربية السورية</p><p class="government-subtitle">وزارة الداخلية</p>$organizationHierarchy</div>
 <div class="header-logo-cell">$logo</div>

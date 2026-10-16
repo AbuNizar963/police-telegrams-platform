@@ -1,10 +1,19 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/api.dart';
+import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
 import 'package:police_telegrams/push_notifications.dart';
 
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
+final _testPng = Uint8List.fromList(
+  base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
+  ),
+);
 
 Map<String, dynamic> _sampleTelegram() => {
   'id': 7,
@@ -94,6 +103,19 @@ class _TestPoliceApi extends PoliceApi {
   }
 }
 
+class _TestOfficialTelegramDocumentRenderer
+    implements OfficialTelegramDocumentRenderer {
+  @override
+  Future<Uint8List> renderPdf(String html) async {
+    expect(html, contains(_telegramSubject));
+    expect(html, contains('routing-qr'));
+    return Uint8List.fromList([37, 80, 68, 70]);
+  }
+
+  @override
+  Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
+}
+
 void main() {
   test('push service construction does not require Firebase configuration', () {
     expect(PushNotificationService.new, returnsNormally);
@@ -156,7 +178,12 @@ void main() {
   ) async {
     _setMobileViewport(tester);
     final api = _TestPoliceApi(signedIn: true);
-    await tester.pumpWidget(PoliceTelegramsApp(api: api));
+    await tester.pumpWidget(
+      OfficialTelegramDocumentRendererScope(
+        renderer: _TestOfficialTelegramDocumentRenderer(),
+        child: PoliceTelegramsApp(api: api),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final serial = find.text('برقية رقم: 72');
@@ -169,7 +196,22 @@ void main() {
     expect(find.text(_telegramSubject), findsOneWidget);
     expect(find.text('طباعة'), findsOneWidget);
     expect(find.text('إرفاق ملف'), findsOneWidget);
+    expect(find.text('صورة عالية الدقة'), findsOneWidget);
     expect(find.text('PDF مطابق للطباعة'), findsOneWidget);
+    expect(find.text('مشاركة صورة'), findsOneWidget);
+    expect(find.text('مشاركة PDF'), findsOneWidget);
+    expect(find.text('تعديل البرقية'), findsOneWidget);
+    expect(find.text('الموقع'), findsOneWidget);
+    expect(find.text('حذف نهائي'), findsOneWidget);
+    expect(find.text('إرسال للمراجعة'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.semanticLabel == 'معاينة الوثيقة الرسمية للبرقية',
+      ),
+      findsOneWidget,
+    );
     expect(
       Theme.of(tester.element(find.text(_telegramSubject)))
           .textTheme

@@ -643,9 +643,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   children: [
                     IconButton(
                       tooltip: 'معاينة داخل التطبيق',
-                      onPressed: busy
-                          ? null
-                          : () => viewAttachment(attachment),
+                      onPressed: busy ? null : () => viewAttachment(attachment),
                       icon: const Icon(Icons.visibility_outlined),
                     ),
                     IconButton(
@@ -715,9 +713,8 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   void _show(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _contentType(String? extension) {

@@ -2067,6 +2067,7 @@ export const appRouter = router({
           id: z.number().int().positive(),
           toStatus: statusSchema,
           reason: z.string().trim().max(2000).nullable().optional(),
+          expectedRevision: z.number().int().positive().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -2089,6 +2090,7 @@ export const appRouter = router({
             actorUserId: ctx.user.id,
             toStatus: input.toStatus,
             reason: input.reason ?? null,
+            expectedRevision: input.expectedRevision,
             metadata: { serialCode: existing.serialCode },
           });
           await writeAuditLog({
@@ -2106,6 +2108,17 @@ export const appRouter = router({
           });
           return transitioned;
         } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.toLowerCase().includes("conflict")
+          ) {
+            const current = await getTelegramById(input.id);
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: `تعارض مزامنة: تغيّرت البرقية على الخادم. الإصدار الحالي هو ${current?.revision ?? "الأحدث"}. أعد تحميلها ثم أعد تنفيذ الإجراء.`,
+              cause: error,
+            });
+          }
           throw new TRPCError({
             code: "FORBIDDEN",
             message:

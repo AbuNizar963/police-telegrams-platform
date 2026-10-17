@@ -1064,6 +1064,7 @@ export async function transitionTelegram(input: {
   toStatus: string;
   reason?: string | null;
   metadata?: Record<string, unknown>;
+  expectedRevision?: number;
 }): Promise<Telegram> {
   const { data, error } = await getSupabaseAdmin().rpc("transition_telegram", {
     p_telegram_id: input.telegramId,
@@ -1071,6 +1072,7 @@ export async function transitionTelegram(input: {
     p_to_status: input.toStatus,
     p_reason: input.reason ?? null,
     p_metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+    p_expected_revision: input.expectedRevision ?? null,
   });
   throwIfError(error, "Telegram transition failed");
   return mapTelegram(data as Record<string, unknown>);

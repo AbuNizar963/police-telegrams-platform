@@ -10,6 +10,19 @@ class NetworkException implements Exception {
   String toString() => message;
 }
 
+class ApiException implements Exception {
+  ApiException(this.message, {this.statusCode, this.code});
+  final String message;
+  final int? statusCode;
+  final String? code;
+  @override
+  String toString() => message;
+}
+
+class ConflictException extends ApiException {
+  ConflictException(super.message) : super(statusCode: 409, code: 'CONFLICT');
+}
+
 class PoliceApi {
   PoliceApi({String? baseUrl})
     : baseUrl =
@@ -51,7 +64,11 @@ class PoliceApi {
       throw NetworkException('تعذر الاتصال بالخادم');
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_message(response.body));
+      final message = _message(response.body);
+      if (response.statusCode == 409 || message.contains('تعارض مزامنة')) {
+        throw ConflictException(message);
+      }
+      throw ApiException(message, statusCode: response.statusCode);
     }
     final decoded = jsonDecode(response.body);
     final result = decoded is Map ? decoded['result'] : null;

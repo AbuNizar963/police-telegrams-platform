@@ -392,6 +392,31 @@ class _DashboardPageState extends State<DashboardPage> {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          FutureBuilder<int>(
+            future: offline.conflictCount(),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              if (count == 0) return const SizedBox.shrink();
+              return Card(
+                color: Colors.orange.shade50,
+                child: ListTile(
+                  leading: const Icon(Icons.warning_amber_rounded),
+                  title: const Text('تعارضات تحتاج مراجعة'),
+                  subtitle: Text(
+                    'يوجد $count إجراء لم يُطبّق لأن نسخة الخادم أحدث. لم يتم استبدال بيانات الخادم.',
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'إعادة المحاولة بعد تحديث البيانات',
+                    onPressed: () async {
+                      await offline.sync();
+                      if (mounted) setState(() {});
+                    },
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ),
+              );
+            },
+          ),
           if (error != null)
             Card(
               child: Padding(
@@ -690,6 +715,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                     api: widget.api,
                     offline: widget.offline,
                     telegramId: widget.telegramId,
+                    expectedRevision: (data?['revision'] as num?)?.toInt(),
                     onChanged: load,
                   ),
                 ],

@@ -18,11 +18,13 @@ class TelegramActionsPanel extends StatefulWidget {
     required this.api,
     required this.offline,
     required this.telegramId,
+    this.expectedRevision,
     required this.onChanged,
   });
   final PoliceApi api;
   final OfflineFirstService offline;
   final int telegramId;
+  final int? expectedRevision;
   final VoidCallback onChanged;
 
   @override
@@ -72,15 +74,17 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     );
     if (reason == null) return;
     await _run(() async {
-      await widget.api.call(
-        'telegrams.transition',
-        mutation: true,
+      final synced = await widget.offline.runMutation(
+        procedure: 'telegrams.transition',
         input: {
           'id': widget.telegramId,
           'toStatus': status,
           'reason': reason.isEmpty ? null : reason,
+          if (widget.expectedRevision != null)
+            'expectedRevision': widget.expectedRevision,
         },
       );
+      if (!synced) _show('تم حفظ الإجراء محليًا وسيُراجع التعارض عند المزامنة');
       widget.onChanged();
     });
   }

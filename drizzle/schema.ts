@@ -257,6 +257,7 @@ export const telegrams = pgTable(
     updatedAt: timestamp("updatedAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    revision: integer("revision").default(1).notNull(),
     createdByUserId: integer("createdByUserId").notNull(),
     organizationId: uuid("organizationId")
       .notNull()

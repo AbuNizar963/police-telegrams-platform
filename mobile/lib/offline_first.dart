@@ -18,6 +18,7 @@ class OfflineOutboxItem {
     required this.createdAt,
     this.attempts = 0,
     this.lastError,
+    this.state = 'pending',
   });
 
   final String id;
@@ -26,6 +27,7 @@ class OfflineOutboxItem {
   final String createdAt;
   final int attempts;
   final String? lastError;
+  final String state;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -34,6 +36,7 @@ class OfflineOutboxItem {
         'createdAt': createdAt,
         'attempts': attempts,
         'lastError': lastError,
+        'state': state,
       };
 
   factory OfflineOutboxItem.fromJson(Map<String, dynamic> json) => OfflineOutboxItem(
@@ -43,6 +46,7 @@ class OfflineOutboxItem {
         createdAt: '${json['createdAt']}',
         attempts: (json['attempts'] as num?)?.toInt() ?? 0,
         lastError: json['lastError'] as String?,
+        state: json['state'] as String? ?? 'pending',
       );
 
   OfflineOutboxItem failed(String message) => OfflineOutboxItem(
@@ -52,6 +56,17 @@ class OfflineOutboxItem {
         createdAt: createdAt,
         attempts: attempts + 1,
         lastError: message,
+        state: 'retryable',
+      );
+
+  OfflineOutboxItem marked(String nextState, String message) => OfflineOutboxItem(
+        id: id,
+        procedure: procedure,
+        input: input,
+        createdAt: createdAt,
+        attempts: attempts + 1,
+        lastError: message,
+        state: nextState,
       );
 }
 
@@ -104,6 +119,9 @@ class OfflineFirstService {
     }
     return items;
   }
+
+  Future<int> conflictCount() async =>
+      (await pending()).where((item) => item.state == 'conflict').length;
 
   Future<Map<String, dynamic>?> cachedStats() async {
     final raw = await _storage.read(key: _statsKey);
@@ -158,9 +176,13 @@ class OfflineFirstService {
       }
       final items = await pending();
       for (final item in items) {
+        if (item.state == 'conflict' || item.state == 'failed') break;
         try {
           await api.call(item.procedure, mutation: true, input: item.input);
           await _remove(item.id);
+        } on ConflictException catch (error) {
+          await _replace(item.marked('conflict', _message(error)));
+          break;
         } catch (error) {
           await _replace(item.failed(_message(error)));
           break; // FIFO: never overtake a failed operation.
@@ -168,6 +190,24 @@ class OfflineFirstService {
       }
     } finally {
       _syncing = false;
+    }
+  }
+
+  Future<bool> runMutation({
+    required String procedure,
+    required Map<String, dynamic> input,
+  }) async {
+    try {
+      await api.call(procedure, mutation: true, input: input);
+      return true;
+    } on NetworkException {
+      await _append(OfflineOutboxItem(
+        id: _uuid.v4(),
+        procedure: procedure,
+        input: input,
+        createdAt: DateTime.now().toUtc().toIso8601String(),
+      ));
+      return false;
     }
   }
 

@@ -264,8 +264,7 @@ jobs:
       - build-ios
     if: >-
       github.event_name != 'pull_request' &&
-      needs.build-android-apk.outputs.notification_client_configured == 'true' &&
-      needs.build-android-apk.outputs.push_backend_ready == 'true'
+      needs.build-android-apk.outputs.notification_client_configured == 'true'
     permissions:
       contents: write
     steps:
@@ -301,6 +300,7 @@ jobs:
             release-assets/SHA256SUMS.txt
 
       - name: Notify mobile devices about the new release
+        if: needs.build-android-apk.outputs.push_backend_ready == 'true'
         env:
           RELEASE_NOTIFICATION_URL: ${{ vars.RELEASE_NOTIFICATION_URL || 'https://police-telegrams-platform.vercel.app' }}
           RELEASE_NOTIFICATION_SECRET: ${{ secrets.RELEASE_NOTIFICATION_SECRET }}

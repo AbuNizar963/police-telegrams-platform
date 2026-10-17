@@ -24,5 +24,6 @@ export const ENV = {
     /\\n/g,
     "\n"
   ),
+  releaseNotificationSecret: process.env.RELEASE_NOTIFICATION_SECRET ?? "",
   isProduction: process.env.NODE_ENV === "production",
 };

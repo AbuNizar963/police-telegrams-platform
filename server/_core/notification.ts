@@ -5,6 +5,7 @@ import webpush from "web-push";
 import {
   deleteMobilePushToken,
   deletePushSubscription,
+  listAllMobilePushTokens,
   listMobilePushTokens,
   listPushSubscriptions,
   type MobilePushTokenRecord,
@@ -394,4 +395,57 @@ export async function notifyOrganizationRouteEvent(input: {
     })
   );
   return { sent, removed, configured: true };
+}
+
+export async function notifyMobileRelease(input: {
+  version: string;
+  buildNumber: number;
+  releaseUrl: string;
+  title?: string;
+  body?: string;
+}): Promise<{ sent: number; removed: number; configured: boolean }> {
+  if (!firebaseConfigured) return { sent: 0, removed: 0, configured: false };
+
+  const tokens = await listAllMobilePushTokens();
+  if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
+
+  const invalidTokens: MobilePushTokenRecord[] = [];
+  let sent = 0;
+  for (let index = 0; index < tokens.length; index += 500) {
+    const batch = tokens.slice(index, index + 500);
+    const response = await getMessaging().sendEachForMulticast({
+      tokens: batch.map(item => item.token),
+      notification: {
+        title: input.title?.trim() || "تحديث جديد لتطبيق برقيات الشرطة",
+        body:
+          input.body?.trim() ||
+          `الإصدار ${input.version}+${input.buildNumber} متوفر الآن. اضغط لمعرفة التفاصيل.`,
+      },
+      data: {
+        type: "app.update",
+        version: input.version,
+        buildNumber: String(input.buildNumber),
+        releaseUrl: input.releaseUrl,
+      },
+      android: { priority: "high" },
+      apns: { payload: { aps: { sound: "default", badge: 1 } } },
+    });
+
+    sent += response.successCount;
+    response.responses.forEach((result, responseIndex) => {
+      const invalidCode = [
+        "messaging/registration-token-not-registered",
+        "messaging/invalid-registration-token",
+      ].includes(result.error?.code ?? "");
+      const token = batch[responseIndex];
+      if (!result.success && invalidCode && token) invalidTokens.push(token);
+    });
+  }
+
+  await Promise.all(
+    invalidTokens.map(({ token, userId }) =>
+      deleteMobilePushToken(token, userId)
+    )
+  );
+  return { sent, removed: invalidTokens.length, configured: true };
 }

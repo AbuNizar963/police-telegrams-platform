@@ -1,5 +1,6 @@
-package com.hadir.police.police_telegrams
+package com.police.police_telegrams
 
+import com.police.police_telegrams.R
 import android.Manifest
 import android.app.DownloadManager
 import android.app.NotificationChannel
@@ -26,7 +27,7 @@ import java.security.MessageDigest
 
 class MainActivity : FlutterActivity() {
     private val installerChannel =
-        "com.hadir.police.police_telegrams/apk_installer"
+        "com.police.police_telegrams/apk_installer"
     private val updateNotificationChannel = "app_update_progress"
     private val updateNotificationId = 4107
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
@@ -686,13 +687,13 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val NOTIFICATION_PERMISSION_REQUEST = 4108
         private const val TELEGRAM_NOTIFICATION_METHOD_CHANNEL =
-            "com.hadir.police.police_telegrams/telegram_notifications"
+            "com.police.police_telegrams/telegram_notifications"
         private const val TELEGRAM_GENERAL_CHANNEL_ID = "police_telegram_general_v1"
         private const val TELEGRAM_URGENT_CHANNEL_ID = "police_telegram_urgent_v1"
         private const val TELEGRAM_NOTIFICATION_PREFERENCES = "telegram_notification_state"
         private const val PENDING_TELEGRAM_NOTIFICATION_ID = "pending_telegram_id"
         private const val EXTRA_TELEGRAM_NOTIFICATION_ID =
-            "com.hadir.police.police_telegrams.extra.TELEGRAM_NOTIFICATION_ID"
+            "com.police.police_telegrams.extra.TELEGRAM_NOTIFICATION_ID"
         private val SHA256_PATTERN = Regex("^[a-f0-9]{64}$")
     }
 }

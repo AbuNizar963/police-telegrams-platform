@@ -173,7 +173,7 @@ jobs:
           firebase_configured=false
           if [ -n "${FIREBASE_ANDROID_CONFIG_BASE64:-}" ]; then
             printf '%s' "$FIREBASE_ANDROID_CONFIG_BASE64" | base64 --decode > "$config_path"
-            if ! jq -e --arg package_id "com.hadir.police.police_telegrams" \
+            if ! jq -e --arg package_id "com.police.police_telegrams" \
               '.project_info.project_id != null and any(.client[]?; .client_info.android_client_info.package_name == $package_id)' \
               "$config_path" >/dev/null; then
               echo "::error::FIREBASE_ANDROID_CONFIG_BASE64 is not a valid configuration for this Android package."

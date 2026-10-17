@@ -62,6 +62,10 @@ class PoliceApi {
                   : http.get(uri, headers: headers))
               .timeout(const Duration(seconds: 8));
     } catch (_) {
+      if (!mutation) {
+        final cached = await _readOfflineResponse(procedure, input);
+        if (cached != null) return cached;
+      }
       throw const NetworkException();
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -70,7 +74,68 @@ class PoliceApi {
     final decoded = jsonDecode(response.body);
     final result = decoded is Map ? decoded['result'] : null;
     final data = result is Map ? result['data'] : null;
-    return data is Map && data.containsKey('json') ? data['json'] : data;
+    final value = data is Map && data.containsKey('json') ? data['json'] : data;
+    if (!mutation) {
+      await _writeOfflineResponse(procedure, input, value);
+    }
+    return value;
+  }
+
+  // Cache only read-only data needed to reopen previously viewed screens.
+  // Mutations always require the server and never use a cached response.
+  String? _offlineResponseKey(
+    String procedure,
+    Map<String, dynamic>? input,
+  ) {
+    switch (procedure) {
+      case 'telegrams.get':
+        final id = input?['id'];
+        if (id == null || '$id'.trim().isEmpty) return null;
+        return 'offline_telegram_${id}';
+      case 'settings.get':
+        return 'offline_settings';
+      case 'organizations.routingDirectory':
+        return 'offline_routing_directory';
+      case 'organizations.context':
+        return 'offline_organization_context';
+      case 'dashboard.stats':
+        return 'offline_dashboard_stats';
+      default:
+        return null;
+    }
+  }
+
+  Future<dynamic> _readOfflineResponse(
+    String procedure,
+    Map<String, dynamic>? input,
+  ) async {
+    final key = _offlineResponseKey(procedure, input);
+    if (key == null) return null;
+    try {
+      final raw = await _storage.read(key: key);
+      if (raw == null || raw.isEmpty) return null;
+      return jsonDecode(raw);
+    } catch (_) {
+      // A corrupt or inaccessible cache must not prevent normal app startup.
+      return null;
+    }
+  }
+
+  Future<void> _writeOfflineResponse(
+    String procedure,
+    Map<String, dynamic>? input,
+    dynamic value,
+  ) async {
+    final key = _offlineResponseKey(procedure, input);
+    if (key == null || value == null) return;
+    try {
+      final encoded = jsonEncode(value);
+      // Avoid filling secure storage with unusually large server responses.
+      if (utf8.encode(encoded).length > 512 * 1024) return;
+      await _storage.write(key: key, value: encoded);
+    } catch (_) {
+      // Caching is best-effort; a storage failure must not break online use.
+    }
   }
 
   Future<Map<String, dynamic>> login(String username, String password) async {

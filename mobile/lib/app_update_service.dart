@@ -10,7 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel(
-  'com.hadir.police.police_telegrams/apk_installer',
+  'com.police.police_telegrams/apk_installer',
 );
 const _updateNavy = Color(0xFF101C35);
 const _updateGold = Color(0xFFC9A45C);

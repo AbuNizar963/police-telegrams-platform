@@ -2687,7 +2687,7 @@ export const appRouter = router({
               priority: "normal",
               category: "administrative",
               status: "draft",
-              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
+              workflowReason: `تم الإنشاء عبر استيراد ملف Excel بواسطة ${importerName}. صاحب السجل الأصلي: ${sourceCreatorName}. الورقة: ${row.sheetName}، رقم البرقية في الملف الأصلي: ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
             });
             await writeAuditLog({
               ...getRequestAuditContext(ctx.req),

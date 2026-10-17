@@ -26,6 +26,8 @@ jobs:
   verify-flutter-mobile:
     name: Verify Flutter mobile app
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: mobile
@@ -43,14 +45,39 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      # Apply the official Dart formatter instead of repeatedly failing CI on style-only diffs.
+      - name: Format Dart source
+        run: dart format lib test
+
+      # Pull requests are not modified by CI; require contributors to include formatter changes.
+      - name: Verify formatting on pull requests
+        if: github.event_name == 'pull_request'
+        run: git diff --exit-code -- lib test
 
       - name: Analyze Dart source
         run: flutter analyze
 
       - name: Run Flutter tests
         run: flutter test
+
+      # On direct branch pushes, persist formatter-only changes so the branch stays clean.
+      # This runs only after analysis and tests have passed, and never writes to main.
+      - name: Commit formatter changes on mobile branch
+        if: success() && github.event_name != 'pull_request' && github.ref_name == 'flutter-mobile-app'
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- mobile/lib mobile/test; then
+            echo "Dart files are already formatted."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/lib mobile/test
+          git commit -m "style(mobile): apply Dart formatter"
+          git push origin "HEAD:flutter-mobile-app"
 
   build-android-apk:
     name: Build signed Android APK

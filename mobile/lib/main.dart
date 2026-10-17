@@ -2180,19 +2180,16 @@ class _DashboardPageState extends State<DashboardPage>
 
   Widget _welcomePanel() => Container(
     margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: AlignmentDirectional.topStart,
-        end: AlignmentDirectional.bottomEnd,
-        colors: [Color(0xFF10233F), Color(0xFF174D73)],
-      ),
-      borderRadius: BorderRadius.circular(20),
+      color: const Color(0xFFF8F7F2),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: const Color(0xFFE5E5DF)),
       boxShadow: const [
         BoxShadow(
-          color: Color(0x1A10233F),
-          blurRadius: 18,
-          offset: Offset(0, 8),
+          color: Color(0x0C10233F),
+          blurRadius: 16,
+          offset: Offset(0, 5),
         ),
       ],
     ),
@@ -2202,14 +2199,22 @@ class _DashboardPageState extends State<DashboardPage>
         Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 54,
+              height: 54,
+              padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: gold.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: gold.withValues(alpha: 0.55)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: const Color(0xFFE1E5EB)),
               ),
-              child: const Icon(LucideIcons.shieldCheck, color: gold, size: 25),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  'assets/police-telegrams-icon.png',
+                  fit: BoxFit.cover,
+                  semanticLabel: 'شعار الجهة',
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -2221,44 +2226,40 @@ class _DashboardPageState extends State<DashboardPage>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: navy,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     _currentRoleLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFFD4DCE7),
+                      color: Color(0xFF667085),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _systemStatusIndicator(),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_awesome, color: gold, size: 18),
-            ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.09),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            color: Colors.white.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.business_outlined, color: gold, size: 18),
+              const Icon(Icons.business_outlined, color: navy, size: 18),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
@@ -2267,7 +2268,7 @@ class _DashboardPageState extends State<DashboardPage>
                     const Text(
                       'الجهة الحالية',
                       style: TextStyle(
-                        color: Color(0xFFB8C5D6),
+                        color: Color(0xFF7A8493),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2278,7 +2279,7 @@ class _DashboardPageState extends State<DashboardPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: navy,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -2299,83 +2300,75 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
-  Widget _systemStatusPanel() {
+  Widget _systemStatusIndicator() {
     final Color accent;
-    final IconData icon;
     final String title;
     final String detail;
     if (loading) {
       accent = const Color(0xFF356AC3);
-      icon = Icons.sync;
       title = 'جارٍ تحديث حالة النظام';
       detail = 'يتم جلب آخر البيانات من الخادم بأمان';
     } else if (_usingCachedData) {
       accent = const Color(0xFFB7791F);
-      icon = Icons.cloud_off_outlined;
       title = 'وضع العمل المحلي';
       detail = 'البيانات المعروضة محفوظة محليًا وستُحدّث عند عودة الاتصال';
+    } else if (error != null) {
+      accent = const Color(0xFFB42332);
+      title = 'تعذر الاتصال بالخادم';
+      detail = 'تحقق من اتصال الإنترنت ثم أعد المحاولة';
     } else {
       accent = const Color(0xFF16836B);
-      icon = Icons.cloud_done_outlined;
       title = 'النظام متصل ويعمل';
       detail = _lastSuccessfulSync == null
           ? 'الخدمات الأساسية جاهزة للعمل'
           : 'آخر تحديث ${_syncTime(_lastSuccessfulSync!)}';
     }
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 0.24)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: accent, size: 20),
-          const SizedBox(width: 9),
+          Semantics(
+            label: title,
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+            ),
+          ),
+          const SizedBox(width: 7),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: accent,
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   detail,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF667085),
-                    fontSize: 10,
+                    fontSize: 9,
                     height: 1.35,
                   ),
                 ),
               ],
             ),
           ),
-          if (_pendingOutbox > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F2E8),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '$_pendingOutbox معلقة',
-                style: const TextStyle(
-                  color: navy,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -2474,7 +2467,6 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
         _welcomePanel(),
-        _systemStatusPanel(),
         _dashboardActions(),
         _outboxAlert(),
         _urgentAlert(),

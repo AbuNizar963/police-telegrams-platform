@@ -4,6 +4,15 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+class NetworkException implements Exception {
+  const NetworkException([this.message = 'تعذر الاتصال بالخادم']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class ApiException implements Exception {
   const ApiException(this.statusCode, this.message);
 
@@ -41,13 +50,19 @@ class PoliceApi {
       'accept': 'application/json',
     };
     if (cookie != null) headers['cookie'] = cookie;
-    final response = mutation
-        ? await http.post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'json': input}),
-          )
-        : await http.get(uri, headers: headers);
+    late final http.Response response;
+    try {
+      response = await (mutation
+              ? http.post(
+                  uri,
+                  headers: headers,
+                  body: jsonEncode({'json': input}),
+                )
+              : http.get(uri, headers: headers))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      throw const NetworkException();
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(response.statusCode, _message(response.body));
     }
@@ -59,13 +74,20 @@ class PoliceApi {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     final uri = Uri.parse('$baseUrl/api/trpc/auth.login');
-    final response = await http.post(
-      uri,
-      headers: {'content-type': 'application/json'},
-      body: jsonEncode({
-        'json': {'username': username, 'password': password},
-      }),
-    );
+    late final http.Response response;
+    try {
+      response = await http
+          .post(
+            uri,
+            headers: {'content-type': 'application/json'},
+            body: jsonEncode({
+              'json': {'username': username, 'password': password},
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      throw const NetworkException();
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(response.statusCode, _message(response.body));
     }
@@ -78,21 +100,31 @@ class PoliceApi {
     }
     final decoded = jsonDecode(response.body);
     final data = decoded['result']['data'];
-    return Map<String, dynamic>.from(data['json'] ?? data);
+    final account = Map<String, dynamic>.from(data['json'] ?? data);
+    await _storage.write(key: 'cached_account', value: jsonEncode(account));
+    return account;
   }
 
   Future<Map<String, dynamic>?> restoreSession() async {
     final cookie = await _storage.read(key: 'session_cookie');
     if (cookie == null || cookie.trim().isEmpty) return null;
 
+    final cached = await _readCachedAccount();
+
     try {
       final user = await call('auth.me');
       if (user is Map) return Map<String, dynamic>.from(user);
       await _storage.delete(key: 'session_cookie');
+      await _storage.delete(key: 'cached_account');
       return null;
+    } on NetworkException {
+      // A cached authenticated session is sufficient to open the app offline.
+      if (cached != null) return cached;
+      rethrow;
     } on ApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _storage.delete(key: 'session_cookie');
+        await _storage.delete(key: 'cached_account');
         return null;
       }
       // A server or network failure is not proof that the session expired.
@@ -109,6 +141,17 @@ class PoliceApi {
       await call('auth.logout', mutation: true);
     } finally {
       await _storage.delete(key: 'session_cookie');
+      await _storage.delete(key: 'cached_account');
+    }
+  }
+
+  Future<Map<String, dynamic>?> _readCachedAccount() async {
+    final raw = await _storage.read(key: 'cached_account');
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -144,6 +187,27 @@ class PoliceApi {
       return null;
     }
     return response.bodyBytes;
+  }
+
+  Future<void> cacheDashboard({
+    required Map<String, dynamic> stats,
+    required List<dynamic> telegrams,
+  }) async {
+    await _storage.write(
+      key: 'cached_dashboard',
+      value: jsonEncode({'stats': stats, 'telegrams': telegrams}),
+    );
+  }
+
+  Future<Map<String, dynamic>?> readCachedDashboard() async {
+    final raw = await _storage.read(key: 'cached_dashboard');
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final value = jsonDecode(raw);
+      return value is Map ? Map<String, dynamic>.from(value) : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   String _message(String body) {

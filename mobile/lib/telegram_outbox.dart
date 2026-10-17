@@ -168,6 +168,24 @@ class TelegramOutbox {
           );
         }
         synced++;
+      } on ApiException catch (exception) {
+        // Validation and permission failures are permanent. Keeping them in
+        // the outbox would retry invalid work forever and hide the real error.
+        if (exception.statusCode >= 400 && exception.statusCode < 500 &&
+            exception.statusCode != 408 &&
+            exception.statusCode != 429) {
+          failed++;
+          continue;
+        }
+        failed++;
+        remaining.add(
+          entry.copyWith(
+            attempts: entry.attempts + 1,
+            lastError: exception.toString(),
+          ),
+        );
+        remaining.addAll(entries.skip(entries.indexOf(entry) + 1));
+        break;
       } catch (exception) {
         failed++;
         remaining.add(

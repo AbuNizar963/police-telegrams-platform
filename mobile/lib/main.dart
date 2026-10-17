@@ -1255,10 +1255,35 @@ class _DashboardPageState extends State<DashboardPage>
           error = null;
         });
       }
+      if (telegramPage == 1 && section == 0 &&
+          searchQuery.trim().isEmpty &&
+          statusFilter == 'all' &&
+          priorityFilter == 'all' &&
+          classificationFilter == 'all' &&
+          categoryFilter == 'all' &&
+          _filterFrom == null &&
+          _filterTo == null) {
+        await widget.api.cacheDashboard(
+          stats: Map<String, dynamic>.from(results[0] as Map),
+          telegrams: visibleRows,
+        );
+      }
     } catch (e) {
       if (mounted) {
-        final message = _dashboardRefreshError(e);
-        setState(() => error = message);
+        final cached = await widget.api.readCachedDashboard();
+        if (cached != null) {
+          final cachedStats = cached['stats'];
+          final cachedTelegrams = cached['telegrams'];
+          setState(() {
+            if (cachedStats is Map) {
+              stats = Map<String, dynamic>.from(cachedStats);
+            }
+            if (cachedTelegrams is List) telegrams = cachedTelegrams;
+            error = 'وضع عدم الاتصال — تُعرض آخر نسخة محفوظة محليًا';
+          });
+        } else {
+          setState(() => error = _dashboardRefreshError(e));
+        }
       }
     } finally {
       _refreshInProgress = false;

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import 'api.dart';
 import 'telegram_outbox.dart';
@@ -359,6 +360,9 @@ class _AdvancedCreateTelegramSheetState
       _error = null;
     });
     final payload = <String, dynamic>{
+      // The same key is reused if the request succeeds on the server but the
+      // response or a following attachment upload is lost.
+      'idempotencyKey': 'mobile-${const Uuid().v4()}',
       'subject': _subject.text.trim(),
       'recipient': _recipient.text.trim(),
       if (_recipientId != null && !_broadcast)

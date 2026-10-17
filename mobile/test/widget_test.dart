@@ -120,6 +120,19 @@ class _TestPoliceApi extends PoliceApi {
   }
 }
 
+class _UnavailablePoliceApi extends _TestPoliceApi {
+  _UnavailablePoliceApi() : super(signedIn: true);
+
+  @override
+  Future<dynamic> call(
+    String procedure, {
+    Map<String, dynamic>? input,
+    bool mutation = false,
+  }) async {
+    throw const NetworkException();
+  }
+}
+
 class _TestOfficialTelegramDocumentRenderer
     implements OfficialTelegramDocumentRenderer {
   @override
@@ -191,6 +204,20 @@ void main() {
       expect(api.calls['telegrams.list']?['direction'], 'incoming');
       expect(api.calls['telegrams.list']?['from'], isA<String>());
       expect(api.calls['telegrams.list']?['to'], isA<String>());
+    },
+  );
+
+  testWidgets(
+    'shows a connection error when dashboard refresh fails without cached data',
+    (tester) async {
+      _setMobileViewport(tester);
+      await tester.pumpWidget(
+        PoliceTelegramsApp(api: _UnavailablePoliceApi()),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 12);
+
+      expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
+      expect(find.text('وضع العمل المحلي'), findsNothing);
     },
   );
 

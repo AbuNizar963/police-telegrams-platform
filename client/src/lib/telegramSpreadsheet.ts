@@ -132,14 +132,14 @@ function makeSheet(
     ...values.map(row => ({
       hpt: Math.min(
         210,
-        Math.max(34.8, 34.8 * Math.ceil(String(row[isOutgoing ? 4 : 3] ?? "").length / 95))
+        Math.max(34.8, 34.8 * Math.ceil(String(row[4] ?? "").length / 95))
       ),
     })),
   ];
   for (let column = 0; column < headers.length; column += 1) {
     applyTemplateStyle(
       sheet, 0, column, colors[column], true, column === 0,
-      column === (isOutgoing ? 4 : 3)
+      column === 4
     );
   }
   for (let rowIndex = 1; rowIndex <= values.length; rowIndex += 1) {

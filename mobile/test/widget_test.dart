@@ -42,13 +42,20 @@ void _setMobileViewport(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+Future<void> _pumpDashboardFrames(
+  WidgetTester tester, {
+  int frameCount = 6,
+}) async {
+  for (var frame = 0; frame < frameCount; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 Future<void> _scrollIntoView(WidgetTester tester, Finder target) async {
-  final scrollable = find
-      .ancestor(of: target, matching: find.byType(Scrollable))
-      .first;
+  final scrollable = find.byType(Scrollable).first;
   await tester.scrollUntilVisible(target, 180, scrollable: scrollable);
   await tester.ensureVisible(target);
-  await tester.pumpAndSettle();
+  await _pumpDashboardFrames(tester, frameCount: 3);
 }
 
 class _TestPoliceApi extends PoliceApi {
@@ -60,6 +67,15 @@ class _TestPoliceApi extends PoliceApi {
   @override
   Future<Map<String, dynamic>?> restoreSession() async =>
       signedIn ? {'id': 1, 'name': 'مشغل النظام', 'role': 'admin'} : null;
+
+  @override
+  Future<void> cacheDashboard({
+    required Map<String, dynamic> stats,
+    required List<dynamic> telegrams,
+  }) async {}
+
+  @override
+  Future<Map<String, dynamic>?> readCachedDashboard() async => null;
 
   @override
   Future<dynamic> call(
@@ -151,7 +167,7 @@ void main() {
       _setMobileViewport(tester);
       final api = _TestPoliceApi(signedIn: true);
       await tester.pumpWidget(PoliceTelegramsApp(api: api));
-      await tester.pumpAndSettle();
+      await _pumpDashboardFrames(tester);
 
       expect(find.byTooltip('إنشاء برقية'), findsOneWidget);
       expect(find.text('تقرير البرقيات'), findsOneWidget);
@@ -166,11 +182,11 @@ void main() {
 
       final incomingStat = find.text('الواردة اليوم');
       await tester.ensureVisible(incomingStat);
-      await tester.pumpAndSettle();
+      await _pumpDashboardFrames(tester, frameCount: 3);
       await tester.tap(
         find.ancestor(of: incomingStat, matching: find.byType(InkWell)).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpDashboardFrames(tester, frameCount: 5);
 
       expect(api.calls['telegrams.list']?['direction'], 'incoming');
       expect(api.calls['telegrams.list']?['from'], isA<String>());
@@ -189,12 +205,12 @@ void main() {
         child: PoliceTelegramsApp(api: api),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpDashboardFrames(tester);
 
     final serial = find.text('برقية رقم: 72');
     await _scrollIntoView(tester, serial);
     await tester.tap(serial);
-    await tester.pumpAndSettle();
+    await _pumpDashboardFrames(tester, frameCount: 5);
 
     expect(find.byTooltip('إغلاق تفاصيل البرقية'), findsOneWidget);
     expect(find.text('72'), findsOneWidget);
@@ -234,12 +250,12 @@ void main() {
     await tester.pumpWidget(
       PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
     );
-    await tester.pumpAndSettle();
+    await _pumpDashboardFrames(tester);
 
     expect(find.byIcon(LucideIcons.panelLeft), findsOneWidget);
     expect(find.byIcon(LucideIcons.siren), findsOneWidget);
     await tester.tap(find.byTooltip('فتح القائمة الجانبية'));
-    await tester.pumpAndSettle();
+    await _pumpDashboardFrames(tester, frameCount: 5);
 
     for (final icon in [
       LucideIcons.layoutDashboard,

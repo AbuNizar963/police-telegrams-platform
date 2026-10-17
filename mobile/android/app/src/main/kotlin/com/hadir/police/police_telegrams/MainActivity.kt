@@ -5,13 +5,14 @@ import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
-import android.database.Cursor
 import android.content.pm.PackageManager
+import android.database.Cursor
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.content.Context
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -29,10 +30,31 @@ class MainActivity : FlutterActivity() {
     private val updateNotificationChannel = "app_update_progress"
     private val updateNotificationId = 4107
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
+    private var telegramNotificationMethodChannel: MethodChannel? = null
+    private var telegramNotificationHandlerReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         createUpdateNotificationChannel()
+        createTelegramNotificationChannels()
+        telegramNotificationMethodChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            TELEGRAM_NOTIFICATION_METHOD_CHANNEL
+        ).apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "showTelegramNotification" -> showTelegramNotification(call, result)
+                    "markTelegramNotificationHandlerReady" ->
+                        markTelegramNotificationHandlerReady(result)
+                    "markTelegramNotificationHandlerNotReady" -> {
+                        telegramNotificationHandlerReady = false
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
+        handleTelegramNotificationIntent(intent)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installerChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -316,6 +338,180 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleTelegramNotificationIntent(intent)
+    }
+
+    private fun createTelegramNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val soundUri = Uri.parse(
+            "android.resource://$packageName/${R.raw.police_telegram_alert}"
+        )
+        val soundAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val generalChannel = NotificationChannel(
+            TELEGRAM_GENERAL_CHANNEL_ID,
+            "برقيات جديدة",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "إشعارات البرقيات الجديدة الواردة والصادرة"
+            setSound(soundUri, soundAttributes)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 160, 90, 160)
+        }
+        val urgentChannel = NotificationChannel(
+            TELEGRAM_URGENT_CHANNEL_ID,
+            "برقيات عاجلة وطارئة",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "تنبيهات فورية للبرقيات العاجلة والطارئة"
+            setSound(soundUri, soundAttributes)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 300, 120, 300, 120, 300)
+        }
+
+        notificationManager.createNotificationChannels(
+            listOf(generalChannel, urgentChannel)
+        )
+    }
+
+    private fun showTelegramNotification(
+        call: io.flutter.plugin.common.MethodCall,
+        result: MethodChannel.Result
+    ) {
+        val telegramId = call.argument<Number>("telegramId")?.toInt() ?: 0
+        if (telegramId <= 0) {
+            result.error("INVALID_TELEGRAM_ID", "معرّف البرقية غير صالح.", null)
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            result.success(false)
+            return
+        }
+
+        val urgent = call.argument<Boolean>("urgent") == true
+        val channelId = if (urgent) {
+            TELEGRAM_URGENT_CHANNEL_ID
+        } else {
+            TELEGRAM_GENERAL_CHANNEL_ID
+        }
+        val defaultTitle = if (urgent) "تنبيه برقية عاجلة" else "برقية جديدة"
+        val title = call.argument<String>("title")
+            ?.trim()
+            .orEmpty()
+            .ifBlank { defaultTitle }
+        val body = call.argument<String>("body")
+            ?.trim()
+            .orEmpty()
+            .ifBlank { "وصلت برقية جديدة إلى جهتك." }
+
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(this, MainActivity::class.java)
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        launchIntent.putExtra(EXTRA_TELEGRAM_NOTIFICATION_ID, telegramId)
+
+        val pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE
+            } else {
+                0
+            }
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            telegramId,
+            launchIntent,
+            pendingIntentFlags
+        )
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_stat_police_telegram)
+            .setColor(android.graphics.Color.rgb(16, 35, 63))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(contentIntent)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPriority(
+                if (urgent) NotificationCompat.PRIORITY_MAX
+                else NotificationCompat.PRIORITY_HIGH
+            )
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder
+                .setSound(
+                    Uri.parse(
+                        "android.resource://$packageName/${R.raw.police_telegram_alert}"
+                    )
+                )
+                .setVibrate(
+                if (urgent) longArrayOf(0, 300, 120, 300, 120, 300)
+                else longArrayOf(0, 160, 90, 160)
+                )
+        }
+
+        try {
+            NotificationManagerCompat.from(this).notify(
+                "telegram-$telegramId",
+                telegramId,
+                builder.build()
+            )
+            result.success(true)
+        } catch (error: SecurityException) {
+            result.success(false)
+        } catch (error: Exception) {
+            result.error(
+                "SHOW_TELEGRAM_NOTIFICATION_FAILED",
+                error.message ?: "تعذر عرض إشعار البرقية.",
+                null
+            )
+        }
+    }
+
+    private fun markTelegramNotificationHandlerReady(result: MethodChannel.Result) {
+        telegramNotificationHandlerReady = true
+        val preferences = getSharedPreferences(
+            TELEGRAM_NOTIFICATION_PREFERENCES,
+            Context.MODE_PRIVATE
+        )
+        val pendingId = preferences.getInt(PENDING_TELEGRAM_NOTIFICATION_ID, 0)
+        preferences.edit().remove(PENDING_TELEGRAM_NOTIFICATION_ID).apply()
+        result.success(pendingId.takeIf { it > 0 })
+    }
+
+    private fun handleTelegramNotificationIntent(notificationIntent: Intent?) {
+        if (notificationIntent == null) return
+        val telegramId = notificationIntent.getIntExtra(
+            EXTRA_TELEGRAM_NOTIFICATION_ID,
+            0
+        )
+        if (telegramId <= 0) return
+        notificationIntent.removeExtra(EXTRA_TELEGRAM_NOTIFICATION_ID)
+
+        if (telegramNotificationHandlerReady) {
+            telegramNotificationMethodChannel?.invokeMethod(
+                "onTelegramNotificationOpened",
+                telegramId
+            )
+        } else {
+            getSharedPreferences(
+                TELEGRAM_NOTIFICATION_PREFERENCES,
+                Context.MODE_PRIVATE
+            ).edit().putInt(PENDING_TELEGRAM_NOTIFICATION_ID, telegramId).apply()
+        }
+    }
+
     private fun createUpdateNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -489,6 +685,14 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val NOTIFICATION_PERMISSION_REQUEST = 4108
+        private const val TELEGRAM_NOTIFICATION_METHOD_CHANNEL =
+            "com.hadir.police.police_telegrams/telegram_notifications"
+        private const val TELEGRAM_GENERAL_CHANNEL_ID = "police_telegram_general_v1"
+        private const val TELEGRAM_URGENT_CHANNEL_ID = "police_telegram_urgent_v1"
+        private const val TELEGRAM_NOTIFICATION_PREFERENCES = "telegram_notification_state"
+        private const val PENDING_TELEGRAM_NOTIFICATION_ID = "pending_telegram_id"
+        private const val EXTRA_TELEGRAM_NOTIFICATION_ID =
+            "com.hadir.police.police_telegrams.extra.TELEGRAM_NOTIFICATION_ID"
         private val SHA256_PATTERN = Regex("^[a-f0-9]{64}$")
     }
 }

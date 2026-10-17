@@ -1,0 +1,12 @@
+# مهام تهيئة إشعارات التطبيق للإنتاج
+
+## المتبقي خارج المستودع
+
+- [ ] إنشاء/اختيار مشروع Firebase وإضافة تطبيق Android بالمعرّف `com.hadir.police.police_telegrams`.
+- [ ] حفظ `google-services.json` كسرّ GitHub باسم `FIREBASE_ANDROID_CONFIG_BASE64`، دون رفع الملف إلى Git.
+- [ ] بعد دمج ونشر كود الخادم، إضافة `FIREBASE_PROJECT_ID` و`FIREBASE_CLIENT_EMAIL` و`FIREBASE_PRIVATE_KEY` إلى بيئة الخادم/Vercel.
+- [ ] بعد التحقق من إعداد العميل والخادم، ضبط سرّ GitHub `PUSH_NOTIFICATIONS_SERVER_READY=true` للسماح بنشر APK إلى Releases.
+- [ ] اختبار إشعار عادي وعاجل/طارئ على جهاز Android حقيقي، والتحقق من النغمة والقناة وفتح تفاصيل البرقية.
+- [ ] لدعم iOS: إضافة `GoogleService-Info.plist` إلى بيئة البناء، وضبط APNs وPush Notifications وBackground Modes، ثم اختبار جهاز iOS حقيقي.
+
+**مهم:** يظل نشر Release محجوبًا تلقائيًا حتى تكتمل بوابتا إعداد Firebase للعميل وجاهزية الخادم؛ بناء CI والتحقق يمكن أن ينجحا دون نشر ملف غير مهيّأ.

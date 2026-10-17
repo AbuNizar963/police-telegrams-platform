@@ -177,7 +177,8 @@ class TelegramOutbox {
       } on ApiException catch (exception) {
         // Validation and permission failures are permanent. Keeping them in
         // the outbox would retry invalid work forever and hide the real error.
-        if (exception.statusCode >= 400 && exception.statusCode < 500 &&
+        if (exception.statusCode >= 400 &&
+            exception.statusCode < 500 &&
             exception.statusCode != 408 &&
             exception.statusCode != 429) {
           failed++;

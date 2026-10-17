@@ -14,6 +14,10 @@ build/
 .env.test.local
 .env.production.local
 
+# Firebase client configuration is injected into CI as encrypted secrets.
+mobile/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist
+
 # IDE and editor files
 .vscode/
 .idea/

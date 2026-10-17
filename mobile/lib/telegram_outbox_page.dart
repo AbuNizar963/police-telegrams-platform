@@ -61,7 +61,8 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
           final details = result.permanentErrorMessages.isEmpty
               ? 'تحقق أو صلاحيات'
               : result.permanentErrorMessages.join('، ');
-          error = 'تم رفض ${result.permanentFailures} عملية من الخادم: $details';
+          error =
+              'تم رفض ${result.permanentFailures} عملية من الخادم: $details';
         });
       }
     } catch (exception) {

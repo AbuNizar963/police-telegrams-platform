@@ -347,7 +347,9 @@ class _AdvancedCreateTelegramSheetState
     final serial = int.tryParse(_serial.text.trim());
     if (_serial.text.trim().isNotEmpty &&
         (serial == null || serial < 1 || serial > 999999999)) {
-      setState(() => _error = 'أدخل رقم برقية صحيحًا بين 1 و999999999 أو اتركه فارغًا ليحدده الخادم.');
+      setState(
+        () => _error = 'أدخل رقم برقية صحيحًا بين 1 و999999999 أو اتركه فارغًا ليحدده الخادم.',
+      );
       return;
     }
     if (_subject.text.trim().length < 2 ||
@@ -373,7 +375,9 @@ class _AdvancedCreateTelegramSheetState
       'classification': _classification,
       'priority': _priority,
       'category': _category,
-      if (serial != null) 'requestedOrganizationSerialNumber': serial,
+      ...?(serial == null
+          ? null
+          : <String, dynamic>{'requestedOrganizationSerialNumber': serial}),
     };
     try {
       final result = await widget.api.call(

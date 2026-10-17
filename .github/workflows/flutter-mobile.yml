@@ -58,6 +58,8 @@ jobs:
     outputs:
       release_version: ${{ steps.release_version.outputs.release_version }}
       release_tag: ${{ steps.release_version.outputs.release_tag }}
+      notification_client_configured: ${{ steps.notification_readiness.outputs.firebase_configured }}
+      push_backend_ready: ${{ steps.notification_readiness.outputs.push_backend_ready }}
     # Fork pull requests do not receive repository secrets. Do not produce
     # an unsigned or debug-signed APK as a substitute for a release artifact.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -158,6 +160,42 @@ jobs:
 
           echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
+      - name: Prepare Firebase notification configuration
+        id: notification_readiness
+        env:
+          FIREBASE_ANDROID_CONFIG_BASE64: ${{ secrets.FIREBASE_ANDROID_CONFIG_BASE64 }}
+          PUSH_NOTIFICATIONS_SERVER_READY: ${{ secrets.PUSH_NOTIFICATIONS_SERVER_READY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config_path="android/app/google-services.json"
+          firebase_configured=false
+          if [ -n "${FIREBASE_ANDROID_CONFIG_BASE64:-}" ]; then
+            printf '%s' "$FIREBASE_ANDROID_CONFIG_BASE64" | base64 --decode > "$config_path"
+            if ! jq -e --arg package_id "com.hadir.police.police_telegrams" \
+              '.project_info.project_id != null and any(.client[]?; .client_info.android_client_info.package_name == $package_id)' \
+              "$config_path" >/dev/null; then
+              echo "::error::FIREBASE_ANDROID_CONFIG_BASE64 is not a valid configuration for this Android package."
+              exit 1
+            fi
+            chmod 600 "$config_path"
+            firebase_configured=true
+            echo "Android Firebase configuration validated."
+          else
+            echo "::warning::Android Firebase configuration is missing; build will be verified but no Release will be published."
+          fi
+
+          push_backend_ready=false
+          if [ "${PUSH_NOTIFICATIONS_SERVER_READY:-}" = "true" ]; then
+            push_backend_ready=true
+          else
+            echo "::warning::PUSH_NOTIFICATIONS_SERVER_READY is not true; no Release will be published until Firebase Admin is configured and deployed on the server."
+          fi
+
+          echo "firebase_configured=$firebase_configured" >> "$GITHUB_OUTPUT"
+          echo "push_backend_ready=$push_backend_ready" >> "$GITHUB_OUTPUT"
+
       - name: Build release APK
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -224,7 +262,10 @@ jobs:
       - verify-flutter-mobile
       - build-android-apk
       - build-ios
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name != 'pull_request' &&
+      needs.build-android-apk.outputs.notification_client_configured == 'true' &&
+      needs.build-android-apk.outputs.push_backend_ready == 'true'
     permissions:
       contents: write
     steps:

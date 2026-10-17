@@ -1767,6 +1767,7 @@ export const appRouter = router({
               subject: telegram.subject,
               recipient: telegram.recipient,
               priority: telegram.priority,
+              category: telegram.category,
               telegramId: telegram.id,
               direction: "incoming",
             });
@@ -1922,6 +1923,7 @@ export const appRouter = router({
                 subject: routedTelegram.subject,
                 recipient: routedTelegram.recipient,
                 priority: routedTelegram.priority,
+                category: routedTelegram.category,
                 telegramId: routedTelegram.id,
                 direction: "incoming",
               });
@@ -2482,6 +2484,7 @@ export const appRouter = router({
                 subject: telegram.subject,
                 recipient: telegram.recipient,
                 priority: telegram.priority,
+                category: telegram.category,
                 telegramId: telegram.id,
                 direction: "incoming",
               });
@@ -2547,6 +2550,7 @@ export const appRouter = router({
             subject: telegram.subject,
             recipient: telegram.recipient,
             priority: telegram.priority,
+            category: telegram.category,
             telegramId: telegram.id,
             direction: "outgoing",
           });

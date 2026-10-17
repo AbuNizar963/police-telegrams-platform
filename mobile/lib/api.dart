@@ -52,14 +52,15 @@ class PoliceApi {
     if (cookie != null) headers['cookie'] = cookie;
     late final http.Response response;
     try {
-      response = await (mutation
-              ? http.post(
-                  uri,
-                  headers: headers,
-                  body: jsonEncode({'json': input}),
-                )
-              : http.get(uri, headers: headers))
-          .timeout(const Duration(seconds: 8));
+      response =
+          await (mutation
+                  ? http.post(
+                      uri,
+                      headers: headers,
+                      body: jsonEncode({'json': input}),
+                    )
+                  : http.get(uri, headers: headers))
+              .timeout(const Duration(seconds: 8));
     } catch (_) {
       throw const NetworkException();
     }

@@ -692,7 +692,8 @@ class _DashboardPageState extends State<DashboardPage>
   bool _refreshQueued = false;
 
   String get _currentOrganizationLabel {
-    final value = activeOrganizationName ??
+    final value =
+        activeOrganizationName ??
         _account['organizationName'] ??
         _account['organization_name'] ??
         (_account['organization'] is Map
@@ -1342,7 +1343,8 @@ class _DashboardPageState extends State<DashboardPage>
           _lastSuccessfulSync = DateTime.now();
         });
       }
-      if (telegramPage == 1 && section == 0 &&
+      if (telegramPage == 1 &&
+          section == 0 &&
           searchQuery.trim().isEmpty &&
           statusFilter == 'all' &&
           priorityFilter == 'all' &&
@@ -1694,14 +1696,21 @@ class _DashboardPageState extends State<DashboardPage>
               ),
               if (_pendingOutbox > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Text(
                     '$_pendingOutbox معلقة',
-                    style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
             ],
@@ -1712,7 +1721,11 @@ class _DashboardPageState extends State<DashboardPage>
               _lastSyncMessage!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF667085), fontSize: 10, height: 1.35),
+              style: const TextStyle(
+                color: Color(0xFF667085),
+                fontSize: 10,
+                height: 1.35,
+              ),
             ),
           ],
           if (_lastSyncAt != null && !_outboxSyncing)
@@ -1740,7 +1753,10 @@ class _DashboardPageState extends State<DashboardPage>
                   child: const Text('التفاصيل'),
                 ),
                 if (!_outboxSyncing)
-                  TextButton(onPressed: _syncOutbox, child: const Text('مزامنة الآن')),
+                  TextButton(
+                    onPressed: _syncOutbox,
+                    child: const Text('مزامنة الآن'),
+                  ),
               ],
             ),
           ),
@@ -2271,7 +2287,11 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               if (activeOrganizationIsOwner)
-                const Icon(Icons.workspace_premium_outlined, color: gold, size: 17),
+                const Icon(
+                  Icons.workspace_premium_outlined,
+                  color: gold,
+                  size: 17,
+                ),
             ],
           ),
         ),
@@ -2320,14 +2340,22 @@ class _DashboardPageState extends State<DashboardPage>
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   detail,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF667085), fontSize: 10, height: 1.35),
+                  style: const TextStyle(
+                    color: Color(0xFF667085),
+                    fontSize: 10,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -2341,7 +2369,11 @@ class _DashboardPageState extends State<DashboardPage>
               ),
               child: Text(
                 '$_pendingOutbox معلقة',
-                style: const TextStyle(color: navy, fontSize: 10, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: navy,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
         ],

@@ -5,6 +5,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+if (file("google-services.json").isFile) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn(
+        "Firebase Android client config is missing; FCM registration will be unavailable. " +
+            "Add google-services.json to mobile/android/app before building a configured release."
+    )
+}
+
 // Release signing is supplied by CI through environment variables.
 // Debug builds remain usable without release-signing secrets.
 val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")

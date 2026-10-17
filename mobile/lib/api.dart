@@ -74,8 +74,7 @@ class PoliceApi {
     final decoded = jsonDecode(response.body);
     final result = decoded is Map ? decoded['result'] : null;
     final data = result is Map ? result['data'] : null;
-    final value =
-        data is Map && data.containsKey('json') ? data['json'] : data;
+    final value = data is Map && data.containsKey('json') ? data['json'] : data;
     if (!mutation) {
       await _writeOfflineResponse(procedure, input, value);
     }
@@ -84,10 +83,7 @@ class PoliceApi {
 
   // Cache only read-only data needed to reopen previously viewed screens.
   // Mutations always require the server and never use a cached response.
-  String? _offlineResponseKey(
-    String procedure,
-    Map<String, dynamic>? input,
-  ) {
+  String? _offlineResponseKey(String procedure, Map<String, dynamic>? input) {
     switch (procedure) {
       case 'telegrams.get':
         final id = input?['id'];

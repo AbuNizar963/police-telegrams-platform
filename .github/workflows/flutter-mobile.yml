@@ -47,12 +47,19 @@ jobs:
 
       # Apply the official Dart formatter instead of repeatedly failing CI on style-only diffs.
       - name: Format Dart source
-        run: dart format lib test
+        run: ./tool/format_dart.sh --fix
 
       # Pull requests are not modified by CI; require contributors to include formatter changes.
       - name: Verify formatting on pull requests
         if: github.event_name == 'pull_request'
-        run: git diff --exit-code -- lib test
+        shell: bash
+        run: |
+          if ! git diff --quiet -- lib test; then
+            echo "::error::Dart formatting changes are required. Run 'cd mobile && ./tool/format_dart.sh --fix' and commit the result."
+            echo "Files requiring formatting:"
+            git diff --name-only -- lib test
+            exit 1
+          fi
 
       - name: Analyze Dart source
         run: flutter analyze

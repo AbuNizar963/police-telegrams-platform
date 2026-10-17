@@ -30,7 +30,7 @@ jobs:
 
       - name: Check mobile formatting
         working-directory: mobile
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: ./tool/format_dart.sh --check
 
       - name: Analyze mobile application
         working-directory: mobile

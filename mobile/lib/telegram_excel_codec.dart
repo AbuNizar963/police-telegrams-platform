@@ -192,7 +192,7 @@ List<int> buildTelegramWorkbook(
       cell.cellStyle = CellStyle(
         backgroundColorHex: ExcelColor.fromHexString(headerColors[column]),
         fontFamily: 'Times New Roman',
-        fontSize: (column == 0 || column == (isOutgoing ? 4 : 3)) ? 18 : 14,
+        fontSize: (column == 0 || column == 4) ? 18 : 14,
         bold: true,
         horizontalAlign: HorizontalAlign.Center,
         verticalAlign: VerticalAlign.Center,
@@ -249,7 +249,7 @@ List<int> buildTelegramWorkbook(
           CellIndex.indexByColumnRow(columnIndex: column, rowIndex: rowIndex),
         );
         final isSerial = column == 0;
-        final isBody = column == (isOutgoing ? 4 : 3);
+        final isBody = column == 4;
         cell.cellStyle = CellStyle(
           backgroundColorHex: ExcelColor.fromHexString(
             isSerial ? '#00B0F0' : isBody ? '#FFF0F0' : '#FFFFFF',
@@ -261,21 +261,21 @@ List<int> buildTelegramWorkbook(
           verticalAlign: VerticalAlign.Center,
           textWrapping: TextWrapping.WrapText,
           topBorder: Border(
-          borderStyle: BorderStyle.Thin,
-          borderColorHex: ExcelColor.fromHexString('#000000'),
-        ),
+            borderStyle: BorderStyle.Thin,
+            borderColorHex: ExcelColor.fromHexString('#000000'),
+          ),
           bottomBorder: Border(
-          borderStyle: BorderStyle.Thin,
-          borderColorHex: ExcelColor.fromHexString('#000000'),
-        ),
+            borderStyle: BorderStyle.Thin,
+            borderColorHex: ExcelColor.fromHexString('#000000'),
+          ),
           leftBorder: Border(
-          borderStyle: BorderStyle.Thin,
-          borderColorHex: ExcelColor.fromHexString('#000000'),
-        ),
+            borderStyle: BorderStyle.Thin,
+            borderColorHex: ExcelColor.fromHexString('#000000'),
+          ),
           rightBorder: Border(
-          borderStyle: BorderStyle.Thin,
-          borderColorHex: ExcelColor.fromHexString('#000000'),
-        ),
+            borderStyle: BorderStyle.Thin,
+            borderColorHex: ExcelColor.fromHexString('#000000'),
+          ),
         );
       }
       rowIndex += 1;

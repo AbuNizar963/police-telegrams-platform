@@ -650,6 +650,8 @@ class _DashboardPageState extends State<DashboardPage>
   late final Map<String, dynamic> _account;
   bool loading = true;
   String? error;
+  bool _usingCachedData = false;
+  DateTime? _lastSuccessfulSync;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
@@ -684,6 +686,29 @@ class _DashboardPageState extends State<DashboardPage>
   Timer? _searchDebounce;
   bool _refreshInProgress = false;
   bool _refreshQueued = false;
+
+  String get _currentOrganizationLabel {
+    final value = activeOrganizationName ??
+        _account['organizationName'] ??
+        _account['organization_name'] ??
+        (_account['organization'] is Map
+            ? (_account['organization'] as Map)['name']
+            : null) ??
+        _account['departmentName'];
+    final label = '$value'.trim();
+    return label.isEmpty || label == 'null' ? 'الجهة الحالية غير محددة' : label;
+  }
+
+  String get _currentRoleLabel {
+    final role = activeOrganizationRole ?? _account['role'];
+    return switch ('$role') {
+      'admin' => 'مدير النظام',
+      'owner' => 'مالك الجهة',
+      'supervisor' => 'مشرف',
+      'operator' => 'موظف تشغيل',
+      _ => 'مستخدم مصرح',
+    };
+  }
 
   @override
   void initState() {
@@ -1253,6 +1278,8 @@ class _DashboardPageState extends State<DashboardPage>
           telegrams = visibleRows;
           hasNextTelegramPage = hasMoreRows;
           error = null;
+          _usingCachedData = false;
+          _lastSuccessfulSync = DateTime.now();
         });
       }
       if (telegramPage == 1 && section == 0 &&
@@ -1280,9 +1307,13 @@ class _DashboardPageState extends State<DashboardPage>
             }
             if (cachedTelegrams is List) telegrams = cachedTelegrams;
             error = 'وضع عدم الاتصال — تُعرض آخر نسخة محفوظة محليًا';
+            _usingCachedData = true;
           });
         } else {
-          setState(() => error = _dashboardRefreshError(e));
+          setState(() {
+            error = _dashboardRefreshError(e);
+            _usingCachedData = true;
+          });
         }
       }
     } finally {
@@ -1822,11 +1853,11 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'نظام برقيات الشرطة',
                               style: TextStyle(
                                 color: Colors.white,
@@ -1834,11 +1865,15 @@ class _DashboardPageState extends State<DashboardPage>
                                 fontSize: 13,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              'القائمة الجانبية',
-                              style: TextStyle(
-                                color: Color(0xFFB8C5D6),
-                                fontSize: 12,
+                              _currentOrganizationLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFD8C38E),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
@@ -2000,6 +2035,198 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
+  Widget _welcomePanel() => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: AlignmentDirectional.topStart,
+        end: AlignmentDirectional.bottomEnd,
+        colors: [Color(0xFF10233F), Color(0xFF174D73)],
+      ),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x1A10233F),
+          blurRadius: 18,
+          offset: Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: gold.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: gold.withValues(alpha: 0.55)),
+              ),
+              child: const Icon(LucideIcons.shieldCheck, color: gold, size: 25),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'مرحبًا، $_greetingName',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _currentRoleLabel,
+                    style: const TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome, color: gold, size: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.business_outlined, color: gold, size: 18),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'الجهة الحالية',
+                      style: TextStyle(
+                        color: Color(0xFFB8C5D6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _currentOrganizationLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (activeOrganizationIsOwner)
+                const Icon(Icons.workspace_premium_outlined, color: gold, size: 17),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _systemStatusPanel() {
+    final Color accent;
+    final IconData icon;
+    final String title;
+    final String detail;
+    if (loading) {
+      accent = const Color(0xFF356AC3);
+      icon = Icons.sync;
+      title = 'جارٍ تحديث حالة النظام';
+      detail = 'يتم جلب آخر البيانات من الخادم بأمان';
+    } else if (_usingCachedData) {
+      accent = const Color(0xFFB7791F);
+      icon = Icons.cloud_off_outlined;
+      title = 'وضع العمل المحلي';
+      detail = 'البيانات المعروضة محفوظة محليًا وستُحدّث عند عودة الاتصال';
+    } else {
+      accent = const Color(0xFF16836B);
+      icon = Icons.cloud_done_outlined;
+      title = 'النظام متصل ويعمل';
+      detail = _lastSuccessfulSync == null
+          ? 'الخدمات الأساسية جاهزة للعمل'
+          : 'آخر تحديث ${_syncTime(_lastSuccessfulSync!)}';
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: accent, size: 20),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFF667085), fontSize: 10, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+          if (_pendingOutbox > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F2E8),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$_pendingOutbox معلقة',
+                style: const TextStyle(color: navy, fontSize: 10, fontWeight: FontWeight.w800),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _syncTime(DateTime value) {
+    final local = value.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
   Widget _sectionBody() {
     final values = <(String, String, String, IconData, Color)>[
       (
@@ -2087,58 +2314,8 @@ class _DashboardPageState extends State<DashboardPage>
               ),
             ),
           ),
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          decoration: BoxDecoration(
-            color: navy,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF29415E)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: gold.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: gold.withValues(alpha: 0.45)),
-                ),
-                child: const Icon(LucideIcons.shield, color: gold, size: 23),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'مرحباً، $_greetingName',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    const Text(
-                      'نظام برقيات الشرطة — لوحة التحكم',
-                      style: TextStyle(
-                        color: Color(0xFFD4DCE7),
-                        fontSize: 11,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(LucideIcons.shieldCheck, color: gold, size: 21),
-            ],
-          ),
-        ),
+        _welcomePanel(),
+        _systemStatusPanel(),
         _dashboardActions(),
         _outboxAlert(),
         _urgentAlert(),

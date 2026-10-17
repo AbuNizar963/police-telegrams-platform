@@ -11,16 +11,6 @@ const telegramExcelHeaders = [
   'ملاحظات',
 ];
 
-const _incomingExcelHeaders = [
-  'الرقم المتسلسل',
-  'ساعة الأرسال أو الوصول',
-  'الجهة المرسلة واسم المرسل',
-  'نـــــــــــص البرقيــــــــــــــــــــــــة',
-  'الجهة المرسلة واسم المستلم',
-  'توقيع المرسل أو المستلم',
-  'ملاحظات',
-];
-
 class TelegramExcelRow {
   const TelegramExcelRow({
     required this.originalSerial,
@@ -161,30 +151,19 @@ List<int> buildTelegramWorkbook(
   if (workbook.tables.containsKey('Sheet1')) workbook.delete('Sheet1');
 
   for (final sheetName in ['صادر', 'وارد']) {
-    final isOutgoing = sheetName == 'صادر';
-    final headers = isOutgoing ? telegramExcelHeaders : _incomingExcelHeaders;
+    final headers = telegramExcelHeaders;
     final sheet = workbook[sheetName];
     sheet.appendRow(_excelRow(headers));
-    final headerColors = isOutgoing
-        ? [
-            '#10233F',
-            '#00B0F0',
-            '#92D050',
-            '#00B0F0',
-            '#FF0000',
-            '#00B0F0',
-            '#00B050',
-            '#FFFF00',
-          ]
-        : [
-            '#10233F',
-            '#00B0F0',
-            '#00B0F0',
-            '#FF0000',
-            '#00B0F0',
-            '#00B050',
-            '#FFFF00',
-          ];
+    final headerColors = [
+      '#10233F',
+      '#00B0F0',
+      '#92D050',
+      '#00B0F0',
+      '#FF0000',
+      '#00B0F0',
+      '#00B050',
+      '#FFFF00',
+    ];
     for (var column = 0; column < headers.length; column++) {
       final cell = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
@@ -214,35 +193,23 @@ List<int> buildTelegramWorkbook(
           borderColorHex: ExcelColor.fromHexString('#000000'),
         ),
       );
-      final columnWidths = isOutgoing
-          ? [16, 11, 11, 15, 100, 18, 17, 14]
-          : [16, 11, 15, 100, 18, 17, 25];
+      const columnWidths = [16, 11, 11, 15, 100, 18, 17, 14];
       sheet.setColumnWidth(column, columnWidths[column].toDouble());
     }
 
     final sheetRows = rows.where((row) => row['direction'] == sheetName);
     var rowIndex = 1;
     for (final row in sheetRows) {
-      final values = isOutgoing
-          ? [
-              row['serial'] ?? '',
-              row['time'] ?? '',
-              row['date'] ?? '',
-              row['sender'] ?? '',
-              row['body'] ?? '',
-              row['recipient'] ?? '',
-              row['signature'] ?? '',
-              row['notes'] ?? '',
-            ]
-          : [
-              row['serial'] ?? '',
-              row['time'] ?? '',
-              row['sender'] ?? '',
-              row['body'] ?? '',
-              row['recipient'] ?? '',
-              row['signature'] ?? '',
-              row['notes'] ?? '',
-            ];
+      final values = [
+        row['serial'] ?? '',
+        row['time'] ?? '',
+        row['date'] ?? '',
+        row['sender'] ?? '',
+        row['body'] ?? '',
+        row['recipient'] ?? '',
+        row['signature'] ?? '',
+        row['notes'] ?? '',
+      ];
       sheet.appendRow(_excelRow(values));
       for (var column = 0; column < values.length; column++) {
         final cell = sheet.cell(

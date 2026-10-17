@@ -728,7 +728,7 @@ export default function Home() {
       downloadTelegramWorkbook(
         exportRows.map(row => ({
           serial: localizeDigits(
-            getTelegramDisplayNumber(getTelegramSerialCode(row)),
+            getTelegramDisplayNumber(row.organizationSerialCode ?? ""),
             numberSystem
           ),
           time: formatConfiguredDate(row.createdAt, settings.data),

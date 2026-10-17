@@ -7,7 +7,7 @@
 1. أنشئ تطبيق Android داخل Firebase بالمعرّف:
 
 ```text
-com.hadir.police.police_telegrams
+com.police_telegrams
 ```
 
 2. نزّل `google-services.json` وضعه في:

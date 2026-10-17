@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -651,13 +652,15 @@ class _DashboardPageState extends State<DashboardPage>
   bool loading = true;
   String? error;
   bool _usingCachedData = false;
-  DateTime? _lastSuccessfulSync;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
   String? activeOrganizationName;
   String? activeOrganizationRole;
   bool activeOrganizationIsOwner = false;
+  String? _organizationLogoUrl;
+  String? _loadedOrganizationLogoUrl;
+  Uint8List? _organizationLogoBytes;
   String numberSystem = 'latin';
   int unreadNotificationCount = 0;
   bool _pushEnabled = false;
@@ -704,23 +707,11 @@ class _DashboardPageState extends State<DashboardPage>
     return label.isEmpty || label == 'null' ? 'الجهة الحالية غير محددة' : label;
   }
 
-  String get _currentRoleLabel {
-    final role = activeOrganizationRole ?? _account['role'];
-    return switch ('$role') {
-      'admin' => 'مدير النظام',
-      'owner' => 'مالك الجهة',
-      'supervisor' => 'مشرف',
-      'operator' => 'موظف تشغيل',
-      _ => 'مستخدم مصرح',
-    };
-  }
-
   @override
   void initState() {
     super.initState();
     _account = Map<String, dynamic>.from(widget.account);
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_loadNumberSystem());
     refresh();
     unawaited(_syncOutbox());
     _loadUnreadNotificationCount();
@@ -743,18 +734,23 @@ class _DashboardPageState extends State<DashboardPage>
         });
   }
 
-  Future<void> _loadNumberSystem() async {
-    try {
-      final result = await widget.api.call('settings.get');
-      if (!mounted) return;
-      setState(() {
-        numberSystem = result is Map && result['numberSystem'] == 'arabic'
-            ? 'arabic'
-            : 'latin';
-      });
-    } catch (_) {
-      // Keep the web default if this account cannot read its display settings.
+  Future<void> _loadOrganizationLogo(String? source) async {
+    final value = source?.trim();
+    if (value == _loadedOrganizationLogoUrl) return;
+    _loadedOrganizationLogoUrl = value;
+    if (value == null || value.isEmpty) {
+      if (mounted) setState(() => _organizationLogoBytes = null);
+      return;
     }
+    Uint8List? imageBytes;
+    try {
+      imageBytes = await widget.api.fetchImageAsset(value);
+    } catch (_) {
+      imageBytes = null;
+    }
+    if (!mounted || _loadedOrganizationLogoUrl != value) return;
+    if (imageBytes == null) _loadedOrganizationLogoUrl = null;
+    setState(() => _organizationLogoBytes = imageBytes);
   }
 
   void _startRefreshTimer() {
@@ -1289,6 +1285,7 @@ class _DashboardPageState extends State<DashboardPage>
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
         widget.api.call('organizations.context').catchError((_) => null),
+        widget.api.call('settings.get').catchError((_) => null),
         widget.api.call(
           'telegrams.list',
           input: {
@@ -1311,7 +1308,11 @@ class _DashboardPageState extends State<DashboardPage>
         ),
       ]);
       final organizationContext = results[1];
-      final list = results[2];
+      final settings = results[2];
+      final list = results[3];
+      final logoUrl = settings is Map
+          ? settings['logoUrl']?.toString().trim()
+          : null;
       final rows = list is Map && list['items'] is List
           ? list['items'] as List
           : list is List
@@ -1336,13 +1337,21 @@ class _DashboardPageState extends State<DashboardPage>
           activeOrganizationIsOwner =
               organizationContext is Map &&
               organizationContext['isOwner'] == true;
+          if (settings is Map) {
+            numberSystem = settings['numberSystem'] == 'arabic'
+                ? 'arabic'
+                : 'latin';
+            _organizationLogoUrl = logoUrl == null || logoUrl.isEmpty
+                ? null
+                : logoUrl;
+          }
           telegrams = visibleRows;
           hasNextTelegramPage = hasMoreRows;
           error = null;
           _usingCachedData = false;
-          _lastSuccessfulSync = DateTime.now();
         });
       }
+      if (settings is Map) unawaited(_loadOrganizationLogo(_organizationLogoUrl));
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&
@@ -2180,199 +2189,178 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
-  Widget _welcomePanel() => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8F7F2),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: const Color(0xFFE5E5DF)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x0C10233F),
-          blurRadius: 16,
-          offset: Offset(0, 5),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(color: const Color(0xFFE1E5EB)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  'assets/police-telegrams-icon.png',
-                  fit: BoxFit.cover,
-                  semanticLabel: 'شعار الجهة',
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'مرحبًا، $_greetingName',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: navy,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _currentRoleLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF667085),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _systemStatusIndicator(),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.business_outlined, color: navy, size: 18),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'الجهة الحالية',
-                      style: TextStyle(
-                        color: Color(0xFF7A8493),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _currentOrganizationLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: navy,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (activeOrganizationIsOwner)
-                const Icon(
-                  Icons.workspace_premium_outlined,
-                  color: gold,
-                  size: 17,
-                ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _systemStatusIndicator() {
-    final Color accent;
-    final String title;
-    final String detail;
-    if (loading) {
-      accent = const Color(0xFF356AC3);
-      title = 'جارٍ تحديث حالة النظام';
-      detail = 'يتم جلب آخر البيانات من الخادم بأمان';
-    } else if (_usingCachedData) {
-      accent = const Color(0xFFB7791F);
-      title = 'وضع العمل المحلي';
-      detail = 'البيانات المعروضة محفوظة محليًا وستُحدّث عند عودة الاتصال';
-    } else if (error != null) {
-      accent = const Color(0xFFB42332);
-      title = 'تعذر الاتصال بالخادم';
-      detail = 'تحقق من اتصال الإنترنت ثم أعد المحاولة';
-    } else {
-      accent = const Color(0xFF16836B);
-      title = 'النظام متصل ويعمل';
-      detail = _lastSuccessfulSync == null
-          ? 'الخدمات الأساسية جاهزة للعمل'
-          : 'آخر تحديث ${_syncTime(_lastSuccessfulSync!)}';
-    }
+  Widget _welcomePanel() {
+    final logoBytes = _organizationLogoBytes;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Semantics(
-            label: title,
-            child: Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-            ),
+        color: const Color(0xFFFFFEFC),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E5DF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C10233F),
+            blurRadius: 16,
+            offset: Offset(0, 5),
           ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE1E5EB)),
                 ),
-                const SizedBox(height: 1),
-                Text(
-                  detail,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(13),
+                  child: logoBytes == null
+                      ? const ColoredBox(
+                          color: Color(0xFFF1F4F7),
+                          child: Center(
+                            child: Icon(
+                              Icons.account_balance_outlined,
+                              color: Color(0xFF748196),
+                              size: 24,
+                            ),
+                          ),
+                        )
+                      : Image.memory(
+                          logoBytes,
+                          fit: BoxFit.cover,
+                          semanticLabel: 'شعار الجهة',
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
+                                child: Icon(
+                                  Icons.account_balance_outlined,
+                                  color: Color(0xFF748196),
+                                  size: 24,
+                                ),
+                              ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'مرحبًا، $_greetingName',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF667085),
-                    fontSize: 9,
-                    height: 1.35,
+                    color: navy,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 112),
+                child: _systemStatusIndicator(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F7F2),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.business_outlined, color: navy, size: 18),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'الجهة الحالية',
+                        style: TextStyle(
+                          color: Color(0xFF7A8493),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _currentOrganizationLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: navy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (activeOrganizationIsOwner)
+                  const Icon(
+                    Icons.workspace_premium_outlined,
+                    color: gold,
+                    size: 17,
+                  ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _systemStatusIndicator() {
+    final Color accent;
+    final String title;
+    if (loading) {
+      accent = const Color(0xFF356AC3);
+      title = 'جارٍ التحديث';
+    } else if (_usingCachedData) {
+      accent = const Color(0xFFB7791F);
+      title = 'النظام غير متصل';
+    } else if (error != null) {
+      accent = const Color(0xFFB42332);
+      title = 'تعذر الاتصال';
+    } else {
+      accent = const Color(0xFF16836B);
+      title = 'النظام متصل';
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: accent,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Semantics(
+          label: title,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+          ),
+        ),
+      ],
     );
   }
 

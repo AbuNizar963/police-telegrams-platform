@@ -40,7 +40,7 @@ if (releaseTaskRequested && !hasReleaseSigning) {
 }
 
 android {
-    namespace = "com.hadir.police.police_telegrams"
+    namespace = "com.police.police_telegrams"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -50,8 +50,8 @@ android {
     }
 
     defaultConfig {
-        // Preserve the existing application ID so installed-app identity is unchanged.
-        applicationId = "com.hadir.police.police_telegrams"
+        // Keep the Android application ID aligned with the published Firebase client configuration.
+        applicationId = "com.police.police_telegrams"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

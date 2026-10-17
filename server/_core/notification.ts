@@ -7,6 +7,7 @@ import {
   deletePushSubscription,
   listMobilePushTokens,
   listPushSubscriptions,
+  type MobilePushTokenRecord,
   type PushSubscriptionRecord,
 } from "../db";
 import { ENV } from "./env";
@@ -19,9 +20,46 @@ export type NotificationPayload = {
 
 type TelegramNotificationDirection = "outgoing" | "incoming";
 
+export const TELEGRAM_ANDROID_GENERAL_CHANNEL_ID = "police_telegram_general_v1";
+export const TELEGRAM_ANDROID_URGENT_CHANNEL_ID = "police_telegram_urgent_v1";
+export const TELEGRAM_NOTIFICATION_SOUND = "police_telegram_alert";
+export const TELEGRAM_IOS_NOTIFICATION_SOUND = "police_telegram_alert.caf";
+
 function getShortTelegramNumber(serialCode: string): string {
   const lastNumericPart = serialCode.match(/(\d+)$/)?.[1];
   return lastNumericPart || serialCode;
+}
+
+export function getTelegramNotificationPresentation(input: {
+  priority?: string | null;
+  category?: string | null;
+  direction: TelegramNotificationDirection;
+}) {
+  const priority = (input.priority ?? "normal").toLowerCase();
+  const category = input.category?.toLowerCase() ?? "";
+  const isEmergency = category === "emergency";
+  const isUrgent = isEmergency || priority === "urgent";
+  const title = isEmergency
+    ? priority === "urgent"
+      ? "برقية طارئة عاجلة"
+      : "برقية طارئة"
+    : priority === "urgent"
+      ? "برقية عاجلة"
+      : input.direction === "incoming"
+        ? "برقية واردة جديدة"
+        : "برقية جديدة";
+
+  return {
+    title,
+    isUrgent,
+    alertLevel: isEmergency ? "emergency" : isUrgent ? "urgent" : "normal",
+    androidChannelId: isUrgent
+      ? TELEGRAM_ANDROID_URGENT_CHANNEL_ID
+      : TELEGRAM_ANDROID_GENERAL_CHANNEL_ID,
+    androidSound: TELEGRAM_NOTIFICATION_SOUND,
+    iosSound: TELEGRAM_IOS_NOTIFICATION_SOUND,
+    iosInterruptionLevel: isUrgent ? "time-sensitive" : "active",
+  } as const;
 }
 
 function validate(payload: NotificationPayload): NotificationPayload {
@@ -102,7 +140,8 @@ async function notifyFirebaseOrganization(input: {
   serialCode: string;
   subject: string;
   recipient: string;
-  priority: string;
+  priority?: string | null;
+  category?: string | null;
   telegramId: number;
   direction: TelegramNotificationDirection;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
@@ -110,44 +149,79 @@ async function notifyFirebaseOrganization(input: {
   const tokens = await listMobilePushTokens(input.organizationId);
   if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
   const shortNumber = getShortTelegramNumber(input.serialCode);
-  let response;
-  try {
-    response = await getMessaging().sendEachForMulticast({
-      tokens: tokens.map(item => item.token),
-      notification: {
-        title:
-          input.direction === "incoming" ? "برقية واردة جديدة" : "برقية جديدة",
-        body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
-      },
-      data: {
-        type:
-          input.direction === "incoming"
-            ? "telegram.incoming"
-            : "telegram.created",
-        telegramId: String(input.telegramId),
-        serialCode: input.serialCode,
-        recipient: input.recipient,
-        priority: input.priority,
-      },
-      android: { priority: "high" },
-      apns: { payload: { aps: { sound: "default", badge: 1 } } },
+  const priority = input.priority ?? "normal";
+  const presentation = getTelegramNotificationPresentation(input);
+  const invalidTokens: MobilePushTokenRecord[] = [];
+  let sent = 0;
+
+  // FCM multicast accepts at most 500 registration tokens per request.
+  for (let index = 0; index < tokens.length; index += 500) {
+    const batch = tokens.slice(index, index + 500);
+    let response;
+    try {
+      response = await getMessaging().sendEachForMulticast({
+        tokens: batch.map(item => item.token),
+        notification: {
+          title: presentation.title,
+          // Telegram subjects may contain sensitive operational details. Keep
+          // lock-screen notifications useful without exposing the document.
+          body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
+        },
+        data: {
+          type:
+            input.direction === "incoming"
+              ? "telegram.incoming"
+              : "telegram.created",
+          telegramId: String(input.telegramId),
+          serialCode: input.serialCode,
+          priority,
+          category: input.category ?? "",
+          alertLevel: presentation.alertLevel,
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: presentation.androidChannelId,
+            sound: presentation.androidSound,
+            visibility: "private",
+            tag: `telegram-${input.telegramId}`,
+          },
+        },
+        apns: {
+          headers: { "apns-priority": "10", "apns-push-type": "alert" },
+          payload: {
+            aps: {
+              sound: presentation.iosSound,
+              badge: 1,
+              threadId: `telegram-${input.telegramId}`,
+              "interruption-level": presentation.iosInterruptionLevel,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.warn("[Notification] Firebase delivery batch failed", error);
+      continue;
+    }
+
+    sent += response.successCount;
+    response.responses.forEach((result, responseIndex) => {
+      const token = batch[responseIndex];
+      const invalidCode = [
+        "messaging/registration-token-not-registered",
+        "messaging/invalid-registration-token",
+      ].includes(result.error?.code ?? "");
+      if (!result.success && invalidCode && token) invalidTokens.push(token);
     });
-  } catch (error) {
-    console.warn("[Notification] Firebase delivery failed", error);
-    return { sent: 0, removed: 0, configured: true };
   }
-  const invalidTokens = response.responses
-    .map((result, index) =>
-      !result.success &&
-      (result.error?.code === "messaging/registration-token-not-registered" ||
-        result.error?.code === "messaging/invalid-registration-token")
-        ? tokens[index]?.token
-        : null
+
+  await Promise.all(
+    invalidTokens.map(({ token, userId }) =>
+      deleteMobilePushToken(token, userId)
     )
-    .filter((token): token is string => Boolean(token));
-  await Promise.all(invalidTokens.map(token => deleteMobilePushToken(token)));
+  );
   return {
-    sent: response.successCount,
+    sent,
     removed: invalidTokens.length,
     configured: true,
   };
@@ -162,13 +236,21 @@ export async function notifyOrganizationTelegramCreated(input: {
   serialCode: string;
   subject: string;
   recipient: string;
-  priority: string;
+  priority?: string | null;
+  category?: string | null;
   telegramId: number;
   direction?: TelegramNotificationDirection;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
   const direction = input.direction ?? "outgoing";
+  const priority = input.priority ?? "normal";
+  const presentation = getTelegramNotificationPresentation({
+    priority,
+    category: input.category,
+    direction,
+  });
   const firebaseResult = await notifyFirebaseOrganization({
     ...input,
+    priority,
     direction,
   });
   if (!vapidConfigured) {
@@ -179,15 +261,17 @@ export async function notifyOrganizationTelegramCreated(input: {
   const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type: "telegram.created",
-    title: direction === "incoming" ? "برقية واردة" : "برقية صادرة",
-    body: `رقم البرقية: ${shortNumber}\nالموضوع: ${input.subject}`,
+    title: presentation.title,
+    body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {
       telegramId: input.telegramId,
       serialCode: input.serialCode,
       recipient: input.recipient,
-      priority: input.priority,
+      priority,
+      category: input.category ?? "",
+      alertLevel: presentation.alertLevel,
     },
   });
   let sent = 0;

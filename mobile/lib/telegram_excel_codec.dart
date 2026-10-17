@@ -35,16 +35,16 @@ class TelegramExcelRow {
   final String sheetName;
 
   Map<String, dynamic> toImportMap() => {
-        'originalSerial': originalSerial,
-        'time': time,
-        'sender': sender,
-        'date': date,
-        'body': body,
-        'recipient': recipient,
-        'signature': signature,
-        'notes': notes,
-        'sheetName': sheetName,
-      };
+    'originalSerial': originalSerial,
+    'time': time,
+    'sender': sender,
+    'date': date,
+    'body': body,
+    'recipient': recipient,
+    'signature': signature,
+    'notes': notes,
+    'sheetName': sheetName,
+  };
 }
 
 class TelegramExcelIssue {
@@ -219,7 +219,11 @@ List<int> buildTelegramWorkbook(
         final isBody = column == 4;
         cell.cellStyle = CellStyle(
           backgroundColorHex: ExcelColor.fromHexString(
-            isSerial ? '#00B0F0' : isBody ? '#FFF0F0' : '#FFFFFF',
+            isSerial
+                ? '#00B0F0'
+                : isBody
+                ? '#FFF0F0'
+                : '#FFFFFF',
           ),
           fontFamily: 'Times New Roman',
           fontSize: isSerial ? 18 : 14,

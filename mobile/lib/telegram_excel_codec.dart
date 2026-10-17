@@ -35,16 +35,16 @@ class TelegramExcelRow {
   final String sheetName;
 
   Map<String, dynamic> toImportMap() => {
-    'originalSerial': originalSerial,
-    'time': time,
-    'sender': sender,
-    'date': date,
-    'body': body,
-    'recipient': recipient,
-    'signature': signature,
-    'notes': notes,
-    'sheetName': sheetName,
-  };
+        'originalSerial': originalSerial,
+        'time': time,
+        'sender': sender,
+        'date': date,
+        'body': body,
+        'recipient': recipient,
+        'signature': signature,
+        'notes': notes,
+        'sheetName': sheetName,
+      };
 }
 
 class TelegramExcelIssue {

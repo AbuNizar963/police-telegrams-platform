@@ -169,7 +169,14 @@ class PoliceApi {
     if (cookie != null && cookie.isNotEmpty && uri.origin == baseUri.origin) {
       headers['cookie'] = cookie;
     }
-    final response = await http.get(uri, headers: headers);
+    late final http.Response response;
+    try {
+      response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      return null;
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
     final contentType =
         response.headers['content-type']

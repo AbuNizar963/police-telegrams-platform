@@ -54,8 +54,13 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
       error = null;
     });
     try {
-      await widget.outbox.sync(widget.api);
+      final result = await widget.outbox.sync(widget.api);
       await _load();
+      if (mounted && result.permanentFailures > 0) {
+        setState(() {
+          error = 'تمت إزالة ${result.permanentFailures} عملية منتهية بسبب رفضها من الخادم (تحقق أو صلاحيات).';
+        });
+      }
     } catch (exception) {
       if (mounted) setState(() => error = _message(exception));
     } finally {

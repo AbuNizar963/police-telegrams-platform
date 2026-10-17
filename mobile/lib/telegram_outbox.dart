@@ -67,11 +67,13 @@ class TelegramOutboxSyncResult {
     required this.synced,
     required this.remaining,
     required this.failed,
+    this.permanentFailures = 0,
   });
 
   final int synced;
   final int remaining;
   final int failed;
+  final int permanentFailures;
 }
 
 class TelegramOutbox {
@@ -148,6 +150,7 @@ class TelegramOutbox {
     final entries = await list();
     var synced = 0;
     var failed = 0;
+    var permanentFailures = 0;
     final remaining = <TelegramOutboxEntry>[];
     for (final entry in entries) {
       try {
@@ -175,6 +178,7 @@ class TelegramOutbox {
             exception.statusCode != 408 &&
             exception.statusCode != 429) {
           failed++;
+          permanentFailures++;
           continue;
         }
         failed++;
@@ -204,6 +208,7 @@ class TelegramOutbox {
       synced: synced,
       remaining: remaining.length,
       failed: failed,
+      permanentFailures: permanentFailures,
     );
   }
 

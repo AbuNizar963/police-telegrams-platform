@@ -756,6 +756,7 @@ class _DashboardPageState extends State<DashboardPage>
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       refresh(showLoading: false);
+      unawaited(_syncOutbox());
       _loadUnreadNotificationCount();
     });
   }
@@ -797,6 +798,15 @@ class _DashboardPageState extends State<DashboardPage>
       if (!mounted) return;
       setState(() => _pendingOutbox = pending);
       if (result.synced > 0) await refresh(showLoading: false);
+      if (mounted && result.permanentFailures > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تمت إزالة ${result.permanentFailures} عملية مرفوضة من صندوق المزامنة؛ راجع التفاصيل عند الحاجة.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       final pending = await _outbox.pendingCount();

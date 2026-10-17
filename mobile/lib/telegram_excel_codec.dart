@@ -166,8 +166,25 @@ List<int> buildTelegramWorkbook(
     final sheet = workbook[sheetName];
     sheet.appendRow(_excelRow(headers));
     final headerColors = isOutgoing
-        ? ['#10233F', '#00B0F0', '#92D050', '#00B0F0', '#FF0000', '#00B0F0', '#00B050', '#FFFF00']
-        : ['#10233F', '#00B0F0', '#00B0F0', '#FF0000', '#00B0F0', '#00B050', '#FFFF00'];
+        ? [
+            '#10233F',
+            '#00B0F0',
+            '#92D050',
+            '#00B0F0',
+            '#FF0000',
+            '#00B0F0',
+            '#00B050',
+            '#FFFF00',
+          ]
+        : [
+            '#10233F',
+            '#00B0F0',
+            '#00B0F0',
+            '#FF0000',
+            '#00B0F0',
+            '#00B050',
+            '#FFFF00',
+          ];
     for (var column = 0; column < headers.length; column++) {
       final cell = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
@@ -180,17 +197,27 @@ List<int> buildTelegramWorkbook(
         horizontalAlign: HorizontalAlign.Center,
         verticalAlign: VerticalAlign.Center,
         textWrapping: TextWrapping.WrapText,
-        topBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-        bottomBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-        leftBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-        rightBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+        topBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+        bottomBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+        leftBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+        rightBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
       );
-      sheet.setColumnWidth(
-        column,
-        (isOutgoing
-            ? [16, 11, 11, 15, 100, 18, 17, 14]
-            : [16, 11, 15, 100, 18, 17, 25])[column].toDouble(),
-      );
+      final columnWidths = isOutgoing
+          ? [16, 11, 11, 15, 100, 18, 17, 14]
+          : [16, 11, 15, 100, 18, 17, 25];
+      sheet.setColumnWidth(column, columnWidths[column].toDouble());
     }
 
     final sheetRows = rows.where((row) => row['direction'] == sheetName);
@@ -233,10 +260,22 @@ List<int> buildTelegramWorkbook(
           horizontalAlign: HorizontalAlign.Center,
           verticalAlign: VerticalAlign.Center,
           textWrapping: TextWrapping.WrapText,
-          topBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-          bottomBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-          leftBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
-          rightBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+          topBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+          bottomBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+          leftBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
+          rightBorder: Border(
+          borderStyle: BorderStyle.Thin,
+          borderColorHex: ExcelColor.fromHexString('#000000'),
+        ),
         );
       }
       rowIndex += 1;

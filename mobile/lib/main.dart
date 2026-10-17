@@ -1351,8 +1351,9 @@ class _DashboardPageState extends State<DashboardPage>
           _usingCachedData = false;
         });
       }
-      if (settings is Map)
+      if (settings is Map) {
         unawaited(_loadOrganizationLogo(_organizationLogoUrl));
+      }
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&

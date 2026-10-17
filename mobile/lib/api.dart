@@ -74,7 +74,8 @@ class PoliceApi {
     final decoded = jsonDecode(response.body);
     final result = decoded is Map ? decoded['result'] : null;
     final data = result is Map ? result['data'] : null;
-    final value = data is Map && data.containsKey('json') ? data['json'] : data;
+    final value =
+        data is Map && data.containsKey('json') ? data['json'] : data;
     if (!mutation) {
       await _writeOfflineResponse(procedure, input, value);
     }

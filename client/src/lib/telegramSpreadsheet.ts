@@ -56,16 +56,6 @@ function normalized(value: unknown) {
     .toLowerCase();
 }
 
-const INCOMING_SHEET_HEADERS = [
-  "الرقم المتسلسل",
-  "ساعة الأرسال أو الوصول",
-  "الجهة المرسلة واسم المرسل",
-  "نـــــــــــص البرقيــــــــــــــــــــــــة",
-  "الجهة المرسلة واسم المستلم",
-  "توقيع المرسل أو المستلم",
-  "ملاحظات",
-] as const;
-
 const TEMPLATE_HEADER_COLORS = [
   "FF10233F",
   "FF00B0F0",
@@ -114,18 +104,21 @@ function makeSheet(
   rows: TelegramSpreadsheetExportRow[],
   direction: TelegramSpreadsheetDirection
 ) {
-  const isOutgoing = direction === "صادر";
-  const headers = isOutgoing ? TELEGRAM_SHEET_HEADERS : INCOMING_SHEET_HEADERS;
-  const values = rows.map(row =>
-    isOutgoing
-      ? [row.serial, row.time, row.date, row.sender, row.body, row.recipient, row.signature, row.notes]
-      : [row.serial, row.time, row.sender, row.body, row.recipient, row.signature, row.notes]
-  );
+  // Both sheets intentionally use the exact same official template columns.
+  const headers = TELEGRAM_SHEET_HEADERS;
+  const values = rows.map(row => [
+    row.serial,
+    row.time,
+    row.date,
+    row.sender,
+    row.body,
+    row.recipient,
+    row.signature,
+    row.notes,
+  ]);
   const sheet = XLSX.utils.aoa_to_sheet([[...headers], ...values]);
-  const widths = isOutgoing ? [16, 11, 11, 15, 100, 18, 17, 14] : [16, 11, 15, 100, 18, 17, 25];
-  const colors = isOutgoing
-    ? TEMPLATE_HEADER_COLORS
-    : [TEMPLATE_HEADER_COLORS[0], TEMPLATE_HEADER_COLORS[1], TEMPLATE_HEADER_COLORS[3], TEMPLATE_HEADER_COLORS[4], TEMPLATE_HEADER_COLORS[5], TEMPLATE_HEADER_COLORS[6], TEMPLATE_HEADER_COLORS[7]];
+  const widths = [16, 11, 11, 15, 100, 18, 17, 14];
+  const colors = TEMPLATE_HEADER_COLORS;
   sheet["!cols"] = widths.map(wch => ({ wch }));
   sheet["!rows"] = [
     { hpt: 52.2 },
@@ -145,7 +138,7 @@ function makeSheet(
   for (let rowIndex = 1; rowIndex <= values.length; rowIndex += 1) {
     for (let column = 0; column < headers.length; column += 1) {
       const isSerial = column === 0;
-      const isBody = column === (isOutgoing ? 4 : 3);
+      const isBody = column === 4;
       applyTemplateStyle(
         sheet, rowIndex, column,
         isSerial ? "FF00B0F0" : isBody ? "FFFFE8E8" : "",

@@ -56,34 +56,106 @@ function normalized(value: unknown) {
     .toLowerCase();
 }
 
-function makeSheet(rows: TelegramSpreadsheetExportRow[]) {
-  const values = rows.map(row => [
-    row.serial,
-    row.time,
-    row.sender,
-    row.date,
-    row.body,
-    row.recipient,
-    row.signature,
-    row.notes,
-  ]);
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [...TELEGRAM_SHEET_HEADERS],
-    ...values,
-  ]);
-  sheet["!cols"] = [
-    { wch: 16 },
-    { wch: 22 },
-    { wch: 28 },
-    { wch: 18 },
-    { wch: 100 },
-    { wch: 28 },
-    { wch: 24 },
-    { wch: 34 },
+const INCOMING_SHEET_HEADERS = [
+  "الرقم المتسلسل",
+  "ساعة الأرسال أو الوصول",
+  "الجهة المرسلة واسم المرسل",
+  "نـــــــــــص البرقيــــــــــــــــــــــــة",
+  "الجهة المرسلة واسم المستلم",
+  "توقيع المرسل أو المستلم",
+  "ملاحظات",
+] as const;
+
+const TEMPLATE_HEADER_COLORS = [
+  "FF10233F",
+  "FF00B0F0",
+  "FF92D050",
+  "FF00B0F0",
+  "FFFF0000",
+  "FF00B0F0",
+  "FF00B050",
+  "FFFFFF00",
+];
+
+function applyTemplateStyle(
+  sheet: XLSX.WorkSheet,
+  rowIndex: number,
+  columnIndex: number,
+  color: string,
+  isHeader: boolean,
+  isSerial: boolean,
+  isBody: boolean
+) {
+  const address = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+  const cell = sheet[address] as (XLSX.CellObject & { s?: Record<string, unknown> }) | undefined;
+  if (!cell) return;
+  const borderSide = { style: "thin", color: { rgb: "FF000000" } };
+  cell.s = {
+    fill: color
+      ? { patternType: "solid", fgColor: { rgb: color } }
+      : { patternType: "none" },
+    font: {
+      name: "Times New Roman",
+      sz: isHeader && (isSerial || isBody) ? 18 : 14,
+      bold: true,
+      color: { rgb: isHeader && color === "FFFFFF00" ? "FFFF0000" : "FF000000" },
+    },
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    border: {
+      top: borderSide,
+      bottom: borderSide,
+      left: borderSide,
+      right: borderSide,
+    },
+  };
+}
+
+function makeSheet(
+  rows: TelegramSpreadsheetExportRow[],
+  direction: TelegramSpreadsheetDirection
+) {
+  const isOutgoing = direction === "صادر";
+  const headers = isOutgoing ? TELEGRAM_SHEET_HEADERS : INCOMING_SHEET_HEADERS;
+  const values = rows.map(row =>
+    isOutgoing
+      ? [row.serial, row.time, row.date, row.sender, row.body, row.recipient, row.signature, row.notes]
+      : [row.serial, row.time, row.sender, row.body, row.recipient, row.signature, row.notes]
+  );
+  const sheet = XLSX.utils.aoa_to_sheet([[...headers], ...values]);
+  const widths = isOutgoing ? [16, 11, 11, 15, 100, 18, 17, 14] : [16, 11, 15, 100, 18, 17, 25];
+  const colors = isOutgoing
+    ? TEMPLATE_HEADER_COLORS
+    : [TEMPLATE_HEADER_COLORS[0], TEMPLATE_HEADER_COLORS[1], TEMPLATE_HEADER_COLORS[3], TEMPLATE_HEADER_COLORS[4], TEMPLATE_HEADER_COLORS[5], TEMPLATE_HEADER_COLORS[6], TEMPLATE_HEADER_COLORS[7]];
+  sheet["!cols"] = widths.map(wch => ({ wch }));
+  sheet["!rows"] = [
+    { hpt: 52.2 },
+    ...values.map(row => ({
+      hpt: Math.min(
+        210,
+        Math.max(34.8, 34.8 * Math.ceil(String(row[isOutgoing ? 4 : 3] ?? "").length / 95))
+      ),
+    })),
   ];
+  for (let column = 0; column < headers.length; column += 1) {
+    applyTemplateStyle(
+      sheet, 0, column, colors[column], true, column === 0,
+      column === (isOutgoing ? 4 : 3)
+    );
+  }
+  for (let rowIndex = 1; rowIndex <= values.length; rowIndex += 1) {
+    for (let column = 0; column < headers.length; column += 1) {
+      const isSerial = column === 0;
+      const isBody = column === (isOutgoing ? 4 : 3);
+      applyTemplateStyle(
+        sheet, rowIndex, column,
+        isSerial ? "FF00B0F0" : isBody ? "FFFFE8E8" : "",
+        false, isSerial, isBody
+      );
+    }
+  }
   sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
   sheet["!autofilter"] = {
-    ref: `A1:H${Math.max(1, values.length + 1)}`,
+    ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${Math.max(1, values.length + 1)}`,
   };
   return sheet;
 }
@@ -95,9 +167,9 @@ export function downloadTelegramWorkbook(
   const workbook = XLSX.utils.book_new();
   const outgoing = rows.filter(row => row.direction === "صادر");
   const incoming = rows.filter(row => row.direction === "وارد");
-  XLSX.utils.book_append_sheet(workbook, makeSheet(outgoing), "صادر");
-  XLSX.utils.book_append_sheet(workbook, makeSheet(incoming), "وارد");
-  XLSX.writeFile(workbook, fileName, { bookType: "xlsx" });
+  XLSX.utils.book_append_sheet(workbook, makeSheet(outgoing, "صادر"), "صادر");
+  XLSX.utils.book_append_sheet(workbook, makeSheet(incoming, "وارد"), "وارد");
+  XLSX.writeFile(workbook, fileName, { bookType: "xlsx", cellStyles: true });
 }
 
 function findHeaderIndexes(headerRow: unknown[]) {

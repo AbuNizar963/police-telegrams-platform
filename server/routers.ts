@@ -1464,20 +1464,31 @@ export const appRouter = router({
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
-        return listTelegrams(
-          ctx.user.id,
-          canViewAll,
-          organizationId,
-          input?.search,
-          input?.classification,
-          input?.priority,
-          input?.category,
-          input?.status,
-          input?.from,
-          input?.to,
-          1,
-          1000
-        );
+        const exportedRows = [];
+        const pageSize = 1000;
+        const maximumRows = 100000;
+        for (let page = 1; page <= maximumRows / pageSize; page += 1) {
+          const pageRows = await listTelegrams(
+            ctx.user.id,
+            canViewAll,
+            organizationId,
+            input?.search,
+            input?.classification,
+            input?.priority,
+            input?.category,
+            input?.status,
+            input?.from,
+            input?.to,
+            page,
+            pageSize
+          );
+          exportedRows.push(...pageRows);
+          if (pageRows.length < pageSize) return exportedRows;
+        }
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "يتجاوز التصدير الحد الآمن البالغ 100000 برقية؛ استخدم فلاتر التاريخ أو الجهة لتقسيم السجل.",
+        });
       }),
 
     get: protectedProcedure
@@ -2590,7 +2601,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const settings = await getOrCreateSettings(ctx.user.id);
-        const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
+        const importerName = ctx.user.name ?? ctx.user.email ?? "مستخدم مسجل";
         let created = 0;
         let skipped = 0;
         const errors: Array<{ row: number; message: string }> = [];
@@ -2615,18 +2626,32 @@ export const appRouter = router({
               continue;
             }
             const serialNumber = await allocateSerialNumber();
+            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            const organizationDirection = row.sheetName === "وارد" ? "incoming" : "outgoing";
+            const organizationSerialNumber = await allocateOrganizationSerialNumber(
+              organizationId,
+              organizationDirection
+            );
+            const serialDate = importedCreatedAt ?? new Date();
             const dateParts = new Intl.DateTimeFormat("en-CA", {
               timeZone: settings.timezone,
               year: "numeric",
               month: "2-digit",
               day: "2-digit",
-            }).formatToParts(new Date());
+            }).formatToParts(serialDate);
             const dateValues = Object.fromEntries(
               dateParts.map(part => [part.type, part.value])
             );
             const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
             const serialCode = `${settings.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
-            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            const organizationSerialPrefix = organizationDirection === "incoming"
+              ? settings.incomingSerialPrefix
+              : settings.serialPrefix;
+            const organizationSerialCode = `${organizationSerialPrefix}-${dateCode}-${String(organizationSerialNumber).padStart(5, "0")}`;
+            const sourceCreatorName =
+              row.sender?.trim() ||
+              row.recipient?.trim() ||
+              "تم الإنشاء عبر استيراد ملف Excel";
             const importedBody = [
               row.body,
               row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",
@@ -2642,13 +2667,15 @@ export const appRouter = router({
             const telegram = await createTelegram({
               serialNumber,
               serialCode,
+              organizationSerialNumber,
+              organizationSerialCode,
               idempotencyKey,
               verificationToken: randomUUID(),
               createdAt: importedCreatedAt,
               createdByUserId: ctx.user.id,
               organizationId,
               currentOrganizationId: organizationId,
-              creatorName,
+              creatorName: sourceCreatorName,
               creatorEmail: ctx.user.email ?? null,
               creatorBadgeId: ctx.user.badgeNumber ?? null,
               creatorIp: null,
@@ -2665,7 +2692,7 @@ export const appRouter = router({
             await writeAuditLog({
               ...getRequestAuditContext(ctx.req),
               actorUserId: ctx.user.id,
-              actorName: creatorName,
+              actorName: importerName,
               action: "telegram.import.excel",
               entityType: "telegram",
               entityId: String(telegram.id),

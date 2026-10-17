@@ -3,8 +3,18 @@ import 'package:excel/excel.dart';
 const telegramExcelHeaders = [
   'الرقم المتسلسل',
   'ساعة الأرسال أو الوصول',
+  'التاريخ',
   'الجهة المرسلة واسم المرسل',
-  'تاريخ البرقية',
+  'نـــــــــــص البرقيــــــــــــــــــــــــة',
+  'الجهة المرسلة واسم المستلم',
+  'توقيع المرسل أو المستلم',
+  'ملاحظات',
+];
+
+const _incomingExcelHeaders = [
+  'الرقم المتسلسل',
+  'ساعة الأرسال أو الوصول',
+  'الجهة المرسلة واسم المرسل',
   'نـــــــــــص البرقيــــــــــــــــــــــــة',
   'الجهة المرسلة واسم المستلم',
   'توقيع المرسل أو المستلم',
@@ -151,27 +161,85 @@ List<int> buildTelegramWorkbook(
   if (workbook.tables.containsKey('Sheet1')) workbook.delete('Sheet1');
 
   for (final sheetName in ['صادر', 'وارد']) {
+    final isOutgoing = sheetName == 'صادر';
+    final headers = isOutgoing ? telegramExcelHeaders : _incomingExcelHeaders;
     final sheet = workbook[sheetName];
-    sheet.appendRow(_excelRow(telegramExcelHeaders));
-    for (final row in rows.where((row) => row['direction'] == sheetName)) {
-      sheet.appendRow(
-        _excelRow([
-          row['serial'] ?? '',
-          row['time'] ?? '',
-          row['sender'] ?? '',
-          row['date'] ?? '',
-          row['body'] ?? '',
-          row['recipient'] ?? '',
-          row['signature'] ?? '',
-          row['notes'] ?? '',
-        ]),
+    sheet.appendRow(_excelRow(headers));
+    final headerColors = isOutgoing
+        ? ['#10233F', '#00B0F0', '#92D050', '#00B0F0', '#FF0000', '#00B0F0', '#00B050', '#FFFF00']
+        : ['#10233F', '#00B0F0', '#00B0F0', '#FF0000', '#00B0F0', '#00B050', '#FFFF00'];
+    for (var column = 0; column < headers.length; column++) {
+      final cell = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
       );
-    }
-    for (var column = 0; column < telegramExcelHeaders.length; column++) {
+      cell.cellStyle = CellStyle(
+        backgroundColorHex: ExcelColor.fromHexString(headerColors[column]),
+        fontFamily: 'Times New Roman',
+        fontSize: (column == 0 || column == (isOutgoing ? 4 : 3)) ? 18 : 14,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
+        textWrapping: TextWrapping.WrapText,
+        topBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+        bottomBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+        leftBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+        rightBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+      );
       sheet.setColumnWidth(
         column,
-        [16, 22, 28, 18, 100, 28, 24, 34][column].toDouble(),
+        (isOutgoing
+            ? [16, 11, 11, 15, 100, 18, 17, 14]
+            : [16, 11, 15, 100, 18, 17, 25])[column].toDouble(),
       );
+    }
+
+    final sheetRows = rows.where((row) => row['direction'] == sheetName);
+    var rowIndex = 1;
+    for (final row in sheetRows) {
+      final values = isOutgoing
+          ? [
+              row['serial'] ?? '',
+              row['time'] ?? '',
+              row['date'] ?? '',
+              row['sender'] ?? '',
+              row['body'] ?? '',
+              row['recipient'] ?? '',
+              row['signature'] ?? '',
+              row['notes'] ?? '',
+            ]
+          : [
+              row['serial'] ?? '',
+              row['time'] ?? '',
+              row['sender'] ?? '',
+              row['body'] ?? '',
+              row['recipient'] ?? '',
+              row['signature'] ?? '',
+              row['notes'] ?? '',
+            ];
+      sheet.appendRow(_excelRow(values));
+      for (var column = 0; column < values.length; column++) {
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: column, rowIndex: rowIndex),
+        );
+        final isSerial = column == 0;
+        final isBody = column == (isOutgoing ? 4 : 3);
+        cell.cellStyle = CellStyle(
+          backgroundColorHex: ExcelColor.fromHexString(
+            isSerial ? '#00B0F0' : isBody ? '#FFF0F0' : '#FFFFFF',
+          ),
+          fontFamily: 'Times New Roman',
+          fontSize: isSerial ? 18 : 14,
+          bold: true,
+          horizontalAlign: HorizontalAlign.Center,
+          verticalAlign: VerticalAlign.Center,
+          textWrapping: TextWrapping.WrapText,
+          topBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+          bottomBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+          leftBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+          rightBorder: Border(borderStyle: BorderStyle.Thin, borderColorHex: ExcelColor.fromHexString('#000000')),
+        );
+      }
+      rowIndex += 1;
     }
   }
   workbook.setDefaultSheet('صادر');

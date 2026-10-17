@@ -74,7 +74,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                 organization.isNotEmpty &&
                 organization == current);
         rows.add({
-          'serial': value(row['serialCode'] ?? row['serialNumber']),
+          'serial': value(row['organizationSerialCode'] ?? row['serialCode']),
           'time': date == null
               ? ''
               : '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',

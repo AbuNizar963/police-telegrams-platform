@@ -58,7 +58,10 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
       await _load();
       if (mounted && result.permanentFailures > 0) {
         setState(() {
-          error = 'تمت إزالة ${result.permanentFailures} عملية منتهية بسبب رفضها من الخادم (تحقق أو صلاحيات).';
+          final details = result.permanentErrorMessages.isEmpty
+              ? 'تحقق أو صلاحيات'
+              : result.permanentErrorMessages.join('، ');
+          error = 'تم رفض ${result.permanentFailures} عملية من الخادم: $details';
         });
       }
     } catch (exception) {

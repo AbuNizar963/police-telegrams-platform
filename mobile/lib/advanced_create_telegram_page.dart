@@ -461,7 +461,7 @@ class _AdvancedCreateTelegramSheetState
                             Padding(
                               padding: const EdgeInsets.only(top: 5),
                               child: Text(
-                                'يوضع الرقم التالي تلقائيًا، ويمكن تعديله قبل الحفظ. يمنع النظام تكرار الرقم داخل الجهة.',
+                                'يُقترح الرقم التالي تلقائيًا، ويمكنك إدخال رقم صادر يدويًا أو تركه فارغًا ليحدده الخادم. يتحقق النظام من عدم تكراره داخل الجهة عند الاتصال.',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: Theme.of(context)

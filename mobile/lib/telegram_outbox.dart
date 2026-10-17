@@ -68,12 +68,14 @@ class TelegramOutboxSyncResult {
     required this.remaining,
     required this.failed,
     this.permanentFailures = 0,
+    this.permanentErrorMessages = const [],
   });
 
   final int synced;
   final int remaining;
   final int failed;
   final int permanentFailures;
+  final List<String> permanentErrorMessages;
 }
 
 class TelegramOutbox {
@@ -151,6 +153,7 @@ class TelegramOutbox {
     var synced = 0;
     var failed = 0;
     var permanentFailures = 0;
+    final permanentErrorMessages = <String>[];
     final remaining = <TelegramOutboxEntry>[];
     for (final entry in entries) {
       try {
@@ -179,6 +182,7 @@ class TelegramOutbox {
             exception.statusCode != 429) {
           failed++;
           permanentFailures++;
+          permanentErrorMessages.add(exception.message);
           continue;
         }
         failed++;
@@ -209,6 +213,7 @@ class TelegramOutbox {
       remaining: remaining.length,
       failed: failed,
       permanentFailures: permanentFailures,
+      permanentErrorMessages: List.unmodifiable(permanentErrorMessages),
     );
   }
 

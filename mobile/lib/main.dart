@@ -799,10 +799,13 @@ class _DashboardPageState extends State<DashboardPage>
       setState(() => _pendingOutbox = pending);
       if (result.synced > 0) await refresh(showLoading: false);
       if (mounted && result.permanentFailures > 0) {
+        final details = result.permanentErrorMessages.isEmpty
+            ? 'تحقق أو صلاحيات'
+            : result.permanentErrorMessages.join('، ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'تمت إزالة ${result.permanentFailures} عملية مرفوضة من صندوق المزامنة؛ راجع التفاصيل عند الحاجة.',
+              'تم رفض ${result.permanentFailures} عملية من الخادم: $details',
             ),
           ),
         );

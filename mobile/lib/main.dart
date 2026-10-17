@@ -1374,7 +1374,9 @@ class _DashboardPageState extends State<DashboardPage>
         } else {
           setState(() {
             error = _dashboardRefreshError(e);
-            _usingCachedData = true;
+            // No cached dashboard is available, so report the connection
+            // failure instead of claiming that cached data is being shown.
+            _usingCachedData = false;
           });
         }
       }

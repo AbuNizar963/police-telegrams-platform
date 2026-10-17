@@ -22,6 +22,20 @@ describe("telegram spreadsheet parsing", () => {
       ],
     ]);
     XLSX.utils.book_append_sheet(workbook, sheet, "صادر");
+    const incomingSheet = XLSX.utils.aoa_to_sheet([
+      [...TELEGRAM_SHEET_HEADERS],
+      [
+        "124",
+        "11:45",
+        "2026-10-02",
+        "قسم شرطة الشهباء",
+        "نص برقية وارد اختبار",
+        "قيادة الأمن الداخلي",
+        "التوقيع",
+        "ملاحظة وارد",
+      ],
+    ]);
+    XLSX.utils.book_append_sheet(workbook, incomingSheet, "وارد");
 
     const output = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -31,12 +45,20 @@ describe("telegram spreadsheet parsing", () => {
 
     const result = await parseTelegramWorkbook(file);
 
-    expect(result.rows).toHaveLength(1);
+    expect(result.rows).toHaveLength(2);
     expect(result.rows[0]).toMatchObject({
       originalSerial: "123",
+      date: "2026-10-01",
       body: "نص برقية اختبار",
       sheetName: "صادر",
     });
+    expect(result.rows[1]).toMatchObject({
+      originalSerial: "124",
+      date: "2026-10-02",
+      body: "نص برقية وارد اختبار",
+      sheetName: "وارد",
+    });
+    expect(TELEGRAM_SHEET_HEADERS).toHaveLength(8);
   });
 
   it("rejects files that are not Excel workbooks", async () => {

@@ -682,6 +682,10 @@ class _DashboardPageState extends State<DashboardPage>
   final _outbox = TelegramOutbox();
   int _pendingOutbox = 0;
   bool _outboxSyncing = false;
+  String _syncPhase = 'idle';
+  String? _lastSyncMessage;
+  DateTime? _lastSyncAt;
+  Timer? _syncMessageTimer;
   Timer? _refreshTimer;
   Timer? _searchDebounce;
   bool _refreshInProgress = false;
@@ -792,11 +796,46 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _syncOutbox() async {
     if (_outboxSyncing) return;
     _outboxSyncing = true;
+    if (mounted) {
+      setState(() {
+        _syncPhase = 'syncing';
+        _lastSyncMessage = 'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...';
+      });
+    }
     try {
       final result = await _outbox.sync(widget.api);
       final pending = await _outbox.pendingCount();
       if (!mounted) return;
-      setState(() => _pendingOutbox = pending);
+      _syncMessageTimer?.cancel();
+      setState(() {
+        _pendingOutbox = pending;
+        _lastSyncAt = DateTime.now();
+        if (result.permanentFailures > 0) {
+          _syncPhase = 'error';
+          _lastSyncMessage = result.permanentErrorMessages.isEmpty
+              ? 'تم رفض عملية من الخادم وتحتاج إلى مراجعة.'
+              : result.permanentErrorMessages.first;
+        } else if (result.synced > 0) {
+          _syncPhase = pending == 0 ? 'success' : 'partial';
+          _lastSyncMessage =
+              'تمت مزامنة ${result.synced} برقية بنجاح${pending > 0 ? '، وبقيت $pending معلقة' : ''}.';
+        } else if (pending == 0) {
+          _syncPhase = 'idle';
+          _lastSyncMessage = 'صندوق الخروج متزامن ولا توجد برقيات معلقة.';
+        } else {
+          _syncPhase = 'waiting';
+          _lastSyncMessage = 'تنتظر $pending برقية عودة الاتصال للمزامنة.';
+        }
+      });
+      if (_syncPhase == 'success' || _syncPhase == 'idle') {
+        _syncMessageTimer = Timer(const Duration(seconds: 8), () {
+          if (!mounted) return;
+          setState(() {
+            _syncPhase = 'idle';
+            _lastSyncMessage = null;
+          });
+        });
+      }
       if (result.synced > 0) await refresh(showLoading: false);
       if (mounted && result.permanentFailures > 0) {
         final details = result.permanentErrorMessages.isEmpty
@@ -813,7 +852,14 @@ class _DashboardPageState extends State<DashboardPage>
     } catch (_) {
       if (!mounted) return;
       final pending = await _outbox.pendingCount();
-      if (mounted) setState(() => _pendingOutbox = pending);
+      setState(() {
+        _pendingOutbox = pending;
+        _syncPhase = pending > 0 ? 'waiting' : 'error';
+        _lastSyncAt = DateTime.now();
+        _lastSyncMessage = pending > 0
+            ? 'تعذر الاتصال؛ ستتم إعادة المحاولة تلقائيًا.'
+            : 'تعذر التحقق من حالة المزامنة.';
+      });
     } finally {
       _outboxSyncing = false;
     }
@@ -1224,6 +1270,7 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _searchDebounce?.cancel();
+    _syncMessageTimer?.cancel();
     searchController.dispose();
     push.dispose();
     super.dispose();
@@ -1596,40 +1643,107 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _outboxAlert() {
-    if (_pendingOutbox <= 0 && !_outboxSyncing) {
+    if (_pendingOutbox <= 0 &&
+        !_outboxSyncing &&
+        _syncPhase == 'idle' &&
+        _lastSyncMessage == null) {
       return const SizedBox.shrink();
     }
+    final Color accent = switch (_syncPhase) {
+      'error' => const Color(0xFFB42332),
+      'success' => const Color(0xFF16836B),
+      'syncing' => const Color(0xFF356AC3),
+      _ => const Color(0xFFB7791F),
+    };
+    final IconData icon = switch (_syncPhase) {
+      'error' => Icons.sync_problem_outlined,
+      'success' => Icons.cloud_done_outlined,
+      'syncing' => Icons.sync,
+      _ => Icons.cloud_upload_outlined,
+    };
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      padding: const EdgeInsets.fromLTRB(13, 12, 13, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F2E8),
+        color: accent.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE4D4AE)),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.sync_outlined, color: navy),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _outboxSyncing
-                  ? 'جارٍ مزامنة البرقيات المحفوظة محليًا...'
-                  : '$_pendingOutbox برقية محفوظة محليًا بانتظار المزامنة.',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
+          Row(
+            children: [
+              Icon(icon, color: accent, size: 21),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  _syncPhase == 'syncing'
+                      ? 'المزامنة اللحظية قيد التنفيذ'
+                      : _syncPhase == 'success'
+                      ? 'اكتملت المزامنة بنجاح'
+                      : _pendingOutbox > 0
+                      ? 'صندوق الخروج — $_pendingOutbox معلقة'
+                      : 'حالة صندوق الخروج',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (_pendingOutbox > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    '$_pendingOutbox معلقة',
+                    style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w900),
+                  ),
+                ),
+            ],
           ),
-          if (!_outboxSyncing)
-            Wrap(
+          if (_lastSyncMessage != null) ...[
+            const SizedBox(height: 5),
+            Text(
+              _lastSyncMessage!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFF667085), fontSize: 10, height: 1.35),
+            ),
+          ],
+          if (_lastSyncAt != null && !_outboxSyncing)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                'آخر فحص ${_syncTime(_lastSyncAt!)}',
+                style: const TextStyle(color: Color(0xFF98A2B3), fontSize: 9),
+              ),
+            ),
+          if (_outboxSyncing) ...[
+            const SizedBox(height: 9),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: const LinearProgressIndicator(minHeight: 3),
+            ),
+          ],
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Wrap(
               spacing: 2,
               children: [
                 TextButton(
                   onPressed: _openOutbox,
                   child: const Text('التفاصيل'),
                 ),
-                TextButton(onPressed: _syncOutbox, child: const Text('مزامنة')),
+                if (!_outboxSyncing)
+                  TextButton(onPressed: _syncOutbox, child: const Text('مزامنة الآن')),
               ],
             ),
+          ),
         ],
       ),
     );

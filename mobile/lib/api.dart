@@ -88,7 +88,7 @@ class PoliceApi {
       case 'telegrams.get':
         final id = input?['id'];
         if (id == null || '$id'.trim().isEmpty) return null;
-        return 'offline_telegram_${id}';
+        return 'offline_telegram_$id';
       case 'settings.get':
         return 'offline_settings';
       case 'organizations.routingDirectory':

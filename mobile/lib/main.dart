@@ -2333,7 +2333,7 @@ class _DashboardPageState extends State<DashboardPage>
       title = 'النظام غير متصل';
     } else if (error != null) {
       accent = const Color(0xFFB42332);
-      title = 'تعذر الاتصال';
+      title = 'تعذر الاتصال بالخادم';
     } else {
       accent = const Color(0xFF16836B);
       title = 'النظام متصل';

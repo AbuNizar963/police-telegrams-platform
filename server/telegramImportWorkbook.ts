@@ -64,7 +64,7 @@ export async function parseTelegramWorkbookBase64(
   }
   let workbook;
   try {
-    let workbookBytes = bytes;
+    let workbookBytes: Uint8Array = bytes;
 
     // Excel encrypts an entire XLSX package inside an OLE container. Decrypt
     // that container first, then pass the ordinary OOXML ZIP to the workbook
@@ -76,7 +76,7 @@ export async function parseTelegramWorkbookBase64(
       workbookBytes = await officeCrypto.decrypt(bytes, { password });
     }
 
-    workbook = await XlsxPopulate.fromDataAsync(workbookBytes);
+    workbook = await XlsxPopulate.fromDataAsync(Buffer.from(workbookBytes));
   } catch {
     throw new Error(
       password !== undefined && password.length > 0

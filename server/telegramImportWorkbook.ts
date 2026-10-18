@@ -90,24 +90,21 @@ export async function parseTelegramWorkbookBase64(
       cellDates: false,
     });
   } catch {
-    throw new Error(
-      encrypted
-        ? "تمت محاولة فك التشفير لكن تعذر قراءة محتوى الملف. قد تكون صيغة Excel غير مدعومة أو أن الملف تالف."
-        : "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته."
-    );
+    const errorMessage = encrypted
+      ? "تمت محاولة فك التشفير لكن تعذر قراءة محتوى الملف. قد تكون صيغة Excel غير مدعومة أو أن الملف تالف."
+      : "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته.";
+    throw new Error(errorMessage);
   }
 
-  const sheets = workbook.SheetNames.map(sheetName => ({
-    sheetName,
-    matrix: XLSX.utils.sheet_to_json<unknown[]>(
-      workbook.Sheets[sheetName]!,
-      {
-        header: 1,
-        defval: "",
-        raw: false,
-      }
-    ),
-  }));
+  const sheets = workbook.SheetNames.map(sheetName => {
+    const worksheet = workbook.Sheets[sheetName]!;
+    const matrix = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: "",
+      raw: false,
+    });
+    return { sheetName, matrix };
+  });
 
   const rows: TelegramWorkbookImportRow[] = [];
   const issues: TelegramWorkbookImportIssue[] = [];

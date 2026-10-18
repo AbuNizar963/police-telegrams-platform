@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import XlsxPopulate from "xlsx-populate";
 import officeCrypto from "officecrypto-tool";
+import { decryptWorkbook } from "@node-projects/excelforge";
 
 export type TelegramWorkbookImportRow = {
   originalSerial: string;
@@ -47,6 +48,61 @@ function indexOf(headers: unknown[], aliases: string[]): number {
   );
 }
 
+
+function isZipPackage(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04
+  );
+}
+
+async function decryptProtectedWorkbook(
+  bytes: Buffer,
+  password: string
+): Promise<XLSX.WorkBook> {
+  let foundZipPackage = false;
+  const decryptors: Array<() => Promise<Uint8Array>> = [
+    () => decryptWorkbook(new Uint8Array(bytes), password),
+    () => officeCrypto.decrypt(bytes, { password }),
+    async () => {
+      const workbook = await XlsxPopulate.fromDataAsync(bytes, { password });
+      return new Uint8Array(Buffer.from(await workbook.outputAsync()));
+    },
+  ];
+
+  for (const decrypt of decryptors) {
+    let decrypted: Uint8Array;
+    try {
+      decrypted = new Uint8Array(await decrypt());
+    } catch {
+      continue;
+    }
+    if (!isZipPackage(decrypted)) continue;
+    foundZipPackage = true;
+    try {
+      const workbook = XLSX.read(Buffer.from(decrypted), {
+        type: "buffer",
+        cellDates: false,
+      });
+      if (workbook.SheetNames.length > 0) return workbook;
+    } catch {
+      // Continue to the next independent decryption implementation.
+    }
+  }
+
+  if (foundZipPackage) {
+    throw new Error(
+      "تم فك التشفير لكن تعذرت قراءة محتوى الملف. قد تكون صيغة Excel غير مدعومة أو أن الملف تالف."
+    );
+  }
+  throw new Error(
+    "تعذر فك تشفير ملف Excel. تحقق من كلمة المرور أو أن صيغة التشفير مدعومة وأن الملف غير تالف."
+  );
+}
+
 export async function parseTelegramWorkbookBase64(
   base64: string,
   password?: string
@@ -63,48 +119,23 @@ export async function parseTelegramWorkbookBase64(
       "حجم ملف Excel فارغ أو يتجاوز الحد المسموح وهو 15 ميغابايت."
     );
   }
-  let workbookBytes: Uint8Array = bytes;
-  let encrypted: boolean;
-  try {
-    encrypted = officeCrypto.isEncrypted(bytes);
-  } catch {
-    throw new Error("تعذر التحقق من بنية ملف Excel. تأكد من سلامة الملف.");
-  }
-
+  let workbook: XLSX.WorkBook;
   if (encrypted) {
     if (password === undefined || password.length === 0) {
       throw new Error("هذا الملف محمي بكلمة مرور. أدخل كلمة المرور لفتحه.");
     }
+    workbook = await decryptProtectedWorkbook(bytes, password);
+  } else {
     try {
-      workbookBytes = await officeCrypto.decrypt(bytes, { password });
+      workbook = XLSX.read(bytes, {
+        type: "buffer",
+        cellDates: false,
+      });
     } catch {
-      // Use XlsxPopulate as an independent decryption path for Office Agile
-      // encrypted files produced by Excel. Keep the original password exactly
-      // as entered; leading/trailing spaces can be part of a valid password.
-      try {
-        const protectedWorkbook = await XlsxPopulate.fromDataAsync(bytes, {
-          password,
-        });
-        workbookBytes = Buffer.from(await protectedWorkbook.outputAsync());
-      } catch {
-        throw new Error(
-          "تعذر فك تشفير ملف Excel. تحقق من كلمة المرور أو أن نوع التشفير مدعوم."
-        );
-      }
+      throw new Error(
+        "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته."
+      );
     }
-  }
-
-  let workbook: XLSX.WorkBook;
-  try {
-    workbook = XLSX.read(Buffer.from(workbookBytes), {
-      type: "buffer",
-      cellDates: false,
-    });
-  } catch {
-    const errorMessage = encrypted
-      ? "تمت محاولة فك التشفير لكن تعذر قراءة محتوى الملف. قد تكون صيغة Excel غير مدعومة أو أن الملف تالف."
-      : "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته.";
-    throw new Error(errorMessage);
   }
 
   const sheets = workbook.SheetNames.map(sheetName => {

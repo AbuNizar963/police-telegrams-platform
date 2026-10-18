@@ -32,6 +32,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1149.0
         version: 3.1149.0
+      '@node-projects/excelforge':
+        specifier: https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz
+        version: https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.64.0(react@19.2.1))
@@ -4764,6 +4767,10 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  '@node-projects/excelforge@https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz':
+    resolution: {tarball: https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz}
+    version: 3.8.0
 
   xlsx-populate@1.21.0:
     resolution: {integrity: sha512-8v2Gm8BehXo6LU7KT802QoXTPkYY1SKk5V8g/UuYZnNB3JzXqud/P99Pxr2yXeKyt+sKlCatmidz6jQNie1hRw==}
@@ -9809,6 +9816,8 @@ snapshots:
     optional: true
 
   wrappy@1.0.2: {}
+
+  '@node-projects/excelforge@https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz': {}
 
   xlsx-populate@1.21.0:
     dependencies:

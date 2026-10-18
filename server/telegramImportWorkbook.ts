@@ -105,7 +105,7 @@ export async function parseTelegramWorkbookBase64(
         header: 1,
         defval: "",
         raw: false,
-      },
+      }
     ),
   }));
 

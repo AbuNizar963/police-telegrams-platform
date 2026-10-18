@@ -861,8 +861,12 @@ export default function Home() {
       setExcelPasswordOpen(false);
       setExcelPendingFile(null);
       setExcelImportOpen(true);
-    } catch {
-      toast.error("كلمة المرور غير صحيحة أو الملف غير مدعوم بهذه الصيغة");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message.trim() : "";
+      toast.error(
+        message || "تعذر فتح ملف Excel المحمي. تحقق من كلمة المرور وصيغة الملف ثم حاول مجددًا."
+      );
     }
   };
 

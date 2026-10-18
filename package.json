@@ -84,6 +84,7 @@
     "web-push": "^3.6.7",
     "wouter": "^3.3.5",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "xlsx-populate": "^1.21.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

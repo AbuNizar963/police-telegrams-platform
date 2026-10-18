@@ -121,7 +121,8 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
-
+import { buildTelegramWorkbook } from "./telegramWorkbook";
+import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
 const categorySchema = z.enum([
@@ -153,6 +154,18 @@ const statusSchema = z.enum([
   "completed",
   "archived",
 ]);
+
+const excelImportRowSchema = z.object({
+  originalSerial: z.string().max(120).optional(),
+  time: z.string().max(120).optional(),
+  sender: z.string().max(255).optional(),
+  date: z.string().max(120).optional(),
+  body: z.string().trim().min(3).max(20000),
+  recipient: z.string().max(255).optional(),
+  signature: z.string().max(255).optional(),
+  notes: z.string().max(4000).optional(),
+  sheetName: z.enum(["صادر", "وارد"]),
+});
 
 function isPrivateLogoHostname(hostname: string): boolean {
   const normalized = hostname.toLowerCase().replace(/\.$/, "");
@@ -369,6 +382,37 @@ function parseImportedDate(value?: string, time?: string): Date | undefined {
   if (timeMatch)
     date.setUTCHours(Number(timeMatch[1]), Number(timeMatch[2] ?? 0));
   return date;
+}
+
+async function getOrganizationSerialKeys(
+  userId: number,
+  organizationId: string
+) {
+  const keys = new Set<string>();
+  const normalize = (value: string | number) =>
+    localizeDigits(value, "latin").trim().toLowerCase();
+  for (let page = 1; page <= 100; page += 1) {
+    const rows = await listTelegrams(
+      userId,
+      false,
+      organizationId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      page,
+      1000
+    );
+    for (const row of rows) {
+      keys.add(normalize(row.serialNumber));
+      keys.add(normalize(row.serialCode));
+    }
+    if (rows.length < 1000) break;
+  }
+  return keys;
 }
 
 export const appRouter = router({
@@ -1487,9 +1531,37 @@ export const appRouter = router({
         }
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "يتجاوز التصدير الحد الآمن البالغ 100000 برقية؛ استخدم فلاتر التاريخ أو الجهة لتقسيم السجل.",
+          message:
+            "يتجاوز التصدير الحد الآمن البالغ 100000 برقية؛ استخدم فلاتر التاريخ أو الجهة لتقسيم السجل.",
         });
       }),
+
+    exportWorkbook: protectedProcedure
+      .input(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                serial: z.string().max(120),
+                time: z.string().max(120),
+                sender: z.string().max(255),
+                date: z.string().max(120),
+                body: z.string().max(20000),
+                recipient: z.string().max(255),
+                signature: z.string().max(255),
+                notes: z.string().max(4000),
+                direction: z.enum(["صادر", "وارد"]),
+              })
+            )
+            .min(1)
+            .max(1000),
+          password: z.string().max(128).optional(),
+        })
+      )
+      .mutation(async ({ input }) => ({
+        base64: await buildTelegramWorkbook(input),
+        fileName: `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      })),
 
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
@@ -2577,31 +2649,65 @@ export const appRouter = router({
         number: await getSuggestedOrganizationSerialNumber(organizationId),
       };
     }),
+    importWorkbookPreview: organizationAdminProcedure
+      .input(
+        z.object({
+          base64: z.string().min(1).max(22_000_000),
+          password: z.string().max(128).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const parsed = await parseTelegramWorkbookBase64(
+          input.base64,
+          input.password
+        );
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const normalizeSerial = (value: string | number) =>
+          localizeDigits(value, "latin").trim().toLowerCase();
+        const keys = await getOrganizationSerialKeys(
+          ctx.user.id,
+          organizationId
+        );
+        const duplicates = parsed.rows.flatMap((row, index) =>
+          row.originalSerial && keys.has(normalizeSerial(row.originalSerial))
+            ? [index]
+            : []
+        );
+        return { ...parsed, duplicates };
+      }),
+    importPreview: organizationAdminProcedure
+      .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
+      .query(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const normalizeSerial = (value: string | number) =>
+          localizeDigits(value, "latin").trim().toLowerCase();
+        const keys = await getOrganizationSerialKeys(
+          ctx.user.id,
+          organizationId
+        );
+        return input.rows.map((row, index) => ({
+          index,
+          duplicate:
+            Boolean(row.originalSerial?.trim()) &&
+            keys.has(normalizeSerial(row.originalSerial!.trim())),
+        }));
+      }),
     importRows: organizationAdminProcedure
       .input(
         z.object({
-          rows: z
-            .array(
-              z.object({
-                originalSerial: z.string().max(120).optional(),
-                time: z.string().max(120).optional(),
-                sender: z.string().max(255).optional(),
-                date: z.string().max(120).optional(),
-                body: z.string().trim().min(3).max(20000),
-                recipient: z.string().max(255).optional(),
-                signature: z.string().max(255).optional(),
-                notes: z.string().max(4000).optional(),
-                sheetName: z.enum(["صادر", "وارد"]),
-              })
-            )
-            .min(1)
-            .max(1000),
+          rows: z.array(excelImportRowSchema).min(1).max(1000),
         })
       )
       .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const settings = await getOrCreateSettings(ctx.user.id);
         const importerName = ctx.user.name ?? ctx.user.email ?? "مستخدم مسجل";
+        const normalizeSerial = (value: string | number) =>
+          localizeDigits(value, "latin").trim().toLowerCase();
+        const existingSerialKeys = await getOrganizationSerialKeys(
+          ctx.user.id,
+          organizationId
+        );
         let created = 0;
         let skipped = 0;
         const errors: Array<{ row: number; message: string }> = [];
@@ -2620,6 +2726,14 @@ export const appRouter = router({
             .update(sourceKey)
             .digest("hex")}`;
           try {
+            const originalSerial = row.originalSerial?.trim() ?? "";
+            if (
+              originalSerial &&
+              existingSerialKeys.has(normalizeSerial(originalSerial))
+            ) {
+              skipped += 1;
+              continue;
+            }
             const existing = await getTelegramByIdempotencyKey(idempotencyKey);
             if (existing) {
               skipped += 1;
@@ -2627,11 +2741,13 @@ export const appRouter = router({
             }
             const serialNumber = await allocateSerialNumber();
             const importedCreatedAt = parseImportedDate(row.date, row.time);
-            const organizationDirection = row.sheetName === "وارد" ? "incoming" : "outgoing";
-            const organizationSerialNumber = await allocateOrganizationSerialNumber(
-              organizationId,
-              organizationDirection
-            );
+            const organizationDirection =
+              row.sheetName === "وارد" ? "incoming" : "outgoing";
+            const organizationSerialNumber =
+              await allocateOrganizationSerialNumber(
+                organizationId,
+                organizationDirection
+              );
             const serialDate = importedCreatedAt ?? new Date();
             const dateParts = new Intl.DateTimeFormat("en-CA", {
               timeZone: settings.timezone,
@@ -2644,9 +2760,10 @@ export const appRouter = router({
             );
             const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
             const serialCode = `${settings.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
-            const organizationSerialPrefix = organizationDirection === "incoming"
-              ? settings.incomingSerialPrefix
-              : settings.serialPrefix;
+            const organizationSerialPrefix =
+              organizationDirection === "incoming"
+                ? settings.incomingSerialPrefix
+                : settings.serialPrefix;
             const organizationSerialCode = `${organizationSerialPrefix}-${dateCode}-${String(organizationSerialNumber).padStart(5, "0")}`;
             const sourceCreatorName =
               row.sender?.trim() ||
@@ -2729,6 +2846,8 @@ export const appRouter = router({
               },
             });
             created += 1;
+            if (originalSerial)
+              existingSerialKeys.add(normalizeSerial(originalSerial));
           } catch (error) {
             errors.push({
               row: index + 2,

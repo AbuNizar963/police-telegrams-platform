@@ -68,6 +68,40 @@ void main() {
     expect(parsed.issues.single.reason, contains('مكرر'));
   });
 
+  test(
+    'rejects repeated serials even when contents differ and digits are Arabic',
+    () {
+      final bytes = buildTelegramWorkbook([
+        {
+          'serial': '٢٣',
+          'time': '10:00',
+          'sender': 'مرسل',
+          'date': '2026-10-16',
+          'body': 'نص البرقية الأول',
+          'recipient': 'مستلم',
+          'signature': '',
+          'notes': '',
+          'direction': 'وارد',
+        },
+        {
+          'serial': '23',
+          'time': '11:00',
+          'sender': 'مرسل آخر',
+          'date': '2026-10-17',
+          'body': 'محتوى مختلف للبرقية',
+          'recipient': 'مستلم',
+          'signature': '',
+          'notes': '',
+          'direction': 'وارد',
+        },
+      ]);
+
+      final parsed = parseTelegramWorkbook(bytes);
+      expect(parsed.rows, hasLength(1));
+      expect(parsed.duplicateRows, 1);
+    },
+  );
+
   test('skips rows whose telegram body is too short', () {
     final bytes = buildTelegramWorkbook([
       {

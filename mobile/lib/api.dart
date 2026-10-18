@@ -60,7 +60,13 @@ class PoliceApi {
                       body: jsonEncode({'json': input}),
                     )
                   : http.get(uri, headers: headers))
-              .timeout(const Duration(seconds: 8));
+              .timeout(
+                Duration(
+                  seconds: procedure == 'telegrams.importWorkbookPreview'
+                      ? 90
+                      : 8,
+                ),
+              );
     } catch (_) {
       if (!mutation) {
         final cached = await _readOfflineResponse(procedure, input);

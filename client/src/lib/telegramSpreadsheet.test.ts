@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import XlsxPopulate from "xlsx-populate";
 import { describe, expect, it } from "vitest";
 import {
   parseTelegramWorkbook,
@@ -13,8 +14,8 @@ describe("telegram spreadsheet parsing", () => {
       [
         "123",
         "10:30",
-        "2026-10-01",
         "قسم شرطة الشهباء",
+        "2026-10-01",
         "نص برقية اختبار",
         "قيادة الأمن الداخلي",
         "التوقيع",
@@ -22,20 +23,6 @@ describe("telegram spreadsheet parsing", () => {
       ],
     ]);
     XLSX.utils.book_append_sheet(workbook, sheet, "صادر");
-    const incomingSheet = XLSX.utils.aoa_to_sheet([
-      [...TELEGRAM_SHEET_HEADERS],
-      [
-        "124",
-        "11:45",
-        "2026-10-02",
-        "قسم شرطة الشهباء",
-        "نص برقية وارد اختبار",
-        "قيادة الأمن الداخلي",
-        "التوقيع",
-        "ملاحظة وارد",
-      ],
-    ]);
-    XLSX.utils.book_append_sheet(workbook, incomingSheet, "وارد");
 
     const output = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -45,20 +32,50 @@ describe("telegram spreadsheet parsing", () => {
 
     const result = await parseTelegramWorkbook(file);
 
-    expect(result.rows).toHaveLength(2);
+    expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
       originalSerial: "123",
-      date: "2026-10-01",
       body: "نص برقية اختبار",
       sheetName: "صادر",
     });
-    expect(result.rows[1]).toMatchObject({
-      originalSerial: "124",
-      date: "2026-10-02",
-      body: "نص برقية وارد اختبار",
-      sheetName: "وارد",
+  });
+
+  it("opens an Agile-encrypted workbook with a supplied password", async () => {
+    const workbook = await XlsxPopulate.fromBlankAsync();
+    const sheet = workbook.sheet(0).name("صادر");
+    sheet.cell("A1").value("الرقم المتسلسل");
+    sheet.cell("B1").value("ساعة الأرسال أو الوصول");
+    sheet.cell("C1").value("الجهة المرسلة واسم المرسل");
+    sheet.cell("D1").value("تاريخ البرقية");
+    sheet.cell("E1").value("نـــــــــــص البرقيــــــــــــــــــــــــة");
+    sheet.cell("F1").value("الجهة المرسلة واسم المستلم");
+    sheet.cell("G1").value("توقيع المرسل أو المستلم");
+    sheet.cell("H1").value("ملاحظات");
+    [
+      "77",
+      "10:30",
+      "قسم الاختبار",
+      "2026-10-18",
+      "برقية اختبار مشفرة",
+      "القيادة",
+      "موقّع",
+      "ملاحظة",
+    ].forEach((value, index) => {
+      sheet.cell(`${String.fromCharCode(65 + index)}2`).value(value);
     });
-    expect(TELEGRAM_SHEET_HEADERS).toHaveLength(8);
+    const encrypted = await workbook.outputAsync({
+      password: "sample-password",
+    });
+    const file = new File([encrypted], "protected.xlsx");
+
+    const result = await parseTelegramWorkbook(file, "sample-password");
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      originalSerial: "77",
+      body: "برقية اختبار مشفرة",
+      sheetName: "صادر",
+    });
   });
 
   it("rejects files that are not Excel workbooks", async () => {

@@ -34,6 +34,27 @@ class TelegramExcelRow {
   final String notes;
   final String sheetName;
 
+  TelegramExcelRow copyWith({
+    String? originalSerial,
+    String? time,
+    String? sender,
+    String? date,
+    String? body,
+    String? recipient,
+    String? signature,
+    String? notes,
+  }) => TelegramExcelRow(
+    originalSerial: originalSerial ?? this.originalSerial,
+    time: time ?? this.time,
+    sender: sender ?? this.sender,
+    date: date ?? this.date,
+    body: body ?? this.body,
+    recipient: recipient ?? this.recipient,
+    signature: signature ?? this.signature,
+    notes: notes ?? this.notes,
+    sheetName: sheetName,
+  );
+
   Map<String, dynamic> toImportMap() => {
     'originalSerial': originalSerial,
     'time': time,
@@ -111,6 +132,10 @@ String _normalized(String value) => value
     .replaceAll(RegExp(r'[\s_ـ]+'), '')
     .replaceAll(RegExp('[أإآ]'), 'ا')
     .replaceAll('ى', 'ي')
+    .replaceAllMapped(RegExp('[٠-٩۰-۹]'), (match) {
+      final digit = match.group(0)!;
+      return '${'٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(digit) % 10}';
+    })
     .toLowerCase();
 
 Map<String, int> _headerIndexes(List<dynamic> header) {
@@ -266,6 +291,7 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
   final rows = <TelegramExcelRow>[];
   final issues = <TelegramExcelIssue>[];
   final fingerprints = <String>{};
+  final serials = <String>{};
   var skippedRows = 0;
   var duplicateRows = 0;
 
@@ -341,6 +367,7 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
       final originalSerial = _cell(row, fallback['serial']!);
       final date = _cell(row, fallback['date']!);
       final time = _cell(row, fallback['time']!);
+      final serialKey = '$direction|${_normalized(originalSerial)}';
       final fingerprint = [
         direction,
         _normalized(originalSerial),
@@ -348,7 +375,8 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
         _normalized(time),
         _normalized(body),
       ].join('|');
-      if (!fingerprints.add(fingerprint)) {
+      if (!fingerprints.add(fingerprint) ||
+          (originalSerial.isNotEmpty && !serials.add(serialKey))) {
         duplicateRows++;
         issues.add(
           TelegramExcelIssue(
@@ -362,6 +390,7 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
         );
         continue;
       }
+      if (originalSerial.isEmpty) serials.add(serialKey);
       rows.add(
         TelegramExcelRow(
           originalSerial: originalSerial,

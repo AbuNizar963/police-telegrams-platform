@@ -5,6 +5,7 @@ import OwnerUserManagement from "@/components/OwnerUserManagement";
 import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +56,7 @@ import {
   downloadTelegramWorkbook,
   parseTelegramWorkbook,
   type TelegramSpreadsheetIssue,
+  type TelegramSpreadsheetExportRow,
   type TelegramSpreadsheetRow,
 } from "@/lib/telegramSpreadsheet";
 import {
@@ -103,6 +105,21 @@ function downloadImportErrorReport(
   const link = document.createElement("a");
   link.href = url;
   link.download = `تقرير-أخطاء-الاستيراد-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadBase64File(base64: string, fileName: string) {
+  const binary = window.atob(base64);
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  const url = URL.createObjectURL(
+    new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -435,6 +452,19 @@ export default function Home() {
   );
   const [excelFileName, setExcelFileName] = useState("");
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [excelExportOpen, setExcelExportOpen] = useState(false);
+  const [excelExportRows, setExcelExportRows] = useState<
+    TelegramSpreadsheetExportRow[]
+  >([]);
+  const [excelExportPassword, setExcelExportPassword] = useState("");
+  const [excelPendingFile, setExcelPendingFile] = useState<File | null>(null);
+  const [excelPasswordOpen, setExcelPasswordOpen] = useState(false);
+  const [excelSelectedRows, setExcelSelectedRows] = useState<Set<number>>(
+    new Set()
+  );
+  const [excelDuplicateIndexes, setExcelDuplicateIndexes] = useState<
+    Set<number>
+  >(new Set());
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [displayColumns, setDisplayColumns] = useState<
     Record<DisplayColumn, boolean>
@@ -613,6 +643,15 @@ export default function Home() {
     },
     onError: error => toast.error(error.message || "تعذر استيراد ملف Excel"),
   });
+  const exportWorkbook = trpc.telegrams.exportWorkbook.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.fileName);
+      toast.success("تم تصدير الملف بالقالب الرسمي");
+      setExcelExportOpen(false);
+      setExcelExportPassword("");
+    },
+    onError: error => toast.error(error.message || "تعذر تصدير ملف Excel"),
+  });
   const composerAttachmentRef = useRef<File | null>(null);
   const uploadComposerAttachment =
     trpc.telegrams.uploadAttachment.useMutation();
@@ -725,7 +764,7 @@ export default function Home() {
         toast.info("لا توجد صفوف قابلة للتصدير ضمن الفلاتر الحالية");
         return;
       }
-      downloadTelegramWorkbook(
+      setExcelExportRows(
         exportRows.map(row => ({
           serial: localizeDigits(
             getTelegramDisplayNumber(row.organizationSerialCode ?? ""),
@@ -741,10 +780,9 @@ export default function Home() {
           signature: row.creatorName,
           notes: row.workflowReason ?? "",
           direction: isOutgoingTelegram(row) ? "صادر" : "وارد",
-        })),
-        `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`
+        }))
       );
-      toast.success(`تم تصدير ${exportRows.length} برقية بصيغة Excel`);
+      setExcelExportOpen(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تصدير Excel");
     } finally {
@@ -755,16 +793,66 @@ export default function Home() {
   const handleExcelFile = async (file: File) => {
     try {
       const parsed = await parseTelegramWorkbook(file);
+      const duplicateResults = await utils.telegrams.importPreview.fetch({
+        rows: parsed.rows,
+      });
+      const duplicateIndexes = new Set(
+        duplicateResults.filter(item => item.duplicate).map(item => item.index)
+      );
       setExcelRows(parsed.rows);
+      setExcelDuplicateIndexes(duplicateIndexes);
+      setExcelSelectedRows(
+        new Set(
+          parsed.rows
+            .map((_, index) => index)
+            .filter(index => !duplicateIndexes.has(index))
+        )
+      );
       setExcelSkippedRows(parsed.skippedRows);
-      setExcelDuplicateRows(parsed.duplicateRows);
+      setExcelDuplicateRows(parsed.duplicateRows + duplicateIndexes.size);
       setExcelIssues(parsed.issues);
       setExcelFileName(file.name);
       setExcelImportOpen(true);
     } catch (error) {
+      if (/\.(xlsx|xls)$/i.test(file.name)) {
+        setExcelPendingFile(file);
+        setExcelPasswordOpen(true);
+        return;
+      }
       toast.error(
         error instanceof Error ? error.message : "تعذر قراءة ملف Excel"
       );
+    }
+  };
+
+  const parseProtectedExcel = async (password: string) => {
+    if (!excelPendingFile) return;
+    try {
+      const parsed = await parseTelegramWorkbook(excelPendingFile, password);
+      const duplicateResults = await utils.telegrams.importPreview.fetch({
+        rows: parsed.rows,
+      });
+      const duplicateIndexes = new Set(
+        duplicateResults.filter(item => item.duplicate).map(item => item.index)
+      );
+      setExcelRows(parsed.rows);
+      setExcelDuplicateIndexes(duplicateIndexes);
+      setExcelSelectedRows(
+        new Set(
+          parsed.rows
+            .map((_, index) => index)
+            .filter(index => !duplicateIndexes.has(index))
+        )
+      );
+      setExcelSkippedRows(parsed.skippedRows);
+      setExcelDuplicateRows(parsed.duplicateRows + duplicateIndexes.size);
+      setExcelIssues(parsed.issues);
+      setExcelFileName(excelPendingFile.name);
+      setExcelPasswordOpen(false);
+      setExcelPendingFile(null);
+      setExcelImportOpen(true);
+    } catch {
+      toast.error("كلمة المرور غير صحيحة أو الملف غير مدعوم بهذه الصيغة");
     }
   };
 
@@ -1380,12 +1468,173 @@ export default function Home() {
           skippedRows={excelSkippedRows}
           duplicateRows={excelDuplicateRows}
           issues={excelIssues}
+          selectedRows={excelSelectedRows}
+          duplicateIndexes={excelDuplicateIndexes}
+          setRows={setExcelRows}
+          setSelectedRows={setExcelSelectedRows}
           pending={importExcel.isPending}
           close={() => setExcelImportOpen(false)}
-          confirm={() => importExcel.mutate({ rows: excelRows })}
+          confirm={() =>
+            importExcel.mutate({
+              rows: excelRows.filter((_, index) =>
+                excelSelectedRows.has(index)
+              ),
+            })
+          }
+        />
+      )}
+      {excelPasswordOpen && (
+        <ExcelPasswordModal
+          close={() => {
+            setExcelPasswordOpen(false);
+            setExcelPendingFile(null);
+          }}
+          confirm={parseProtectedExcel}
+        />
+      )}
+      {excelExportOpen && (
+        <ExcelExportPreviewModal
+          rows={excelExportRows}
+          password={excelExportPassword}
+          setPassword={setExcelExportPassword}
+          pending={exportWorkbook.isPending}
+          close={() => setExcelExportOpen(false)}
+          confirm={() =>
+            exportWorkbook.mutate({
+              rows: excelExportRows,
+              password: excelExportPassword.trim() || undefined,
+            })
+          }
         />
       )}
     </div>
+  );
+}
+
+function ExcelPasswordModal({
+  close,
+  confirm,
+}: {
+  close: () => void;
+  confirm: (password: string) => void;
+}) {
+  const [password, setPassword] = useState("");
+  return (
+    <Modal title="فتح ملف Excel محمي" subtitle="أدخل كلمة المرور" close={close}>
+      <div className="space-y-4">
+        <p className="text-sm leading-7 text-muted-foreground">
+          تُستخدم كلمة المرور محليًا لفك الملف ولا يتم حفظها.
+        </p>
+        <Input
+          autoFocus
+          type="password"
+          value={password}
+          onChange={event => setPassword(event.target.value)}
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={close}>
+            إلغاء
+          </Button>
+          <Button disabled={!password} onClick={() => confirm(password)}>
+            فتح الملف
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ExcelExportPreviewModal({
+  rows,
+  password,
+  setPassword,
+  pending,
+  close,
+  confirm,
+}: {
+  rows: TelegramSpreadsheetExportRow[];
+  password: string;
+  setPassword: (value: string) => void;
+  pending: boolean;
+  close: () => void;
+  confirm: () => void;
+}) {
+  return (
+    <Modal
+      title="معاينة تصدير سجل البرقيات"
+      subtitle="القالب الرسمي — صادر ووارد"
+      close={close}
+      wide
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border p-3">
+            <span className="text-xs text-muted-foreground">الإجمالي</span>
+            <p className="text-xl font-bold">{rows.length}</p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <span className="text-xs text-muted-foreground">صادر</span>
+            <p className="text-xl font-bold">
+              {rows.filter(row => row.direction === "صادر").length}
+            </p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <span className="text-xs text-muted-foreground">وارد</span>
+            <p className="text-xl font-bold">
+              {rows.filter(row => row.direction === "وارد").length}
+            </p>
+          </div>
+        </div>
+        <div className="max-h-[35vh] overflow-auto rounded-xl border">
+          <table className="w-full min-w-[700px] text-right text-xs">
+            <thead className="sticky top-0 bg-muted">
+              <tr>
+                <th className="p-3">الورقة</th>
+                <th className="p-3">الرقم</th>
+                <th className="p-3">المرسل</th>
+                <th className="p-3">النص</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 100).map((row, index) => (
+                <tr
+                  key={`${row.serial}-${index}`}
+                  className="border-t align-top"
+                >
+                  <td className="p-3">{row.direction}</td>
+                  <td className="p-3">{row.serial}</td>
+                  <td className="p-3">{row.sender}</td>
+                  <td className="max-w-[30rem] p-3">{row.body}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+          <label className="mb-2 block text-sm font-semibold">
+            كلمة مرور اختيارية للتشفير
+          </label>
+          <Input
+            type="password"
+            value={password}
+            onChange={event => setPassword(event.target.value)}
+            placeholder="اتركها فارغة لملف غير مشفر"
+          />
+          <p className="mt-2 text-xs leading-6 text-muted-foreground">
+            سيحافظ الملف على ورقتي صادر ووارد، العناوين، الألوان، عرض الأعمدة
+            والتنسيق المرفق.
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 border-t pt-4">
+          <Button variant="outline" onClick={close} disabled={pending}>
+            إلغاء
+          </Button>
+          <Button onClick={confirm} disabled={pending}>
+            {pending ? "جارٍ تجهيز الملف..." : "تشفير وتنزيل Excel"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1481,6 +1730,10 @@ function ExcelImportPreviewModal({
   skippedRows,
   duplicateRows,
   issues,
+  selectedRows,
+  duplicateIndexes,
+  setRows,
+  setSelectedRows,
   pending,
   close,
   confirm,
@@ -1490,6 +1743,10 @@ function ExcelImportPreviewModal({
   skippedRows: number;
   duplicateRows: number;
   issues: TelegramSpreadsheetIssue[];
+  selectedRows: Set<number>;
+  duplicateIndexes: Set<number>;
+  setRows: React.Dispatch<React.SetStateAction<TelegramSpreadsheetRow[]>>;
+  setSelectedRows: React.Dispatch<React.SetStateAction<Set<number>>>;
   pending: boolean;
   close: () => void;
   confirm: () => void;
@@ -1552,6 +1809,7 @@ function ExcelImportPreviewModal({
           <table className="w-full min-w-[760px] text-right text-xs">
             <thead className="sticky top-0 bg-muted">
               <tr>
+                <th className="p-3">اختيار</th>
                 <th className="p-3">الورقة</th>
                 <th className="p-3">الرقم الأصلي</th>
                 <th className="p-3">الوقت</th>
@@ -1567,13 +1825,70 @@ function ExcelImportPreviewModal({
                   key={`${row.sheetName}-${row.originalSerial}-${index}`}
                   className="border-t align-top"
                 >
+                  <td className="p-3">
+                    <Checkbox
+                      checked={selectedRows.has(index)}
+                      onCheckedChange={checked =>
+                        setSelectedRows(current => {
+                          const next = new Set(current);
+                          checked ? next.add(index) : next.delete(index);
+                          return next;
+                        })
+                      }
+                    />
+                    {duplicateIndexes.has(index) && (
+                      <span className="mr-2 text-[10px] text-amber-700">
+                        مكرر
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3 font-semibold">{row.sheetName}</td>
                   <td className="p-3">{row.originalSerial || "—"}</td>
                   <td className="p-3">{row.time || "—"}</td>
-                  <td className="max-w-48 p-3">{row.sender || "—"}</td>
+                  <td className="max-w-48 p-2">
+                    <Input
+                      value={row.sender}
+                      onChange={event =>
+                        setRows(current =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, sender: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
                   <td className="p-3">{row.date || "—"}</td>
-                  <td className="max-w-[28rem] p-3">{row.body}</td>
-                  <td className="max-w-48 p-3">{row.recipient || "—"}</td>
+                  <td className="max-w-[28rem] p-2">
+                    <Textarea
+                      value={row.body}
+                      rows={2}
+                      onChange={event =>
+                        setRows(current =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, body: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td className="max-w-48 p-2">
+                    <Input
+                      value={row.recipient}
+                      onChange={event =>
+                        setRows(current =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, recipient: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1596,12 +1911,12 @@ function ExcelImportPreviewModal({
           <Button
             type="button"
             onClick={confirm}
-            disabled={pending || rows.length === 0}
+            disabled={pending || selectedRows.size === 0}
             className="bg-[#10233f] text-white hover:bg-[#18375f]"
           >
             {pending
               ? "جارٍ استيراد السجلات..."
-              : `اعتماد استيراد ${rows.length} برقية`}
+              : `اعتماد استيراد ${selectedRows.size} برقية`}
           </Button>
         </div>
       </div>

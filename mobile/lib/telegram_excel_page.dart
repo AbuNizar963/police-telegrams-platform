@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -27,15 +28,38 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
   List<TelegramExcelIssue> issues = const [];
   int skippedRows = 0;
   int duplicateRows = 0;
+  final Set<int> selectedRows = {};
+  final Set<int> duplicateIndexes = {};
 
   String value(dynamic input) =>
       input == null || '$input' == 'null' ? '' : '$input'.trim();
+
+  TelegramExcelRow _rowFromMap(Map row) => TelegramExcelRow(
+    originalSerial: value(row['originalSerial']),
+    time: value(row['time']),
+    sender: value(row['sender']),
+    date: value(row['date']),
+    body: value(row['body']),
+    recipient: value(row['recipient']),
+    signature: value(row['signature']),
+    notes: value(row['notes']),
+    sheetName: value(row['sheetName']) == 'وارد' ? 'وارد' : 'صادر',
+  );
+
+  TelegramExcelIssue _issueFromMap(Map row) => TelegramExcelIssue(
+    rowNumber: int.tryParse('${row['rowNumber']}') ?? 0,
+    sheetName: value(row['sheetName']),
+    reason: value(row['reason']),
+    value: value(row['value']),
+  );
 
   void clearPreview() {
     preview = const [];
     issues = const [];
     skippedRows = 0;
     duplicateRows = 0;
+    selectedRows.clear();
+    duplicateIndexes.clear();
     fileName = null;
   }
 
@@ -89,17 +113,31 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
           'direction': outgoing ? 'صادر' : 'وارد',
         });
       }
-      final date = DateTime.now().toIso8601String().substring(0, 10);
-      final bytes = buildTelegramWorkbook(
-        rows,
-        fileName: 'سجل-البرقيات-$date.xlsx',
+      if (rows.length > 1000) {
+        throw Exception(
+          'يحتوي السجل على ${rows.length} صفًا؛ حد ملف القالب الواحد 1000. استخدم مرشحات التاريخ لتقسيم التصدير.',
+        );
+      }
+      final options = await _confirmExport(rows);
+      if (options == null || !mounted) return;
+      final exported = await widget.api.call(
+        'telegrams.exportWorkbook',
+        mutation: true,
+        input: {
+          'rows': rows,
+          if (options['password']!.isNotEmpty) 'password': options['password'],
+        },
       );
+      if (exported is! Map || exported['base64'] is! String) {
+        throw Exception('تعذر إنشاء ملف Excel.');
+      }
+      final outputName = value(exported['fileName']);
       final path = await FilePicker.saveFile(
         dialogTitle: 'حفظ سجل البرقيات بصيغة Excel',
-        fileName: 'سجل-البرقيات-$date.xlsx',
+        fileName: outputName,
         type: FileType.custom,
         allowedExtensions: ['xlsx'],
-        bytes: Uint8List.fromList(bytes),
+        bytes: Uint8List.fromList(base64Decode(exported['base64'] as String)),
       );
       if (mounted) {
         setState(
@@ -119,6 +157,114 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
     }
   }
 
+  Future<Map<String, String>?> _confirmExport(
+    List<Map<String, String>> rows,
+  ) async {
+    final password = TextEditingController();
+    var protect = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('معاينة تصدير البرقيات'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('سيصدر ${rows.length} صفًا في ملف مطابق لقالب السجل.'),
+                    ...rows
+                        .take(5)
+                        .map(
+                          (row) => ListTile(
+                            dense: true,
+                            title: Text(
+                              '${row['direction']} · ${row['serial']}',
+                            ),
+                            subtitle: Text(
+                              row['body'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: protect,
+                      title: const Text('حماية الملف بكلمة مرور'),
+                      onChanged: (value) =>
+                          setDialogState(() => protect = value ?? false),
+                    ),
+                    if (protect)
+                      TextField(
+                        controller: password,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'كلمة المرور (4 أحرف على الأقل)',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (protect && password.text.trim().length < 4) return;
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text('تصدير'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final result = confirmed == true
+        ? {'password': protect ? password.text.trim() : ''}
+        : null;
+    password.dispose();
+    return result;
+  }
+
+  Future<String?> _askImportPassword() async {
+    final controller = TextEditingController();
+    final password = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('الملف محمي بكلمة مرور'),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'أدخل كلمة المرور'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              child: const Text('متابعة'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return password;
+  }
+
   Future<void> chooseExcel() async {
     setState(() {
       busy = true;
@@ -135,16 +281,82 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       if (picked == null || picked.files.isEmpty) return;
       final bytes = picked.files.single.bytes;
       if (bytes == null) throw Exception('تعذر قراءة محتوى ملف Excel المحدد.');
-      final parsed = parseTelegramWorkbook(bytes);
+      TelegramExcelParseResult? parsed;
+      Set<int> duplicates = {};
+      try {
+        parsed = parseTelegramWorkbook(bytes);
+      } catch (_) {
+        final password = await _askImportPassword();
+        if (password == null || !mounted) return;
+        final result = await widget.api.call(
+          'telegrams.importWorkbookPreview',
+          mutation: true,
+          input: {'base64': base64Encode(bytes), 'password': password},
+        );
+        if (result is! Map || result['rows'] is! List) {
+          throw Exception('تعذر إنشاء معاينة الملف المحمي.');
+        }
+        final rows = (result['rows'] as List)
+            .whereType<Map>()
+            .map(_rowFromMap)
+            .toList();
+        final duplicateList = result['duplicates'];
+        duplicates = duplicateList is List
+            ? duplicateList
+                  .map((i) => int.tryParse('$i') ?? -1)
+                  .where((i) => i >= 0)
+                  .toSet()
+            : {};
+        final issues = result['issues'] is List
+            ? (result['issues'] as List)
+                  .whereType<Map>()
+                  .map(_issueFromMap)
+                  .toList()
+            : <TelegramExcelIssue>[];
+        parsed = TelegramExcelParseResult(
+          rows: rows,
+          skippedRows: int.tryParse('${result['skippedRows']}') ?? 0,
+          duplicateRows: int.tryParse('${result['duplicateRows']}') ?? 0,
+          issues: issues,
+          sheets: result['sheets'] is List
+              ? (result['sheets'] as List).map(value).toList()
+              : const [],
+        );
+      }
+      if (parsed != null && duplicates.isEmpty) {
+        final checked = await widget.api.call(
+          'telegrams.importPreview',
+          input: {'rows': parsed.rows.map((row) => row.toImportMap()).toList()},
+        );
+        if (checked is List) {
+          duplicates = checked
+              .whereType<Map>()
+              .where((item) => item['duplicate'] == true)
+              .map((item) => int.tryParse('${item['index']}') ?? -1)
+              .where((index) => index >= 0)
+              .toSet();
+        }
+      }
       if (!mounted) return;
       setState(() {
         fileName = picked.files.single.name;
-        preview = parsed.rows;
+        preview = parsed!.rows;
+        duplicateIndexes
+          ..clear()
+          ..addAll(duplicates);
+        selectedRows
+          ..clear()
+          ..addAll(
+            List.generate(
+              preview.length,
+              (i) => i,
+            ).where((i) => !duplicates.contains(i)),
+          );
         skippedRows = parsed.skippedRows;
-        duplicateRows = parsed.duplicateRows;
+        duplicateRows = parsed.duplicateRows + duplicates.length;
         issues = parsed.issues;
         message =
-            'تمت قراءة ${preview.length} صفًا صالحًا من ${parsed.sheets.length} ورقة.';
+            'تمت قراءة ${preview.length} صفًا من ${parsed.sheets.length} ورقة. تم إلغاء تحديد ${duplicates.length} رقمًا موجودًا مسبقًا.';
       });
     } catch (exception) {
       if (mounted) {
@@ -158,7 +370,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
   }
 
   Future<void> importExcel() async {
-    if (preview.isEmpty) return;
+    if (selectedRows.isEmpty) return;
+    final chosenRows = selectedRows.toList()..sort();
+    final rowsToImport = chosenRows.map((index) => preview[index]).toList();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => Directionality(
@@ -166,7 +380,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
         child: AlertDialog(
           title: const Text('تأكيد استيراد سجل Excel'),
           content: Text(
-            'سيتم إرسال ${preview.length} صفًا صالحًا. الصفوف المتجاوزة: $skippedRows، والمكررات المستبعدة: $duplicateRows. ستُنشأ السجلات كمسودات وتُطبق صلاحيات الخادم.',
+            'سيتم استيراد ${rowsToImport.length} صفًا من اختيارك. الصفوف المتجاوزة: $skippedRows، والمكررات المستبعدة تلقائيًا: $duplicateRows.',
           ),
           actions: [
             TextButton(
@@ -191,8 +405,8 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       var created = 0;
       var skipped = 0;
       var failed = 0;
-      for (var start = 0; start < preview.length; start += 100) {
-        final batch = preview
+      for (var start = 0; start < rowsToImport.length; start += 100) {
+        final batch = rowsToImport
             .skip(start)
             .take(100)
             .map((row) => row.toImportMap())
@@ -228,6 +442,95 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       }
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _editRow(int index) async {
+    final row = preview[index];
+    final controllers = <String, TextEditingController>{
+      'originalSerial': TextEditingController(text: row.originalSerial),
+      'time': TextEditingController(text: row.time),
+      'sender': TextEditingController(text: row.sender),
+      'date': TextEditingController(text: row.date),
+      'body': TextEditingController(text: row.body),
+      'recipient': TextEditingController(text: row.recipient),
+      'signature': TextEditingController(text: row.signature),
+      'notes': TextEditingController(text: row.notes),
+    };
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تعديل صف ${index + 1} قبل الاستيراد'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final entry in controllers.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TextField(
+                        controller: entry.value,
+                        minLines: entry.key == 'body' || entry.key == 'notes'
+                            ? 2
+                            : 1,
+                        maxLines: entry.key == 'body' || entry.key == 'notes'
+                            ? 5
+                            : 1,
+                        decoration: InputDecoration(
+                          labelText: {
+                            'originalSerial': 'الرقم المتسلسل',
+                            'time': 'الوقت',
+                            'sender': 'المرسل',
+                            'date': 'التاريخ',
+                            'body': 'نص البرقية',
+                            'recipient': 'المستلم',
+                            'signature': 'التوقيع',
+                            'notes': 'ملاحظات',
+                          }[entry.key],
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controllers['body']!.text.trim().length < 3) return;
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('حفظ التعديل'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted == true && mounted) {
+      setState(() {
+        preview[index] = row.copyWith(
+          originalSerial: controllers['originalSerial']!.text.trim(),
+          time: controllers['time']!.text.trim(),
+          sender: controllers['sender']!.text.trim(),
+          date: controllers['date']!.text.trim(),
+          body: controllers['body']!.text.trim(),
+          recipient: controllers['recipient']!.text.trim(),
+          signature: controllers['signature']!.text.trim(),
+          notes: controllers['notes']!.text.trim(),
+        );
+      });
+    }
+    for (final controller in controllers.values) {
+      controller.dispose();
     }
   }
 
@@ -352,37 +655,74 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                       ),
                     const Divider(),
                     const Text(
-                      'معاينة أول 100 صف صالح',
+                      'معاينة الصفوف — راجع أو عدّل قبل الاعتماد',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
-                    ...preview
-                        .take(3)
-                        .map(
-                          (row) => ListTile(
-                            dense: true,
-                            leading: const Icon(
-                              Icons.description_outlined,
-                              color: _gold,
-                            ),
-                            title: Text(
-                              '${row.sheetName} · ${row.sender.isEmpty ? row.originalSerial : row.sender}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              row.body,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () => setState(() {
+                            selectedRows
+                              ..clear()
+                              ..addAll(
+                                List.generate(
+                                  preview.length,
+                                  (i) => i,
+                                ).where((i) => !duplicateIndexes.contains(i)),
+                              );
+                          }),
+                          child: const Text('تحديد غير المكرر'),
                         ),
-                    if (preview.length > 3)
-                      Text('و ${preview.length - 3} صفوف أخرى'),
+                        TextButton(
+                          onPressed: () => setState(selectedRows.clear),
+                          child: const Text('إلغاء التحديد'),
+                        ),
+                      ],
+                    ),
+                    ...preview.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final row = entry.value;
+                      final duplicate = duplicateIndexes.contains(index);
+                      return CheckboxListTile(
+                        dense: true,
+                        value: !duplicate && selectedRows.contains(index),
+                        onChanged: duplicate
+                            ? null
+                            : (checked) => setState(() {
+                                if (checked == true) {
+                                  selectedRows.add(index);
+                                } else {
+                                  selectedRows.remove(index);
+                                }
+                              }),
+                        title: Text(
+                          '${row.sheetName} · ${row.originalSerial.isEmpty ? row.sender : row.originalSerial}${duplicate ? ' · موجود مسبقًا' : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: duplicate
+                              ? const TextStyle(color: Colors.deepOrange)
+                              : null,
+                        ),
+                        subtitle: Text(
+                          row.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        secondary: IconButton(
+                          tooltip: 'تعديل الصف',
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () => _editRow(index),
+                        ),
+                      );
+                    }),
                     const SizedBox(height: 8),
                     FilledButton.icon(
-                      onPressed: busy ? null : importExcel,
+                      onPressed: busy || selectedRows.isEmpty
+                          ? null
+                          : importExcel,
                       icon: const Icon(Icons.cloud_upload_outlined),
-                      label: Text('اعتماد استيراد ${preview.length} صف'),
+                      label: Text('استيراد ${selectedRows.length} صف محدد'),
                     ),
                   ],
                 ],

@@ -64,7 +64,8 @@ export async function parseTelegramWorkbookBase64(
   let workbook;
   try {
     workbook = await XlsxPopulate.fromDataAsync(bytes, {
-      password: password !== undefined && password.length > 0 ? password : undefined,
+      password:
+        password !== undefined && password.length > 0 ? password : undefined,
     });
   } catch {
     throw new Error(

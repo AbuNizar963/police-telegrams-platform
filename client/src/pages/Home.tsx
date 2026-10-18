@@ -1540,7 +1540,7 @@ function ExcelPasswordModal({
     <Modal title="فتح ملف Excel محمي" subtitle="أدخل كلمة المرور" close={close}>
       <div className="space-y-4">
         <p className="text-sm leading-7 text-muted-foreground">
-          تُستخدم كلمة المرور محليًا لفك الملف ولا يتم حفظها.
+          تُرسل كلمة المرور وملف Excel إلى الخادم لفك تشفير الملف ومعالجته، ولا تُضاف كلمة المرور إلى بيانات البرقيات.
         </p>
         <Input
           autoFocus

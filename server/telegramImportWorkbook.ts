@@ -1,4 +1,5 @@
 import XlsxPopulate from "xlsx-populate";
+import officeCrypto from "officecrypto-tool";
 
 export type TelegramWorkbookImportRow = {
   originalSerial: string;
@@ -63,15 +64,24 @@ export async function parseTelegramWorkbookBase64(
   }
   let workbook;
   try {
-    workbook = await XlsxPopulate.fromDataAsync(bytes, {
-      password:
-        password !== undefined && password.length > 0 ? password : undefined,
-    });
+    let workbookBytes = bytes;
+
+    // Excel encrypts an entire XLSX package inside an OLE container. Decrypt
+    // that container first, then pass the ordinary OOXML ZIP to the workbook
+    // parser. This also supports Agile AES-256/SHA-512 files produced by Excel.
+    if (officeCrypto.isEncrypted(bytes)) {
+      if (password === undefined || password.length === 0) {
+        throw new Error("PASSWORD_REQUIRED");
+      }
+      workbookBytes = await officeCrypto.decrypt(bytes, { password });
+    }
+
+    workbook = await XlsxPopulate.fromDataAsync(workbookBytes);
   } catch {
     throw new Error(
       password !== undefined && password.length > 0
-        ? "تعذر فتح الملف. تحقق من كلمة المرور وأن الملف بصيغة XLSX."
-        : "تعذر فتح الملف. إذا كان محميًا بكلمة مرور فأدخل كلمة المرور الصحيحة."
+        ? "تعذر فتح الملف. تحقق من كلمة المرور وأن الملف بصيغة Excel XLSX مدعومة."
+        : "هذا الملف محمي بكلمة مرور. أدخل كلمة المرور لفتحه."
     );
   }
 

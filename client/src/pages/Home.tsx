@@ -1502,10 +1502,9 @@ export default function Home() {
           confirm={() =>
             exportWorkbook.mutate({
               rows: excelExportRows,
-              password:
-                excelExportPassword.length > 0
-                  ? excelExportPassword
-                  : undefined,
+              password: excelExportPassword.length > 0
+                ? excelExportPassword
+                : undefined,
             })
           }
         />

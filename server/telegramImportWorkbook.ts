@@ -67,12 +67,12 @@ async function decryptProtectedWorkbook(
 ): Promise<XLSX.WorkBook> {
   let foundZipPackage = false;
   const decryptors: Array<() => Promise<Uint8Array>> = [
-    () => decryptWorkbook(new Uint8Array(bytes), password),
     () => officeCrypto.decrypt(bytes, { password }),
     async () => {
       const workbook = await XlsxPopulate.fromDataAsync(bytes, { password });
       return new Uint8Array(Buffer.from(await workbook.outputAsync()));
     },
+    () => decryptWorkbook(new Uint8Array(bytes), password),
   ];
 
   for (const decrypt of decryptors) {
@@ -142,6 +142,11 @@ export async function parseTelegramWorkbookBase64(
     }
     workbook = await decryptProtectedWorkbook(bytes, password);
   } else {
+    if (!isZipPackage(bytes)) {
+      throw new Error(
+        "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته."
+      );
+    }
     try {
       workbook = XLSX.read(bytes, {
         type: "buffer",

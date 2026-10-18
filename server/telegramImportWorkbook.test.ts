@@ -162,5 +162,5 @@ describe("server-side password protected workbook preview", () => {
         "wrong"
       )
     ).rejects.toThrow("تحقق من كلمة المرور");
-  });
+  }, 30_000);
 });

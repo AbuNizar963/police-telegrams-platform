@@ -246,14 +246,16 @@ void main() {
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
 
-    final status = find.text('صندوق الخروج متزامن ولا توجد برقيات معلقة.');
+    final status = find.text('لا توجد برقيات معلقة محليًا.');
     expect(status, findsOneWidget);
+    expect(find.text('حالة صندوق الخروج'), findsOneWidget);
+    expect(find.textContaining('الخادم متصل • آخر تحقق'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 9));
     await tester.pump();
 
     expect(status, findsOneWidget);
-    expect(find.text('صندوق الخروج متزامن'), findsOneWidget);
+    expect(find.textContaining('الخادم متصل • آخر تحقق'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 22));
     await tester.pump();
@@ -263,6 +265,25 @@ void main() {
       find.text('جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...'),
       findsNothing,
     );
+  });
+
+  testWidgets('distinguishes an empty outbox from an unreachable server', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          api: _UnavailablePoliceApi(),
+          account: {'id': 1, 'name': 'مشغل النظام'},
+          outbox: _EmptyTelegramOutbox(),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 12);
+
+    expect(find.text('لا توجد برقيات معلقة محليًا.'), findsOneWidget);
+    expect(find.textContaining('الخادم غير متصل'), findsOneWidget);
   });
 
   testWidgets('tapping a telegram opens the Cairo web-style document view', (

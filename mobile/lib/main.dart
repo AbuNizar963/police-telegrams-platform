@@ -648,8 +648,7 @@ String _dashboardRefreshError(Object error) {
 
 class _DashboardPageState extends State<DashboardPage>
     with WidgetsBindingObserver {
-  static const _idleOutboxMessage =
-      'صندوق الخروج متزامن ولا توجد برقيات معلقة.';
+  static const _idleOutboxMessage = 'لا توجد برقيات معلقة محليًا.';
   String get _greetingName =>
       (_account['name'] ?? _account['username'] ?? 'أبو نزار').toString();
   late final Map<String, dynamic> _account;
@@ -693,6 +692,8 @@ class _DashboardPageState extends State<DashboardPage>
   String _syncPhase = 'idle';
   String? _lastSyncMessage;
   DateTime? _lastSyncAt;
+  bool? _serverReachable;
+  DateTime? _serverCheckedAt;
   Timer? _syncMessageTimer;
   Timer? _refreshTimer;
   Timer? _searchDebounce;
@@ -710,6 +711,32 @@ class _DashboardPageState extends State<DashboardPage>
         _account['departmentName'];
     final label = '$value'.trim();
     return label.isEmpty || label == 'null' ? 'الجهة الحالية غير محددة' : label;
+  }
+
+  String get _serverStatusMessage {
+    if (_serverReachable == true) {
+      final checkedAt = _serverCheckedAt;
+      return checkedAt == null
+          ? 'الخادم متصل.'
+          : 'الخادم متصل • آخر تحقق ${_syncTime(checkedAt)}';
+    }
+    if (_serverReachable == false) {
+      return _pendingOutbox > 0
+          ? 'الخادم غير متصل؛ ستبقى البرقيات محفوظة محليًا حتى عودة الاتصال.'
+          : 'الخادم غير متصل؛ لا توجد برقيات معلقة محليًا.';
+    }
+    return 'لم يُتحقق من اتصال الخادم بعد.';
+  }
+
+  Color get _serverStatusColor {
+    if (_serverReachable == true) return const Color(0xFF16836B);
+    if (_serverReachable == false) return const Color(0xFFB7791F);
+    return const Color(0xFF667085);
+  }
+
+  void _recordServerCheck(bool reachable) {
+    _serverReachable = reachable;
+    _serverCheckedAt = DateTime.now();
   }
 
   @override
@@ -1344,6 +1371,7 @@ class _DashboardPageState extends State<DashboardPage>
       final visibleRows = rows.take(20).toList(growable: false);
       if (mounted) {
         setState(() {
+          _recordServerCheck(true);
           stats = Map<String, dynamic>.from(results[0] as Map);
           activeOrganizationId = organizationContext is Map
               ? organizationContext['organizationId']?.toString()
@@ -1397,6 +1425,8 @@ class _DashboardPageState extends State<DashboardPage>
           final cachedStats = cached['stats'];
           final cachedTelegrams = cached['telegrams'];
           setState(() {
+            if (e is NetworkException) _recordServerCheck(false);
+            if (e is ApiException) _recordServerCheck(true);
             if (cachedStats is Map) {
               stats = Map<String, dynamic>.from(cachedStats);
             }
@@ -1406,6 +1436,8 @@ class _DashboardPageState extends State<DashboardPage>
           });
         } else {
           setState(() {
+            if (e is NetworkException) _recordServerCheck(false);
+            if (e is ApiException) _recordServerCheck(true);
             error = _dashboardRefreshError(e);
             // No cached dashboard is available, so report the connection
             // failure instead of claiming that cached data is being shown.
@@ -1689,14 +1721,24 @@ class _DashboardPageState extends State<DashboardPage>
     final Color accent = switch (_syncPhase) {
       'error' => const Color(0xFFB42332),
       'success' => const Color(0xFF16836B),
-      'idle' => const Color(0xFF16836B),
+      'idle' =>
+        _serverReachable == true
+            ? const Color(0xFF16836B)
+            : _serverReachable == false
+            ? const Color(0xFFB7791F)
+            : const Color(0xFF667085),
       'syncing' => const Color(0xFF356AC3),
       _ => const Color(0xFFB7791F),
     };
     final IconData icon = switch (_syncPhase) {
       'error' => Icons.sync_problem_outlined,
       'success' => Icons.cloud_done_outlined,
-      'idle' => Icons.cloud_done_outlined,
+      'idle' =>
+        _serverReachable == true
+            ? Icons.cloud_done_outlined
+            : _serverReachable == false
+            ? Icons.cloud_off_outlined
+            : Icons.cloud_outlined,
       'syncing' => Icons.sync,
       _ => Icons.cloud_upload_outlined,
     };
@@ -1722,7 +1764,7 @@ class _DashboardPageState extends State<DashboardPage>
                       : _syncPhase == 'success'
                       ? 'اكتملت المزامنة بنجاح'
                       : _syncPhase == 'idle'
-                      ? 'صندوق الخروج متزامن'
+                      ? 'حالة صندوق الخروج'
                       : _pendingOutbox > 0
                       ? 'صندوق الخروج — $_pendingOutbox معلقة'
                       : 'حالة صندوق الخروج',
@@ -1767,11 +1809,22 @@ class _DashboardPageState extends State<DashboardPage>
               ),
             ),
           ],
+          const SizedBox(height: 4),
+          Text(
+            _serverStatusMessage,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _serverStatusColor,
+              fontSize: 10,
+              height: 1.35,
+            ),
+          ),
           if (_lastSyncAt != null && !_outboxSyncing)
             Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Text(
-                'آخر فحص ${_syncTime(_lastSyncAt!)}',
+                'آخر فحص للصندوق ${_syncTime(_lastSyncAt!)}',
                 style: const TextStyle(color: Color(0xFF98A2B3), fontSize: 9),
               ),
             ),

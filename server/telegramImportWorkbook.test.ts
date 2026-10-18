@@ -19,44 +19,43 @@ describe("server-side password protected workbook preview", () => {
   it(
     "imports an Office Agile AES-256/SHA-512 workbook through an independent decryptor",
     async () => {
-    const workbook = await XlsxPopulate.fromBlankAsync();
-    const sheet = workbook.sheet(0).name("صادر");
-    headers.forEach((header, index) =>
-      sheet.cell(`${String.fromCharCode(65 + index)}1`).value(header)
-    );
-    [
-      "OUT-AGILE-1",
-      "10:15",
-      "الإدارة",
-      "2026-10-18",
-      "اختبار فك تشفير مستقل لملف Excel",
-      "القيادة",
-      "موقّع",
-      "",
-    ].forEach((value, index) =>
-      sheet.cell(`${String.fromCharCode(65 + index)}2`).value(value)
-    );
+      const workbook = await XlsxPopulate.fromBlankAsync();
+      const sheet = workbook.sheet(0).name("صادر");
+      headers.forEach((header, index) =>
+        sheet.cell(`${String.fromCharCode(65 + index)}1`).value(header)
+      );
+      [
+        "OUT-AGILE-1",
+        "10:15",
+        "الإدارة",
+        "2026-10-18",
+        "اختبار فك تشفير مستقل لملف Excel",
+        "القيادة",
+        "موقّع",
+        "",
+      ].forEach((value, index) =>
+        sheet.cell(`${String.fromCharCode(65 + index)}2`).value(value)
+      );
 
-    const password = "كلمة مرور Excel 2026 ";
-    const plainBytes = new Uint8Array(
-      Buffer.from(await workbook.outputAsync())
-    );
-    const encryptedBytes = await encryptWorkbook(plainBytes, password);
-    const result = await parseTelegramWorkbookBase64(
-      Buffer.from(encryptedBytes).toString("base64"),
-      password
-    );
+      const password = "كلمة مرور Excel 2026 ";
+      const plainBytes = new Uint8Array(
+        Buffer.from(await workbook.outputAsync())
+      );
+      const encryptedBytes = await encryptWorkbook(plainBytes, password);
+      const result = await parseTelegramWorkbookBase64(
+        Buffer.from(encryptedBytes).toString("base64"),
+        password
+      );
 
-    expect(result.sheets).toContain("صادر");
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({
-      originalSerial: "OUT-AGILE-1",
-      body: "اختبار فك تشفير مستقل لملف Excel",
-      sheetName: "صادر",
-    });
+      expect(result.sheets).toContain("صادر");
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0]).toMatchObject({
+        originalSerial: "OUT-AGILE-1",
+        body: "اختبار فك تشفير مستقل لملف Excel",
+        sheetName: "صادر",
+      });
     }
   );
-
   it("opens an Office-encrypted OOXML workbook before parsing its sheets", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const sheet = workbook.sheet(0).name("وارد");

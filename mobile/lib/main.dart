@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'api.dart';
 import 'mobile_pages.dart';
@@ -201,15 +202,26 @@ class _DashboardPageState extends State<DashboardPage> {
   int section = 0;
   final push = PushNotificationService();
   late final OfflineFirstService offline;
+  StreamSubscription<List<ConnectivityResult>>? connectivitySubscription;
+  bool? serverReachable;
+  DateTime? lastSyncedAt;
 
   @override
   void initState() {
     super.initState();
     offline = OfflineFirstService(api: widget.api);
+    connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      final online = results.any((item) => item != ConnectivityResult.none);
+      setState(() {
+        if (!online) serverReachable = false;
+      });
+      if (online) unawaited(refresh());
+    });
     unawaited(offline.start(
       scope: '${widget.account['id'] ?? widget.account['username'] ?? 'default'}',
     ));
-    refresh();
+    unawaited(_loadCachedThenRefresh());
     push.initialize(
       onToken: _registerPushToken,
       onTelegramOpened: _openIncomingTelegram,
@@ -246,12 +258,15 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     push.dispose();
+    unawaited(connectivitySubscription?.cancel());
     unawaited(offline.dispose());
     super.dispose();
   }
 
   Future<void> refresh() async {
-    setState(() => loading = true);
+    if (mounted && stats.isEmpty && telegrams.isEmpty) {
+      setState(() => loading = true);
+    }
     try {
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
@@ -267,6 +282,8 @@ class _DashboardPageState extends State<DashboardPage> {
               ? list
               : [];
           error = null;
+          serverReachable = true;
+          lastSyncedAt = DateTime.now();
         });
       }
       await offline.cacheDashboard(
@@ -275,6 +292,7 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     } catch (e) {
       if (mounted) {
+        setState(() => serverReachable = false);
         final cachedStats = await offline.cachedStats();
         final cachedTelegrams = await offline.cachedTelegrams();
         if (cachedStats != null || cachedTelegrams != null) {
@@ -290,6 +308,20 @@ class _DashboardPageState extends State<DashboardPage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> _loadCachedThenRefresh() async {
+    final cachedStats = await offline.cachedStats();
+    final cachedTelegrams = await offline.cachedTelegrams();
+    if (mounted && (cachedStats != null || cachedTelegrams != null)) {
+      setState(() {
+        stats = cachedStats ?? stats;
+        telegrams = cachedTelegrams ?? telegrams;
+        loading = false;
+        error = 'بيانات محفوظة محليًا — جارٍ التحقق من الخادم';
+      });
+    }
+    await refresh();
   }
 
   Future<void> create() async {

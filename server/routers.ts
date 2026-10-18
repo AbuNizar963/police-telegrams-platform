@@ -121,6 +121,7 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
+import { buildTelegramWorkbook } from "./telegramWorkbook";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -153,6 +154,18 @@ const statusSchema = z.enum([
   "completed",
   "archived",
 ]);
+
+const excelImportRowSchema = z.object({
+  originalSerial: z.string().max(120).optional(),
+  time: z.string().max(120).optional(),
+  sender: z.string().max(255).optional(),
+  date: z.string().max(120).optional(),
+  body: z.string().trim().min(3).max(20000),
+  recipient: z.string().max(255).optional(),
+  signature: z.string().max(255).optional(),
+  notes: z.string().max(4000).optional(),
+  sheetName: z.enum(["صادر", "وارد"]),
+});
 
 function isPrivateLogoHostname(hostname: string): boolean {
   const normalized = hostname.toLowerCase().replace(/\.$/, "");
@@ -1477,6 +1490,33 @@ export const appRouter = router({
         );
       }),
 
+    exportWorkbook: protectedProcedure
+      .input(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                serial: z.string().max(120),
+                time: z.string().max(120),
+                sender: z.string().max(255),
+                date: z.string().max(120),
+                body: z.string().max(20000),
+                recipient: z.string().max(255),
+                signature: z.string().max(255),
+                notes: z.string().max(4000),
+                direction: z.enum(["صادر", "وارد"]),
+              })
+            )
+            .min(1)
+            .max(1000),
+          password: z.string().max(128).optional(),
+        })
+      )
+      .mutation(async ({ input }) => ({
+        base64: await buildTelegramWorkbook(input),
+        fileName: `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      })),
+
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -2576,31 +2616,67 @@ export const appRouter = router({
         number: await getSuggestedOrganizationSerialNumber(organizationId),
       };
     }),
+    importPreview: organizationAdminProcedure
+      .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
+      .query(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const existing = await listTelegrams(
+          ctx.user.id,
+          false,
+          organizationId,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          1,
+          1000
+        );
+        const keys = new Set(
+          existing.flatMap(row => [
+            String(row.serialNumber).trim(),
+            String(row.serialCode).trim().toLowerCase(),
+          ])
+        );
+        return input.rows.map((row, index) => {
+          const value = row.originalSerial?.trim() ?? "";
+          return {
+            index,
+            duplicate:
+              Boolean(value) &&
+              (keys.has(value) || keys.has(value.toLowerCase())),
+          };
+        });
+      }),
+
     importRows: organizationAdminProcedure
-      .input(
-        z.object({
-          rows: z
-            .array(
-              z.object({
-                originalSerial: z.string().max(120).optional(),
-                time: z.string().max(120).optional(),
-                sender: z.string().max(255).optional(),
-                date: z.string().max(120).optional(),
-                body: z.string().trim().min(3).max(20000),
-                recipient: z.string().max(255).optional(),
-                signature: z.string().max(255).optional(),
-                notes: z.string().max(4000).optional(),
-                sheetName: z.enum(["صادر", "وارد"]),
-              })
-            )
-            .min(1)
-            .max(1000),
-        })
-      )
+      .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const settings = await getOrCreateSettings(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
+        const existingTelegrams = await listTelegrams(
+          ctx.user.id,
+          false,
+          organizationId,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          1,
+          1000
+        );
+        const existingSerialKeys = new Set(
+          existingTelegrams.flatMap(row => [
+            String(row.serialNumber).trim(),
+            String(row.serialCode).trim().toLowerCase(),
+          ])
+        );
         let created = 0;
         let skipped = 0;
         const errors: Array<{ row: number; message: string }> = [];
@@ -2619,6 +2695,15 @@ export const appRouter = router({
             .update(sourceKey)
             .digest("hex")}`;
           try {
+            const originalSerial = row.originalSerial?.trim() ?? "";
+            if (
+              originalSerial &&
+              (existingSerialKeys.has(originalSerial) ||
+                existingSerialKeys.has(originalSerial.toLowerCase()))
+            ) {
+              skipped += 1;
+              continue;
+            }
             const existing = await getTelegramByIdempotencyKey(idempotencyKey);
             if (existing) {
               skipped += 1;

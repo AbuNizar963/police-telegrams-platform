@@ -122,7 +122,10 @@ function cell(row: unknown[], index: number) {
   return index >= 0 ? text(row[index]) : "";
 }
 
-export async function parseTelegramWorkbook(file: File): Promise<{
+export async function parseTelegramWorkbook(
+  file: File,
+  password?: string
+): Promise<{
   rows: TelegramSpreadsheetRow[];
   skippedRows: number;
   duplicateRows: number;
@@ -136,7 +139,11 @@ export async function parseTelegramWorkbook(file: File): Promise<{
     throw new Error("حجم ملف Excel أكبر من الحد المسموح وهو 15 ميغابايت.");
   }
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+  const workbook = XLSX.read(buffer, {
+    type: "array",
+    cellDates: false,
+    password: password?.trim() || undefined,
+  });
   const rows: TelegramSpreadsheetRow[] = [];
   const issues: TelegramSpreadsheetIssue[] = [];
   const fingerprints = new Set<string>();

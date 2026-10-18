@@ -64,11 +64,11 @@ describe("telegram spreadsheet parsing", () => {
       sheet.cell(`${String.fromCharCode(65 + index)}2`).value(value);
     });
     const encrypted = await workbook.outputAsync({
-      password: "sample-password",
+      password: " sample-password ",
     });
     const file = new File([encrypted], "protected.xlsx");
 
-    const result = await parseTelegramWorkbook(file, "sample-password");
+    const result = await parseTelegramWorkbook(file, " sample-password ");
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({

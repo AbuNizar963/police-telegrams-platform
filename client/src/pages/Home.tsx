@@ -865,7 +865,8 @@ export default function Home() {
       const message =
         error instanceof Error ? error.message.trim() : "";
       toast.error(
-        message || "تعذر فتح ملف Excel المحمي. تحقق من كلمة المرور وصيغة الملف ثم حاول مجددًا."
+        message ||
+          "تعذر فتح ملف Excel المحمي. تحقق من كلمة المرور وصيغة الملف ثم حاول مجددًا."
       );
     }
   };

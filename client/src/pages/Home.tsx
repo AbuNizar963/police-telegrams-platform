@@ -109,6 +109,19 @@ function downloadImportErrorReport(
   URL.revokeObjectURL(url);
 }
 
+async function isPasswordProtectedExcel(file: File): Promise<boolean> {
+  if (!/\.xlsx$/i.test(file.name) || file.size < 8) return false;
+
+  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const encryptedOfficeSignature = [
+    0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
+  ];
+
+  return encryptedOfficeSignature.every(
+    (byte, index) => signature[index] === byte
+  );
+}
+
 function downloadBase64File(base64: string, fileName: string) {
   const binary = window.atob(base64);
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
@@ -814,7 +827,7 @@ export default function Home() {
       setExcelFileName(file.name);
       setExcelImportOpen(true);
     } catch (error) {
-      if (/\.(xlsx|xls)$/i.test(file.name)) {
+      if (await isPasswordProtectedExcel(file)) {
         setExcelPendingFile(file);
         setExcelPasswordOpen(true);
         return;
@@ -851,8 +864,17 @@ export default function Home() {
       setExcelPasswordOpen(false);
       setExcelPendingFile(null);
       setExcelImportOpen(true);
-    } catch {
-      toast.error("كلمة المرور غير صحيحة أو الملف غير مدعوم بهذه الصيغة");
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "خطأ غير معروف";
+      const passwordRelated = /password|decrypt|encrypt|كلمة المرور/i.test(
+        detail
+      );
+      toast.error(
+        passwordRelated
+          ? "تعذر فك تشفير الملف. تحقق من كلمة المرور وأن الملف محمي بكلمة مرور لفتحه."
+          : `تعذر قراءة الملف المحمي: ${detail}`
+      );
     }
   };
 

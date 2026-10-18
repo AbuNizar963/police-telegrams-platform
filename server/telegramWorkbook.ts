@@ -40,8 +40,8 @@ export async function buildTelegramWorkbook(input: {
       const values = [
         row.serial,
         row.time,
-        row.date,
         row.sender,
+        row.date,
         row.body,
         row.recipient,
         row.signature,

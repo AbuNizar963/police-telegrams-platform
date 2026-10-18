@@ -228,8 +228,11 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
         ),
       ),
     );
+    // Preserve the exact password entered by the user. Trimming here changes
+    // passwords that intentionally begin or end with whitespace and makes the
+    // generated workbook appear to reject the user's correct password later.
     final result = confirmed == true
-        ? {'password': protect ? password.text.trim() : ''}
+        ? {'password': protect ? password.text : ''}
         : null;
     password.dispose();
     return result;

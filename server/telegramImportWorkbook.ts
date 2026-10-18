@@ -101,7 +101,11 @@ export async function parseTelegramWorkbookBase64(
     sheetName,
     matrix: XLSX.utils.sheet_to_json<unknown[]>(
       workbook.Sheets[sheetName]!,
-      { header: 1, defval: "", raw: false }
+      {
+        header: 1,
+        defval: "",
+        raw: false,
+      }
     ),
   }));
 

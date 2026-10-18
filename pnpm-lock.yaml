@@ -2481,16 +2481,17 @@ packages:
 
   officecrypto-tool@0.0.19:
     resolution: {tarball: https://registry.npmjs.org/officecrypto-tool/-/officecrypto-tool-0.0.19.tgz}
+    version: 0.0.19
     dependencies:
-      cfb: ^1.2.2
-      crypto-js: ^4.2.0
-      xml2js: ^0.6.0
+      cfb: 1.2.2
+      crypto-js: 4.2.0
+      xml2js: 0.6.2
 
   xml2js@0.6.2:
     resolution: {integrity: sha512-T4rieHaC1EXcES0Kxxj4JWgaUQHDk+qwHcYOCFHfiwKz7tOVPLq7Hjq9dM1WCMhylqMEfP7hMcOIChvotiZegA==}
     dependencies:
-      sax: '>=0.6.0'
-      xmlbuilder: ~11.0.0
+      sax: 1.6.1
+      xmlbuilder: 11.0.1
     engines: {node: '>=4.0.0'}
 
   xmlbuilder@11.0.1:

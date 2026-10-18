@@ -143,7 +143,7 @@ export async function parseTelegramWorkbook(
   }
   const buffer = await file.arrayBuffer();
   let sheets: Array<{ name: string; matrix: unknown[][] }>;
-  if (password?.trim()) {
+  if (password !== undefined && password.length > 0) {
     if (!/\.xlsx$/i.test(file.name)) {
       throw new Error("استيراد كلمة المرور مدعوم لملفات XLSX فقط.");
     }
@@ -151,7 +151,7 @@ export async function parseTelegramWorkbook(
       "xlsx-populate/browser/xlsx-populate.js"
     );
     const protectedWorkbook = await XlsxPopulate.fromDataAsync(buffer, {
-      password: password.trim(),
+      password,
     });
     sheets = protectedWorkbook.sheets().map(sheet => ({
       name: sheet.name(),

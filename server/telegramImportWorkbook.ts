@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import XlsxPopulate from "xlsx-populate";
 import officeCrypto from "officecrypto-tool";
 
 export type TelegramWorkbookImportRow = {
@@ -77,9 +78,19 @@ export async function parseTelegramWorkbookBase64(
     try {
       workbookBytes = await officeCrypto.decrypt(bytes, { password });
     } catch {
-      throw new Error(
-        "تعذر فك تشفير ملف Excel. تحقق من كلمة المرور أو أن نوع التشفير مدعوم."
-      );
+      // Use XlsxPopulate as an independent decryption path for Office Agile
+      // encrypted files produced by Excel. Keep the original password exactly
+      // as entered; leading/trailing spaces can be part of a valid password.
+      try {
+        const protectedWorkbook = await XlsxPopulate.fromDataAsync(bytes, {
+          password,
+        });
+        workbookBytes = Buffer.from(await protectedWorkbook.outputAsync());
+      } catch {
+        throw new Error(
+          "تعذر فك تشفير ملف Excel. تحقق من كلمة المرور أو أن نوع التشفير مدعوم."
+        );
+      }
     }
   }
 

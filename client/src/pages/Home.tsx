@@ -862,11 +862,10 @@ export default function Home() {
       setExcelPendingFile(null);
       setExcelImportOpen(true);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message.trim() : "";
+      const message = error instanceof Error ? error.message.trim() : "";
       toast.error(
         message ||
-          "تعذر فتح ملف Excel المحمي. تحقق من كلمة المرور وصيغة الملف ثم حاول مجددًا."
+          "تعذر فتح ملف Excel المحمي. تحقق من كلمة المرور وصيغة الملف ثم حاول مجددًا.",
       );
     }
   };

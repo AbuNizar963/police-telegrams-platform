@@ -623,7 +623,8 @@ export default function Home() {
       queryClient.removeQueries({ queryKey });
     }
   };
-  const importWorkbookPreview = trpc.telegrams.importWorkbookPreview.useMutation();
+  const importWorkbookPreview =
+    trpc.telegrams.importWorkbookPreview.useMutation();
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -831,7 +832,8 @@ export default function Home() {
     try {
       // Password-protected Excel files use the server-side Office decryption
       // path. The browser XLSX parser cannot reliably decrypt Excel's OLE
-      // container (Agile AES encryption), so do not retry the same local parser.
+      // container (Agile AES encryption), so do not retry the same local
+      // parser.
       const base64 = await readFileAsBase64(excelPendingFile);
       const parsed = await importWorkbookPreview.mutateAsync({
         base64,

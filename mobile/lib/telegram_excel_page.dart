@@ -323,7 +323,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               : const [],
         );
       }
-      if (parsed != null && duplicates.isEmpty) {
+      if (duplicates.isEmpty) {
         final checked = await widget.api.call(
           'telegrams.importPreview',
           input: {'rows': parsed.rows.map((row) => row.toImportMap()).toList()},

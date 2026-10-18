@@ -5,7 +5,7 @@ import { buildTelegramWorkbook } from "./telegramWorkbook";
 describe("telegram workbook export", () => {
   it("exports both matching sheets, supports passwords, and excludes template records", async () => {
     const base64 = await buildTelegramWorkbook({
-      password: "secret-123",
+      password: " secret-123 ",
       rows: [
         {
           serial: "OUT-1",
@@ -33,7 +33,7 @@ describe("telegram workbook export", () => {
     });
     const workbook = await XlsxPopulate.fromDataAsync(
       Buffer.from(base64, "base64"),
-      { password: "secret-123" }
+      { password: " secret-123 " }
     );
 
     expect(workbook.sheets().map(sheet => sheet.name())).toEqual([
@@ -46,7 +46,11 @@ describe("telegram workbook export", () => {
       );
     }
     expect(workbook.sheet("صادر").cell("A2").value()).toBe("OUT-1");
+    expect(workbook.sheet("صادر").cell("C2").value()).toBe("قسم صادر");
+    expect(workbook.sheet("صادر").cell("D2").value()).toBe("2026-10-18");
     expect(workbook.sheet("وارد").cell("A2").value()).toBe("IN-1");
+    expect(workbook.sheet("وارد").cell("C2").value()).toBe("القيادة");
+    expect(workbook.sheet("وارد").cell("D2").value()).toBe("2026-10-18");
     expect(workbook.sheet("صادر").cell("E2").value()).toBe("نص صادر للاختبار");
     expect(workbook.sheet("وارد").cell("E2").value()).toBe("نص وارد للاختبار");
     expect(workbook.sheet("صادر").cell("E3").value()).toBeUndefined();

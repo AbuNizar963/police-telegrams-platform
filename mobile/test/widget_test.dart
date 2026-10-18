@@ -8,6 +8,7 @@ import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
 import 'package:police_telegrams/push_notifications.dart';
+import 'package:police_telegrams/telegram_outbox.dart';
 
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
 final _testPng = Uint8List.fromList(
@@ -133,6 +134,17 @@ class _UnavailablePoliceApi extends _TestPoliceApi {
   }
 }
 
+class _EmptyTelegramOutbox extends TelegramOutbox {
+  _EmptyTelegramOutbox() : super();
+
+  @override
+  Future<TelegramOutboxSyncResult> sync(PoliceApi api) async =>
+      const TelegramOutboxSyncResult(synced: 0, remaining: 0, failed: 0);
+
+  @override
+  Future<int> pendingCount() async => 0;
+}
+
 class _TestOfficialTelegramDocumentRenderer
     implements OfficialTelegramDocumentRenderer {
   @override
@@ -224,7 +236,13 @@ void main() {
   ) async {
     _setMobileViewport(tester);
     await tester.pumpWidget(
-      PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
+      MaterialApp(
+        home: DashboardPage(
+          api: _TestPoliceApi(signedIn: true),
+          account: {'id': 1, 'name': 'مشغل النظام'},
+          outbox: _EmptyTelegramOutbox(),
+        ),
+      ),
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
 

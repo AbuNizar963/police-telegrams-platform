@@ -619,11 +619,13 @@ class DashboardPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.account,
+    this.outbox,
     this.onToggleTheme,
     this.isDarkMode = false,
   });
   final PoliceApi api;
   final Map<String, dynamic> account;
+  final TelegramOutbox? outbox;
   final VoidCallback? onToggleTheme;
   final bool isDarkMode;
   @override
@@ -684,7 +686,7 @@ class _DashboardPageState extends State<DashboardPage>
   String categoryFilter = 'all';
   final searchController = TextEditingController();
   final push = PushNotificationService();
-  final _outbox = TelegramOutbox();
+  late final TelegramOutbox _outbox;
   int _pendingOutbox = 0;
   bool _outboxSyncing = false;
   bool _outboxSyncInProgress = false;
@@ -714,6 +716,7 @@ class _DashboardPageState extends State<DashboardPage>
   void initState() {
     super.initState();
     _account = Map<String, dynamic>.from(widget.account);
+    _outbox = widget.outbox ?? TelegramOutbox();
     WidgetsBinding.instance.addObserver(this);
     refresh();
     unawaited(_syncOutbox());

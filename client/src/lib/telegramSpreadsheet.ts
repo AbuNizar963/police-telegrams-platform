@@ -219,7 +219,7 @@ export async function parseTelegramWorkbook(
       if (body.length < 3) {
         skippedRows += 1;
         issues.push({
-          rowNumber: headerIndex + 2 + rows.length,
+          rowNumber: headerIndex + 2 + offset,
           sheetName,
           reason: "نص البرقية فارغ أو أقصر من الحد الأدنى.",
           value: body,
@@ -242,7 +242,7 @@ export async function parseTelegramWorkbook(
       ) {
         duplicateRows += 1;
         issues.push({
-          rowNumber: headerIndex + 2 + rows.length,
+          rowNumber: headerIndex + 2 + offset,
           sheetName,
           reason: "صف مكرر داخل الملف وتم استبعاده تلقائيًا.",
           value: originalSerial || body.slice(0, 80),

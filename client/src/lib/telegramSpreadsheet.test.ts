@@ -78,6 +78,28 @@ describe("telegram spreadsheet parsing", () => {
     });
   });
 
+  it("reports the original Excel row number when earlier rows were skipped", async () => {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([
+      [...TELEGRAM_SHEET_HEADERS],
+      ["1", "08:00", "قسم الاختبار", "2026-10-18", "س", "", "", ""],
+      ["2", "08:05", "قسم الاختبار", "2026-10-18", "برقية صحيحة للاختبار", "", "", ""],
+      ["3", "08:10", "قسم الاختبار", "2026-10-18", "لا", "", "", ""],
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "صادر");
+    const output = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    }) as ArrayBuffer;
+    const file = new File([output], "row-numbers.xlsx");
+
+    const result = await parseTelegramWorkbook(file);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.skippedRows).toBe(2);
+    expect(result.issues.map(issue => issue.rowNumber)).toEqual([2, 4]);
+  });
+
   it("rejects files that are not Excel workbooks", async () => {
     const file = new File(["not an Excel workbook"], "telegrams.txt");
 

@@ -1502,7 +1502,7 @@ export default function Home() {
           confirm={() =>
             exportWorkbook.mutate({
               rows: excelExportRows,
-              password: excelExportPassword.trim() || undefined,
+              password: excelExportPassword.length > 0 ? excelExportPassword : undefined,
             })
           }
         />

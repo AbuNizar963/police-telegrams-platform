@@ -646,6 +646,8 @@ String _dashboardRefreshError(Object error) {
 
 class _DashboardPageState extends State<DashboardPage>
     with WidgetsBindingObserver {
+  static const _idleOutboxMessage =
+      'صندوق الخروج متزامن ولا توجد برقيات معلقة.';
   String get _greetingName =>
       (_account['name'] ?? _account['username'] ?? 'أبو نزار').toString();
   late final Map<String, dynamic> _account;
@@ -685,6 +687,7 @@ class _DashboardPageState extends State<DashboardPage>
   final _outbox = TelegramOutbox();
   int _pendingOutbox = 0;
   bool _outboxSyncing = false;
+  bool _outboxSyncInProgress = false;
   String _syncPhase = 'idle';
   String? _lastSyncMessage;
   DateTime? _lastSyncAt;
@@ -757,7 +760,7 @@ class _DashboardPageState extends State<DashboardPage>
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       refresh(showLoading: false);
-      unawaited(_syncOutbox());
+      unawaited(_syncOutbox(showProgress: false));
       _loadUnreadNotificationCount();
     });
   }
@@ -767,7 +770,7 @@ class _DashboardPageState extends State<DashboardPage>
     if (state == AppLifecycleState.resumed) {
       _startRefreshTimer();
       refresh(showLoading: false);
-      unawaited(_syncOutbox());
+      unawaited(_syncOutbox(showProgress: false));
       _loadUnreadNotificationCount();
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
@@ -790,13 +793,19 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
-  Future<void> _syncOutbox() async {
-    if (_outboxSyncing) return;
-    _outboxSyncing = true;
+  Future<void> _syncOutbox({bool showProgress = true}) async {
+    if (_outboxSyncInProgress) return;
+    _outboxSyncInProgress = true;
+    _syncMessageTimer?.cancel();
+    _syncMessageTimer = null;
     if (mounted) {
       setState(() {
-        _syncPhase = 'syncing';
-        _lastSyncMessage = 'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...';
+        if (showProgress) {
+          _outboxSyncing = true;
+          _syncPhase = 'syncing';
+          _lastSyncMessage =
+              'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...';
+        }
       });
     }
     try {
@@ -818,18 +827,20 @@ class _DashboardPageState extends State<DashboardPage>
               'تمت مزامنة ${result.synced} برقية بنجاح${pending > 0 ? '، وبقيت $pending معلقة' : ''}.';
         } else if (pending == 0) {
           _syncPhase = 'idle';
-          _lastSyncMessage = 'صندوق الخروج متزامن ولا توجد برقيات معلقة.';
+          _lastSyncMessage = _idleOutboxMessage;
         } else {
           _syncPhase = 'waiting';
           _lastSyncMessage = 'تنتظر $pending برقية عودة الاتصال للمزامنة.';
         }
       });
-      if (_syncPhase == 'success' || _syncPhase == 'idle') {
+      if (_syncPhase == 'success') {
         _syncMessageTimer = Timer(const Duration(seconds: 8), () {
           if (!mounted) return;
           setState(() {
             _syncPhase = 'idle';
-            _lastSyncMessage = null;
+            _lastSyncMessage = _pendingOutbox == 0
+                ? _idleOutboxMessage
+                : 'تنتظر $_pendingOutbox برقية عودة الاتصال للمزامنة.';
           });
         });
       }
@@ -858,7 +869,15 @@ class _DashboardPageState extends State<DashboardPage>
             : 'تعذر التحقق من حالة المزامنة.';
       });
     } finally {
-      _outboxSyncing = false;
+      if (mounted) {
+        setState(() {
+          _outboxSyncInProgress = false;
+          _outboxSyncing = false;
+        });
+      } else {
+        _outboxSyncInProgress = false;
+        _outboxSyncing = false;
+      }
     }
   }
 
@@ -1667,12 +1686,14 @@ class _DashboardPageState extends State<DashboardPage>
     final Color accent = switch (_syncPhase) {
       'error' => const Color(0xFFB42332),
       'success' => const Color(0xFF16836B),
+      'idle' => const Color(0xFF16836B),
       'syncing' => const Color(0xFF356AC3),
       _ => const Color(0xFFB7791F),
     };
     final IconData icon = switch (_syncPhase) {
       'error' => Icons.sync_problem_outlined,
       'success' => Icons.cloud_done_outlined,
+      'idle' => Icons.cloud_done_outlined,
       'syncing' => Icons.sync,
       _ => Icons.cloud_upload_outlined,
     };
@@ -1697,6 +1718,8 @@ class _DashboardPageState extends State<DashboardPage>
                       ? 'المزامنة اللحظية قيد التنفيذ'
                       : _syncPhase == 'success'
                       ? 'اكتملت المزامنة بنجاح'
+                      : _syncPhase == 'idle'
+                      ? 'صندوق الخروج متزامن'
                       : _pendingOutbox > 0
                       ? 'صندوق الخروج — $_pendingOutbox معلقة'
                       : 'حالة صندوق الخروج',
@@ -1765,11 +1788,10 @@ class _DashboardPageState extends State<DashboardPage>
                   onPressed: _openOutbox,
                   child: const Text('التفاصيل'),
                 ),
-                if (!_outboxSyncing)
-                  TextButton(
-                    onPressed: _syncOutbox,
-                    child: const Text('مزامنة الآن'),
-                  ),
+                TextButton(
+                  onPressed: _outboxSyncInProgress ? null : () => _syncOutbox(),
+                  child: const Text('مزامنة الآن'),
+                ),
               ],
             ),
           ),

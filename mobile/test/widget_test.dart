@@ -219,6 +219,34 @@ void main() {
     },
   );
 
+  testWidgets('keeps the empty outbox status visible after syncing', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    await tester.pumpWidget(
+      PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 12);
+
+    final status = find.text('صندوق الخروج متزامن ولا توجد برقيات معلقة.');
+    expect(status, findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 9));
+    await tester.pump();
+
+    expect(status, findsOneWidget);
+    expect(find.text('صندوق الخروج متزامن'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 22));
+    await tester.pump();
+
+    expect(status, findsOneWidget);
+    expect(
+      find.text('جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...'),
+      findsNothing,
+    );
+  });
+
   testWidgets('tapping a telegram opens the Cairo web-style document view', (
     tester,
   ) async {

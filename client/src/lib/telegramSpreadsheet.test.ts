@@ -78,6 +78,30 @@ describe("telegram spreadsheet parsing", () => {
     });
   });
 
+
+  it("preserves leading and trailing spaces in a valid workbook password", async () => {
+    const workbook = await XlsxPopulate.fromBlankAsync();
+    const sheet = workbook.sheet(0).name("صادر");
+    sheet.cell("A1").value("الرقم المتسلسل");
+    sheet.cell("B1").value("ساعة الأرسال أو الوصول");
+    sheet.cell("C1").value("الجهة المرسلة واسم المرسل");
+    sheet.cell("D1").value("تاريخ البرقية");
+    sheet.cell("E1").value("نـــــــــــص البرقيــــــــــــــــــــــــة");
+    sheet.cell("F1").value("الجهة المرسلة واسم المستلم");
+    sheet.cell("G1").value("توقيع المرسل أو المستلم");
+    sheet.cell("H1").value("ملاحظات");
+    sheet.cell("A2").value("78");
+    sheet.cell("E2").value("برقية بكلمة مرور تحتوي مسافات");
+    const password = " secure password ";
+    const encrypted = await workbook.outputAsync({ password });
+    const file = new File([encrypted], "protected-spaces.xlsx");
+
+    const result = await parseTelegramWorkbook(file, password);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].originalSerial).toBe("78");
+  });
+
   it("rejects files that are not Excel workbooks", async () => {
     const file = new File(["not an Excel workbook"], "telegrams.txt");
 

@@ -56,6 +56,7 @@ describe("server-side password protected workbook preview", () => {
       });
     }
   );
+
   it("opens an Office-encrypted OOXML workbook before parsing its sheets", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const sheet = workbook.sheet(0).name("وارد");

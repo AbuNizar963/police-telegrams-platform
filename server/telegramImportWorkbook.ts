@@ -64,11 +64,11 @@ export async function parseTelegramWorkbookBase64(
   let workbook;
   try {
     workbook = await XlsxPopulate.fromDataAsync(bytes, {
-      password: password?.trim() || undefined,
+      password: password !== undefined && password.length > 0 ? password : undefined,
     });
   } catch {
     throw new Error(
-      password?.trim()
+      password !== undefined && password.length > 0
         ? "تعذر فتح الملف. تحقق من كلمة المرور وأن الملف بصيغة XLSX."
         : "تعذر فتح الملف. إذا كان محميًا بكلمة مرور فأدخل كلمة المرور الصحيحة."
     );

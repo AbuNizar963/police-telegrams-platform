@@ -699,6 +699,8 @@ class _DashboardPageState extends State<DashboardPage>
   Timer? _searchDebounce;
   bool _refreshInProgress = false;
   bool _refreshQueued = false;
+  bool _updateCheckInProgress = false;
+  DateTime? _lastUpdateCheckAt;
 
   String get _currentOrganizationLabel {
     final value =
@@ -750,7 +752,7 @@ class _DashboardPageState extends State<DashboardPage>
     _loadUnreadNotificationCount();
     _startRefreshTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) checkAndPromptForAppUpdate(context);
+      if (mounted) unawaited(_checkForAppUpdate());
     });
     push
         .initialize(
@@ -786,6 +788,25 @@ class _DashboardPageState extends State<DashboardPage>
     setState(() => _organizationLogoBytes = imageBytes);
   }
 
+  Future<void> _checkForAppUpdate() async {
+    if (!mounted || _updateCheckInProgress) return;
+
+    final now = DateTime.now();
+    final lastCheck = _lastUpdateCheckAt;
+    if (lastCheck != null &&
+        now.difference(lastCheck) < const Duration(minutes: 2)) {
+      return;
+    }
+
+    _updateCheckInProgress = true;
+    _lastUpdateCheckAt = now;
+    try {
+      await checkAndPromptForAppUpdate(context);
+    } finally {
+      _updateCheckInProgress = false;
+    }
+  }
+
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -802,6 +823,7 @@ class _DashboardPageState extends State<DashboardPage>
       refresh(showLoading: false);
       unawaited(_syncOutbox(showProgress: false));
       _loadUnreadNotificationCount();
+      unawaited(_checkForAppUpdate());
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||

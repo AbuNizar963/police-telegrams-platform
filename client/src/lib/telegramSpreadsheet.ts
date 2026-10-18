@@ -53,6 +53,9 @@ function normalized(value: unknown) {
     .replace(/[\s_ـ]+/g, "")
     .replace(/[أإآ]/g, "ا")
     .replace(/[ى]/g, "ي")
+    .replace(/[٠-٩۰-۹]/g, digit =>
+      String("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹".indexOf(digit) % 10)
+    )
     .toLowerCase();
 }
 
@@ -139,26 +142,43 @@ export async function parseTelegramWorkbook(
     throw new Error("حجم ملف Excel أكبر من الحد المسموح وهو 15 ميغابايت.");
   }
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, {
-    type: "array",
-    cellDates: false,
-    password: password?.trim() || undefined,
-  });
+  let sheets: Array<{ name: string; matrix: unknown[][] }>;
+  if (password?.trim()) {
+    if (!/\.xlsx$/i.test(file.name)) {
+      throw new Error("استيراد كلمة المرور مدعوم لملفات XLSX فقط.");
+    }
+    const { default: XlsxPopulate } = await import("xlsx-populate");
+    const protectedWorkbook = await XlsxPopulate.fromDataAsync(buffer, {
+      password: password.trim(),
+    });
+    sheets = protectedWorkbook.sheets().map(sheet => ({
+      name: sheet.name(),
+      matrix: sheet.usedRange().value(),
+    }));
+  } else {
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+      cellDates: false,
+    });
+    sheets = workbook.SheetNames.map(name => ({
+      name,
+      matrix: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], {
+        header: 1,
+        defval: "",
+        raw: false,
+      }),
+    }));
+  }
   const rows: TelegramSpreadsheetRow[] = [];
   const issues: TelegramSpreadsheetIssue[] = [];
   const fingerprints = new Set<string>();
+  const serialFingerprints = new Set<string>();
   let skippedRows = 0;
   let duplicateRows = 0;
 
-  for (const sheetName of workbook.SheetNames) {
+  for (const { name: sheetName, matrix } of sheets) {
     const direction: TelegramSpreadsheetDirection =
       sheetName.trim() === "وارد" ? "وارد" : "صادر";
-    const sheet = workbook.Sheets[sheetName];
-    const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-      header: 1,
-      defval: "",
-      raw: false,
-    });
     if (matrix.length === 0) continue;
 
     const headerIndex = Math.min(
@@ -206,6 +226,7 @@ export async function parseTelegramWorkbook(
       }
       const date = cell(row, fallback.date);
       const originalSerial = cell(row, fallback.serial);
+      const serialFingerprint = `${direction}|${normalized(originalSerial)}`;
       const fingerprint = [
         direction,
         normalized(originalSerial),
@@ -213,7 +234,10 @@ export async function parseTelegramWorkbook(
         normalized(cell(row, fallback.time)),
         normalized(body),
       ].join("|");
-      if (fingerprints.has(fingerprint)) {
+      if (
+        fingerprints.has(fingerprint) ||
+        (originalSerial && serialFingerprints.has(serialFingerprint))
+      ) {
         duplicateRows += 1;
         issues.push({
           rowNumber: headerIndex + 2 + rows.length,
@@ -224,6 +248,7 @@ export async function parseTelegramWorkbook(
         continue;
       }
       fingerprints.add(fingerprint);
+      if (originalSerial) serialFingerprints.add(serialFingerprint);
       rows.push({
         originalSerial,
         time: cell(row, fallback.time),
@@ -251,6 +276,6 @@ export async function parseTelegramWorkbook(
     skippedRows,
     duplicateRows,
     issues: issues.slice(0, 100),
-    sheets: workbook.SheetNames,
+    sheets: sheets.map(sheet => sheet.name),
   };
 }

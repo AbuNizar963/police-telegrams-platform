@@ -29,6 +29,12 @@ export async function buildTelegramWorkbook(input: {
 
   for (const direction of ["صادر", "وارد"] as const) {
     const sheet = workbook.sheet(direction);
+    // Clear historical source values while retaining the workbook formatting.
+    for (let rowIndex = 2; rowIndex <= 1001; rowIndex += 1) {
+      for (const column of columns) {
+        sheet.cell(`${column}${rowIndex}`).value(null);
+      }
+    }
     const rows = input.rows.filter(row => row.direction === direction);
     rows.forEach((row, rowIndex) => {
       const values = [

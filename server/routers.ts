@@ -2634,19 +2634,19 @@ export const appRouter = router({
           1,
           1000
         );
+        const normalizeSerial = (value: string | number) =>
+          localizeDigits(value, "latin").trim().toLowerCase();
         const keys = new Set(
           existing.flatMap(row => [
-            String(row.serialNumber).trim(),
-            String(row.serialCode).trim().toLowerCase(),
+            normalizeSerial(row.serialNumber),
+            normalizeSerial(row.serialCode),
           ])
         );
         return input.rows.map((row, index) => {
           const value = row.originalSerial?.trim() ?? "";
           return {
             index,
-            duplicate:
-              Boolean(value) &&
-              (keys.has(value) || keys.has(value.toLowerCase())),
+            duplicate: Boolean(value) && keys.has(normalizeSerial(value)),
           };
         });
       }),
@@ -2671,10 +2671,12 @@ export const appRouter = router({
           1,
           1000
         );
+        const normalizeSerial = (value: string | number) =>
+          localizeDigits(value, "latin").trim().toLowerCase();
         const existingSerialKeys = new Set(
           existingTelegrams.flatMap(row => [
-            String(row.serialNumber).trim(),
-            String(row.serialCode).trim().toLowerCase(),
+            normalizeSerial(row.serialNumber),
+            normalizeSerial(row.serialCode),
           ])
         );
         let created = 0;
@@ -2698,8 +2700,7 @@ export const appRouter = router({
             const originalSerial = row.originalSerial?.trim() ?? "";
             if (
               originalSerial &&
-              (existingSerialKeys.has(originalSerial) ||
-                existingSerialKeys.has(originalSerial.toLowerCase()))
+              existingSerialKeys.has(normalizeSerial(originalSerial))
             ) {
               skipped += 1;
               continue;
@@ -2797,6 +2798,9 @@ export const appRouter = router({
               },
             });
             created += 1;
+            if (originalSerial) {
+              existingSerialKeys.add(normalizeSerial(originalSerial));
+            }
           } catch (error) {
             errors.push({
               row: index + 2,

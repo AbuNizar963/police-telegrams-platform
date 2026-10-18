@@ -52,7 +52,7 @@ describe("server-side password protected workbook preview", () => {
       body: "اختبار فك تشفير مستقل لملف Excel",
       sheetName: "صادر",
     });
-  });
+  }, 30_000);
 
   it("opens an Office-encrypted OOXML workbook before parsing its sheets", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();

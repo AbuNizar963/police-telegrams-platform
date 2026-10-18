@@ -16,7 +16,9 @@ const headers = [
 ];
 
 describe("server-side password protected workbook preview", () => {
-  it("imports an Office Agile AES-256/SHA-512 workbook through an independent decryptor", async () => {
+  it(
+    "imports an Office Agile AES-256/SHA-512 workbook through an independent decryptor",
+    async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const sheet = workbook.sheet(0).name("صادر");
     headers.forEach((header, index) =>
@@ -36,7 +38,9 @@ describe("server-side password protected workbook preview", () => {
     );
 
     const password = "كلمة مرور Excel 2026 ";
-    const plainBytes = new Uint8Array(Buffer.from(await workbook.outputAsync()));
+    const plainBytes = new Uint8Array(
+      Buffer.from(await workbook.outputAsync())
+    );
     const encryptedBytes = await encryptWorkbook(plainBytes, password);
     const result = await parseTelegramWorkbookBase64(
       Buffer.from(encryptedBytes).toString("base64"),
@@ -50,7 +54,8 @@ describe("server-side password protected workbook preview", () => {
       body: "اختبار فك تشفير مستقل لملف Excel",
       sheetName: "صادر",
     });
-  });
+    }
+  );
 
   it("opens an Office-encrypted OOXML workbook before parsing its sheets", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();

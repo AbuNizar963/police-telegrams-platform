@@ -48,7 +48,6 @@ function indexOf(headers: unknown[], aliases: string[]): number {
   );
 }
 
-
 function isZipPackage(bytes: Uint8Array): boolean {
   return (
     bytes.length >= 4 &&

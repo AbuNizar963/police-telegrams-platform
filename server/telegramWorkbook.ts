@@ -55,7 +55,9 @@ export async function buildTelegramWorkbook(input: {
   }
 
   const output = await workbook.outputAsync(
-    input.password?.trim() ? { password: input.password.trim() } : undefined
+    input.password !== undefined && input.password.length > 0
+      ? { password: input.password }
+      : undefined
   );
   return Buffer.from(output as ArrayBuffer).toString("base64");
 }

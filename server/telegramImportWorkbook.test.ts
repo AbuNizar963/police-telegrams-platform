@@ -103,6 +103,15 @@ describe("server-side password protected workbook preview", () => {
     expect(result.duplicateRows).toBe(1);
   });
 
+  it("does not report a password error when an unencrypted file is unreadable", async () => {
+    await expect(
+      parseTelegramWorkbookBase64(
+        Buffer.from("not an Excel workbook").toString("base64"),
+        "secret-pass"
+      )
+    ).rejects.toThrow("تعذر قراءة محتوى ملف Excel");
+  });
+
   it("returns a clear error for an incorrect password", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const bytes = await workbook.outputAsync({ password: "secret-pass" });

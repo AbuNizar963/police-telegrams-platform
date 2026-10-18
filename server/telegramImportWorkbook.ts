@@ -1,4 +1,4 @@
-import XlsxPopulate from "xlsx-populate";
+import * as XLSX from "xlsx";
 import officeCrypto from "officecrypto-tool";
 
 export type TelegramWorkbookImportRow = {
@@ -62,28 +62,48 @@ export async function parseTelegramWorkbookBase64(
       "حجم ملف Excel فارغ أو يتجاوز الحد المسموح وهو 15 ميغابايت."
     );
   }
-  let workbook;
+  let workbookBytes: Uint8Array = bytes;
+  let encrypted: boolean;
   try {
-    let workbookBytes: Uint8Array = bytes;
+    encrypted = officeCrypto.isEncrypted(bytes);
+  } catch {
+    throw new Error("تعذر التحقق من بنية ملف Excel. تأكد من سلامة الملف.");
+  }
 
-    // Excel encrypts an entire XLSX package inside an OLE container. Decrypt
-    // that container first, then pass the ordinary OOXML ZIP to the workbook
-    // parser. This also supports Agile AES-256/SHA-512 files produced by Excel.
-    if (officeCrypto.isEncrypted(bytes)) {
-      if (password === undefined || password.length === 0) {
-        throw new Error("PASSWORD_REQUIRED");
-      }
-      workbookBytes = await officeCrypto.decrypt(bytes, { password });
+  if (encrypted) {
+    if (password === undefined || password.length === 0) {
+      throw new Error("هذا الملف محمي بكلمة مرور. أدخل كلمة المرور لفتحه.");
     }
+    try {
+      workbookBytes = await officeCrypto.decrypt(bytes, { password });
+    } catch {
+      throw new Error(
+        "تعذر فك تشفير ملف Excel. تحقق من كلمة المرور أو أن نوع التشفير مدعوم."
+      );
+    }
+  }
 
-    workbook = await XlsxPopulate.fromDataAsync(Buffer.from(workbookBytes));
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(Buffer.from(workbookBytes), {
+      type: "buffer",
+      cellDates: false,
+    });
   } catch {
     throw new Error(
-      password !== undefined && password.length > 0
-        ? "تعذر فتح الملف. تحقق من كلمة المرور وأن الملف بصيغة Excel XLSX مدعومة."
-        : "هذا الملف محمي بكلمة مرور. أدخل كلمة المرور لفتحه."
+      encrypted
+        ? "تمت محاولة فك التشفير لكن تعذر قراءة محتوى الملف. قد تكون صيغة Excel غير مدعومة أو أن الملف تالف."
+        : "تعذر قراءة محتوى ملف Excel. تأكد من سلامة الملف وصيغته."
     );
   }
+
+  const sheets = workbook.SheetNames.map(sheetName => ({
+    sheetName,
+    matrix: XLSX.utils.sheet_to_json<unknown[]>(
+      workbook.Sheets[sheetName]!,
+      { header: 1, defval: "", raw: false }
+    ),
+  }));
 
   const rows: TelegramWorkbookImportRow[] = [];
   const issues: TelegramWorkbookImportIssue[] = [];
@@ -92,11 +112,9 @@ export async function parseTelegramWorkbookBase64(
   let skippedRows = 0;
   let duplicateRows = 0;
 
-  for (const sheet of workbook.sheets()) {
-    const sheetName = sheet.name();
+  for (const { sheetName, matrix } of sheets) {
     const direction: "صادر" | "وارد" =
       sheetName.trim() === "وارد" ? "وارد" : "صادر";
-    const matrix = sheet.usedRange()?.value() ?? [];
     if (matrix.length === 0) continue;
     let header = matrix.findIndex(row =>
       row.some(value => normalize(value).includes("الرقمالمتسلسل"))
@@ -201,6 +219,6 @@ export async function parseTelegramWorkbookBase64(
     skippedRows,
     duplicateRows,
     issues: issues.slice(0, 100),
-    sheets: workbook.sheets().map(sheet => sheet.name()),
+    sheets: sheets.map(sheet => sheet.sheetName),
   };
 }

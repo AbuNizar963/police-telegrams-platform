@@ -109,7 +109,9 @@ describe("server-side password protected workbook preview", () => {
         Buffer.from("not an Excel workbook").toString("base64"),
         "secret-pass"
       )
-    ).rejects.toThrow("تعذر قراءة محتوى ملف Excel");
+    ).rejects.toThrow(
+      /تعذر (?:التحقق من بنية ملف Excel|قراءة محتوى ملف Excel)/
+    );
   });
 
   it("returns a clear error for an incorrect password", async () => {

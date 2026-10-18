@@ -114,7 +114,14 @@ async function isPasswordProtectedExcel(file: File): Promise<boolean> {
 
   const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   const encryptedOfficeSignature = [
-    0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
+    0xd0,
+    0xcf,
+    0x11,
+    0xe0,
+    0xa1,
+    0xb1,
+    0x1a,
+    0xe1,
   ];
 
   return encryptedOfficeSignature.every(

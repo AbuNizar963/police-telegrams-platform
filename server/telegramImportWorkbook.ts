@@ -1,7 +1,10 @@
 import * as XLSX from "xlsx";
 import XlsxPopulate from "xlsx-populate";
 import officeCrypto from "officecrypto-tool";
-import { decryptWorkbook } from "@node-projects/excelforge";
+import {
+  decryptWorkbook,
+  isEncrypted as isExcelForgeEncrypted,
+} from "@node-projects/excelforge";
 
 export type TelegramWorkbookImportRow = {
   originalSerial: string;
@@ -118,6 +121,20 @@ export async function parseTelegramWorkbookBase64(
       "حجم ملف Excel فارغ أو يتجاوز الحد المسموح وهو 15 ميغابايت."
     );
   }
+  let encrypted = false;
+  try {
+    encrypted = officeCrypto.isEncrypted(bytes);
+  } catch {
+    // Try the independent CFB detector below before treating the file as plain.
+  }
+  if (!encrypted) {
+    try {
+      encrypted = isExcelForgeEncrypted(new Uint8Array(bytes));
+    } catch {
+      // The normal XLSX parser will report a clear invalid-file error if needed.
+    }
+  }
+
   let workbook: XLSX.WorkBook;
   if (encrypted) {
     if (password === undefined || password.length === 0) {

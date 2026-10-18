@@ -78,7 +78,6 @@ describe("telegram spreadsheet parsing", () => {
     });
   });
 
-
   it("preserves leading and trailing spaces in a valid workbook password", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const sheet = workbook.sheet(0).name("صادر");

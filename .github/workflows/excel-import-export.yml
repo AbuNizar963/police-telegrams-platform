@@ -1,0 +1,75 @@
+name: Excel import and export verification
+
+on:
+  push:
+    branches:
+      - flutter-mobile-app
+    paths:
+      - ".github/workflows/excel-import-export.yml"
+      - "client/src/lib/telegramSpreadsheet.ts"
+      - "client/src/lib/telegramSpreadsheet.test.ts"
+      - "client/src/pages/Home.tsx"
+      - "server/telegramImportWorkbook.ts"
+      - "server/telegramImportWorkbook.test.ts"
+      - "server/telegramWorkbook.ts"
+      - "server/telegramWorkbook.test.ts"
+      - "server/routers.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/excel-import-export.yml"
+      - "client/src/lib/telegramSpreadsheet.ts"
+      - "client/src/lib/telegramSpreadsheet.test.ts"
+      - "client/src/pages/Home.tsx"
+      - "server/telegramImportWorkbook.ts"
+      - "server/telegramImportWorkbook.test.ts"
+      - "server/telegramWorkbook.ts"
+      - "server/telegramWorkbook.test.ts"
+      - "server/routers.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: excel-import-export-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting of changed import/export files
+        run: pnpm exec prettier --check client/src/lib/telegramSpreadsheet.ts client/src/lib/telegramSpreadsheet.test.ts client/src/pages/Home.tsx server/telegramImportWorkbook.ts server/telegramImportWorkbook.test.ts server/telegramWorkbook.ts server/telegramWorkbook.test.ts
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Test Excel import and export
+        run: pnpm exec vitest run client/src/lib/telegramSpreadsheet.test.ts server/telegramImportWorkbook.test.ts server/telegramWorkbook.test.ts
+
+      - name: Production build
+        run: pnpm build

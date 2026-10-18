@@ -48,10 +48,10 @@ describe("server-side password protected workbook preview", () => {
           .value(value);
       })
     );
-    const encrypted = await workbook.outputAsync({ password: "secret-pass" });
+    const encrypted = await workbook.outputAsync({ password: " secret-pass " });
     const result = await parseTelegramWorkbookBase64(
       Buffer.from(encrypted).toString("base64"),
-      "secret-pass"
+      " secret-pass "
     );
 
     expect(result.sheets).toEqual(["وارد"]);

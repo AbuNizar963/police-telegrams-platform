@@ -10,6 +10,15 @@ import 'telegram_excel_codec.dart';
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
+bool _hasEncryptedOfficeContainerSignature(Uint8List bytes) {
+  const signature = <int>[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+  if (bytes.length < signature.length) return false;
+  for (var index = 0; index < signature.length; index += 1) {
+    if (bytes[index] != signature[index]) return false;
+  }
+  return true;
+}
+
 class TelegramExcelPage extends StatefulWidget {
   const TelegramExcelPage({super.key, required this.api});
 
@@ -289,6 +298,10 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       try {
         parsed = parseTelegramWorkbook(bytes);
       } catch (_) {
+        // Encrypted OOXML workbooks use an OLE/CFB container signature.
+        // Do not ask for a password when an ordinary XLSX parse fails for
+        // another reason, such as an invalid or unsupported workbook.
+        if (!_hasEncryptedOfficeContainerSignature(bytes)) rethrow;
         final password = await _askImportPassword();
         if (password == null || !mounted) return;
         final result = await widget.api.call(

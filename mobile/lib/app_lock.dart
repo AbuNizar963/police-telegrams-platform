@@ -30,6 +30,7 @@ class AppLockService {
     }
     await _storage.write(key: _pinKey, value: pin);
     await _storage.write(key: _enabledKey, value: 'true');
+    AppLockRuntime.notifySettingsChanged();
   }
 
   static Future<bool> verifyPin(String pin) async =>
@@ -40,6 +41,7 @@ class AppLockService {
       throw StateError('أنشئ رمز PIN أولاً قبل تفعيل قفل التطبيق.');
     }
     await _storage.write(key: _enabledKey, value: enabled ? 'true' : 'false');
+    AppLockRuntime.notifySettingsChanged();
   }
 
   static Future<bool> canUseBiometrics() async {
@@ -78,6 +80,7 @@ class AppLockService {
       key: _biometricKey,
       value: enabled ? 'true' : 'false',
     );
+    AppLockRuntime.notifySettingsChanged();
   }
 }
 
@@ -85,9 +88,14 @@ class AppLockRuntime {
   AppLockRuntime._();
 
   static final ValueNotifier<bool> sessionActive = ValueNotifier<bool>(false);
+  static final ValueNotifier<int> settingsChanged = ValueNotifier<int>(0);
 
   static void setSessionActive(bool active) {
     sessionActive.value = active;
+  }
+
+  static void notifySettingsChanged() {
+    settingsChanged.value++;
   }
 }
 
@@ -114,6 +122,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     AppLockRuntime.sessionActive.addListener(_onSessionChanged);
+    AppLockRuntime.settingsChanged.addListener(_onSettingsChanged);
     _loadSettings();
   }
 
@@ -121,6 +130,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     AppLockRuntime.sessionActive.removeListener(_onSessionChanged);
+    AppLockRuntime.settingsChanged.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
@@ -132,6 +142,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       _settingsLoaded = true;
       _locked = enabled && AppLockRuntime.sessionActive.value;
     });
+  }
+
+  void _onSettingsChanged() {
+    _loadSettings();
   }
 
   void _onSessionChanged() {
@@ -486,9 +500,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
   }
 
   Future<void> _refreshOverlay() async {
-    await AppLockService.isEnabled();
-    // The app-level overlay reads secure storage on lifecycle resume. A notifier
-    // refresh is not needed when the settings page is open.
+    AppLockRuntime.notifySettingsChanged();
   }
 
   @override

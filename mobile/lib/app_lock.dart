@@ -154,7 +154,7 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                       ? null
                       : () async {
                           final pin = pinController.text;
-                          if (!RegExp(r'^\d{4}) {
+                          if (!RegExp(r'^\d{4}
                             setDialogState(() {
                               error =
                                   'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
@@ -752,48 +752,4 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
             ),
     ),
   );
-}
-).hasMatch(pin)) {
-                            setDialogState(() {
-                              error =
-                                  'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
-                            });
-                            return;
-                          }
-                          if (pin != confirmationController.text) {
-                            setDialogState(() {
-                              error = 'تأكيد الرمز غير مطابق.';
-                            });
-                            return;
-                          }
-                          setDialogState(() {
-                            saving = true;
-                            error = null;
-                          });
-                          try {
-                            await AppLockService.savePin(pin);
-                            if (dialogContext.mounted) {
-                              Navigator.of(dialogContext).pop(true);
-                            }
-                          } catch (_) {
-                            setDialogState(() {
-                              error =
-                                  'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
-                              saving = false;
-                            });
-                          }
-                        },
-                  child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ ومتابعة'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ) ??
-        false;
-  } finally {
-    pinController.dispose();
-    confirmationController.dispose();
-  }
 }

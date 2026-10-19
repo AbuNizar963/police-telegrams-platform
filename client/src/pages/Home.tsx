@@ -875,7 +875,7 @@ export default function Home() {
       const detail =
         error instanceof Error ? error.message : "خطأ غير معروف";
       const passwordRelated = /password|decrypt|encrypt|كلمة المرور/i.test(
-        detail
+        detail,
       );
       toast.error(
         passwordRelated

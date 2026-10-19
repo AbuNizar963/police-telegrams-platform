@@ -59,6 +59,16 @@ Future<void> _scrollIntoView(WidgetTester tester, Finder target) async {
   await _pumpDashboardFrames(tester, frameCount: 3);
 }
 
+Future<void> _unlockAppIfLocked(WidgetTester tester) async {
+  final lockScreen = find.text('التطبيق مقفل');
+  if (lockScreen.evaluate().isEmpty) return;
+
+  final pinField = find.byType(TextField).first;
+  await tester.enterText(pinField, '1234');
+  await _pumpDashboardFrames(tester, frameCount: 3);
+  expect(lockScreen, findsNothing);
+}
+
 class _TestPoliceApi extends PoliceApi {
   _TestPoliceApi({this.signedIn = false});
 
@@ -164,17 +174,31 @@ class _TestOfficialTelegramDocumentRenderer
 
 void main() {
   setUp(() {
+    final secureStorage = <String, String>{};
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
           (call) async {
+            final arguments = call.arguments;
+            final key = arguments is Map ? arguments['key'] as String? : null;
             switch (call.method) {
               case 'read':
+                return key == null ? null : secureStorage[key];
+              case 'write':
+                if (key != null && arguments is Map) {
+                  secureStorage[key] = arguments['value'] as String;
+                }
+                return null;
+              case 'delete':
+                if (key != null) secureStorage.remove(key);
+                return null;
+              case 'deleteAll':
+                secureStorage.clear();
                 return null;
               case 'readAll':
-                return <String, String>{};
+                return Map<String, String>.from(secureStorage);
               case 'containsKey':
-                return false;
+                return key != null && secureStorage.containsKey(key);
               default:
                 return null;
             }
@@ -211,6 +235,7 @@ void main() {
       final api = _TestPoliceApi(signedIn: true);
       await tester.pumpWidget(PoliceTelegramsApp(api: api));
       await _pumpDashboardFrames(tester);
+      await _unlockAppIfLocked(tester);
 
       expect(find.byTooltip('إنشاء برقية'), findsOneWidget);
       expect(find.text('تقرير البرقيات'), findsOneWidget);
@@ -243,6 +268,7 @@ void main() {
       _setMobileViewport(tester);
       await tester.pumpWidget(PoliceTelegramsApp(api: _UnavailablePoliceApi()));
       await _pumpDashboardFrames(tester, frameCount: 12);
+      await _unlockAppIfLocked(tester);
 
       expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
       expect(find.text('وضع العمل المحلي'), findsNothing);
@@ -316,6 +342,7 @@ void main() {
       ),
     );
     await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
 
     final serial = find.text('برقية رقم: 72');
     await _scrollIntoView(tester, serial);
@@ -361,6 +388,7 @@ void main() {
       PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
     );
     await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
 
     expect(find.byIcon(LucideIcons.panelLeft), findsOneWidget);
     expect(find.byIcon(LucideIcons.siren), findsOneWidget);

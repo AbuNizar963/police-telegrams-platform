@@ -158,26 +158,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     } catch (error) {
       if (!mounted) return;
 
-      final pluginUnavailable =
-          error is MissingPluginException ||
-          (error is PlatformException && error.code == 'channel-error');
-
-      if (pluginUnavailable) {
-        // Widget tests and unsupported runtimes may not register the secure
-        // storage plugin. Keep the app usable in that specific environment.
-        setState(() {
-          _enabled = false;
-          _biometricEnabled = false;
-          _settingsLoaded = true;
-          _locked = false;
-          _pin = '';
-          _error = null;
-        });
-        return;
-      }
-
-      // For real storage failures, fail closed: never remove an existing lock
-      // merely because its settings could not be read.
+      // Fail closed for every storage error, including an unregistered
+      // platform plugin. Never disable an existing lock because its settings
+      // could not be read; tests should mock secure storage explicitly.
       setState(() {
         _enabled = true;
         _biometricEnabled = false;

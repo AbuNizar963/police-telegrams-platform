@@ -45,12 +45,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-
-
       # Apply the official Dart formatter instead of repeatedly failing CI on style-only diffs.
       - name: Format Dart source
         run: ./tool/format_dart.sh --fix
-
 
       # Pull requests are not modified by CI; require contributors to include formatter changes.
       - name: Verify formatting on pull requests

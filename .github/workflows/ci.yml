@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Temporary Prettier diagnostics
+        run: pnpm exec prettier client/src/pages/Home.tsx | sed -n '100,150p;825,890p'
+
       - name: Reject legacy platform dependencies
         run: |
           if git grep -niE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID|MANUS_|__MANUS__|manus' -- ':!pnpm-lock.yaml' ':!.github/workflows/ci.yml'; then

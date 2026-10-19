@@ -122,6 +122,7 @@ import {
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
 import { buildTelegramWorkbook } from "./telegramWorkbook";
+import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
 
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
@@ -2616,6 +2617,16 @@ export const appRouter = router({
         number: await getSuggestedOrganizationSerialNumber(organizationId),
       };
     }),
+    importWorkbookPreview: organizationAdminProcedure
+      .input(
+        z.object({
+          base64: z.string().min(1).max(22_000_000),
+          password: z.string().max(128).optional(),
+        })
+      )
+      .mutation(async ({ input }) =>
+        parseTelegramWorkbookBase64(input.base64, input.password)
+      ),
     importPreview: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .query(async ({ ctx, input }) => {

@@ -45,17 +45,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Temporary lockfile resolution diagnostics
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          for package in intl local_auth local_auth_android local_auth_darwin local_auth_platform_interface local_auth_windows; do
-            awk -v package="$package" '
-              $0 == "  " package ":" { printing = 1 }
-              printing && /^  [^ ]/ && $0 != "  " package ":" { exit }
-              printing { print }
-            ' pubspec.lock
-          done
 
 
       # Apply the official Dart formatter instead of repeatedly failing CI on style-only diffs.

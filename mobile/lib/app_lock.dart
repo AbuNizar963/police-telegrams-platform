@@ -112,6 +112,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     with WidgetsBindingObserver {
   bool _settingsLoaded = false;
   bool _enabled = false;
+  bool _biometricEnabled = false;
   bool _locked = false;
   bool _busy = false;
   String _pin = '';
@@ -134,13 +135,21 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     super.dispose();
   }
 
-  Future<void> _loadSettings() async {
-    final enabled = await AppLockService.isEnabled();
+  Future<void> _loadSettings({bool forceLock = false}) async {
+    final values = await Future.wait([
+      AppLockService.isEnabled(),
+      AppLockService.isBiometricEnabled(),
+    ]);
     if (!mounted) return;
+    final wasLoaded = _settingsLoaded;
+    final wasEnabled = _enabled;
+    final enabled = values[0];
     setState(() {
       _enabled = enabled;
+      _biometricEnabled = values[1];
       _settingsLoaded = true;
-      _locked = enabled && AppLockRuntime.sessionActive.value;
+      _locked = enabled && AppLockRuntime.sessionActive.value &&
+          (forceLock || !wasLoaded || (!wasEnabled && enabled) || _locked);
     });
   }
 
@@ -170,20 +179,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         });
       }
     } else if (state == AppLifecycleState.resumed) {
-      _loadSettings();
+      _loadSettings(forceLock: true);
     }
-  }
-
-  Future<void> _refreshSettings() async {
-    final enabled = await AppLockService.isEnabled();
-    if (!mounted) return;
-    setState(() {
-      _enabled = enabled;
-      if (!enabled) _locked = false;
-      if (enabled && AppLockRuntime.sessionActive.value && _locked == false) {
-        _locked = true;
-      }
-    });
   }
 
   Future<void> _submitPin() async {
@@ -305,23 +302,18 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                   label: Text(_busy ? 'جارٍ التحقق...' : 'فتح التطبيق'),
                                 ),
                               ),
-                              FutureBuilder<bool>(
-                                future: AppLockService.isBiometricEnabled(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.data != true) return const SizedBox.shrink();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton.icon(
-                                        onPressed: _busy ? null : _submitBiometric,
-                                        icon: const Icon(Icons.fingerprint),
-                                        label: const Text('فتح بالبصمة'),
-                                      ),
+                              if (_biometricEnabled)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _busy ? null : _submitBiometric,
+                                      icon: const Icon(Icons.fingerprint),
+                                      label: const Text('فتح بالبصمة'),
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),

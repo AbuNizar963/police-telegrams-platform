@@ -42,9 +42,9 @@ describe("request body limits", () => {
     );
     expect(getJsonBodyLimit("/api/trpc/settings.uploadLogo")).toBe("8mb");
     expect(getJsonBodyLimit("/api/trpc/telegrams.importRows")).toBe("50mb");
-    expect(
-      getJsonBodyLimit("/api/trpc/telegrams.importWorkbookPreview")
-    ).toBe("22mb");
+    expect(getJsonBodyLimit("/api/trpc/telegrams.importWorkbookPreview")).toBe(
+      "22mb"
+    );
     expect(
       getJsonBodyLimit(
         "/api/trpc/telegrams.importRows,telegrams.uploadAttachment"

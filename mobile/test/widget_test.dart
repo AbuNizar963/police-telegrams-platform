@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -303,6 +304,50 @@ void main() {
         ),
         findsOneWidget,
       );
+    },
+  );
+
+  testWidgets(
+    'successful biometric unlock survives native prompt lifecycle events',
+    (tester) async {
+      _setMobileViewport(tester);
+      const biometricChannel = MethodChannel('plugins.flutter.io/local_auth');
+      final authenticationResult = Completer<Object?>();
+      _seedExistingPin();
+      _secureStorageForTest['mobile_app_lock_biometric'] = 'true';
+      AppLockRuntime.setSessionActive(true);
+      addTearDown(() => AppLockRuntime.setSessionActive(false));
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            biometricChannel,
+            (call) => call.method == 'authenticate'
+                ? authenticationResult.future
+                : Future<Object?>.value(null),
+          );
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(biometricChannel, null),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AppLockOverlay(
+            child: Scaffold(body: Text('protected content')),
+          ),
+        ),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 8);
+      expect(find.text('قم بإدخال رمز PIN'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('استخدام البصمة أو التعرّف على الوجه'));
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      authenticationResult.complete(true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('protected content'), findsOneWidget);
+      expect(find.text('قم بإدخال رمز PIN'), findsNothing);
     },
   );
 

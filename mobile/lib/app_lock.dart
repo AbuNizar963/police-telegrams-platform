@@ -280,6 +280,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _settingsLoadFailed = false;
   bool _locked = false;
   bool _busy = false;
+  bool _biometricInProgress = false;
+  bool _ignoreLifecycleUntilNextFrame = false;
   int _unlockGeneration = 0;
   String _pin = '';
   String? _error;
@@ -332,6 +334,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     } catch (error) {
       if (!mounted) return;
 
+      // A settings read started before a successful unlock must not put the
+      // user back on the lock screen if its storage request fails late.
+      if (unlockGenerationAtStart != _unlockGeneration && !_locked) return;
+
       // Fail closed for every storage error, including an unregistered
       // platform plugin. Never disable an existing lock because its settings
       // could not be read; tests should mock secure storage explicitly.
@@ -366,6 +372,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The native biometric prompt can briefly pause/resume the activity. Do
+    // not interpret those transitions as the user leaving the app.
+    if (_biometricInProgress || _ignoreLifecycleUntilNextFrame) return;
+
     // Android may briefly report inactive while showing system UI. Relocking
     // then can erase the PIN during entry; only background transitions relock.
     if (state == AppLifecycleState.paused ||
@@ -440,6 +450,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
 
   Future<void> _submitBiometric() async {
     if (_settingsLoadFailed || _busy) return;
+    _biometricInProgress = true;
     setState(() {
       _busy = true;
       _error = null;
@@ -455,6 +466,14 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       }
 
       if (!mounted) return;
+
+      // Some platforms deliver the final lifecycle callback just after the
+      // authentication future completes. Let the unlock render before
+      // treating a subsequent background transition as a real app departure.
+      _ignoreLifecycleUntilNextFrame = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ignoreLifecycleUntilNextFrame = false;
+      });
 
       // Biometric unlock must not bypass migration of a legacy PIN.
       if (_legacyPin) {
@@ -487,6 +506,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         setState(() => _error = 'تعذر إكمال المصادقة الآمنة. حاول مجددًا.');
       }
     } finally {
+      _biometricInProgress = false;
       if (mounted) {
         setState(() => _busy = false);
       }

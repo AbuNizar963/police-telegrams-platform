@@ -11,6 +11,13 @@ import 'package:police_telegrams/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';
 
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
+
+final _secureStorageForTest = <String, String>{};
+
+void _seedExistingPin() {
+  _secureStorageForTest['mobile_app_lock_pin'] = '1234';
+  _secureStorageForTest['mobile_app_lock_enabled'] = 'true';
+}
 final _testPng = Uint8List.fromList(
   base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
@@ -187,7 +194,7 @@ class _TestOfficialTelegramDocumentRenderer
 
 void main() {
   setUp(() {
-    final secureStorage = <String, String>{};
+    _secureStorageForTest.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
@@ -196,22 +203,22 @@ void main() {
             final key = arguments is Map ? arguments['key'] as String? : null;
             switch (call.method) {
               case 'read':
-                return key == null ? null : secureStorage[key];
+                return key == null ? null : _secureStorageForTest[key];
               case 'write':
                 if (key != null && arguments is Map) {
-                  secureStorage[key] = arguments['value'] as String;
+                  _secureStorageForTest[key] = arguments['value'] as String;
                 }
                 return null;
               case 'delete':
-                if (key != null) secureStorage.remove(key);
+                if (key != null) _secureStorageForTest.remove(key);
                 return null;
               case 'deleteAll':
-                secureStorage.clear();
+                _secureStorageForTest.clear();
                 return null;
               case 'readAll':
-                return Map<String, String>.from(secureStorage);
+                return Map<String, String>.from(_secureStorageForTest);
               case 'containsKey':
-                return key != null && secureStorage.containsKey(key);
+                return key != null && _secureStorageForTest.containsKey(key);
               default:
                 return null;
             }
@@ -245,6 +252,7 @@ void main() {
     'dashboard matches the mobile reference and short serial format',
     (tester) async {
       _setMobileViewport(tester);
+      _seedExistingPin();
       final api = _TestPoliceApi(signedIn: true);
       await tester.pumpWidget(PoliceTelegramsApp(api: api));
       await _pumpDashboardFrames(tester);
@@ -279,6 +287,7 @@ void main() {
     'shows a connection error when dashboard refresh fails without cached data',
     (tester) async {
       _setMobileViewport(tester);
+      _seedExistingPin();
       await tester.pumpWidget(PoliceTelegramsApp(api: _UnavailablePoliceApi()));
       await _pumpDashboardFrames(tester, frameCount: 12);
       await _unlockAppIfLocked(tester);
@@ -347,6 +356,7 @@ void main() {
     tester,
   ) async {
     _setMobileViewport(tester);
+    _seedExistingPin();
     final api = _TestPoliceApi(signedIn: true);
     await tester.pumpWidget(
       OfficialTelegramDocumentRendererScope(
@@ -397,6 +407,7 @@ void main() {
     tester,
   ) async {
     _setMobileViewport(tester);
+    _seedExistingPin();
     await tester.pumpWidget(
       PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
     );

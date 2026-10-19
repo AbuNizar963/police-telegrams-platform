@@ -499,8 +499,8 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final account = await api.login(username.text.trim(), password.text);
-      AppLockRuntime.setSessionActive(true);
       if (!mounted) return;
+      AppLockRuntime.setSessionActive(true);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

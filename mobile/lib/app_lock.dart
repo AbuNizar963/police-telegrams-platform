@@ -50,6 +50,10 @@ class AppLockService {
       final supported = await _authentication.isDeviceSupported();
       final canCheck = await _authentication.canCheckBiometrics;
       return supported && canCheck;
+    } on MissingPluginException {
+      // Biometric authentication is unavailable when the platform plugin is
+      // not registered (for example, on unsupported platforms or in tests).
+      return false;
     } on PlatformException {
       return false;
     }
@@ -65,6 +69,8 @@ class AppLockService {
           useErrorDialogs: true,
         ),
       );
+    } on MissingPluginException {
+      return false;
     } on PlatformException {
       return false;
     }

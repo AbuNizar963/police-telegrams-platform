@@ -9,6 +9,7 @@ class AppLockService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _enabledKey = 'mobile_app_lock_enabled';
   static const String _pinKey = 'mobile_app_lock_pin';
+  static const String _biometricKey = 'mobile_app_lock_biometric';
   static final LocalAuthentication _authentication = LocalAuthentication();
 
   static Future<bool> isEnabled() async {
@@ -22,6 +23,9 @@ class AppLockService {
 
   static Future<bool> hasPin() async =>
       (await _storage.read(key: _pinKey))?.isNotEmpty ?? false;
+
+  static Future<bool> isBiometricEnabled() async =>
+      await _storage.read(key: _biometricKey) == 'true';
 
   static Future<bool> hasLegacyPin() async {
     final pin = await _storage.read(key: _pinKey);
@@ -70,6 +74,20 @@ class AppLockService {
     }
   }
 
+  static Future<void> setBiometricEnabled(bool enabled) async {
+    if (enabled && !await hasPin()) {
+      throw StateError('أنشئ رمز PIN أولاً قبل تفعيل المصادقة بالبصمة.');
+    }
+    if (enabled && !await canUseBiometrics()) {
+      throw StateError('لا تتوفر مصادقة بالبصمة على هذا الجهاز.');
+    }
+    if (enabled && !await authenticateBiometric()) {
+      throw StateError('تعذر التحقق بالبصمة؛ لم يتم تفعيل الخيار.');
+    }
+    await _storage.write(key: _biometricKey, value: enabled ? 'true' : 'false');
+    AppLockRuntime.notifySettingsChanged();
+  }
+
   static Future<bool> authenticateBiometric() async {
     try {
       return await _authentication.authenticate(
@@ -88,114 +106,112 @@ class AppLockService {
   }
 }
 
-Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
-  final pinController = TextEditingController();
-  final confirmationController = TextEditingController();
-  var saving = false;
-  String? error;
+Future<bool> showMandatoryPinSetupDialog(BuildContext context) async =>
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _MandatoryPinSetupDialog(),
+    ) ??
+    false;
 
-  try {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => PopScope(
-            canPop: false,
-            child: StatefulBuilder(
-              builder: (context, setDialogState) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: AlertDialog(
-                  title: const Text('إنشاء رمز PIN إلزامي'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 أرقام بالضبط وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: pinController,
-                        autofocus: true,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'رمز PIN الجديد',
-                        ),
-                      ),
-                      TextField(
-                        controller: confirmationController,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'تأكيد رمز PIN',
-                        ),
-                      ),
-                      if (error != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  actions: [
-                    FilledButton(
-                      onPressed: saving
-                          ? null
-                          : () async {
-                              final pin = pinController.text;
-                              if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
-                                setDialogState(() {
-                                  error =
-                                      'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
-                                });
-                                return;
-                              }
-                              if (pin != confirmationController.text) {
-                                setDialogState(() {
-                                  error = 'تأكيد الرمز غير مطابق.';
-                                });
-                                return;
-                              }
-                              setDialogState(() {
-                                saving = true;
-                                error = null;
-                              });
-                              try {
-                                await AppLockService.savePin(pin);
-                                if (dialogContext.mounted) {
-                                  Navigator.of(dialogContext).pop(true);
-                                }
-                              } catch (_) {
-                                setDialogState(() {
-                                  error = 'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
-                                  saving = false;
-                                });
-                              }
-                            },
-                      child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ ومتابعة'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ) ??
-        false;
-  } finally {
-    pinController.dispose();
-    confirmationController.dispose();
+class _MandatoryPinSetupDialog extends StatefulWidget {
+  const _MandatoryPinSetupDialog();
+
+  @override
+  State<_MandatoryPinSetupDialog> createState() =>
+      _MandatoryPinSetupDialogState();
+}
+
+class _MandatoryPinSetupDialogState extends State<_MandatoryPinSetupDialog> {
+  final _pinController = TextEditingController();
+  final _confirmationController = TextEditingController();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    _confirmationController.dispose();
+    super.dispose();
   }
+
+  Future<void> _savePin() async {
+    final pin = _pinController.text;
+    if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
+      setState(() => _error = 'يجب أن يتكون الرمز من 4 أرقام بالضبط.');
+      return;
+    }
+    if (pin != _confirmationController.text) {
+      setState(() => _error = 'تأكيد الرمز غير مطابق.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await AppLockService.savePin(pin);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    child: Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('إنشاء رمز PIN إلزامي'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 أرقام بالضبط وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pinController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(labelText: 'رمز PIN الجديد'),
+            ),
+            TextField(
+              controller: _confirmationController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 4,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(labelText: 'تأكيد رمز PIN'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: _saving ? null : _savePin,
+            child: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ ومتابعة'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class AppLockRuntime {
@@ -213,6 +229,37 @@ class AppLockRuntime {
   }
 }
 
+class AppLockOverlayHost extends StatefulWidget {
+  const AppLockOverlayHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<AppLockOverlayHost> createState() => _AppLockOverlayHostState();
+}
+
+class _AppLockOverlayHostState extends State<AppLockOverlayHost> {
+  late final OverlayEntry _entry = OverlayEntry(
+    builder: (_) => AppLockOverlay(child: widget.child),
+  );
+
+  @override
+  void didUpdateWidget(covariant AppLockOverlayHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.child != widget.child) _entry.markNeedsBuild();
+  }
+
+  @override
+  Widget build(BuildContext context) => Overlay(initialEntries: [_entry]);
+
+  @override
+  void dispose() {
+    _entry.remove();
+    _entry.dispose();
+    super.dispose();
+  }
+}
+
 class AppLockOverlay extends StatefulWidget {
   const AppLockOverlay({super.key, required this.child});
 
@@ -227,7 +274,6 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _settingsLoaded = false;
   bool _enabled = false;
   bool _biometricEnabled = false;
-  bool _biometricAttemptedForLock = false;
   bool _legacyPin = false;
   bool _settingsLoadFailed = false;
   bool _locked = false;
@@ -258,7 +304,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     try {
       final values = await Future.wait([
         AppLockService.isEnabled(),
-        AppLockService.canUseBiometrics(),
+        AppLockService.isBiometricEnabled(),
         AppLockService.hasLegacyPin(),
       ]);
       if (!mounted) return;
@@ -278,9 +324,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                 !wasLoaded ||
                 (!wasEnabled && enabled) ||
                 _locked);
-        if (!_locked) _biometricAttemptedForLock = false;
       });
-      _startBiometricForCurrentLock();
     } catch (error) {
       if (!mounted) return;
 
@@ -300,19 +344,6 @@ class _AppLockOverlayState extends State<AppLockOverlay>
             'تعذر الوصول إلى التخزين الآمن. أعد تشغيل التطبيق وحاول مجددًا.';
       });
     }
-  }
-
-  void _startBiometricForCurrentLock() {
-    if (!mounted ||
-        !_locked ||
-        !_biometricEnabled ||
-        _biometricAttemptedForLock) {
-      return;
-    }
-    _biometricAttemptedForLock = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _locked && !_busy) _submitBiometric();
-    });
   }
 
   void _onSettingsChanged() {
@@ -428,7 +459,6 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       }
 
       _unlockGeneration++;
-      _biometricAttemptedForLock = false;
       if (mounted) {
         setState(() {
           _locked = false;
@@ -508,6 +538,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                 keyboardType: TextInputType.number,
                                 obscureText: true,
                                 maxLength: _legacyPin ? 8 : 4,
+                                enableInteractiveSelection: false,
+                                enableSuggestions: false,
+                                autocorrect: false,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
                                 ],
@@ -516,9 +549,6 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                     _pin = value;
                                     _error = null;
                                   });
-                                  if (!_legacyPin && value.length == 4) {
-                                    _submitPin();
-                                  }
                                 },
                                 onSubmitted: (_) => _submitPin(),
                                 decoration: InputDecoration(
@@ -547,26 +577,29 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                         ? null
                                         : () => _loadSettings(forceLock: true),
                                     icon: const Icon(Icons.refresh),
-                                    label: const Text('إعادة تحميل إعدادات الحماية'),
+                                    label: const Text(
+                                      'إعادة تحميل إعدادات الحماية',
+                                    ),
                                   ),
                                 ),
                               ],
                               const SizedBox(height: 12),
-                              if (_legacyPin)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton.icon(
-                                    onPressed: _busy || _pin.length < 4
-                                        ? null
-                                        : _submitPin,
-                                    icon: const Icon(Icons.lock_open),
-                                    label: Text(
-                                      _busy
-                                          ? 'جارٍ التحقق...'
-                                          : 'التحقق من الرمز السابق',
-                                    ),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: _busy || _pin.length < 4
+                                      ? null
+                                      : _submitPin,
+                                  icon: const Icon(Icons.lock_open),
+                                  label: Text(
+                                    _busy
+                                        ? 'جارٍ التحقق...'
+                                        : _legacyPin
+                                        ? 'التحقق من الرمز السابق'
+                                        : 'فتح التطبيق',
                                   ),
                                 ),
+                              ),
                               if (_biometricEnabled)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8),
@@ -606,6 +639,7 @@ class AppLockSettingsSection extends StatefulWidget {
 class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
   bool _loading = true;
   bool _hasPin = false;
+  bool _biometric = false;
   bool _busy = false;
   String? _error;
 
@@ -617,10 +651,14 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
 
   Future<void> _load() async {
     try {
-      final hasPin = await AppLockService.hasPin();
+      final values = await Future.wait([
+        AppLockService.hasPin(),
+        AppLockService.isBiometricEnabled(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _hasPin = hasPin;
+        _hasPin = values[0];
+        _biometric = values[1];
         _loading = false;
       });
     } catch (_) {
@@ -730,6 +768,26 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
     }
   }
 
+  Future<void> _toggleBiometric(bool value) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AppLockService.setBiometricEnabled(value);
+      if (mounted) setState(() => _biometric = value);
+    } catch (exception) {
+      if (mounted) {
+        setState(
+          () => _error = exception.toString().replaceFirst('Bad state: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _refreshOverlay() async {
     AppLockRuntime.notifySettingsChanged();
   }
@@ -761,7 +819,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'قفل التطبيق وطلب المصادقة إلزاميان دائمًا. يمكنك تغيير رمز PIN من هنا فقط.',
+                  'قفل PIN إلزامي دائمًا. يمكنك تفعيل البصمة اختياريًا كوسيلة فتح إضافية.',
                 ),
                 const Divider(height: 24),
                 ListTile(
@@ -772,12 +830,13 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   trailing: const Icon(Icons.chevron_left),
                   onTap: _busy ? null : _setPin,
                 ),
-                const ListTile(
+                SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.fingerprint),
-                  title: Text('المصادقة البيومترية إلزامية عند توفرها'),
-                  subtitle: Text(
-                    'تُطلب عند قفل التطبيق، ويظل PIN متاحًا كوسيلة احتياطية.',
+                  value: _biometric,
+                  onChanged: _busy || !_hasPin ? null : _toggleBiometric,
+                  title: const Text('فتح التطبيق بالبصمة'),
+                  subtitle: const Text(
+                    'اختياري؛ يتطلب PIN مُعدًّا ومصادقة مدعومة على الجهاز.',
                   ),
                 ),
                 if (_error != null) ...[

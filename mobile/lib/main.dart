@@ -75,7 +75,7 @@ class PoliceTelegramsApp extends StatelessWidget {
     builder: (context, mode, _) => MaterialApp(
       debugShowCheckedModeBanner: false,
       builder: (context, child) =>
-          AppLockOverlay(child: child ?? const SizedBox.shrink()),
+          AppLockOverlayHost(child: child ?? const SizedBox.shrink()),
       title: 'برقيات الشرطة',
       theme: ThemeData(
         useMaterial3: true,

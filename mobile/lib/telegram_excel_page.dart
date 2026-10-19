@@ -11,16 +11,7 @@ const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
 bool _hasEncryptedOfficeContainerSignature(Uint8List bytes) {
-  const signature = <int>[
-    0xD0,
-    0xCF,
-    0x11,
-    0xE0,
-    0xA1,
-    0xB1,
-    0x1A,
-    0xE1,
-  ];
+  const signature = <int>[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
   if (bytes.length < signature.length) return false;
   for (var index = 0; index < signature.length; index += 1) {
     if (bytes[index] != signature[index]) return false;

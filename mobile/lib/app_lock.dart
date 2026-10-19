@@ -36,10 +36,13 @@ class AppLockService {
       pin == await _storage.read(key: _pinKey);
 
   static Future<void> setEnabled(bool enabled) async {
-    if (enabled && !await hasPin()) {
-      throw StateError('أنشئ رمز PIN أولاً قبل تفعيل قفل التطبيق.');
+    if (!enabled) {
+      throw StateError('رمز PIN إلزامي لحماية التطبيق ولا يمكن تعطيل القفل.');
     }
-    await _storage.write(key: _enabledKey, value: enabled ? 'true' : 'false');
+    if (!await hasPin()) {
+      throw StateError('أنشئ رمز PIN أولاً قبل فتح التطبيق.');
+    }
+    await _storage.write(key: _enabledKey, value: 'true');
     AppLockRuntime.notifySettingsChanged();
   }
 
@@ -702,12 +705,12 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _enabled,
-                  onChanged: _busy ? null : _toggleLock,
-                  title: const Text('تفعيل قفل التطبيق'),
+                  onChanged: null,
+                  title: const Text('قفل التطبيق الإلزامي'),
                   subtitle: Text(
                     _hasPin
-                        ? 'رمز PIN مُعدّ على هذا الجهاز'
-                        : 'أنشئ رمز PIN لتفعيل القفل',
+                        ? 'قفل PIN إلزامي ومفعّل على هذا الجهاز'
+                        : 'يجب إنشاء رمز PIN قبل استخدام التطبيق',
                   ),
                 ),
                 ListTile(

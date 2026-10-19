@@ -166,7 +166,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         _biometricEnabled = false;
         _settingsLoaded = true;
         _locked = AppLockRuntime.sessionActive.value;
-        _error = 'تعذر الوصول إلى التخزين الآمن. أعد تشغيل التطبيق وحاول مجددًا.';
+        _error =
+            'تعذر الوصول إلى التخزين الآمن. أعد تشغيل التطبيق وحاول مجددًا.';
       });
     }
   }

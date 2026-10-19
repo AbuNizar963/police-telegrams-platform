@@ -125,7 +125,7 @@ async function isPasswordProtectedExcel(file: File): Promise<boolean> {
   ];
 
   return encryptedOfficeSignature.every(
-    (byte, index) => signature[index] === byte,
+    (byte, index) => signature[index] === byte
   );
 }
 
@@ -874,13 +874,12 @@ export default function Home() {
     } catch (error) {
       const detail =
         error instanceof Error ? error.message : "خطأ غير معروف";
-      const passwordRelated = /password|decrypt|encrypt|كلمة المرور/i.test(
-        detail,
-      );
+      const passwordRelated =
+        /password|decrypt|encrypt|كلمة المرور/i.test(detail);
       toast.error(
         passwordRelated
           ? "تعذر فك تشفير الملف. تحقق من كلمة المرور وأن الملف محمي بكلمة مرور لفتحه."
-          : `تعذر قراءة الملف المحمي: ${detail}`,
+          : `تعذر قراءة الملف المحمي: ${detail}`
       );
     }
   };

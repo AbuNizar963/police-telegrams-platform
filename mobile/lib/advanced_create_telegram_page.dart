@@ -596,8 +596,11 @@ class _AdvancedCreateTelegramSheetState
                             _fieldLabel('نص البرقية'),
                             TextField(
                               controller: _body,
-                              minLines: 9,
-                              maxLines: 18,
+                              minLines: 6,
+                              maxLines: null,
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.newline,
+                              textDirection: TextDirection.rtl,
                               textAlignVertical: TextAlignVertical.top,
                               textCapitalization: TextCapitalization.none,
                               autocorrect: false,

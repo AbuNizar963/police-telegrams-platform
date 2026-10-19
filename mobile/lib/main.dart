@@ -4100,7 +4100,12 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
             const SizedBox(height: 10),
             TextField(
               controller: body,
-              maxLines: 7,
+              minLines: 5,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              textDirection: TextDirection.rtl,
+              textAlignVertical: TextAlignVertical.top,
               decoration: const InputDecoration(
                 labelText: 'نص البرقية',
                 alignLabelWithHint: true,

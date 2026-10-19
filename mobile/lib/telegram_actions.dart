@@ -152,6 +152,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       title: 'طلب إحالة عبر السلطة الأعلى',
       label: 'ملاحظة الإحالة (اختياري)',
     );
+    if (note == null || !mounted) return;
     await _run(() async {
       await widget.api.call(
         'telegrams.route',

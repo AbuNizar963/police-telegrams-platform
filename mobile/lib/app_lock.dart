@@ -11,8 +11,14 @@ class AppLockService {
   static const String _pinKey = 'mobile_app_lock_pin';
   static final LocalAuthentication _authentication = LocalAuthentication();
 
-  static Future<bool> isEnabled() async =>
-      await _storage.read(key: _enabledKey) == 'true';
+  static Future<bool> isEnabled() async {
+    final enabled = await _storage.read(key: _enabledKey) == 'true';
+    if (enabled) return true;
+
+    // A saved PIN always implies an enabled lock. This also repairs older or
+    // partially written settings that would otherwise bypass the lock screen.
+    return hasPin();
+  }
 
   static Future<bool> hasPin() async =>
       (await _storage.read(key: _pinKey))?.isNotEmpty ?? false;
@@ -26,9 +32,14 @@ class AppLockService {
     if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
       throw const FormatException('يجب أن يتكون رمز PIN من 4 أرقام بالضبط.');
     }
-    await _storage.write(key: _pinKey, value: pin);
-    await _storage.write(key: _enabledKey, value: 'true');
-    AppLockRuntime.notifySettingsChanged();
+    try {
+      await _storage.write(key: _pinKey, value: pin);
+      await _storage.write(key: _enabledKey, value: 'true');
+    } finally {
+      // Refresh the overlay even if the second write fails. Since a stored PIN
+      // itself enforces the lock, a partial settings write must fail closed.
+      AppLockRuntime.notifySettingsChanged();
+    }
   }
 
   static Future<bool> verifyPin(String pin) async =>

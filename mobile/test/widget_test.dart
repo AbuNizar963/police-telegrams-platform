@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:police_telegrams/api.dart';
@@ -163,6 +163,24 @@ class _TestOfficialTelegramDocumentRenderer
 }
 
 void main() {
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+          (call) async {
+            switch (call.method) {
+              case 'read':
+                return null;
+              case 'readAll':
+                return <String, String>{};
+              case 'containsKey':
+                return false;
+              default:
+                return null;
+            }
+          },
+        );
+  });
   test('push service construction does not require Firebase configuration', () {
     expect(PushNotificationService.new, returnsNormally);
   });

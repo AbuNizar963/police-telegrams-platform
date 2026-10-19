@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'app_lock.dart';
+
 import 'api.dart';
 
 const _navy = Color(0xFF10233F);
@@ -756,6 +758,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                   ),
                 if (mustChangePassword) const SizedBox(height: 14),
                 if (error != null) _ErrorCard(message: error!),
+                const AppLockSettingsSection(),
+                const SizedBox(height: 14),
                 _FormCard(
                   title: 'المعلومات الشخصية',
                   children: [

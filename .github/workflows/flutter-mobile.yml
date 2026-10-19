@@ -45,7 +45,25 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Pull requests must already be formatted; direct branch pushes may be formatted by CI.
+      # Keep same-repository PR branches formatted before analysis and tests.
+      # Fork PRs remain read-only and are checked without pushing changes.
+      - name: Format Dart source on same-repository pull requests
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format lib test
+          if git diff --quiet -- mobile/lib mobile/test; then
+            echo "Dart source is already formatted."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/lib mobile/test
+          git commit -m "style(mobile): format Dart source"
+          git push origin "HEAD:${{ github.head_ref }}"
+
       - name: Verify Dart formatting on pull requests
         if: github.event_name == 'pull_request'
         run: dart format --output=none --set-exit-if-changed lib test

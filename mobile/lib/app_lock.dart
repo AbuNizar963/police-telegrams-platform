@@ -300,8 +300,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
+    // Do not relock on `inactive`: Android can temporarily lose window
+    // focus for system UI without the user leaving the app. Relocking here can
+    // erase a PIN while the user is entering it. Lock only when backgrounded.
+    if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       if (_enabled && AppLockRuntime.sessionActive.value && mounted) {
         setState(() {
@@ -620,31 +622,6 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'تعذر حفظ رمز PIN في التخزين الآمن.');
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _toggleLock(bool value) async {
-    if (_busy) return;
-    if (value && !_hasPin) {
-      await _setPin();
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await AppLockService.setEnabled(value);
-      if (mounted) setState(() => _enabled = value);
-      await _refreshOverlay();
-    } catch (exception) {
-      if (mounted) {
-        setState(
-          () => _error = exception.toString().replaceFirst('Bad state: ', ''),
-        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);

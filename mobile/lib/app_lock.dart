@@ -111,7 +111,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _biometricEnabled = false;
   bool _locked = false;
   bool _busy = false;
-  bool _biometricAuthenticating = false;
+  int _unlockGeneration = 0;
   String _pin = '';
   String? _error;
 
@@ -133,6 +133,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   Future<void> _loadSettings({bool forceLock = false}) async {
+    final unlockGenerationAtStart = _unlockGeneration;
     final values = await Future.wait([
       AppLockService.isEnabled(),
       AppLockService.isBiometricEnabled(),
@@ -148,7 +149,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       _locked =
           enabled &&
           AppLockRuntime.sessionActive.value &&
-          ((forceLock && !_biometricAuthenticating) ||
+          ((forceLock && unlockGenerationAtStart == _unlockGeneration) ||
               !wasLoaded ||
               (!wasEnabled && enabled) ||
               _locked);
@@ -193,6 +194,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     });
     try {
       if (await AppLockService.verifyPin(_pin)) {
+        _unlockGeneration++;
         if (mounted) {
           setState(() {
             _locked = false;
@@ -217,21 +219,18 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     if (_busy) return;
     setState(() {
       _busy = true;
-      _biometricAuthenticating = true;
       _error = null;
     });
     try {
       if (await AppLockService.authenticateBiometric()) {
+        _unlockGeneration++;
         if (mounted) setState(() => _locked = false);
       } else if (mounted) {
         setState(() => _error = 'لم تكتمل المصادقة بالبصمة.');
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _biometricAuthenticating = false;
-        });
+        setState(() => _busy = false);
       }
     }
   }

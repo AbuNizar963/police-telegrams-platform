@@ -96,101 +96,102 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
 
   try {
     return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => PopScope(
-            canPop: false,
-            child: StatefulBuilder(
-              builder: (context, setDialogState) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: AlertDialog(
-                  title: const Text('إنشاء رمز PIN إلزامي'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 أرقام بالضبط وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: pinController,
-                        autofocus: true,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'رمز PIN الجديد',
-                        ),
-                      ),
-                      TextField(
-                        controller: confirmationController,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'تأكيد رمز PIN',
-                        ),
-                      ),
-                      if (error != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ],
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('إنشاء رمز PIN إلزامي'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 أرقام بالضبط وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
                   ),
-                  actions: [
-                    FilledButton(
-                      onPressed: saving
-                          ? null
-                          : () async {
-                              final pin = pinController.text;
-                              if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
-                                setDialogState(() {
-                                  error = 'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
-                                });
-                                return;
-                              }
-                              if (pin != confirmationController.text) {
-                                setDialogState(() {
-                                  error = 'تأكيد الرمز غير مطابق.';
-                                });
-                                return;
-                              }
-                              setDialogState(() {
-                                saving = true;
-                                error = null;
-                              });
-                              try {
-                                await AppLockService.savePin(pin);
-                                if (dialogContext.mounted) {
-                                  Navigator.of(dialogContext).pop(true);
-                                }
-                              } catch (_) {
-                                setDialogState(() {
-                                  error =
-                                      'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
-                                  saving = false;
-                                });
-                              }
-                            },
-                      child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ ومتابعة'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: pinController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 4,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'رمز PIN الجديد',
+                    ),
+                  ),
+                  TextField(
+                    controller: confirmationController,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 4,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'تأكيد رمز PIN',
+                    ),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
+              actions: [
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final pin = pinController.text;
+                          if (!RegExp(r'^\\d{4}$').hasMatch(pin)) {
+                            setDialogState(() {
+                              error =
+                                  'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
+                            });
+                            return;
+                          }
+                          if (pin != confirmationController.text) {
+                            setDialogState(() {
+                              error = 'تأكيد الرمز غير مطابق.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            saving = true;
+                            error = null;
+                          });
+                          try {
+                            await AppLockService.savePin(pin);
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(true);
+                            }
+                          } catch (_) {
+                            setDialogState(() {
+                              error =
+                                  'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
+                              saving = false;
+                            });
+                          }
+                        },
+                  child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ ومتابعة'),
+                ),
+              ],
             ),
           ),
-        ) ??
+        ),
+      ),
+    ) ??
         false;
   } finally {
     pinController.dispose();

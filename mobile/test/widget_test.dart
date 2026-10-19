@@ -89,17 +89,15 @@ Future<void> _unlockAppIfLocked(WidgetTester tester) async {
     await _pumpDashboardFrames(tester, frameCount: 4);
   }
 
-  final lockScreen = find.text('التطبيق مقفل');
+  final lockScreen = find.text('قم بإدخال رمز PIN');
   if (lockScreen.evaluate().isNotEmpty) {
     final pinField = _appLockPinField();
     await tester.enterText(pinField, '1234');
     await tester.pump();
     final legacyButton = find.text('التحقق من الرمز السابق');
-    await tester.tap(
-      legacyButton.evaluate().isNotEmpty
-          ? legacyButton
-          : find.text('فتح التطبيق'),
-    );
+    if (legacyButton.evaluate().isNotEmpty) {
+      await tester.tap(legacyButton);
+    }
     await _pumpDashboardFrames(tester, frameCount: 4);
   }
 
@@ -270,6 +268,44 @@ void main() {
     );
   });
 
+  testWidgets(
+    'PIN lock uses four adaptive slots on the dark full-screen view',
+    (tester) async {
+      _setMobileViewport(tester);
+      _seedExistingPin();
+      AppLockRuntime.setSessionActive(true);
+      addTearDown(() => AppLockRuntime.setSessionActive(false));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: ThemeMode.dark,
+          home: const AppLockOverlay(
+            child: Scaffold(body: Text('protected content')),
+          ),
+        ),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 8);
+
+      expect(find.text('قم بإدخال رمز PIN'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AppLockOverlay),
+          matching: find.byType(AnimatedContainer),
+        ),
+        findsNWidgets(4),
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Material && widget.color == const Color(0xFF1C1D2B),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('first-login PIN setup requires matching entries', (
     tester,
   ) async {
@@ -338,7 +374,7 @@ void main() {
       ),
     );
     await _pumpDashboardFrames(tester, frameCount: 8);
-    expect(find.text('التطبيق مقفل'), findsOneWidget);
+    expect(find.text('أدخل رمز PIN السابق'), findsOneWidget);
 
     await tester.enterText(_appLockPinField(), '123456');
     await tester.pump();

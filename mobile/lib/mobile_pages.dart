@@ -93,7 +93,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   if (error != null) _ErrorCard(message: error!),
-                  if (notifications.isEmpty)
+                  if (notifications.isEmpty && error == null)
                     const _EmptyCard(message: 'لا توجد إشعارات جديدة')
                   else
                     ...notifications.map((item) {
@@ -271,7 +271,12 @@ class _ReportsPageState extends State<ReportsPage> {
         error = null;
       });
     } catch (exception) {
-      if (mounted) setState(() => error = _errorMessage(exception));
+      if (mounted) {
+        setState(() {
+          report = null;
+          error = _errorMessage(exception);
+        });
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -498,10 +503,10 @@ class _ReportSummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'ملخص البرقيات',
           style: TextStyle(
-            color: _navy,
+            color: Theme.of(context).colorScheme.primary,
             fontSize: 20,
             fontWeight: FontWeight.w900,
           ),
@@ -509,32 +514,44 @@ class _ReportSummary extends StatelessWidget {
         const SizedBox(height: 10),
         Row(
           children: [
-            _metric('الإجمالي', total, Icons.description_outlined),
-            _metric('قيد المراجعة', pending, Icons.pending_actions_outlined),
-            _metric('مكتملة', completed, Icons.verified_outlined),
+            _metric(context, 'الإجمالي', total, Icons.description_outlined),
+            _metric(
+              context,
+              'قيد المراجعة',
+              pending,
+              Icons.pending_actions_outlined,
+            ),
+            _metric(context, 'مكتملة', completed, Icons.verified_outlined),
           ],
         ),
         const SizedBox(height: 8),
         Text(
           'السجلات المعروضة: ${items is List ? items.length : '—'}',
-          style: const TextStyle(color: Colors.black54),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
   }
 
-  Widget _metric(String label, dynamic value, IconData icon) => Expanded(
+  Widget _metric(
+    BuildContext context,
+    String label,
+    dynamic value,
+    IconData icon,
+  ) => Expanded(
     child: Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, color: _gold),
+            Icon(icon, color: Theme.of(context).colorScheme.secondary),
             const SizedBox(height: 5),
             Text(
               '$value',
-              style: const TextStyle(
-                color: _navy,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
                 fontSize: 19,
                 fontWeight: FontWeight.w900,
               ),
@@ -562,7 +579,10 @@ class _ReportRows extends StatelessWidget {
         children: raw.take(100).map((item) {
           final row = Map<String, dynamic>.from(item as Map);
           return ListTile(
-            leading: const Icon(Icons.description_outlined, color: _navy),
+            leading: Icon(
+              Icons.description_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             title: Text(
               _stringValue(row['subject'], 'برقية بدون موضوع'),
               maxLines: 1,
@@ -606,6 +626,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   bool loading = true;
   bool saving = false;
   bool mustChangePassword = false;
+  bool _profileLoadFailed = false;
   String? error;
 
   @override
@@ -633,6 +654,13 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   }
 
   Future<void> load() async {
+    if (mounted) {
+      setState(() {
+        loading = true;
+        _profileLoadFailed = false;
+        error = null;
+      });
+    }
     try {
       final result = await widget.api.call('profile.get');
       final profile = Map<String, dynamic>.from(result as Map);
@@ -644,7 +672,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       bio.text = _stringValue(profile['bio'], '');
       mustChangePassword = profile['mustChangePassword'] == true;
     } catch (exception) {
-      if (mounted) setState(() => error = _errorMessage(exception));
+      if (mounted) {
+        setState(() {
+          _profileLoadFailed = true;
+          error = _errorMessage(exception);
+        });
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -738,18 +771,52 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
+          : _profileLoadFailed
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_off_outlined,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'تعذر تحميل بيانات الملف الشخصي',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(error!, textAlign: TextAlign.center),
+                    ],
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: load,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 if (mustChangePassword)
-                  const Card(
-                    color: Color(0xFFFFF4D6),
+                  Card(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
                     child: Padding(
-                      padding: EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(14),
                       child: Text(
                         'هذه كلمة مرور مؤقتة للحساب الرئيسي للجهة. يجب تغييرها قبل متابعة العمل.',
                         style: TextStyle(
-                          color: Color(0xFF704E00),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onTertiaryContainer,
                           fontWeight: FontWeight.w700,
                           height: 1.5,
                         ),
@@ -806,11 +873,14 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       obscure: true,
                       maxLength: 256,
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
                         '12 محرفًا على الأقل.',
-                        style: TextStyle(color: Colors.black54, fontSize: 12),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     OutlinedButton.icon(

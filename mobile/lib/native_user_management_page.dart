@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-const _userNavy = Color(0xFF10233F);
 const _userGold = Color(0xFFD8C38E);
 
 const _roles = <String, String>{
@@ -90,6 +89,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     } catch (exception) {
       if (mounted && generation == _loadGeneration) {
         setState(() {
+          _users = [];
+          _totalPages = 1;
           _error = exception.toString().replaceFirst('Exception: ', '');
         });
       }
@@ -383,11 +384,16 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                     onRefresh: load,
                     child: _users.isEmpty
                         ? ListView(
-                            children: const [
-                              SizedBox(height: 90),
-                              Icon(Icons.people_outline, size: 44),
-                              SizedBox(height: 12),
-                              Center(child: Text('لا توجد حسابات مطابقة.')),
+                            children: [
+                              const SizedBox(height: 90),
+                              const Icon(Icons.people_outline, size: 44),
+                              const SizedBox(height: 12),
+                              Center(
+                                child: Text(
+                                  _error == null ? 'لا توجد حسابات مطابقة.' : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ],
                           )
                         : ListView.builder(
@@ -448,11 +454,13 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
               children: [
                 CircleAvatar(
                   backgroundColor: disabled
-                      ? Colors.grey.shade200
-                      : const Color(0xFFF1E8D5),
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Theme.of(context).colorScheme.secondaryContainer,
                   child: Icon(
                     disabled ? Icons.person_off_outlined : Icons.person_outline,
-                    color: _userNavy,
+                    color: disabled
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.onSecondaryContainer,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -472,14 +480,16 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                       const SizedBox(height: 4),
                       Text(
                         _text(user['organizationName'], 'دون جهة محددة'),
-                        style: const TextStyle(color: Colors.black54),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       Text(
                         '${_text(user['rank'])} · '
                         '${_text(user['badgeNumber'])}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.black54,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -495,8 +505,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                         : _roles[user['membershipRole']] ?? 'حساب جهة',
                   ),
                   backgroundColor: disabled
-                      ? Colors.grey.shade200
-                      : const Color(0xFFF1E8D5),
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Theme.of(context).colorScheme.secondaryContainer,
                 ),
               ],
             ),
@@ -779,8 +789,13 @@ class _EnableUserDialogState extends State<_EnableUserDialog> {
             controller: _confirmPassword,
             obscureText: true,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'كلمة المرور الحالية للتأكيد',
+            decoration: InputDecoration(
+              labelText: 'تأكيد كلمة المرور الجديدة',
+              errorText:
+                  _confirmPassword.text.isEmpty ||
+                      _password.text == _confirmPassword.text
+                  ? null
+                  : 'كلمتا المرور غير متطابقتين',
             ),
           ),
         ],
@@ -791,7 +806,10 @@ class _EnableUserDialogState extends State<_EnableUserDialog> {
           child: const Text('إلغاء'),
         ),
         FilledButton(
-          onPressed: _password.text.length < 12 || _confirmPassword.text.isEmpty
+          onPressed:
+              _password.text.length < 12 ||
+                  _confirmPassword.text.isEmpty ||
+                  _password.text != _confirmPassword.text
               ? null
               : () => Navigator.pop(context, {
                   'password': _password.text,

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-const _editNavy = Color(0xFF101C35);
-
 const _categories = <MapEntry<String, String>>[
   MapEntry('criminal', 'جنائي'),
   MapEntry('administrative', 'إداري'),
@@ -154,9 +152,12 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: AlertDialog(
-      title: const Text(
+      title: Text(
         'تعديل بيانات البرقية',
-        style: TextStyle(color: _editNavy, fontWeight: FontWeight.w900),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w900,
+        ),
       ),
       content: SizedBox(
         width: 460,

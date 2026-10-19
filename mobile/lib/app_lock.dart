@@ -271,6 +271,8 @@ class AppLockOverlay extends StatefulWidget {
 
 class _AppLockOverlayState extends State<AppLockOverlay>
     with WidgetsBindingObserver {
+  final TextEditingController _pinController = TextEditingController();
+  final FocusNode _pinFocusNode = FocusNode();
   bool _settingsLoaded = false;
   bool _enabled = false;
   bool _biometricEnabled = false;
@@ -294,6 +296,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pinController.dispose();
+    _pinFocusNode.dispose();
     AppLockRuntime.sessionActive.removeListener(_onSessionChanged);
     AppLockRuntime.settingsChanged.removeListener(_onSettingsChanged);
     super.dispose();
@@ -355,6 +359,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     setState(() {
       _locked = _enabled && AppLockRuntime.sessionActive.value;
       _pin = '';
+      _pinController.clear();
       _error = null;
     });
   }
@@ -369,6 +374,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         setState(() {
           _locked = true;
           _pin = '';
+          _pinController.clear();
           _error = null;
         });
       }
@@ -398,6 +404,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
             if (mounted) {
               setState(() {
                 _pin = '';
+                _pinController.clear();
                 _error = 'يجب تحديث الرمز السابق إلى PIN من 4 أرقام للمتابعة.';
               });
             }
@@ -406,16 +413,19 @@ class _AppLockOverlayState extends State<AppLockOverlay>
           _legacyPin = false;
         }
         _unlockGeneration++;
+        _pinFocusNode.unfocus();
         if (mounted) {
           setState(() {
             _locked = false;
             _pin = '';
+            _pinController.clear();
             _error = null;
           });
         }
       } else if (mounted) {
         setState(() {
           _pin = '';
+          _pinController.clear();
           _error = 'رمز PIN غير صحيح. حاول مرة أخرى.';
         });
       }
@@ -459,10 +469,12 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       }
 
       _unlockGeneration++;
+      _pinFocusNode.unfocus();
       if (mounted) {
         setState(() {
           _locked = false;
           _pin = '';
+          _pinController.clear();
           _error = null;
         });
       }
@@ -478,155 +490,310 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   @override
-  Widget build(BuildContext context) => Stack(
-    fit: StackFit.expand,
-    children: [
-      widget.child,
-      if (!_settingsLoaded && AppLockRuntime.sessionActive.value)
-        Positioned.fill(
-          child: Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = isDark
+        ? const Color(0xFF1C1D2B)
+        : const Color(0xFFF8F7F2);
+    final slotFill = isDark ? const Color(0xFF303242) : const Color(0xFFE9EBF0);
+    final slotBorder = isDark
+        ? const Color(0xFF414354)
+        : const Color(0xFFD9DDE5);
+    final pinLength = _legacyPin ? 8 : 4;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        widget.child,
+        if (!_settingsLoaded && AppLockRuntime.sessionActive.value)
+          Positioned.fill(
+            child: Material(
+              color: background,
+              child: Center(
+                child: CircularProgressIndicator(color: colors.primary),
               ),
             ),
           ),
-        ),
-      if (_settingsLoaded &&
-          _enabled &&
-          AppLockRuntime.sessionActive.value &&
-          _locked)
-        Positioned.fill(
-          child: Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 380),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.shield_outlined,
-                                size: 54,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'التطبيق مقفل',
-                                style: TextStyle(
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'أدخل رمز PIN من 4 أرقام أو أكمل المصادقة بالبصمة.',
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 20),
-                              TextField(
-                                autofocus: true,
-                                keyboardType: TextInputType.number,
-                                obscureText: true,
-                                maxLength: _legacyPin ? 8 : 4,
-                                enableInteractiveSelection: false,
-                                enableSuggestions: false,
-                                autocorrect: false,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    _pin = value;
-                                    _error = null;
-                                  });
-                                },
-                                onSubmitted: (_) => _submitPin(),
-                                decoration: InputDecoration(
-                                  labelText: _legacyPin
-                                      ? 'رمز PIN السابق'
-                                      : 'رمز PIN (4 أرقام)',
-                                  counterText: '',
-                                  prefixIcon: Icon(Icons.password),
-                                ),
-                              ),
-                              if (_error != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  _error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              ],
-                              if (_settingsLoadFailed) ...[
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => _loadSettings(forceLock: true),
-                                    icon: const Icon(Icons.refresh),
-                                    label: const Text(
-                                      'إعادة تحميل إعدادات الحماية',
+        if (_settingsLoaded &&
+            _enabled &&
+            AppLockRuntime.sessionActive.value &&
+            _locked)
+          Positioned.fill(
+            child: Material(
+              color: background,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final bottomInset = MediaQuery.viewInsetsOf(context)
+                          .bottom;
+                      final viewportHeight =
+                          (constraints.maxHeight - bottomInset)
+                              .clamp(0.0, constraints.maxHeight)
+                              .toDouble();
+                      final slotMargin = pinLength == 4 ? 5.0 : 2.0;
+                      final slotWidth =
+                          ((constraints.maxWidth - pinLength * slotMargin * 2) /
+                                  pinLength)
+                              .clamp(24.0, pinLength == 4 ? 76.0 : 40.0)
+                              .toDouble();
+                      final rowWidth = pinLength * (slotWidth + slotMargin * 2);
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                          20,
+                          20,
+                          20,
+                          bottomInset + 20,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: (viewportHeight - 40)
+                                .clamp(0.0, double.infinity)
+                                .toDouble(),
+                          ),
+                          child: Align(
+                            alignment: const Alignment(0, -0.12),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 390),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lock_rounded,
+                                    size: 132,
+                                    color: colors.onSurfaceVariant.withValues(
+                                      alpha: .86,
                                     ),
                                   ),
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: _busy || _pin.length < 4
-                                      ? null
-                                      : _submitPin,
-                                  icon: const Icon(Icons.lock_open),
-                                  label: Text(
-                                    _busy
-                                        ? 'جارٍ التحقق...'
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    _settingsLoadFailed
+                                        ? 'تعذر التحقق الآمن'
                                         : _legacyPin
-                                        ? 'التحقق من الرمز السابق'
-                                        : 'فتح التطبيق',
+                                        ? 'أدخل رمز PIN السابق'
+                                        : 'قم بإدخال رمز PIN',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: colors.onSurface,
+                                    ),
                                   ),
-                                ),
-                              ),
-                              if (_biometricEnabled)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
+                                  const SizedBox(height: 28),
+                                  SizedBox(
+                                    width: rowWidth,
+                                    height: pinLength == 4 ? 72 : 52,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: List.generate(pinLength, (
+                                            index,
+                                          ) {
+                                            final filled = index < _pin.length;
+                                            return AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 140,
+                                              ),
+                                              width: slotWidth,
+                                              height: pinLength == 4 ? 72 : 52,
+                                              margin: EdgeInsets.symmetric(
+                                                horizontal: slotMargin,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: slotFill,
+                                                borderRadius:
+                                                    BorderRadius.circular(17),
+                                                border: Border.all(
+                                                  color: filled
+                                                      ? colors.primary
+                                                      : slotBorder,
+                                                  width: filled ? 1.6 : 1,
+                                                ),
+                                              ),
+                                              child: filled
+                                                  ? Center(
+                                                      child: Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                              color: colors
+                                                                  .primary,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                      ),
+                                                    )
+                                                  : null,
+                                            );
+                                          }),
+                                        ),
+                                        Semantics(
+                                          label:
+                                              'رمز PIN: ${_pin.length} من $pinLength أرقام',
+                                          textField: true,
+                                          child: Opacity(
+                                            opacity: 0.01,
+                                            child: TextField(
+                                              controller: _pinController,
+                                              focusNode: _pinFocusNode,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              textInputAction:
+                                                  TextInputAction.done,
+                                              textAlign: TextAlign.center,
+                                              obscureText: true,
+                                              maxLength: pinLength,
+                                              enabled:
+                                                  !_settingsLoadFailed &&
+                                                  !_busy,
+                                              enableInteractiveSelection: false,
+                                              enableSuggestions: false,
+                                              autocorrect: false,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter
+                                                    .digitsOnly,
+                                              ],
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _pin = value;
+                                                  _error = null;
+                                                });
+                                                if (!_legacyPin &&
+                                                    value.length == 4) {
+                                                  _submitPin();
+                                                }
+                                              },
+                                              onSubmitted: (_) => _submitPin(),
+                                              decoration: InputDecoration(
+                                                labelText: _legacyPin
+                                                    ? 'رمز PIN السابق'
+                                                    : 'رمز PIN (4 أرقام)',
+                                                counterText: '',
+                                                isDense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                                border: InputBorder.none,
+                                                enabledBorder: InputBorder.none,
+                                                focusedBorder: InputBorder.none,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_busy) ...[
+                                    const SizedBox(height: 14),
+                                    const SizedBox.square(
+                                      dimension: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'جارٍ التحقق...',
+                                      style: TextStyle(
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                  if (_error != null) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colors.errorContainer,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        _error!,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: colors.onErrorContainer,
+                                          height: 1.45,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  if (_settingsLoadFailed) ...[
+                                    const SizedBox(height: 14),
+                                    OutlinedButton.icon(
+                                      onPressed: _busy
+                                          ? null
+                                          : () =>
+                                                _loadSettings(forceLock: true),
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text(
+                                        'إعادة تحميل إعدادات الحماية',
+                                      ),
+                                    ),
+                                  ],
+                                  if (_legacyPin && !_settingsLoadFailed) ...[
+                                    const SizedBox(height: 12),
+                                    FilledButton.icon(
+                                      onPressed: _busy || _pin.length < 4
+                                          ? null
+                                          : _submitPin,
+                                      icon: const Icon(Icons.lock_open),
+                                      label: const Text(
+                                        'التحقق من الرمز السابق',
+                                      ),
+                                    ),
+                                  ],
+                                  if (_biometricEnabled &&
+                                      !_settingsLoadFailed) ...[
+                                    const SizedBox(height: 36),
+                                    IconButton(
+                                      tooltip:
+                                          'استخدام البصمة أو التعرّف على الوجه',
                                       onPressed: _busy
                                           ? null
                                           : _submitBiometric,
-                                      icon: const Icon(Icons.fingerprint),
-                                      label: const Text('المصادقة بالبصمة'),
+                                      style: IconButton.styleFrom(
+                                        foregroundColor:
+                                            colors.onSurfaceVariant,
+                                        backgroundColor: slotFill,
+                                        fixedSize: const Size(82, 82),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.fingerprint_rounded,
+                                        size: 48,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                            ],
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      'استخدام البصمة أو الوجه',
+                                      style: TextStyle(
+                                        color: colors.onSurfaceVariant,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
             ),
           ),
-        ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class AppLockSettingsSection extends StatefulWidget {

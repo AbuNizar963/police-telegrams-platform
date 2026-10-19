@@ -323,6 +323,12 @@ class PoliceTelegramsApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(9),
             borderSide: const BorderSide(color: Color(0xFF34445B)),
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: const BorderSide(color: gold, width: 1.6),
+          ),
+          labelStyle: const TextStyle(color: Color(0xFFCBD4E1)),
+          floatingLabelStyle: const TextStyle(color: gold),
         ),
         popupMenuTheme: const PopupMenuThemeData(
           color: Color(0xFF182538),

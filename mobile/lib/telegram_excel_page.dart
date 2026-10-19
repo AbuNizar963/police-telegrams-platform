@@ -171,6 +171,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
   ) async {
     final password = TextEditingController();
     var protect = false;
+    String? passwordError;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -205,15 +206,23 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                       contentPadding: EdgeInsets.zero,
                       value: protect,
                       title: const Text('حماية الملف بكلمة مرور'),
-                      onChanged: (value) =>
-                          setDialogState(() => protect = value ?? false),
+                      onChanged: (value) => setDialogState(() {
+                        protect = value ?? false;
+                        passwordError = null;
+                      }),
                     ),
                     if (protect)
                       TextField(
                         controller: password,
                         obscureText: true,
-                        decoration: const InputDecoration(
+                        onChanged: (_) {
+                          if (password.text.trim().length >= 4) {
+                            setDialogState(() => passwordError = null);
+                          }
+                        },
+                        decoration: InputDecoration(
                           labelText: 'كلمة المرور (4 أحرف على الأقل)',
+                          errorText: passwordError,
                         ),
                       ),
                   ],
@@ -227,7 +236,13 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               ),
               FilledButton(
                 onPressed: () {
-                  if (protect && password.text.trim().length < 4) return;
+                  if (protect && password.text.trim().length < 4) {
+                    setDialogState(
+                      () => passwordError =
+                          'أدخل 4 أحرف على الأقل أو أوقف حماية الملف.',
+                    );
+                    return;
+                  }
                   Navigator.pop(dialogContext, true);
                 },
                 child: const Text('تصدير'),
@@ -473,61 +488,77 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       'signature': TextEditingController(text: row.signature),
       'notes': TextEditingController(text: row.notes),
     };
+    String? bodyError;
     final accepted = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: Text('تعديل صف ${index + 1} قبل الاستيراد'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final entry in controllers.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: TextField(
-                        controller: entry.value,
-                        minLines: entry.key == 'body' || entry.key == 'notes'
-                            ? 2
-                            : 1,
-                        maxLines: entry.key == 'body' || entry.key == 'notes'
-                            ? 5
-                            : 1,
-                        decoration: InputDecoration(
-                          labelText: {
-                            'originalSerial': 'الرقم المتسلسل',
-                            'time': 'الوقت',
-                            'sender': 'المرسل',
-                            'date': 'التاريخ',
-                            'body': 'نص البرقية',
-                            'recipient': 'المستلم',
-                            'signature': 'التوقيع',
-                            'notes': 'ملاحظات',
-                          }[entry.key],
-                          border: const OutlineInputBorder(),
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text('تعديل صف ${index + 1} قبل الاستيراد'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final entry in controllers.entries)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: TextField(
+                          controller: entry.value,
+                          onChanged: entry.key == 'body'
+                              ? (value) {
+                                  if (value.trim().length >= 3) {
+                                    setDialogState(() => bodyError = null);
+                                  }
+                                }
+                              : null,
+                          minLines: entry.key == 'body' || entry.key == 'notes'
+                              ? 2
+                              : 1,
+                          maxLines: entry.key == 'body' || entry.key == 'notes'
+                              ? 5
+                              : 1,
+                          decoration: InputDecoration(
+                            labelText: {
+                              'originalSerial': 'الرقم المتسلسل',
+                              'time': 'الوقت',
+                              'sender': 'المرسل',
+                              'date': 'التاريخ',
+                              'body': 'نص البرقية',
+                              'recipient': 'المستلم',
+                              'signature': 'التوقيع',
+                              'notes': 'ملاحظات',
+                            }[entry.key],
+                            border: const OutlineInputBorder(),
+                            errorText: entry.key == 'body' ? bodyError : null,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (controllers['body']!.text.trim().length < 3) {
+                    setDialogState(
+                      () => bodyError = 'أدخل نصًا لا يقل عن 3 أحرف.',
+                    );
+                    return;
+                  }
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text('حفظ التعديل'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (controllers['body']!.text.trim().length < 3) return;
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('حفظ التعديل'),
-            ),
-          ],
         ),
       ),
     );

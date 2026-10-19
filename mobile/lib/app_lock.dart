@@ -155,11 +155,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                 (!wasEnabled && enabled) ||
                 _locked);
       });
-    } catch (_) {
-      // If secure storage is unavailable, fail open rather than trapping the
-      // user behind a lock screen that cannot verify the saved PIN. The
-      // settings page reports storage errors when the user tries to configure
-      // the lock, and a later lifecycle/settings refresh retries this read.
+    } on MissingPluginException {
+      // Widget tests and unsupported runtimes may not register the secure
+      // storage plugin. Treat that specific case as an unavailable feature;
+      // do not disable an existing lock for ordinary storage/platform errors.
       if (!mounted) return;
       setState(() {
         _enabled = false;

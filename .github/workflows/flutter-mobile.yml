@@ -45,17 +45,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Temporary dependency lock diagnostics
-        if: github.event_name == 'pull_request'
-        run: grep -A 12 -E '^  (local_auth|local_auth_android|local_auth_darwin|local_auth_platform_interface|platform):' pubspec.lock
 
       # Apply the official Dart formatter instead of repeatedly failing CI on style-only diffs.
       - name: Format Dart source
         run: ./tool/format_dart.sh --fix
 
-      - name: Temporary formatter diff diagnostics
-        if: github.event_name == 'pull_request'
-        run: git diff -- lib/app_lock.dart lib/main.dart
 
       # Pull requests are not modified by CI; require contributors to include formatter changes.
       - name: Verify formatting on pull requests

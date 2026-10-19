@@ -167,20 +167,20 @@ void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-      (call) async {
-        switch (call.method) {
-          case 'read':
-            return null;
-          case 'readAll':
-            return <String, String>{};
-          case 'containsKey':
-            return false;
-          default:
-            return null;
-        }
-      },
-    );
+          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+          (call) async {
+            switch (call.method) {
+              case 'read':
+                return null;
+              case 'readAll':
+                return <String, String>{};
+              case 'containsKey':
+                return false;
+              default:
+                return null;
+            }
+          },
+        );
   });
   test('push service construction does not require Firebase configuration', () {
     expect(PushNotificationService.new, returnsNormally);

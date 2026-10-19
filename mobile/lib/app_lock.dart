@@ -535,9 +535,7 @@ class AppLockSettingsSection extends StatefulWidget {
 
 class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
   bool _loading = true;
-  bool _enabled = false;
   bool _hasPin = false;
-  bool _biometric = false;
   bool _busy = false;
   String? _error;
 
@@ -549,16 +547,10 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
 
   Future<void> _load() async {
     try {
-      final values = await Future.wait([
-        AppLockService.isEnabled(),
-        AppLockService.hasPin(),
-        AppLockService.isBiometricEnabled(),
-      ]);
+      final hasPin = await AppLockService.hasPin();
       if (!mounted) return;
       setState(() {
-        _enabled = values[0];
-        _hasPin = values[1];
-        _biometric = values[2];
+        _hasPin = hasPin;
         _loading = false;
       });
     } catch (_) {
@@ -702,17 +694,6 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   'قفل التطبيق وطلب المصادقة إلزاميان دائمًا. يمكنك تغيير رمز PIN من هنا فقط.',
                 ),
                 const Divider(height: 24),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _enabled,
-                  onChanged: null,
-                  title: const Text('قفل التطبيق الإلزامي'),
-                  subtitle: Text(
-                    _hasPin
-                        ? 'قفل PIN إلزامي ومفعّل على هذا الجهاز'
-                        : 'يجب إنشاء رمز PIN قبل استخدام التطبيق',
-                  ),
-                ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.password),
@@ -728,7 +709,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   subtitle: Text(
                     'تُطلب عند قفل التطبيق، ويظل PIN متاحًا كوسيلة احتياطية.',
                   ),
-                ),,
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(

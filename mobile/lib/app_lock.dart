@@ -393,10 +393,14 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     children: [
       widget.child,
       if (!_settingsLoaded && AppLockRuntime.sessionActive.value)
-        const Positioned.fill(
+        Positioned.fill(
           child: Material(
-            color: Color(0xFFF8F7F2),
-            child: Center(child: CircularProgressIndicator(color: _lockNavy)),
+            color: Theme.of(context).colorScheme.surface,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ),
         ),
       if (_settingsLoaded &&
@@ -405,7 +409,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
           _locked)
         Positioned.fill(
           child: Material(
-            color: const Color(0xFFF8F7F2),
+            color: Theme.of(context).colorScheme.surface,
             child: Directionality(
               textDirection: TextDirection.rtl,
               child: SafeArea(
@@ -420,10 +424,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.shield_outlined,
                                 size: 54,
-                                color: _lockNavy,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                               const SizedBox(height: 12),
                               const Text(
@@ -464,7 +468,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                 const SizedBox(height: 8),
                                 Text(
                                   _error!,
-                                  style: const TextStyle(color: Colors.red),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 12),
@@ -684,9 +690,12 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.phonelink_lock_outlined, color: _lockNavy),
+                    Icon(
+                      Icons.phonelink_lock_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'قفل التطبيق',
@@ -732,7 +741,10 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
                 ],
                 if (_busy) const LinearProgressIndicator(),
               ],

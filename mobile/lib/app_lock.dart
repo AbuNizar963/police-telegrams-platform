@@ -229,6 +229,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _biometricEnabled = false;
   bool _biometricAttemptedForLock = false;
   bool _legacyPin = false;
+  bool _settingsLoadFailed = false;
   bool _locked = false;
   bool _busy = false;
   int _unlockGeneration = 0;
@@ -268,6 +269,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         _enabled = enabled;
         _biometricEnabled = values[1];
         _legacyPin = values[2];
+        _settingsLoadFailed = false;
         _settingsLoaded = true;
         _locked =
             enabled &&
@@ -288,7 +290,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       setState(() {
         _enabled = true;
         _biometricEnabled = false;
+        // Do not permit PIN or biometric authentication against incomplete
+        // settings: in particular, that could skip legacy-PIN migration.
         _legacyPin = false;
+        _settingsLoadFailed = true;
         _settingsLoaded = true;
         _locked = AppLockRuntime.sessionActive.value;
         _error =
@@ -342,6 +347,12 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   Future<void> _submitPin() async {
+    if (_settingsLoadFailed) {
+      setState(() {
+        _error = 'تعذر تحميل إعدادات الحماية. أعد المحاولة قبل فتح التطبيق.';
+      });
+      return;
+    }
     if (_busy || _pin.length < 4) return;
     setState(() {
       _busy = true;
@@ -385,7 +396,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   Future<void> _submitBiometric() async {
-    if (_busy) return;
+    if (_settingsLoadFailed || _busy) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -524,6 +535,19 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                   _error!,
                                   style: TextStyle(
                                     color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ],
+                              if (_settingsLoadFailed) ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _loadSettings(forceLock: true),
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('إعادة تحميل إعدادات الحماية'),
                                   ),
                                 ),
                               ],

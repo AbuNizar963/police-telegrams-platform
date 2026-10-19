@@ -160,7 +160,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         input: {
           'id': widget.telegramId,
           'toOrganizationId': organizationId,
-          'note': note?.trim().isEmpty == true ? null : note?.trim(),
+          'note': note.trim().isEmpty ? null : note.trim(),
         },
       );
       widget.onChanged();

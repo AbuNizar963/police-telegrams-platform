@@ -872,8 +872,7 @@ export default function Home() {
       setExcelPendingFile(null);
       setExcelImportOpen(true);
     } catch (error) {
-      const detail =
-        error instanceof Error ? error.message : "خطأ غير معروف";
+      const detail = error instanceof Error ? error.message : "خطأ غير معروف";
       const passwordRelated =
         /password|decrypt|encrypt|كلمة المرور/i.test(detail);
       toast.error(

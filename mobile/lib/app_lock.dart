@@ -3,15 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-const _lockNavy = Color(0xFF10233F);
-
 class AppLockService {
   AppLockService._();
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _enabledKey = 'mobile_app_lock_enabled';
   static const String _pinKey = 'mobile_app_lock_pin';
-  static const String _biometricKey = 'mobile_app_lock_biometric';
   static final LocalAuthentication _authentication = LocalAuthentication();
 
   static Future<bool> isEnabled() async =>
@@ -24,9 +21,6 @@ class AppLockService {
     final pin = await _storage.read(key: _pinKey);
     return pin != null && !RegExp(r'^\d{4}$').hasMatch(pin);
   }
-
-  static Future<bool> isBiometricEnabled() async =>
-      await _storage.read(key: _biometricKey) == 'true';
 
   static Future<void> savePin(String pin) async {
     if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
@@ -289,7 +283,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   void _startBiometricForCurrentLock() {
-    if (!mounted || !_locked || !_biometricEnabled || _biometricAttemptedForLock) {
+    if (!mounted ||
+        !_locked ||
+        !_biometricEnabled ||
+        _biometricAttemptedForLock) {
       return;
     }
     _biometricAttemptedForLock = true;
@@ -493,7 +490,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                         : _submitPin,
                                     icon: const Icon(Icons.lock_open),
                                     label: Text(
-                                      _busy ? 'جارٍ التحقق...' : 'التحقق من الرمز السابق',
+                                      _busy
+                                          ? 'جارٍ التحقق...'
+                                          : 'التحقق من الرمز السابق',
                                     ),
                                   ),
                                 ),
@@ -714,7 +713,9 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   const SizedBox(height: 8),
                   Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 if (_busy) const LinearProgressIndicator(),

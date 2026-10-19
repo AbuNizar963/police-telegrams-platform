@@ -134,26 +134,42 @@ class _AppLockOverlayState extends State<AppLockOverlay>
 
   Future<void> _loadSettings({bool forceLock = false}) async {
     final unlockGenerationAtStart = _unlockGeneration;
-    final values = await Future.wait([
-      AppLockService.isEnabled(),
-      AppLockService.isBiometricEnabled(),
-    ]);
-    if (!mounted) return;
-    final wasLoaded = _settingsLoaded;
-    final wasEnabled = _enabled;
-    final enabled = values[0];
-    setState(() {
-      _enabled = enabled;
-      _biometricEnabled = values[1];
-      _settingsLoaded = true;
-      _locked =
-          enabled &&
-          AppLockRuntime.sessionActive.value &&
-          ((forceLock && unlockGenerationAtStart == _unlockGeneration) ||
-              !wasLoaded ||
-              (!wasEnabled && enabled) ||
-              _locked);
-    });
+    try {
+      final values = await Future.wait([
+        AppLockService.isEnabled(),
+        AppLockService.isBiometricEnabled(),
+      ]);
+      if (!mounted) return;
+      final wasLoaded = _settingsLoaded;
+      final wasEnabled = _enabled;
+      final enabled = values[0];
+      setState(() {
+        _enabled = enabled;
+        _biometricEnabled = values[1];
+        _settingsLoaded = true;
+        _locked =
+            enabled &&
+            AppLockRuntime.sessionActive.value &&
+            ((forceLock && unlockGenerationAtStart == _unlockGeneration) ||
+                !wasLoaded ||
+                (!wasEnabled && enabled) ||
+                _locked);
+      });
+    } catch (_) {
+      // If secure storage is unavailable, fail open rather than trapping the
+      // user behind a lock screen that cannot verify the saved PIN. The
+      // settings page reports storage errors when the user tries to configure
+      // the lock, and a later lifecycle/settings refresh retries this read.
+      if (!mounted) return;
+      setState(() {
+        _enabled = false;
+        _biometricEnabled = false;
+        _settingsLoaded = true;
+        _locked = false;
+        _pin = '';
+        _error = null;
+      });
+    }
   }
 
   void _onSettingsChanged() {

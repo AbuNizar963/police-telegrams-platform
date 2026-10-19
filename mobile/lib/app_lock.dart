@@ -146,7 +146,7 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                           ? null
                           : () async {
                               final pin = pinController.text;
-                              if (!RegExp(r'^\\d{4,8}  AppLockRuntime._();
+                              if (!RegExp(r'^\d{4,8}  AppLockRuntime._();
 
   static final ValueNotifier<bool> sessionActive = ValueNotifier<bool>(false);
   static final ValueNotifier<int> settingsChanged = ValueNotifier<int>(0);
@@ -716,7 +716,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                               } catch (_) {
                                 setDialogState(() {
                                   error =
-                                      'تعذر حفظ الرمز في التخزين الآمن. تحقق من مساحة الجهاز ثم حاول مجددًا.';
+                                      'تعذر حفظ الرمز في التخزين الآمن. حاول مجددًا.';
                                   saving = false;
                                 });
                               }

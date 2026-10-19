@@ -417,9 +417,11 @@ void main() {
 
     expect(find.byIcon(LucideIcons.panelLeft), findsOneWidget);
     expect(find.byIcon(LucideIcons.siren), findsOneWidget);
-    await tester.tap(find.byTooltip('فتح القائمة الجانبية'));
+    final drawerButton = find.byIcon(LucideIcons.panelLeft);
+    await tester.tap(drawerButton);
     await _pumpDashboardFrames(tester, frameCount: 5);
 
+    expect(find.text('لوحة التحكم'), findsWidgets);
     for (final icon in [
       LucideIcons.layoutDashboard,
       LucideIcons.plus,

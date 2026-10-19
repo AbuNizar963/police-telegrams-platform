@@ -114,14 +114,7 @@ async function isPasswordProtectedExcel(file: File): Promise<boolean> {
 
   const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   const encryptedOfficeSignature = [
-    0xd0,
-    0xcf,
-    0x11,
-    0xe0,
-    0xa1,
-    0xb1,
-    0x1a,
-    0xe1,
+    0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
   ];
 
   return encryptedOfficeSignature.every(
@@ -873,8 +866,9 @@ export default function Home() {
       setExcelImportOpen(true);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "خطأ غير معروف";
-      const passwordRelated =
-        /password|decrypt|encrypt|كلمة المرور/i.test(detail);
+      const passwordRelated = /password|decrypt|encrypt|كلمة المرور/i.test(
+        detail
+      );
       toast.error(
         passwordRelated
           ? "تعذر فك تشفير الملف. تحقق من كلمة المرور وأن الملف محمي بكلمة مرور لفتحه."

@@ -42,6 +42,9 @@ describe("request body limits", () => {
     );
     expect(getJsonBodyLimit("/api/trpc/settings.uploadLogo")).toBe("8mb");
     expect(getJsonBodyLimit("/api/trpc/telegrams.importRows")).toBe("50mb");
+    expect(getJsonBodyLimit("/api/trpc/telegrams.importWorkbookPreview")).toBe(
+      "22mb"
+    );
     expect(
       getJsonBodyLimit(
         "/api/trpc/telegrams.importRows,telegrams.uploadAttachment"
@@ -56,6 +59,9 @@ describe("request body limits", () => {
   it("rejects unauthenticated uploads before parsing JSON", async () => {
     await expect(
       postUnauthenticated("/api/trpc/telegrams.uploadAttachment")
+    ).resolves.toBe(401);
+    await expect(
+      postUnauthenticated("/api/trpc/telegrams.importWorkbookPreview")
     ).resolves.toBe(401);
   });
 });

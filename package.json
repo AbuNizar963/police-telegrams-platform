@@ -85,7 +85,9 @@
     "wouter": "^3.3.5",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xlsx-populate": "^1.21.0",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@node-projects/excelforge": "https://registry.npmjs.org/@node-projects/excelforge/-/excelforge-3.8.0.tgz",
+    "officecrypto-tool": "^0.0.19"
   },
   "devDependencies": {
     "@builder.io/vite-plugin-jsx-loc": "^0.1.1",

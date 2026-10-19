@@ -236,6 +236,15 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     fit: StackFit.expand,
     children: [
       widget.child,
+      if (!_settingsLoaded && AppLockRuntime.sessionActive.value)
+        const Positioned.fill(
+          child: Material(
+            color: Color(0xFFF8F7F2),
+            child: Center(
+              child: CircularProgressIndicator(color: _lockNavy),
+            ),
+          ),
+        ),
       if (_settingsLoaded && _enabled && AppLockRuntime.sessionActive.value && _locked)
         Positioned.fill(
           child: Material(

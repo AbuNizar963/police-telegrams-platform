@@ -24,8 +24,8 @@ class AppLockService {
       await _storage.read(key: _biometricKey) == 'true';
 
   static Future<void> savePin(String pin) async {
-    if (!RegExp(r'^\d{4,8}$').hasMatch(pin)) {
-      throw const FormatException('يجب أن يتكون رمز PIN من 4 إلى 8 أرقام.');
+    if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
+      throw const FormatException('يجب أن يتكون رمز PIN من 4 أرقام بالضبط.');
     }
     await _storage.write(key: _pinKey, value: pin);
     await _storage.write(key: _enabledKey, value: 'true');
@@ -104,7 +104,7 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 إلى 8 أرقام وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
+                        'للمتابعة إلى التطبيق، أنشئ رمز PIN من 4 أرقام بالضبط وأكّده. سيُحفظ الرمز في التخزين الآمن للجهاز.',
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -112,7 +112,7 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                         autofocus: true,
                         keyboardType: TextInputType.number,
                         obscureText: true,
-                        maxLength: 8,
+                        maxLength: 4,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -124,7 +124,7 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                         controller: confirmationController,
                         keyboardType: TextInputType.number,
                         obscureText: true,
-                        maxLength: 8,
+                        maxLength: 4,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -149,9 +149,9 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                           ? null
                           : () async {
                               final pin = pinController.text;
-                              if (!RegExp(r'^\d{4,8}$').hasMatch(pin)) {
+                              if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
                                 setDialogState(() {
-                                  error = 'يجب أن يتكون الرمز من 4 إلى 8 أرقام.';
+                                  error = 'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
                                 });
                                 return;
                               }
@@ -422,7 +422,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                 autofocus: true,
                                 keyboardType: TextInputType.number,
                                 obscureText: true,
-                                maxLength: 8,
+                                maxLength: 4,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
                                 ],
@@ -546,7 +546,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'استخدم من 4 إلى 8 أرقام. سيُحفظ الرمز في التخزين الآمن للجهاز.',
+                  'استخدم من 4 أرقام بالضبط. سيُحفظ الرمز في التخزين الآمن للجهاز.',
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -554,7 +554,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   autofocus: true,
                   keyboardType: TextInputType.number,
                   obscureText: true,
-                  maxLength: 8,
+                  maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'رمز PIN'),
                 ),
@@ -562,7 +562,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   controller: confirmController,
                   keyboardType: TextInputType.number,
                   obscureText: true,
-                  maxLength: 8,
+                  maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(labelText: 'تأكيد رمز PIN'),
                 ),
@@ -575,10 +575,10 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
               ),
               FilledButton(
                 onPressed: () {
-                  if (!RegExp(r'^\d{4,8}$').hasMatch(controller.text)) {
+                  if (!RegExp(r'^\d{4}$').hasMatch(controller.text)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
-                        content: Text('يجب أن يتكون الرمز من 4 إلى 8 أرقام.'),
+                        content: Text('يجب أن يتكون الرمز من 4 أرقام بالضبط.'),
                       ),
                     );
                     return;
@@ -694,7 +694,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.password),
                   title: Text(_hasPin ? 'تغيير رمز PIN' : 'إعداد رمز PIN'),
-                  subtitle: const Text('من 4 إلى 8 أرقام'),
+                  subtitle: const Text('من 4 أرقام بالضبط'),
                   trailing: const Icon(Icons.chevron_left),
                   onTap: _busy ? null : _setPin,
                 ),

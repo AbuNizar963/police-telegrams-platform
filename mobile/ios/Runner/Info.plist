@@ -10,6 +10,8 @@
 	<string>برقيات الشرطة</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>يُستخدم التحقق البيومتري لحماية الوصول إلى تطبيق برقيات الشرطة.</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>

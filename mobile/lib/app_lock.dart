@@ -155,18 +155,35 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                 (!wasEnabled && enabled) ||
                 _locked);
       });
-    } on MissingPluginException {
-      // Widget tests and unsupported runtimes may not register the secure
-      // storage plugin. Treat that specific case as an unavailable feature;
-      // do not disable an existing lock for ordinary storage/platform errors.
+    } catch (error) {
       if (!mounted) return;
+
+      final pluginUnavailable =
+          error is MissingPluginException ||
+          (error is PlatformException && error.code == 'channel-error');
+
+      if (pluginUnavailable) {
+        // Widget tests and unsupported runtimes may not register the secure
+        // storage plugin. Keep the app usable in that specific environment.
+        setState(() {
+          _enabled = false;
+          _biometricEnabled = false;
+          _settingsLoaded = true;
+          _locked = false;
+          _pin = '';
+          _error = null;
+        });
+        return;
+      }
+
+      // For real storage failures, fail closed: never remove an existing lock
+      // merely because its settings could not be read.
       setState(() {
-        _enabled = false;
+        _enabled = true;
         _biometricEnabled = false;
         _settingsLoaded = true;
-        _locked = false;
-        _pin = '';
-        _error = null;
+        _locked = AppLockRuntime.sessionActive.value;
+        _error = 'تعذر الوصول إلى التخزين الآمن. أعد تشغيل التطبيق وحاول مجددًا.';
       });
     }
   }

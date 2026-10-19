@@ -392,11 +392,12 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = 'تعذر قراءة إعدادات القفل الآمن.';
         });
+      }
     }
   }
 
@@ -489,8 +490,9 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
         );
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'تعذر حفظ رمز PIN في التخزين الآمن.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -511,10 +513,11 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
       if (mounted) setState(() => _enabled = value);
       await _refreshOverlay();
     } catch (exception) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = exception.toString().replaceFirst('Bad state: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

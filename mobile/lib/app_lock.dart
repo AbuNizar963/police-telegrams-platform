@@ -533,10 +533,11 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
       await AppLockService.setBiometricEnabled(value);
       if (mounted) setState(() => _biometric = value);
     } catch (exception) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = exception.toString().replaceFirst('Bad state: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

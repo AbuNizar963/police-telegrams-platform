@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'app_lock.dart';
+
 import 'api.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
@@ -72,6 +74,9 @@ class PoliceTelegramsApp extends StatelessWidget {
     valueListenable: _themeMode,
     builder: (context, mode, _) => MaterialApp(
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => AppLockOverlay(
+        child: child ?? const SizedBox.shrink(),
+      ),
       title: 'برقيات الشرطة',
       theme: ThemeData(
         useMaterial3: true,
@@ -362,6 +367,10 @@ class _SessionGateState extends State<SessionGate> {
     super.initState();
     _api = widget.api ?? PoliceApi();
     _session = _api.restoreSession();
+    _session.then(
+      (account) => AppLockRuntime.setSessionActive(account != null),
+      onError: (_) => AppLockRuntime.setSessionActive(false),
+    );
   }
 
   Future<void> _returnToLogin() async {
@@ -370,6 +379,7 @@ class _SessionGateState extends State<SessionGate> {
     } catch (_) {
       // The local session must still be cleared when the server is unreachable.
     } finally {
+      AppLockRuntime.setSessionActive(false);
       if (mounted) {
         setState(() => _session = Future<Map<String, dynamic>?>.value(null));
       }
@@ -489,6 +499,7 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final account = await api.login(username.text.trim(), password.text);
+      AppLockRuntime.setSessionActive(true);
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -1087,6 +1098,7 @@ class _DashboardPageState extends State<DashboardPage>
     } catch (_) {
       // PoliceApi.logout clears the local session in its finally block.
     }
+    AppLockRuntime.setSessionActive(false);
     if (!mounted) return;
     navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginPage()),

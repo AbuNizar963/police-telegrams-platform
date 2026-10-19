@@ -154,7 +154,8 @@ Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {
                       ? null
                       : () async {
                           final pin = pinController.text;
-                          if (!RegExp(r'^\d{4}
+                          if (!RegExp(r'^\d{4}$').hasMatch(pin)) {
+                            setDialogState(() {
                               error =
                                   'يجب أن يتكون الرمز من 4 أرقام بالضبط.';
                             });

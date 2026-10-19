@@ -4,7 +4,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 const _lockNavy = Color(0xFF10233F);
-const _lockGold = Color(0xFFD8C38E);
 
 class AppLockService {
   AppLockService._();

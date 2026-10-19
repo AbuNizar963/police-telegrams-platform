@@ -18,6 +18,7 @@ void _seedExistingPin() {
   _secureStorageForTest['mobile_app_lock_pin'] = '1234';
   _secureStorageForTest['mobile_app_lock_enabled'] = 'true';
 }
+
 final _testPng = Uint8List.fromList(
   base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',

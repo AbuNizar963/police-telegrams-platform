@@ -373,13 +373,43 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       _busy = true;
       _error = null;
     });
+
     try {
-      if (await AppLockService.authenticateBiometric()) {
-        _unlockGeneration++;
-        _biometricAttemptedForLock = false;
-        if (mounted) setState(() => _locked = false);
-      } else if (mounted) {
-        setState(() => _error = 'لم تكتمل المصادقة بالبصمة.');
+      final authenticated = await AppLockService.authenticateBiometric();
+      if (!authenticated) {
+        if (mounted) {
+          setState(() => _error = 'لم تكتمل المصادقة بالبصمة.');
+        }
+        return;
+      }
+
+      // Biometric unlock must not bypass migration of a legacy PIN.
+      if (_legacyPin) {
+        final pinUpdated = await showMandatoryPinSetupDialog(context);
+        if (!pinUpdated) {
+          if (mounted) {
+            setState(() {
+              _error =
+                  'يجب تحديث الرمز السابق إلى PIN من 4 أرقام للمتابعة.';
+            });
+          }
+          return;
+        }
+        _legacyPin = false;
+      }
+
+      _unlockGeneration++;
+      _biometricAttemptedForLock = false;
+      if (mounted) {
+        setState(() {
+          _locked = false;
+          _pin = '';
+          _error = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'تعذر إكمال المصادقة الآمنة. حاول مجددًا.');
       }
     } finally {
       if (mounted) {

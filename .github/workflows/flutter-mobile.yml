@@ -17,7 +17,8 @@ on:
 
 concurrency:
   group: flutter-mobile-${{ github.ref }}
-  cancel-in-progress: false
+  # Cancel obsolete pull-request runs; never interrupt direct-push release builds.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

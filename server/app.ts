@@ -62,6 +62,7 @@ function allowVerificationAttempt(ip: string): boolean {
 export function getJsonBodyLimit(path: string): string {
   if (path === "/api/telegram-render") return "3mb";
   if (path.includes("/api/trpc/telegrams.importRows")) return "50mb";
+  if (path.includes("/api/trpc/telegrams.importWorkbookPreview")) return "22mb";
   if (path.includes("/api/trpc/telegrams.uploadAttachment")) return "16mb";
   if (path.includes("/api/trpc/settings.uploadLogo")) return "8mb";
   return "1mb";
@@ -71,6 +72,7 @@ function requiresAuthenticatedLargeBody(path: string): boolean {
   return (
     path === "/api/telegram-render" ||
     path.includes("/api/trpc/telegrams.importRows") ||
+    path.includes("/api/trpc/telegrams.importWorkbookPreview") ||
     path.includes("/api/trpc/telegrams.uploadAttachment") ||
     path.includes("/api/trpc/settings.uploadLogo")
   );
@@ -79,6 +81,7 @@ function requiresAuthenticatedLargeBody(path: string): boolean {
 function requiresOrganizationAdminLargeBody(path: string): boolean {
   return (
     path.includes("/api/trpc/telegrams.importRows") ||
+    path.includes("/api/trpc/telegrams.importWorkbookPreview") ||
     path.includes("/api/trpc/settings.uploadLogo")
   );
 }

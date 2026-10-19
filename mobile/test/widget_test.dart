@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:police_telegrams/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
@@ -11,6 +12,14 @@ import 'package:police_telegrams/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';
 
 const _telegramSubject = 'وضع الحراسة اللازمة على السجين علي قوجه';
+
+final _secureStorageForTest = <String, String>{};
+
+void _seedExistingPin() {
+  _secureStorageForTest['mobile_app_lock_pin'] = '1234';
+  _secureStorageForTest['mobile_app_lock_enabled'] = 'true';
+}
+
 final _testPng = Uint8List.fromList(
   base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
@@ -52,6 +61,12 @@ Future<void> _pumpDashboardFrames(
   }
 }
 
+Finder _appLockPinField() => find.byWidgetPredicate((widget) {
+  if (widget is! TextField) return false;
+  final label = widget.decoration?.labelText;
+  return label == 'رمز PIN (4 أرقام)' || label == 'رمز PIN السابق';
+});
+
 Future<void> _scrollIntoView(WidgetTester tester, Finder target) async {
   final scrollable = find.byType(Scrollable).first;
   await tester.scrollUntilVisible(target, 180, scrollable: scrollable);
@@ -59,11 +74,50 @@ Future<void> _scrollIntoView(WidgetTester tester, Finder target) async {
   await _pumpDashboardFrames(tester, frameCount: 3);
 }
 
+Future<void> _unlockAppIfLocked(WidgetTester tester) async {
+  final setupDialog = find.text('إنشاء رمز PIN إلزامي');
+  if (setupDialog.evaluate().isNotEmpty) {
+    final pinFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    expect(pinFields, findsNWidgets(2));
+
+    await tester.enterText(pinFields.at(0), '1234');
+    await tester.enterText(pinFields.at(1), '1234');
+    await tester.tap(find.text('حفظ ومتابعة'));
+    await _pumpDashboardFrames(tester, frameCount: 4);
+  }
+
+  final lockScreen = find.text('التطبيق مقفل');
+  if (lockScreen.evaluate().isNotEmpty) {
+    final pinField = _appLockPinField();
+    await tester.enterText(pinField, '1234');
+    await tester.pump();
+    final legacyButton = find.text('التحقق من الرمز السابق');
+    await tester.tap(
+      legacyButton.evaluate().isNotEmpty
+          ? legacyButton
+          : find.text('فتح التطبيق'),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 4);
+  }
+
+  expect(find.text('إنشاء رمز PIN إلزامي'), findsNothing);
+  expect(lockScreen, findsNothing);
+}
+
 class _TestPoliceApi extends PoliceApi {
   _TestPoliceApi({this.signedIn = false});
 
   final bool signedIn;
   final calls = <String, Map<String, dynamic>?>{};
+  bool logoutCalled = false;
+
+  @override
+  Future<void> logout() async {
+    logoutCalled = true;
+  }
 
   @override
   Future<Map<String, dynamic>?> restoreSession() async =>
@@ -164,17 +218,32 @@ class _TestOfficialTelegramDocumentRenderer
 
 void main() {
   setUp(() {
+    _secureStorageForTest.clear();
+    AppLockRuntime.setSessionActive(false);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
           (call) async {
+            final arguments = call.arguments;
+            final key = arguments is Map ? arguments['key'] as String? : null;
             switch (call.method) {
               case 'read':
+                return key == null ? null : _secureStorageForTest[key];
+              case 'write':
+                if (key != null && arguments is Map) {
+                  _secureStorageForTest[key] = arguments['value'] as String;
+                }
+                return null;
+              case 'delete':
+                if (key != null) _secureStorageForTest.remove(key);
+                return null;
+              case 'deleteAll':
+                _secureStorageForTest.clear();
                 return null;
               case 'readAll':
-                return <String, String>{};
+                return Map<String, String>.from(_secureStorageForTest);
               case 'containsKey':
-                return false;
+                return key != null && _secureStorageForTest.containsKey(key);
               default:
                 return null;
             }
@@ -184,6 +253,132 @@ void main() {
   test('push service construction does not require Firebase configuration', () {
     expect(PushNotificationService.new, returnsNormally);
   });
+
+  test('mandatory app lock requires an exact four-digit PIN', () async {
+    await expectLater(AppLockService.savePin('12345'), throwsFormatException);
+
+    await AppLockService.savePin('1234');
+
+    expect(await AppLockService.hasPin(), isTrue);
+    expect(await AppLockService.isEnabled(), isTrue);
+    expect(await AppLockService.hasLegacyPin(), isFalse);
+    expect(_secureStorageForTest['mobile_app_lock_enabled'], 'true');
+    expect(await AppLockService.isBiometricEnabled(), isFalse);
+    await expectLater(
+      AppLockService.setEnabled(false),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  testWidgets('first-login PIN setup requires matching entries', (
+    tester,
+  ) async {
+    var configured = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                configured = await showMandatoryPinSetupDialog(context);
+              },
+              child: const Text('configure PIN'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('configure PIN'));
+    await tester.pumpAndSettle();
+    final pinFields = find.byType(TextField);
+    expect(pinFields, findsNWidgets(2));
+
+    await tester.enterText(pinFields.at(0), '1234');
+    await tester.enterText(pinFields.at(1), '4321');
+    await tester.tap(find.text('حفظ ومتابعة'));
+    await tester.pump();
+    expect(find.text('تأكيد الرمز غير مطابق.'), findsOneWidget);
+    expect(configured, isFalse);
+
+    await tester.enterText(pinFields.at(1), '1234');
+    await tester.tap(find.text('حفظ ومتابعة'));
+    await tester.pumpAndSettle();
+
+    expect(configured, isTrue);
+    expect(_secureStorageForTest['mobile_app_lock_pin'], '1234');
+    expect(_secureStorageForTest['mobile_app_lock_enabled'], 'true');
+  });
+
+  testWidgets('restored session without a PIN is returned to login', (
+    tester,
+  ) async {
+    final api = _TestPoliceApi(signedIn: true);
+    await tester.pumpWidget(PoliceTelegramsApp(api: api));
+    await _pumpDashboardFrames(tester, frameCount: 12);
+
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.byTooltip('إنشاء برقية'), findsNothing);
+    expect(api.logoutCalled, isTrue);
+  });
+
+  testWidgets('legacy PIN must be verified and replaced before unlocking', (
+    tester,
+  ) async {
+    _secureStorageForTest['mobile_app_lock_pin'] = '123456';
+    _secureStorageForTest['mobile_app_lock_enabled'] = 'false';
+    AppLockRuntime.setSessionActive(true);
+    addTearDown(() => AppLockRuntime.setSessionActive(false));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AppLockOverlay(
+          child: Scaffold(body: Center(child: Text('protected content'))),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+    expect(find.text('التطبيق مقفل'), findsOneWidget);
+
+    await tester.enterText(_appLockPinField(), '123456');
+    await tester.pump();
+    await tester.tap(find.text('التحقق من الرمز السابق'));
+    await tester.pumpAndSettle();
+    expect(find.text('إنشاء رمز PIN إلزامي'), findsOneWidget);
+
+    final pinFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(pinFields.at(0), '4321');
+    await tester.enterText(pinFields.at(1), '4321');
+    await tester.tap(find.text('حفظ ومتابعة'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('protected content'), findsOneWidget);
+    expect(_secureStorageForTest['mobile_app_lock_pin'], '4321');
+    expect(await AppLockService.verifyPin('123456'), isFalse);
+    expect(await AppLockService.verifyPin('4321'), isTrue);
+  });
+
+  testWidgets(
+    'PIN remains mandatory while biometrics are an optional setting',
+    (tester) async {
+      _seedExistingPin();
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: AppLockSettingsSection())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('قفل PIN إلزامي دائمًا.'), findsOneWidget);
+      expect(find.text('تفعيل قفل التطبيق'), findsNothing);
+      final biometricSwitch = tester.widget<SwitchListTile>(
+        find.byType(SwitchListTile),
+      );
+      expect(biometricSwitch.value, isFalse);
+      expect(biometricSwitch.onChanged, isNotNull);
+    },
+  );
 
   testWidgets('shows police telegram login screen with Cairo typography', (
     tester,
@@ -208,9 +403,11 @@ void main() {
     'dashboard matches the mobile reference and short serial format',
     (tester) async {
       _setMobileViewport(tester);
+      _seedExistingPin();
       final api = _TestPoliceApi(signedIn: true);
       await tester.pumpWidget(PoliceTelegramsApp(api: api));
       await _pumpDashboardFrames(tester);
+      await _unlockAppIfLocked(tester);
 
       expect(find.byTooltip('إنشاء برقية'), findsOneWidget);
       expect(find.text('تقرير البرقيات'), findsOneWidget);
@@ -241,8 +438,10 @@ void main() {
     'shows a connection error when dashboard refresh fails without cached data',
     (tester) async {
       _setMobileViewport(tester);
+      _seedExistingPin();
       await tester.pumpWidget(PoliceTelegramsApp(api: _UnavailablePoliceApi()));
       await _pumpDashboardFrames(tester, frameCount: 12);
+      await _unlockAppIfLocked(tester);
 
       expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
       expect(find.text('وضع العمل المحلي'), findsNothing);
@@ -308,6 +507,7 @@ void main() {
     tester,
   ) async {
     _setMobileViewport(tester);
+    _seedExistingPin();
     final api = _TestPoliceApi(signedIn: true);
     await tester.pumpWidget(
       OfficialTelegramDocumentRendererScope(
@@ -316,6 +516,7 @@ void main() {
       ),
     );
     await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
 
     final serial = find.text('برقية رقم: 72');
     await _scrollIntoView(tester, serial);
@@ -357,16 +558,20 @@ void main() {
     tester,
   ) async {
     _setMobileViewport(tester);
+    _seedExistingPin();
     await tester.pumpWidget(
       PoliceTelegramsApp(api: _TestPoliceApi(signedIn: true)),
     );
     await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
 
     expect(find.byIcon(LucideIcons.panelLeft), findsOneWidget);
     expect(find.byIcon(LucideIcons.siren), findsOneWidget);
-    await tester.tap(find.byTooltip('فتح القائمة الجانبية'));
+    final drawerButton = find.byIcon(LucideIcons.panelLeft);
+    await tester.tap(drawerButton);
     await _pumpDashboardFrames(tester, frameCount: 5);
 
+    expect(find.text('لوحة التحكم'), findsWidgets);
     for (final icon in [
       LucideIcons.layoutDashboard,
       LucideIcons.plus,

@@ -75,7 +75,7 @@ class PoliceTelegramsApp extends StatelessWidget {
     builder: (context, mode, _) => MaterialApp(
       debugShowCheckedModeBanner: false,
       builder: (context, child) =>
-          AppLockOverlay(child: child ?? const SizedBox.shrink()),
+          AppLockOverlayHost(child: child ?? const SizedBox.shrink()),
       title: 'برقيات الشرطة',
       theme: ThemeData(
         useMaterial3: true,
@@ -365,11 +365,34 @@ class _SessionGateState extends State<SessionGate> {
   void initState() {
     super.initState();
     _api = widget.api ?? PoliceApi();
-    _session = _api.restoreSession();
+    _session = _restoreSessionWithMandatoryPin();
     _session.then(
       (account) => AppLockRuntime.setSessionActive(account != null),
       onError: (_) => AppLockRuntime.setSessionActive(false),
     );
+  }
+
+  Future<Map<String, dynamic>?> _restoreSessionWithMandatoryPin() async {
+    final account = await _api.restoreSession();
+    if (account == null) return null;
+
+    try {
+      if (!await AppLockService.hasPin()) {
+        await _api.logout();
+        return null;
+      }
+      await AppLockService.setEnabled(true);
+      return account;
+    } catch (_) {
+      // Do not expose authenticated screens when the mandatory PIN state
+      // cannot be verified or enforced.
+      try {
+        await _api.logout();
+      } catch (_) {
+        // Keep the UI on the login screen even if the server is unreachable.
+      }
+      return null;
+    }
   }
 
   Future<void> _returnToLogin() async {
@@ -498,6 +521,20 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final account = await api.login(username.text.trim(), password.text);
+      final hasPin = await AppLockService.hasPin();
+      if (!mounted) {
+        await api.logout();
+        return;
+      }
+      if (!hasPin) {
+        final pinConfigured = await showMandatoryPinSetupDialog(context);
+        if (!pinConfigured) {
+          await api.logout();
+          return;
+        }
+      } else {
+        await AppLockService.setEnabled(true);
+      }
       if (!mounted) return;
       AppLockRuntime.setSessionActive(true);
       Navigator.pushReplacement(

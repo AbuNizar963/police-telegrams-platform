@@ -69,7 +69,6 @@ class AppLockService {
       return false;
     }
   }
-
 }
 
 Future<bool> showMandatoryPinSetupDialog(BuildContext context) async {

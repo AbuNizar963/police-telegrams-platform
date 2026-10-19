@@ -364,10 +364,6 @@ class _SessionGateState extends State<SessionGate> {
   @override
   void initState() {
     super.initState();
-    // Reset the process-wide lock state while this gate restores the session.
-    // This also prevents stale session state from a previous widget tree from
-    // displaying the lock overlay before the current session is known.
-    AppLockRuntime.setSessionActive(false);
     _api = widget.api ?? PoliceApi();
     _session = _api.restoreSession();
     _session.then(

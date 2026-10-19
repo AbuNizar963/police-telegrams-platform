@@ -112,6 +112,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _biometricEnabled = false;
   bool _locked = false;
   bool _busy = false;
+  bool _biometricAuthenticating = false;
   String _pin = '';
   String? _error;
 
@@ -148,7 +149,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       _locked =
           enabled &&
           AppLockRuntime.sessionActive.value &&
-          (forceLock || !wasLoaded || (!wasEnabled && enabled) || _locked);
+          ((forceLock && !_biometricAuthenticating) ||
+              !wasLoaded ||
+              (!wasEnabled && enabled) ||
+              _locked);
     });
   }
 
@@ -214,6 +218,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     if (_busy) return;
     setState(() {
       _busy = true;
+      _biometricAuthenticating = true;
       _error = null;
     });
     try {
@@ -223,7 +228,12 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         setState(() => _error = 'لم تكتمل المصادقة بالبصمة.');
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _biometricAuthenticating = false;
+        });
+      }
     }
   }
 

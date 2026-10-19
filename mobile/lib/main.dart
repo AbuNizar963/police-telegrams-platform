@@ -521,7 +521,12 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final account = await api.login(username.text.trim(), password.text);
-      if (!await AppLockService.hasPin()) {
+      final hasPin = await AppLockService.hasPin();
+      if (!mounted) {
+        await api.logout();
+        return;
+      }
+      if (!hasPin) {
         final pinConfigured = await showMandatoryPinSetupDialog(context);
         if (!pinConfigured) {
           await api.logout();

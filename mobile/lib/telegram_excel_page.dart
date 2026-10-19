@@ -306,7 +306,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       Set<int> duplicates = {};
       try {
         parsed = parseTelegramWorkbook(bytes);
-      } catch (parseError) {
+      } catch (_) {
         // Encrypted OOXML workbooks use an OLE/CFB container signature.
         // Do not ask for a password when an ordinary XLSX parse fails for
         // another reason, such as an invalid or unsupported workbook.

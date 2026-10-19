@@ -13,7 +13,7 @@ class AppLockService {
   static const String _enabledKey = 'mobile_app_lock_enabled';
   static const String _pinKey = 'mobile_app_lock_pin';
   static const String _biometricKey = 'mobile_app_lock_biometric';
-  static const LocalAuthentication _authentication = LocalAuthentication();
+  static final LocalAuthentication _authentication = LocalAuthentication();
 
   static Future<bool> isEnabled() async =>
       await _storage.read(key: _enabledKey) == 'true';

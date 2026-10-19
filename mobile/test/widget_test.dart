@@ -60,12 +60,25 @@ Future<void> _scrollIntoView(WidgetTester tester, Finder target) async {
 }
 
 Future<void> _unlockAppIfLocked(WidgetTester tester) async {
-  final lockScreen = find.text('التطبيق مقفل');
-  if (lockScreen.evaluate().isEmpty) return;
+  final setupDialog = find.text('إنشاء رمز PIN إلزامي');
+  if (setupDialog.evaluate().isNotEmpty) {
+    final pinFields = find.byType(TextField);
+    expect(pinFields, findsNWidgets(2));
 
-  final pinField = find.byType(TextField).first;
-  await tester.enterText(pinField, '1234');
-  await _pumpDashboardFrames(tester, frameCount: 3);
+    await tester.enterText(pinFields.at(0), '1234');
+    await tester.enterText(pinFields.at(1), '1234');
+    await tester.tap(find.text('حفظ ومتابعة'));
+    await _pumpDashboardFrames(tester, frameCount: 4);
+  }
+
+  final lockScreen = find.text('التطبيق مقفل');
+  if (lockScreen.evaluate().isNotEmpty) {
+    final pinField = find.byType(TextField).first;
+    await tester.enterText(pinField, '1234');
+    await _pumpDashboardFrames(tester, frameCount: 4);
+  }
+
+  expect(find.text('إنشاء رمز PIN إلزامي'), findsNothing);
   expect(lockScreen, findsNothing);
 }
 

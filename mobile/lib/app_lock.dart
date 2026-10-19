@@ -332,6 +332,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     });
     try {
       if (await AppLockService.verifyPin(_pin)) {
+        if (!mounted) return;
         if (_legacyPin) {
           final pinUpdated = await showMandatoryPinSetupDialog(context);
           if (!pinUpdated) {
@@ -381,6 +382,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         }
         return;
       }
+
+      if (!mounted) return;
 
       // Biometric unlock must not bypass migration of a legacy PIN.
       if (_legacyPin) {

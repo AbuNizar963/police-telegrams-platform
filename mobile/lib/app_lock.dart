@@ -76,10 +76,7 @@ class AppLockService {
     if (enabled && !await authenticateBiometric()) {
       throw StateError('تعذر التحقق بالبصمة؛ لم يتم تفعيل الخيار.');
     }
-    await _storage.write(
-      key: _biometricKey,
-      value: enabled ? 'true' : 'false',
-    );
+    await _storage.write(key: _biometricKey, value: enabled ? 'true' : 'false');
     AppLockRuntime.notifySettingsChanged();
   }
 }
@@ -148,7 +145,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
       _enabled = enabled;
       _biometricEnabled = values[1];
       _settingsLoaded = true;
-      _locked = enabled && AppLockRuntime.sessionActive.value &&
+      _locked =
+          enabled &&
+          AppLockRuntime.sessionActive.value &&
           (forceLock || !wasLoaded || (!wasEnabled && enabled) || _locked);
     });
   }
@@ -237,12 +236,13 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         const Positioned.fill(
           child: Material(
             color: Color(0xFFF8F7F2),
-            child: Center(
-              child: CircularProgressIndicator(color: _lockNavy),
-            ),
+            child: Center(child: CircularProgressIndicator(color: _lockNavy)),
           ),
         ),
-      if (_settingsLoaded && _enabled && AppLockRuntime.sessionActive.value && _locked)
+      if (_settingsLoaded &&
+          _enabled &&
+          AppLockRuntime.sessionActive.value &&
+          _locked)
         Positioned.fill(
           child: Material(
             color: const Color(0xFFF8F7F2),
@@ -260,11 +260,18 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.shield_outlined, size: 54, color: _lockNavy),
+                              const Icon(
+                                Icons.shield_outlined,
+                                size: 54,
+                                color: _lockNavy,
+                              ),
                               const SizedBox(height: 12),
                               const Text(
                                 'التطبيق مقفل',
-                                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               const Text(
@@ -277,7 +284,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                 keyboardType: TextInputType.number,
                                 obscureText: true,
                                 maxLength: 8,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 onChanged: (value) => setState(() {
                                   _pin = value;
                                   _error = null;
@@ -291,15 +300,22 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                               ),
                               if (_error != null) ...[
                                 const SizedBox(height: 8),
-                                Text(_error!, style: const TextStyle(color: Colors.red)),
+                                Text(
+                                  _error!,
+                                  style: const TextStyle(color: Colors.red),
+                                ),
                               ],
                               const SizedBox(height: 12),
                               SizedBox(
                                 width: double.infinity,
                                 child: FilledButton.icon(
-                                  onPressed: _busy || _pin.length < 4 ? null : _submitPin,
+                                  onPressed: _busy || _pin.length < 4
+                                      ? null
+                                      : _submitPin,
                                   icon: const Icon(Icons.lock_open),
-                                  label: Text(_busy ? 'جارٍ التحقق...' : 'فتح التطبيق'),
+                                  label: Text(
+                                    _busy ? 'جارٍ التحقق...' : 'فتح التطبيق',
+                                  ),
                                 ),
                               ),
                               if (_biometricEnabled)
@@ -308,7 +324,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                   child: SizedBox(
                                     width: double.infinity,
                                     child: OutlinedButton.icon(
-                                      onPressed: _busy ? null : _submitBiometric,
+                                      onPressed: _busy
+                                          ? null
+                                          : _submitBiometric,
                                       icon: const Icon(Icons.fingerprint),
                                       label: const Text('فتح بالبصمة'),
                                     ),
@@ -365,10 +383,11 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() {
-        _loading = false;
-        _error = 'تعذر قراءة إعدادات القفل الآمن.';
-      });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = 'تعذر قراءة إعدادات القفل الآمن.';
+        });
     }
   }
 
@@ -386,7 +405,9 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('استخدم من 4 إلى 8 أرقام. سيُحفظ الرمز في التخزين الآمن للجهاز.'),
+                const Text(
+                  'استخدم من 4 إلى 8 أرقام. سيُحفظ الرمز في التخزين الآمن للجهاز.',
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: controller,
@@ -416,7 +437,9 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                 onPressed: () {
                   if (!RegExp(r'^\d{4,8}$').hasMatch(controller.text)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(content: Text('يجب أن يتكون الرمز من 4 إلى 8 أرقام.')),
+                      const SnackBar(
+                        content: Text('يجب أن يتكون الرمز من 4 إلى 8 أرقام.'),
+                      ),
                     );
                     return;
                   }
@@ -457,7 +480,8 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
         );
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر حفظ رمز PIN في التخزين الآمن.');
+      if (mounted)
+        setState(() => _error = 'تعذر حفظ رمز PIN في التخزين الآمن.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -478,7 +502,10 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
       if (mounted) setState(() => _enabled = value);
       await _refreshOverlay();
     } catch (exception) {
-      if (mounted) setState(() => _error = exception.toString().replaceFirst('Bad state: ', ''));
+      if (mounted)
+        setState(
+          () => _error = exception.toString().replaceFirst('Bad state: ', ''),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -494,7 +521,10 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
       await AppLockService.setBiometricEnabled(value);
       if (mounted) setState(() => _biometric = value);
     } catch (exception) {
-      if (mounted) setState(() => _error = exception.toString().replaceFirst('Bad state: ', ''));
+      if (mounted)
+        setState(
+          () => _error = exception.toString().replaceFirst('Bad state: ', ''),
+        );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -517,18 +547,30 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   children: [
                     Icon(Icons.phonelink_lock_outlined, color: _lockNavy),
                     SizedBox(width: 8),
-                    Text('قفل التطبيق', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(
+                      'قفل التطبيق',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text('احمِ التطبيق عند الرجوع إليه باستخدام رمز PIN أو البصمة المدعومة من الهاتف.'),
+                const Text(
+                  'احمِ التطبيق عند الرجوع إليه باستخدام رمز PIN أو البصمة المدعومة من الهاتف.',
+                ),
                 const Divider(height: 24),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _enabled,
                   onChanged: _busy ? null : _toggleLock,
                   title: const Text('تفعيل قفل التطبيق'),
-                  subtitle: Text(_hasPin ? 'رمز PIN مُعدّ على هذا الجهاز' : 'أنشئ رمز PIN لتفعيل القفل'),
+                  subtitle: Text(
+                    _hasPin
+                        ? 'رمز PIN مُعدّ على هذا الجهاز'
+                        : 'أنشئ رمز PIN لتفعيل القفل',
+                  ),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -543,7 +585,9 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
                   value: _biometric,
                   onChanged: _busy || !_enabled ? null : _toggleBiometric,
                   title: const Text('فتح التطبيق بالبصمة'),
-                  subtitle: const Text('يتطلب إعداد قفل PIN ومصادقة بيومترية على الجهاز'),
+                  subtitle: const Text(
+                    'يتطلب إعداد قفل PIN ومصادقة بيومترية على الجهاز',
+                  ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),

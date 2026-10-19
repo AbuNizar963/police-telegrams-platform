@@ -218,6 +218,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   bool _settingsLoaded = false;
   bool _enabled = false;
   bool _biometricEnabled = false;
+  bool _biometricAttemptedForLock = false;
   bool _legacyPin = false;
   bool _locked = false;
   bool _busy = false;
@@ -247,7 +248,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     try {
       final values = await Future.wait([
         AppLockService.isEnabled(),
-        AppLockService.isBiometricEnabled(),
+        AppLockService.canUseBiometrics(),
         AppLockService.hasLegacyPin(),
       ]);
       if (!mounted) return;
@@ -266,7 +267,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                 !wasLoaded ||
                 (!wasEnabled && enabled) ||
                 _locked);
+        if (!_locked) _biometricAttemptedForLock = false;
       });
+      _startBiometricForCurrentLock();
     } catch (error) {
       if (!mounted) return;
 
@@ -283,6 +286,16 @@ class _AppLockOverlayState extends State<AppLockOverlay>
             'تعذر الوصول إلى التخزين الآمن. أعد تشغيل التطبيق وحاول مجددًا.';
       });
     }
+  }
+
+  void _startBiometricForCurrentLock() {
+    if (!mounted || !_locked || !_biometricEnabled || _biometricAttemptedForLock) {
+      return;
+    }
+    _biometricAttemptedForLock = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _locked && !_busy) _submitBiometric();
+    });
   }
 
   void _onSettingsChanged() {
@@ -367,6 +380,7 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     try {
       if (await AppLockService.authenticateBiometric()) {
         _unlockGeneration++;
+        _biometricAttemptedForLock = false;
         if (mounted) setState(() => _locked = false);
       } else if (mounted) {
         setState(() => _error = 'لم تكتمل المصادقة بالبصمة.');
@@ -470,18 +484,19 @@ class _AppLockOverlayState extends State<AppLockOverlay>
                                 ),
                               ],
                               const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: _busy || _pin.length < 4
-                                      ? null
-                                      : _submitPin,
-                                  icon: const Icon(Icons.lock_open),
-                                  label: Text(
-                                    _busy ? 'جارٍ التحقق...' : 'فتح التطبيق',
+                              if (_legacyPin)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton.icon(
+                                    onPressed: _busy || _pin.length < 4
+                                        ? null
+                                        : _submitPin,
+                                    icon: const Icon(Icons.lock_open),
+                                    label: Text(
+                                      _busy ? 'جارٍ التحقق...' : 'التحقق من الرمز السابق',
+                                    ),
                                   ),
                                 ),
-                              ),
                               if (_biometricEnabled)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8),

@@ -49,6 +49,10 @@ jobs:
       - name: Format Dart source
         run: ./tool/format_dart.sh --fix
 
+      - name: Temporary formatter diff diagnostics
+        if: github.event_name == 'pull_request'
+        run: git diff -- lib/app_lock.dart lib/main.dart
+
       # Pull requests are not modified by CI; require contributors to include formatter changes.
       - name: Verify formatting on pull requests
         if: github.event_name == 'pull_request'

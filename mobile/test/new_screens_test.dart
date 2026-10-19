@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/advanced_create_telegram_page.dart';
 import 'package:police_telegrams/api.dart';
@@ -66,6 +67,24 @@ Widget _host(Widget child) =>
     MaterialApp(theme: ThemeData(useMaterial3: true), home: child);
 
 void main() {
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (call) async {
+        switch (call.method) {
+          case 'read':
+            return null;
+          case 'readAll':
+            return <String, String>{};
+          case 'containsKey':
+            return false;
+          default:
+            return null;
+        }
+      },
+    );
+  });
   testWidgets('advanced composer renders web-matched fields and defaults', (
     tester,
   ) async {

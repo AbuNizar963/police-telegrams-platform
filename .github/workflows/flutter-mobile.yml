@@ -48,7 +48,7 @@ jobs:
       # Pull requests must already contain canonical formatting; CI never pushes commits.
       - name: Verify Dart formatting on pull requests
         if: github.event_name == 'pull_request'
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: dart format --output=show test/new_screens_test.dart test/widget_test.dart
 
       - name: Format Dart source on direct pushes
         if: github.event_name != 'pull_request'

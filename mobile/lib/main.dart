@@ -764,7 +764,8 @@ class DashboardPage extends StatefulWidget {
 
 String _dashboardRefreshError(Object error) {
   final details = error.toString().toLowerCase();
-  if (error is SocketException ||
+  if (error is NetworkException ||
+      error is SocketException ||
       details.contains('socketfailed host lookup') ||
       details.contains('failed host lookup') ||
       details.contains('no address associated with hostname') ||
@@ -3558,14 +3559,14 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
-  Widget _paginationControls() => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(
+  Widget _paginationControls() => LayoutBuilder(
+    builder: (context, constraints) {
+      final pageLabel = Text(
         'صفحة $telegramPage',
         style: const TextStyle(color: Colors.black54, fontSize: 12),
-      ),
-      Row(
+      );
+      final controls = Wrap(
+        spacing: 8,
         children: [
           OutlinedButton(
             onPressed: telegramPage <= 1 || loading
@@ -3577,7 +3578,6 @@ class _DashboardPageState extends State<DashboardPage>
                   },
             child: const Text('السابق'),
           ),
-          const SizedBox(width: 8),
           OutlinedButton(
             onPressed: !hasNextTelegramPage || loading
                 ? null
@@ -3589,8 +3589,27 @@ class _DashboardPageState extends State<DashboardPage>
             child: const Text('التالي'),
           ),
         ],
-      ),
-    ],
+      );
+
+      if (constraints.maxWidth < 340) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            pageLabel,
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: controls,
+            ),
+          ],
+        );
+      }
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [pageLabel, controls],
+      );
+    },
   );
 
   Widget _stat(

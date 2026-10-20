@@ -2460,11 +2460,7 @@ class _DashboardPageState extends State<DashboardPage>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.swipe_rounded,
-              size: 15,
-              color: const Color(0xFF7A8493),
-            ),
+            Icon(Icons.swipe_rounded, size: 15, color: const Color(0xFF7A8493)),
             const SizedBox(width: 5),
             Flexible(
               child: Text(
@@ -3597,10 +3593,7 @@ class _DashboardPageState extends State<DashboardPage>
           children: [
             pageLabel,
             const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: controls,
-            ),
+            Align(alignment: AlignmentDirectional.centerEnd, child: controls),
           ],
         );
       }

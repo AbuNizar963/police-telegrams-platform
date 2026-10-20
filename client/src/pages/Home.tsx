@@ -636,6 +636,7 @@ export default function Home() {
       queryClient.removeQueries({ queryKey });
     }
   };
+  const previewExcelImport = trpc.telegrams.importPreview.useMutation();
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -806,7 +807,7 @@ export default function Home() {
   const handleExcelFile = async (file: File) => {
     try {
       const parsed = await parseTelegramWorkbook(file);
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
+      const duplicateResults = await previewExcelImport.mutateAsync({
         rows: parsed.rows,
       });
       const duplicateIndexes = new Set(
@@ -842,7 +843,7 @@ export default function Home() {
     if (!excelPendingFile) return;
     try {
       const parsed = await parseTelegramWorkbook(excelPendingFile, password);
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
+      const duplicateResults = await previewExcelImport.mutateAsync({
         rows: parsed.rows,
       });
       const duplicateIndexes = new Set(

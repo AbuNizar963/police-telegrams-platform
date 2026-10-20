@@ -596,8 +596,15 @@ class _AdvancedCreateTelegramSheetState
                             _fieldLabel('نص البرقية'),
                             TextField(
                               controller: _body,
-                              minLines: 6,
-                              maxLines: null,
+                              // Keep the editor bounded: an unbounded multiline
+                              // field can grow beneath the soft keyboard and push
+                              // the active caret outside the visible sheet.
+                              minLines: 5,
+                              maxLines: 8,
+                              scrollPadding: const EdgeInsets.only(
+                                top: 24,
+                                bottom: 180,
+                              ),
                               keyboardType: TextInputType.multiline,
                               textInputAction: TextInputAction.newline,
                               textDirection: TextDirection.rtl,

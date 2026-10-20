@@ -704,6 +704,14 @@ class _DashboardPageState extends State<DashboardPage>
   static const _idleOutboxMessage = 'لا توجد برقيات معلقة محليًا.';
   String get _greetingName =>
       (_account['name'] ?? _account['username'] ?? 'أبو نزار').toString();
+  String get _timeBasedGreeting {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) return 'صباح الخير';
+    if (hour >= 11 && hour < 13) return 'نهار سعيد';
+    if (hour >= 13 && hour < 17) return 'طاب يومك';
+    if (hour >= 17 && hour < 22) return 'مساء الخير';
+    return 'ليلة سعيدة';
+  }
   late final Map<String, dynamic> _account;
   bool loading = true;
   String? error;
@@ -2406,15 +2414,32 @@ class _DashboardPageState extends State<DashboardPage>
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'مرحبا، $_greetingName',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: navy,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'مرحباً، $_greetingName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: navy,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _timeBasedGreeting,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF748196),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),

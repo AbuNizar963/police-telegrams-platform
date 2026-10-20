@@ -2465,14 +2465,19 @@ class _DashboardPageState extends State<DashboardPage>
               color: const Color(0xFF7A8493),
             ),
             const SizedBox(width: 5),
-            Text(
-              showingOutbox
-                  ? 'اسحب للتبديل إلى لوحة الترحيب'
-                  : 'اسحب لعرض بطاقة صندوق الخروج',
-              style: const TextStyle(
-                color: Color(0xFF7A8493),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                showingOutbox
+                    ? 'اسحب للتبديل إلى لوحة الترحيب'
+                    : 'اسحب لعرض بطاقة صندوق الخروج',
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF7A8493),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 9),

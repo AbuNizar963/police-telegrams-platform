@@ -579,8 +579,10 @@ void main() {
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
 
-    // The welcome panel is the default view; swipe to reveal the outbox card.
+    // The welcome panel is the default view; status stays hidden until swiping.
     expect(find.text('الجهة الحالية'), findsOneWidget);
+    expect(find.text('حالة صندوق الخروج'), findsNothing);
+    expect(find.text('لا توجد برقيات معلقة محليًا.'), findsNothing);
     await tester.drag(find.text('الجهة الحالية'), const Offset(300, 0));
     await _pumpDashboardFrames(tester, frameCount: 8);
 
@@ -619,6 +621,14 @@ void main() {
       ),
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
+
+    // Connection and outbox status belong to the swipeable outbox card.
+    expect(find.text('الجهة الحالية'), findsOneWidget);
+    expect(find.text('لا توجد برقيات معلقة محليًا.'), findsNothing);
+    expect(find.textContaining('الخادم غير متصل'), findsNothing);
+
+    await tester.drag(find.text('الجهة الحالية'), const Offset(300, 0));
+    await _pumpDashboardFrames(tester, frameCount: 8);
 
     expect(find.text('لا توجد برقيات معلقة محليًا.'), findsOneWidget);
     expect(find.textContaining('الخادم غير متصل'), findsOneWidget);

@@ -788,6 +788,7 @@ class _DashboardPageState extends State<DashboardPage>
   String? error;
   bool _usingCachedData = false;
   bool _showOutboxInTopCard = false;
+  double _outboxSwipeDistance = 0;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
@@ -1953,10 +1954,11 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
             ],
           ),
-          if (_lastSyncMessage != null) ...[
+          if (_lastSyncMessage != null ||
+              (!_outboxSyncing && _pendingOutbox == 0)) ...[
             const SizedBox(height: 5),
             Text(
-              _lastSyncMessage!,
+              _lastSyncMessage ?? _idleOutboxMessage,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -2426,81 +2428,6 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
-  Widget _outboxSummaryStatus() {
-    final String statusMessage;
-    if (_outboxSyncing) {
-      statusMessage =
-          _lastSyncMessage ??
-          'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...';
-    } else if (_pendingOutbox == 0) {
-      statusMessage = _idleOutboxMessage;
-    } else {
-      statusMessage =
-          _lastSyncMessage ??
-          'تنتظر $_pendingOutbox برقية عودة الاتصال للمزامنة.';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFEFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE1E5EB)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.outbox_outlined, size: 17, color: navy),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'حالة صندوق الخروج',
-                    style: TextStyle(
-                      color: navy,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                if (_pendingOutbox > 0)
-                  Text(
-                    '$_pendingOutbox معلقة',
-                    style: const TextStyle(
-                      color: Color(0xFFB7791F),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              statusMessage,
-              style: const TextStyle(
-                color: Color(0xFF667085),
-                fontSize: 11,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              _serverStatusMessage,
-              style: TextStyle(
-                color: _serverStatusColor,
-                fontSize: 10,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _swipeableWelcomeOutboxPanel() {
     final showingOutbox = _showOutboxInTopCard;
     return Column(
@@ -2508,9 +2435,17 @@ class _DashboardPageState extends State<DashboardPage>
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) {
+            _outboxSwipeDistance = 0;
+          },
+          onHorizontalDragUpdate: (details) {
+            _outboxSwipeDistance += details.delta.dx;
+          },
           onHorizontalDragEnd: (details) {
             final velocity = details.primaryVelocity ?? 0;
-            if (velocity.abs() < 180) return;
+            final distance = _outboxSwipeDistance;
+            _outboxSwipeDistance = 0;
+            if (velocity.abs() < 180 && distance.abs() < 40) return;
             setState(() => _showOutboxInTopCard = !_showOutboxInTopCard);
           },
           child: AnimatedSize(
@@ -2839,7 +2774,6 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
         _swipeableWelcomeOutboxPanel(),
-        if (!_showOutboxInTopCard) _outboxSummaryStatus(),
         _dashboardActions(),
         _urgentAlert(),
         const SizedBox(height: 12),

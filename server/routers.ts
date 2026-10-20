@@ -2705,6 +2705,12 @@ export const appRouter = router({
               skipped += 1;
               continue;
             }
+            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            if (row.date?.trim() && !importedCreatedAt) {
+              throw new Error(
+                `تعذر قراءة تاريخ البرقية "${row.date}" في صف Excel. صحح تنسيق التاريخ ثم أعد الاستيراد؛ لم يُستبدل التاريخ بتاريخ اليوم.`
+              );
+            }
             const serialNumber = await allocateSerialNumber();
             const dateParts = new Intl.DateTimeFormat("en-CA", {
               timeZone: settings.timezone,
@@ -2717,7 +2723,6 @@ export const appRouter = router({
             );
             const dateCode = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
             const serialCode = `${settings.serialPrefix}-${dateCode}-${String(serialNumber).padStart(5, "0")}`;
-            const importedCreatedAt = parseImportedDate(row.date, row.time);
             const importedBody = [
               row.body,
               row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",

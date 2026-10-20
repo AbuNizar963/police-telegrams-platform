@@ -394,6 +394,7 @@ export async function getOrCreateSettings(
     dateFormat: template.dateFormat ?? "yyyy/MM/dd HH:mm:ss",
     timeFormat: template.timeFormat === "12" ? "12" : "24",
     numberSystem: template.numberSystem ?? "latin",
+    showVerificationQr: template.showVerificationQr ?? true,
     logoUrl: template.logoUrl ?? null,
     updatedByUserId: userId,
   };

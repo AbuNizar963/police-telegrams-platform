@@ -2707,6 +2707,7 @@ function TelegramDetail({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
+    showVerificationQr?: boolean;
     logoUrl: string | null;
   };
   isOutgoing: boolean;
@@ -2931,6 +2932,7 @@ function TelegramDetail({
         .replace(/'/g, "&#39;");
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
+    const showVerificationQr = settings?.showVerificationQr !== false;
     const departmentName = localizeDigits(
       settings?.departmentName ?? "قسم العمليات",
       numberSystem
@@ -3019,15 +3021,19 @@ function TelegramDetail({
         alt: string;
       }) => string;
     };
-    const qrCode = createQrCode(0, "L");
-    qrCode.addData(qrPayload);
-    qrCode.make();
-    const qrSvg = qrCode.createSvgTag({
-      cellSize: 4,
-      margin: 4,
-      scalable: true,
-      alt: "رمز QR للتحقق من أصالة البرقية",
-    });
+    const qrSvg = showVerificationQr
+      ? (() => {
+          const qrCode = createQrCode(0, "L");
+          qrCode.addData(qrPayload);
+          qrCode.make();
+          return qrCode.createSvgTag({
+            cellSize: 4,
+            margin: 4,
+            scalable: true,
+            alt: "رمز QR للتحقق من أصالة البرقية",
+          });
+        })()
+      : "";
 
     const watermark = settings?.logoUrl
       ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
@@ -3168,7 +3174,7 @@ function TelegramDetail({
         }
         .telegram-export-page .routing-layout {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 113px;
+          grid-template-columns: ${showVerificationQr ? "minmax(0, 1fr) 113px" : "1fr"};
           align-items: start;
           gap: 16px;
           direction: rtl;
@@ -3280,7 +3286,7 @@ function TelegramDetail({
                 <p><strong>إلى:</strong> ${escapeHtml(localizeDigits(telegram.recipient, numberSystem))}</p>
                 <p><strong>الموضوع:</strong> ${escapeHtml(localizeDigits(telegram.subject, numberSystem))}</p>
               </div>
-              <div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>
+              ${showVerificationQr ? `<div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>` : ""}
             </div>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
@@ -4482,6 +4488,7 @@ function DepartmentSettingsModal({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
+    showVerificationQr?: boolean;
     logoUrl: string | null;
   };
   organizationName?: string;
@@ -4524,6 +4531,9 @@ function DepartmentSettingsModal({
   const [timeFormat, setTimeFormat] = useState<"12" | "24">("24");
   const [numberSystem, setNumberSystem] =
     useState<SupportedNumberSystem>("latin");
+  const [showVerificationQr, setShowVerificationQr] = useState(
+    settings?.showVerificationQr !== false
+  );
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
@@ -4552,6 +4562,7 @@ function DepartmentSettingsModal({
       setUnitChiefRank(result.unitChiefRank);
       setUnitChiefName(result.unitChiefName);
       setNumberSystem(normalizeNumberSystem(result.numberSystem));
+      setShowVerificationQr(result.showVerificationQr !== false);
       setLogoUrl(result?.logoUrl ?? null);
       await utils.settings.get.invalidate();
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
@@ -4580,6 +4591,7 @@ function DepartmentSettingsModal({
     setDateFormat(settings?.dateFormat ?? "yyyy/MM/dd HH:mm:ss");
     setTimeFormat(settings?.timeFormat === "12" ? "12" : "24");
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
+    setShowVerificationQr(settings?.showVerificationQr !== false);
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
     settings?.id,
@@ -4594,6 +4606,7 @@ function DepartmentSettingsModal({
     settings?.dateFormat,
     settings?.timeFormat,
     settings?.numberSystem,
+    settings?.showVerificationQr,
   ]);
   useEffect(() => {
     setSelectedWorkplaceId(activeOrganizationId ?? "");
@@ -4902,6 +4915,21 @@ function DepartmentSettingsModal({
               المحدد.
             </span>
           </label>
+          <label className="mt-3 flex items-start gap-3 rounded-lg border p-3 text-xs font-semibold">
+            <input
+              type="checkbox"
+              checked={showVerificationQr}
+              onChange={event => setShowVerificationQr(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#10233f]"
+            />
+            <span>
+              إظهار رمز QR للتحقق في البرقية
+              <span className="mt-1 block font-normal leading-5 text-muted-foreground">
+                إخفاء الرمز من النسخ المطبوعة لا يعطّل رابط التحقق الإلكتروني أو
+                رمز البرقية.
+              </span>
+            </span>
+          </label>
         </div>
         <div className="grid gap-2">
           <span className="text-xs font-bold">شعار القسم أو المخفر</span>
@@ -4981,6 +5009,7 @@ function DepartmentSettingsModal({
               dateFormat,
               timeFormat,
               numberSystem,
+              showVerificationQr,
               logoUrl: logoUrl?.trim() || null,
             })
           }

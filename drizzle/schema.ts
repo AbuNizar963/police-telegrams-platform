@@ -199,6 +199,7 @@ export const departmentSettings = pgTable(
       .notNull(),
     timeFormat: varchar("timeFormat", { length: 2 }).default("24").notNull(),
     numberSystem: numberSystem("numberSystem").default("latin").notNull(),
+    showVerificationQr: boolean("showVerificationQr").default(true).notNull(),
     logoUrl: text("logoUrl"),
     updatedByUserId: integer("updatedByUserId"),
     createdAt: timestamp("createdAt", { withTimezone: true })

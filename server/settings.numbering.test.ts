@@ -55,6 +55,7 @@ const settings = {
   timezone: "Asia/Riyadh",
   dateFormat: "dd/MM/yyyy HH:mm:ss",
   numberSystem: "latin" as const,
+  showVerificationQr: false,
   logoUrl: null,
 };
 
@@ -89,6 +90,7 @@ describe("department telegram serial prefixes", () => {
       timezone: "Asia/Riyadh",
       dateFormat: "dd/MM/yyyy HH:mm:ss",
       numberSystem: "latin",
+      showVerificationQr: false,
       logoUrl: null,
     });
 
@@ -101,7 +103,33 @@ describe("department telegram serial prefixes", () => {
         incomingSerialStart: 900,
         nextOutgoingSerial: 50,
         nextIncomingSerial: 900,
+        showVerificationQr: false,
       })
+    );
+  });
+
+  it("preserves QR visibility when an older client omits the new field", async () => {
+    const caller = appRouter.createCaller(adminContext());
+
+    await caller.settings.update({
+      organizationId: settings.organizationId,
+      departmentName: "قسم الاختبار",
+      unitName: "وحدة العمليات",
+      unitChiefRank: "العقيد",
+      unitChiefName: "رئيس الوحدة",
+      serialPrefix: "OUT",
+      incomingSerialPrefix: "IN",
+      serialStart: 1,
+      incomingSerialStart: 1,
+      timezone: "Asia/Riyadh",
+      dateFormat: "dd/MM/yyyy HH:mm:ss",
+      numberSystem: "latin",
+      logoUrl: null,
+    });
+
+    expect(mocked.updateDepartmentSettings).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({ showVerificationQr: false })
     );
   });
 

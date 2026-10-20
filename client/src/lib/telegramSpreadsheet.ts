@@ -125,6 +125,34 @@ function cell(row: unknown[], index: number) {
   return index >= 0 ? text(row[index]) : "";
 }
 
+function normalizedTime(value: unknown): string {
+  const normalized = text(value).replace(/[٠-٩۰-۹]/g, digit =>
+    String("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹".indexOf(digit) % 10)
+  );
+  const match = normalized.match(
+    /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i
+  );
+  if (!match) return normalized;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+  const meridiem = (match[4] ?? "").toUpperCase();
+  if (hours > 24 || minutes > 59 || seconds > 59) return normalized;
+  if (meridiem) {
+    if (hours < 1 || hours > 12) return normalized;
+    if (meridiem === "م" || meridiem === "PM") {
+      hours = (hours % 12) + 12;
+    } else {
+      hours %= 12;
+    }
+  }
+
+  return [hours, minutes, seconds]
+    .map(part => String(part).padStart(2, "0"))
+    .join(":");
+}
+
 export async function parseTelegramWorkbook(
   file: File,
   password?: string
@@ -253,7 +281,7 @@ export async function parseTelegramWorkbook(
       if (originalSerial) serialFingerprints.add(serialFingerprint);
       rows.push({
         originalSerial,
-        time: cell(row, fallback.time),
+        time: normalizedTime(row[fallback.time]),
         sender,
         date,
         body,

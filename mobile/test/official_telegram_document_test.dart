@@ -70,6 +70,24 @@ void main() {
     },
   );
 
+  test(
+    'omits the QR from the document when organization settings disable it',
+    () {
+      final html = buildOfficialTelegramHtml(
+        telegram: telegram(),
+        settings: const {'showVerificationQr': false},
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/verify-token',
+        fontDataUrls: fonts,
+      );
+
+      expect(html, isNot(contains('class="routing-qr"')));
+      expect(html, isNot(contains('<svg')));
+      expect(html, contains('موضوع رسمي'));
+      expect(html, contains('نص الوثيقة'));
+    },
+  );
+
   test('includes the configured organization logo as a visible watermark', () {
     final html = buildOfficialTelegramHtml(
       telegram: telegram(),

@@ -1037,6 +1037,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   String _dateFormat = 'yyyy/MM/dd HH:mm:ss';
   String _timeFormat = '24';
   String _numberSystem = 'latin';
+  bool _showVerificationQr = true;
   Map<String, dynamic> _settings = {};
 
   @override
@@ -1095,6 +1096,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         _numberSystem = _text(settings['numberSystem'], 'latin') == 'arabic'
             ? 'arabic'
             : 'latin';
+        _showVerificationQr = settings['showVerificationQr'] != false;
         final logo = _text(settings['logoUrl']);
         _logoUrl = logo.isEmpty ? null : logo;
         _error = null;
@@ -1160,6 +1162,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         'dateFormat': _dateFormat,
         'timeFormat': _timeFormat,
         'numberSystem': _numberSystem,
+        'showVerificationQr': _showVerificationQr,
         'logoUrl': _logoUrl,
       };
       final result = await widget.api.call(
@@ -1466,6 +1469,21 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                           setState(() => _numberSystem = value);
                         }
                       },
+                    ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'إظهار رمز QR للتحقق في البرقية',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: const Text(
+                        'إخفاء الرمز من الوثيقة لا يعطّل التحقق الإلكتروني أو رمز البرقية.',
+                      ),
+                      value: _showVerificationQr,
+                      onChanged: _saving
+                          ? null
+                          : (value) =>
+                                setState(() => _showVerificationQr = value),
                     ),
                     if (_settings['nextOutgoingSerial'] != null ||
                         _settings['nextIncomingSerial'] != null)

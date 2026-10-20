@@ -722,6 +722,7 @@ String buildOfficialTelegramHtml({
   String? logoDataUrl,
 }) {
   final numberSystem = settings['numberSystem'];
+  final showVerificationQr = settings['showVerificationQr'] != false;
   final departmentName = _localizeDigits(
     _value(settings['departmentName'], fallback: 'قسم العمليات'),
     numberSystem,
@@ -837,7 +838,7 @@ String buildOfficialTelegramHtml({
   final watermark = logoDataUrl == null
       ? '<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>'
       : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" aria-hidden="true" />';
-  final qrSvg = _createQrSvg(verificationUrl);
+  final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
   final fontFaces = [400, 500, 600, 700]
       .map((weight) {
         final font = fontDataUrls[weight] ?? '';
@@ -870,7 +871,7 @@ $fontFaces
 .telegram-export-page .official-seal span{font-size:20px}.telegram-export-page .official-seal strong{font-size:11px}
 .telegram-export-page .classification{display:flex;justify-content:space-between;gap:16px;margin:18px 0;padding:10px 14px;border:1px solid #d8dee8;background:#f8fafc;font-size:13px}.telegram-export-page .classification-value{font-weight:500}
 .telegram-export-page .telegram-content{min-height:570px;padding:22px 24px;border:1.5px solid #253247;display:flex;flex-direction:column}
-.telegram-export-page .routing{padding-bottom:14px;border-bottom:1px dotted #7b8493;line-height:2}.telegram-export-page .routing-layout{display:grid;grid-template-columns:minmax(0,1fr) 113px;align-items:start;gap:16px;direction:rtl}
+.telegram-export-page .routing{padding-bottom:14px;border-bottom:1px dotted #7b8493;line-height:2}.telegram-export-page .routing-layout{display:grid;grid-template-columns:${showVerificationQr ? 'minmax(0,1fr) 113px' : '1fr'};align-items:start;gap:16px;direction:rtl}
 .telegram-export-page .routing p{margin:0}.telegram-export-page .routing-details{font-weight:500}.telegram-export-page .routing-qr{width:113px;height:113px;justify-self:start;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
 .telegram-export-page .routing-qr svg{display:block;width:100%;height:100%;shape-rendering:crispEdges}
 .telegram-export-page .body-heading{margin:20px 0 14px;text-align:center;font-size:17px;font-weight:700}.telegram-export-page .telegram-body{min-height:150px;white-space:pre-wrap;overflow-wrap:anywhere;text-align:justify;line-height:2;font-size:20px;font-weight:500}
@@ -901,7 +902,7 @@ $fontFaces
 <p><strong>من:</strong> ${_escapeHtml(senderOrganizationName)}</p>
 <p><strong>إلى:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['recipient']), numberSystem))}</p>
 <p><strong>الموضوع:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['subject']), numberSystem))}</p>
-</div><div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">$qrSvg</div></div></section>
+</div>${showVerificationQr ? '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">$qrSvg</div>' : ''}</div></section>
 <h2 class="body-heading">نص البرقية</h2>
 <div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
 <section class="signature">

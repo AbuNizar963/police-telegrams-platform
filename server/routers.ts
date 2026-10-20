@@ -268,8 +268,9 @@ const organizationSettingsPayloadSchema = z.object({
     "yyyy/MM/dd HH:mm:ss",
     "dd MMM yyyy HH:mm",
   ]),
-  timeFormat: z.enum(["12", "24"]).default("24"),
+  timeFormat: z.enum(["12", "24"]).optional(),
   numberSystem: z.enum(["latin", "arabic"]),
+  showVerificationQr: z.boolean().optional(),
   logoUrl: safeLogoUrlSchema,
 });
 
@@ -627,6 +628,7 @@ export const appRouter = router({
             dateFormat: "yyyy/MM/dd HH:mm:ss",
             timeFormat: "24" as const,
             numberSystem: "latin" as const,
+            showVerificationQr: true,
             logoUrl: null,
             logoKey: null,
             settingsExists: false,
@@ -694,8 +696,13 @@ export const appRouter = router({
               nextIncomingSerial: incomingStart,
               timezone: input.timezone,
               dateFormat: input.dateFormat,
-              timeFormat: input.timeFormat,
+              timeFormat:
+                input.timeFormat ?? previousSettings?.timeFormat ?? "24",
               numberSystem: input.numberSystem,
+              showVerificationQr:
+                input.showVerificationQr ??
+                previousSettings?.showVerificationQr ??
+                true,
               logoUrl: input.logoUrl,
               updatedByUserId: ctx.user.id,
             }
@@ -1159,6 +1166,7 @@ export const appRouter = router({
             .default("yyyy/MM/dd HH:mm:ss"),
           timeFormat: z.enum(["12", "24"]).default("24"),
           numberSystem: z.enum(["latin", "arabic"]).default("latin"),
+          showVerificationQr: z.boolean().optional(),
           logoUrl: safeLogoUrlSchema.optional(),
         })
       )
@@ -1235,6 +1243,8 @@ export const appRouter = router({
           dateFormat: input.dateFormat,
           timeFormat: input.timeFormat,
           numberSystem: input.numberSystem,
+          showVerificationQr:
+            input.showVerificationQr ?? dbSettings.showVerificationQr ?? true,
           logoUrl: input.logoUrl ?? null,
           updatedByUserId: ctx.user.id,
         });

@@ -58,6 +58,7 @@ type OrganizationSettingsDraft = {
     | "dd MMM yyyy HH:mm";
   timeFormat: "12" | "24";
   numberSystem: "latin" | "arabic";
+  showVerificationQr: boolean;
   logoUrl: string;
 };
 
@@ -76,6 +77,7 @@ const emptyOrganizationSettings = (
   dateFormat: "yyyy/MM/dd HH:mm:ss",
   timeFormat: "24",
   numberSystem: "latin",
+  showVerificationQr: true,
   logoUrl: "",
 });
 
@@ -224,6 +226,7 @@ export default function OwnerOrganizationManagement() {
         : "yyyy/MM/dd HH:mm:ss",
       timeFormat: saved.timeFormat === "12" ? "12" : "24",
       numberSystem: saved.numberSystem === "arabic" ? "arabic" : "latin",
+      showVerificationQr: saved.showVerificationQr !== false,
       logoUrl: saved.logoUrl ?? "",
     });
   }, [organizationSettings.data, settingsQueryOrgId]);
@@ -387,6 +390,7 @@ export default function OwnerOrganizationManagement() {
       dateFormat: settingsDraft.dateFormat,
       timeFormat: settingsDraft.timeFormat,
       numberSystem: settingsDraft.numberSystem,
+      showVerificationQr: settingsDraft.showVerificationQr,
       logoUrl: settingsDraft.logoUrl.trim() || null,
     };
 
@@ -1243,6 +1247,26 @@ export default function OwnerOrganizationManagement() {
                     </span>
                   </label>
                 </div>
+                <label className="mt-4 flex items-start gap-3 rounded-lg border p-3 text-xs font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={settingsDraft.showVerificationQr}
+                    onChange={event =>
+                      setSettingsDraft(current => ({
+                        ...current,
+                        showVerificationQr: event.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#10233f]"
+                  />
+                  <span>
+                    إظهار رمز QR للتحقق في البرقية
+                    <span className="mt-1 block font-normal leading-5 text-muted-foreground">
+                      إيقاف عرضه في الوثيقة لا يعطّل التحقق الإلكتروني أو رمز
+                      البرقية.
+                    </span>
+                  </span>
+                </label>
               </section>
               <div className="flex gap-2">
                 <Button

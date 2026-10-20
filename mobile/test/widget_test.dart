@@ -9,6 +9,8 @@ import 'package:police_telegrams/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
+import 'package:police_telegrams/mobile_pages.dart'
+    show DepartmentSettingsPage;
 import 'package:police_telegrams/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';
 
@@ -253,6 +255,34 @@ void main() {
     expect(PushNotificationService.new, returnsNormally);
   });
 
+  testWidgets(
+    'department settings save the QR visibility choice',
+    (tester) async {
+      _setMobileViewport(tester);
+      final api = _TestPoliceApi(signedIn: true);
+
+      await tester.pumpWidget(
+        MaterialApp(home: DepartmentSettingsPage(api: api)),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 4);
+
+      final qrSetting = find.text('إظهار رمز QR للتحقق في البرقية');
+      await _scrollIntoView(tester, qrSetting);
+      final qrSwitch = find.byType(SwitchListTile);
+      expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
+      await tester.tap(qrSwitch);
+      await tester.pump();
+      expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
+
+      final saveButton = find.text('حفظ إعدادات الجهة');
+      await _scrollIntoView(tester, saveButton);
+      await tester.tap(saveButton);
+      await _pumpDashboardFrames(tester, frameCount: 4);
+
+      expect(api.calls['settings.update']?['showVerificationQr'], isFalse);
+    },
+  );
+
   test('mandatory app lock requires an exact four-digit PIN', () async {
     await expectLater(AppLockService.savePin('12345'), throwsFormatException);
 
@@ -342,6 +372,8 @@ void main() {
       await tester.tap(find.byTooltip('استخدام البصمة أو التعرّف على الوجه'));
       await tester.pump();
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       authenticationResult.complete(true);
       await tester.pumpAndSettle();

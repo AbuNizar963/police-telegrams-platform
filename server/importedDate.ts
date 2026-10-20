@@ -20,7 +20,7 @@ function localDateTimeToUtc(
     day,
     hours,
     minutes,
-    seconds
+    seconds,
   );
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -46,7 +46,7 @@ function localDateTimeToUtc(
       Number(parts.day),
       Number(parts.hour),
       Number(parts.minute),
-      Number(parts.second)
+      Number(parts.second),
     );
     const adjustment = desiredLocalTimestamp - representedLocalTimestamp;
     if (adjustment === 0) break;
@@ -194,7 +194,7 @@ export function parseImportedDate(
       hours,
       minutes,
       seconds,
-      timezone
+      timezone,
     );
   } catch {
     return undefined;

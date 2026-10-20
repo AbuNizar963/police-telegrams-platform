@@ -357,6 +357,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       if (duplicates.isEmpty) {
         final checked = await widget.api.call(
           'telegrams.importPreview',
+          mutation: true,
           input: {'rows': parsed.rows.map((row) => row.toImportMap()).toList()},
         );
         if (checked is List) {

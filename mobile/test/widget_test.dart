@@ -9,8 +9,7 @@ import 'package:police_telegrams/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
-import 'package:police_telegrams/mobile_pages.dart'
-    show DepartmentSettingsPage;
+import 'package:police_telegrams/mobile_pages.dart' show DepartmentSettingsPage;
 import 'package:police_telegrams/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';
 
@@ -255,33 +254,32 @@ void main() {
     expect(PushNotificationService.new, returnsNormally);
   });
 
-  testWidgets(
-    'department settings save the QR visibility choice',
-    (tester) async {
-      _setMobileViewport(tester);
-      final api = _TestPoliceApi(signedIn: true);
+  testWidgets('department settings save the QR visibility choice', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final api = _TestPoliceApi(signedIn: true);
 
-      await tester.pumpWidget(
-        MaterialApp(home: DepartmentSettingsPage(api: api)),
-      );
-      await _pumpDashboardFrames(tester, frameCount: 4);
+    await tester.pumpWidget(
+      MaterialApp(home: DepartmentSettingsPage(api: api)),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 4);
 
-      final qrSetting = find.text('إظهار رمز QR للتحقق في البرقية');
-      await _scrollIntoView(tester, qrSetting);
-      final qrSwitch = find.byType(SwitchListTile);
-      expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
-      await tester.tap(qrSwitch);
-      await tester.pump();
-      expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
+    final qrSetting = find.text('إظهار رمز QR للتحقق في البرقية');
+    await _scrollIntoView(tester, qrSetting);
+    final qrSwitch = find.byType(SwitchListTile);
+    expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
+    await tester.tap(qrSwitch);
+    await tester.pump();
+    expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
 
-      final saveButton = find.text('حفظ إعدادات الجهة');
-      await _scrollIntoView(tester, saveButton);
-      await tester.tap(saveButton);
-      await _pumpDashboardFrames(tester, frameCount: 4);
+    final saveButton = find.text('حفظ إعدادات الجهة');
+    await _scrollIntoView(tester, saveButton);
+    await tester.tap(saveButton);
+    await _pumpDashboardFrames(tester, frameCount: 4);
 
-      expect(api.calls['settings.update']?['showVerificationQr'], isFalse);
-    },
-  );
+    expect(api.calls['settings.update']?['showVerificationQr'], isFalse);
+  });
 
   test('mandatory app lock requires an exact four-digit PIN', () async {
     await expectLater(AppLockService.savePin('12345'), throwsFormatException);

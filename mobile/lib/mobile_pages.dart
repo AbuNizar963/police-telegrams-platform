@@ -1300,7 +1300,11 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           .map(
             (option) => DropdownMenuItem(
               value: option.key,
-              child: Text(option.value, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                option.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           )
           .toList(),

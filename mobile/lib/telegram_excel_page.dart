@@ -379,7 +379,8 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                     (item) => start + (int.tryParse('${item['index']}') ?? -1),
                   )
                   .where(
-                    (index) => index >= start && index < start + batchRows.length,
+                    (index) =>
+                        index >= start && index < start + batchRows.length,
                   ),
             );
           }

@@ -1,6 +1,9 @@
 import XlsxPopulate from "xlsx-populate";
 import { describe, expect, it } from "vitest";
-import { buildTelegramWorkbook, formatTelegramWorkbookDateTime } from "./telegramWorkbook";
+import {
+  buildTelegramWorkbook,
+  formatTelegramWorkbookDateTime,
+} from "./telegramWorkbook";
 
 describe("telegram workbook export", () => {
   it("formats export date and time consistently", () => {

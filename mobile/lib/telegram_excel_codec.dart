@@ -126,7 +126,7 @@ String _text(dynamic value) {
     return '${value.hour.toString().padLeft(2, '0')}:'
         '${value.minute.toString().padLeft(2, '0')}:00';
   }
-  return '\$value'.trim();
+  return '$value'.trim();
 }
 
 String _dateText(dynamic value) {
@@ -194,6 +194,7 @@ String _timeText(dynamic value) {
       '${minute.toString().padLeft(2, '0')}:'
       '${second.toString().padLeft(2, '0')}';
 }
+
 String _normalized(String value) => value
     .replaceAll(RegExp(r'[\s_ـ]+'), '')
     .replaceAll(RegExp('[أإآ]'), 'ا')

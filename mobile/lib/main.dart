@@ -1616,8 +1616,18 @@ class _DashboardPageState extends State<DashboardPage>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) =>
-          AdvancedCreateTelegramSheet(api: widget.api, outbox: _outbox),
+      builder: (sheetContext) {
+        final keyboardInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        return AnimatedPadding(
+          padding: EdgeInsets.only(bottom: keyboardInset),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          child: AdvancedCreateTelegramSheet(
+            api: widget.api,
+            outbox: _outbox,
+          ),
+        );
+      },
     );
     if (result == true) {
       await _syncOutbox();

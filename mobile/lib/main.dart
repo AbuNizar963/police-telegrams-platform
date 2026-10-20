@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -667,6 +668,88 @@ class _LoginPageState extends State<LoginPage> {
   );
 }
 
+class _AnimatedWelcomeGreeting extends StatefulWidget {
+  const _AnimatedWelcomeGreeting({required this.name});
+
+  final String name;
+
+  @override
+  State<_AnimatedWelcomeGreeting> createState() =>
+      _AnimatedWelcomeGreetingState();
+}
+
+class _AnimatedWelcomeGreetingState extends State<_AnimatedWelcomeGreeting> {
+  static const _flipInterval = Duration(seconds: 4);
+  Timer? _flipTimer;
+  bool _showTimeGreeting = false;
+
+  String get _timeBasedGreeting {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) return 'صباح الخير';
+    if (hour >= 11 && hour < 13) return 'نهار سعيد';
+    if (hour >= 13 && hour < 17) return 'طاب يومك';
+    if (hour >= 17 && hour < 22) return 'مساء الخير';
+    return 'ليلة سعيدة';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _flipTimer = Timer.periodic(_flipInterval, (_) {
+      if (mounted) setState(() => _showTimeGreeting = !_showTimeGreeting);
+    });
+  }
+
+  @override
+  void dispose() {
+    _flipTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final greeting = _showTimeGreeting
+        ? _timeBasedGreeting
+        : 'مرحباً، يا ${widget.name}';
+    return Semantics(
+      liveRegion: true,
+      label: greeting,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 700),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final rotation = Tween<double>(begin: math.pi / 2, end: 0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+          return AnimatedBuilder(
+            animation: rotation,
+            child: child,
+            builder: (context, child) => Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(rotation.value),
+              child: child,
+            ),
+          );
+        },
+        child: Text(
+          greeting,
+          key: ValueKey(_showTimeGreeting),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: navy,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
@@ -704,14 +787,6 @@ class _DashboardPageState extends State<DashboardPage>
   static const _idleOutboxMessage = 'لا توجد برقيات معلقة محليًا.';
   String get _greetingName =>
       (_account['name'] ?? _account['username'] ?? 'أبو نزار').toString();
-  String get _timeBasedGreeting {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 11) return 'صباح الخير';
-    if (hour >= 11 && hour < 13) return 'نهار سعيد';
-    if (hour >= 13 && hour < 17) return 'طاب يومك';
-    if (hour >= 17 && hour < 22) return 'مساء الخير';
-    return 'ليلة سعيدة';
-  }
 
   late final Map<String, dynamic> _account;
   bool loading = true;
@@ -2415,33 +2490,7 @@ class _DashboardPageState extends State<DashboardPage>
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'مرحباً، $_greetingName',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: navy,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _timeBasedGreeting,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF748196),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                child: _AnimatedWelcomeGreeting(name: _greetingName),
               ),
               const SizedBox(width: 8),
               ConstrainedBox(

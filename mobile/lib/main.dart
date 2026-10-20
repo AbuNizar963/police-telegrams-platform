@@ -787,7 +787,7 @@ class _DashboardPageState extends State<DashboardPage>
   bool loading = true;
   String? error;
   bool _usingCachedData = false;
-  bool _showOutboxInTopCard = true;
+  bool _showOutboxInTopCard = false;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;

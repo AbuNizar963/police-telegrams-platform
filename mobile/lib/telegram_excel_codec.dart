@@ -142,9 +142,9 @@ String _dateText(dynamic value) {
 String _timeText(dynamic value) {
   if (value is DateTimeCellValue) {
     final date = value.asDateTimeLocal();
-    return '\${date.hour.toString().padLeft(2, '0')}:'
-        '\${date.minute.toString().padLeft(2, '0')}:'
-        '\${date.second.toString().padLeft(2, '0')}';
+    return '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}:'
+        '${date.second.toString().padLeft(2, '0')}';
   }
   if (value is TimeCellValue) return _text(value);
 
@@ -154,21 +154,21 @@ String _timeText(dynamic value) {
         : (value as DoubleCellValue).value;
     if (number >= 0 && number < 1) {
       final totalSeconds = (number * 86400).round() % 86400;
-      return '\${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
-          '\${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
-          '\${(totalSeconds % 60).toString().padLeft(2, '0')}';
+      return '${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
+          '${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
+          '${(totalSeconds % 60).toString().padLeft(2, '0')}';
     }
     if (number >= 0 && number <= 24) {
       final totalSeconds = (number * 3600).round();
-      return '\${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
-          '\${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
-          '\${(totalSeconds % 60).toString().padLeft(2, '0')}';
+      return '${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
+          '${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
+          '${(totalSeconds % 60).toString().padLeft(2, '0')}';
     }
   }
 
   final normalized = _text(value).replaceAllMapped(
     RegExp('[٠-٩۰-۹]'),
-    (match) => '\${'٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(match.group(0)!) % 10}',
+    (match) => '${'٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(match.group(0)!) % 10}',
   );
   final match = RegExp(
     r'^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$',
@@ -190,9 +190,9 @@ String _timeText(dynamic value) {
     }
   }
 
-  return '\${hour.toString().padLeft(2, '0')}:'
-      '\${minute.toString().padLeft(2, '0')}:'
-      '\${second.toString().padLeft(2, '0')}';
+  return '${hour.toString().padLeft(2, '0')}:'
+      '${minute.toString().padLeft(2, '0')}:'
+      '${second.toString().padLeft(2, '0')}';
 }
 String _normalized(String value) => value
     .replaceAll(RegExp(r'[\s_ـ]+'), '')

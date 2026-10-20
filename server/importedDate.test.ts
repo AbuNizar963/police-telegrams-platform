@@ -14,7 +14,9 @@ describe("parseImportedDate", () => {
     );
   });
 
-  it("recognizes month-first Excel dates when the second component exceeds 12", () => {
+  it(
+    "recognizes month-first Excel dates when the second component exceeds 12",
+    () => {
     expect(parseImportedDate("10/18/2026", "9:05 AM")?.toISOString()).toBe(
       "2026-10-18T09:05:00.000Z"
     );

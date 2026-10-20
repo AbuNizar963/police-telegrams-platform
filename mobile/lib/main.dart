@@ -2427,11 +2427,18 @@ class _DashboardPageState extends State<DashboardPage>
   );
 
   Widget _outboxSummaryStatus() {
-    final statusMessage = _outboxSyncing
-        ? (_lastSyncMessage ?? 'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...')
-        : _pendingOutbox == 0
-        ? _idleOutboxMessage
-        : (_lastSyncMessage ?? 'تنتظر $_pendingOutbox برقية عودة الاتصال للمزامنة.');
+    final String statusMessage;
+    if (_outboxSyncing) {
+      statusMessage =
+          _lastSyncMessage ??
+          'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...';
+    } else if (_pendingOutbox == 0) {
+      statusMessage = _idleOutboxMessage;
+    } else {
+      statusMessage =
+          _lastSyncMessage ??
+          'تنتظر $_pendingOutbox برقية عودة الاتصال للمزامنة.';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -2452,20 +2459,42 @@ class _DashboardPageState extends State<DashboardPage>
                 const Expanded(
                   child: Text(
                     'حالة صندوق الخروج',
-                    style: TextStyle(color: navy, fontSize: 11, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: navy,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 if (_pendingOutbox > 0)
                   Text(
                     '$_pendingOutbox معلقة',
-                    style: const TextStyle(color: Color(0xFFB7791F), fontSize: 10, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      color: Color(0xFFB7791F),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(statusMessage, style: const TextStyle(color: Color(0xFF667085), fontSize: 11, height: 1.4)),
+            Text(
+              statusMessage,
+              style: const TextStyle(
+                color: Color(0xFF667085),
+                fontSize: 11,
+                height: 1.4,
+              ),
+            ),
             const SizedBox(height: 3),
-            Text(_serverStatusMessage, style: TextStyle(color: _serverStatusColor, fontSize: 10, height: 1.35)),
+            Text(
+              _serverStatusMessage,
+              style: TextStyle(
+                color: _serverStatusColor,
+                fontSize: 10,
+                height: 1.35,
+              ),
+            ),
           ],
         ),
       ),

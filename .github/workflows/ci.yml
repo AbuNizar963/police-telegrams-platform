@@ -38,11 +38,6 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose imported date formatting
-        run: |
-          pnpm exec prettier server/importedDate.ts > /tmp/importedDate.formatted.ts
-          diff -u server/importedDate.ts /tmp/importedDate.formatted.ts || true
-
       - name: Check formatting
         run: pnpm lint
 

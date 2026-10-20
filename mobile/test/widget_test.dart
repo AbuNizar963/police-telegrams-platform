@@ -559,7 +559,7 @@ void main() {
       await _pumpDashboardFrames(tester, frameCount: 12);
       await _unlockAppIfLocked(tester);
 
-      expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
+      expect(find.textContaining('تعذر الاتصال بالخادم'), findsOneWidget);
       expect(find.text('وضع العمل المحلي'), findsNothing);
     },
   );

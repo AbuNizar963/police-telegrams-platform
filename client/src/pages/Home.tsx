@@ -636,6 +636,29 @@ export default function Home() {
       queryClient.removeQueries({ queryKey });
     }
   };
+  const previewExcelImport = trpc.telegrams.importPreview.useMutation();
+  const checkExcelDuplicates = async (rows: TelegramSpreadsheetRow[]) => {
+    if (rows.length === 0) {
+      throw new Error("لم يتم العثور على صفوف صالحة للاستيراد في ملف Excel.");
+    }
+
+    const duplicateIndexes = new Set<number>();
+    const batchSize = 50;
+
+    for (let start = 0; start < rows.length; start += batchSize) {
+      const batchResults = await previewExcelImport.mutateAsync({
+        rows: rows.slice(start, start + batchSize),
+      });
+
+      for (const result of batchResults) {
+        if (result.duplicate) {
+          duplicateIndexes.add(start + result.index);
+        }
+      }
+    }
+
+    return duplicateIndexes;
+  };
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -806,12 +829,7 @@ export default function Home() {
   const handleExcelFile = async (file: File) => {
     try {
       const parsed = await parseTelegramWorkbook(file);
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
-        rows: parsed.rows,
-      });
-      const duplicateIndexes = new Set(
-        duplicateResults.filter(item => item.duplicate).map(item => item.index)
-      );
+      const duplicateIndexes = await checkExcelDuplicates(parsed.rows);
       setExcelRows(parsed.rows);
       setExcelDuplicateIndexes(duplicateIndexes);
       setExcelSelectedRows(
@@ -842,12 +860,7 @@ export default function Home() {
     if (!excelPendingFile) return;
     try {
       const parsed = await parseTelegramWorkbook(excelPendingFile, password);
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
-        rows: parsed.rows,
-      });
-      const duplicateIndexes = new Set(
-        duplicateResults.filter(item => item.duplicate).map(item => item.index)
-      );
+      const duplicateIndexes = await checkExcelDuplicates(parsed.rows);
       setExcelRows(parsed.rows);
       setExcelDuplicateIndexes(duplicateIndexes);
       setExcelSelectedRows(

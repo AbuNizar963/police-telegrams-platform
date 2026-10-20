@@ -2426,6 +2426,52 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
+  Widget _outboxSummaryStatus() {
+    final statusMessage = _outboxSyncing
+        ? (_lastSyncMessage ?? 'جارٍ فحص صندوق الخروج وإرسال البرقيات بالترتيب...')
+        : _pendingOutbox == 0
+        ? _idleOutboxMessage
+        : (_lastSyncMessage ?? 'تنتظر $_pendingOutbox برقية عودة الاتصال للمزامنة.');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFEFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E5EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.outbox_outlined, size: 17, color: navy),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'حالة صندوق الخروج',
+                    style: TextStyle(color: navy, fontSize: 11, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                if (_pendingOutbox > 0)
+                  Text(
+                    '$_pendingOutbox معلقة',
+                    style: const TextStyle(color: Color(0xFFB7791F), fontSize: 10, fontWeight: FontWeight.w800),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(statusMessage, style: const TextStyle(color: Color(0xFF667085), fontSize: 11, height: 1.4)),
+            const SizedBox(height: 3),
+            Text(_serverStatusMessage, style: TextStyle(color: _serverStatusColor, fontSize: 10, height: 1.35)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _swipeableWelcomeOutboxPanel() {
     final showingOutbox = _showOutboxInTopCard;
     return Column(
@@ -2636,7 +2682,9 @@ class _DashboardPageState extends State<DashboardPage>
       title = 'النظام غير متصل';
     } else if (error != null) {
       accent = const Color(0xFFB42332);
-      title = 'تعذر الاتصال بالخادم';
+      // The detailed error card already contains the connection-error text.
+      // Keep this compact indicator distinct to avoid duplicate announcements.
+      title = 'النظام غير متصل';
     } else {
       accent = const Color(0xFF16836B);
       title = 'النظام متصل';
@@ -2762,6 +2810,7 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
         _swipeableWelcomeOutboxPanel(),
+        if (!_showOutboxInTopCard) _outboxSummaryStatus(),
         _dashboardActions(),
         _urgentAlert(),
         const SizedBox(height: 12),

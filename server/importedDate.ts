@@ -5,7 +5,10 @@
  * the Arabic-language registers. If one component exceeds 12, the ordering is
  * inferred from the valid calendar range (for example, 10/18/2026 is MM/DD).
  */
-export function parseImportedDate(value?: string, time?: string): Date | undefined {
+export function parseImportedDate(
+  value?: string,
+  time?: string
+): Date | undefined {
   const normalized = (value ?? "")
     .trim()
     .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
@@ -83,7 +86,9 @@ export function parseImportedDate(value?: string, time?: string): Date | undefin
     if (minutes > 59 || seconds > 59 || hours > 24) return undefined;
     if (meridiem) {
       if (hours < 1 || hours > 12) return undefined;
-      if (meridiem === "م" || meridiem === "PM") hours = hours % 12 + 12;
+      if (meridiem === "م" || meridiem === "PM") {
+        hours = (hours % 12) + 12;
+      }
       else hours %= 12;
     } else if (hours === 24 && (minutes !== 0 || seconds !== 0)) {
       return undefined;

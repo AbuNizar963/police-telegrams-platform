@@ -5,11 +5,11 @@ import { buildTelegramWorkbook } from "./telegramWorkbook";
 describe("telegram workbook export", () => {
   it("exports both matching sheets, supports passwords, and excludes template records", async () => {
     const base64 = await buildTelegramWorkbook({
-      password: "secret-123",
+      password: " secret-123 ",
       rows: [
         {
           serial: "OUT-1",
-          time: "08:15",
+          time: "17:00:00",
           sender: "قسم صادر",
           date: "2026-10-18",
           body: "نص صادر للاختبار",
@@ -33,7 +33,7 @@ describe("telegram workbook export", () => {
     });
     const workbook = await XlsxPopulate.fromDataAsync(
       Buffer.from(base64, "base64"),
-      { password: "secret-123" }
+      { password: " secret-123 " }
     );
 
     expect(workbook.sheets().map(sheet => sheet.name())).toEqual([
@@ -46,6 +46,7 @@ describe("telegram workbook export", () => {
       );
     }
     expect(workbook.sheet("صادر").cell("A2").value()).toBe("OUT-1");
+    expect(workbook.sheet("صادر").cell("B2").value()).toBe("17:00:00");
     expect(workbook.sheet("وارد").cell("A2").value()).toBe("IN-1");
     expect(workbook.sheet("صادر").cell("E2").value()).toBe("نص صادر للاختبار");
     expect(workbook.sheet("وارد").cell("E2").value()).toBe("نص وارد للاختبار");

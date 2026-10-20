@@ -28,7 +28,7 @@ describe("parseImportedDate", () => {
 
   it("supports Excel serial dates", () => {
     expect(parseImportedDate("46313", "08:00")?.toISOString()).toBe(
-      "2026-10-21T08:00:00.000Z"
+      "2026-10-18T08:00:00.000Z"
     );
   });
 

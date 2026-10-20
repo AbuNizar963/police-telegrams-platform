@@ -74,6 +74,7 @@ export function parseImportedDate(value?: string, time?: string): Date | undefin
   const timeMatch = normalizedTime.match(
     /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i
   );
+  if (normalizedTime && !timeMatch) return undefined;
   if (timeMatch) {
     let hours = Number(timeMatch[1]);
     const minutes = Number(timeMatch[2] ?? 0);

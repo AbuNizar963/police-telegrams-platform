@@ -1,10 +1,3 @@
-/**
- * Parses dates exported by Excel while preserving the source date and time.
- *
- * Ambiguous numeric dates use day/month/year, which is the convention used by
- * the Arabic-language registers. If one component exceeds 12, the ordering is
- * inferred from the valid calendar range (for example, 10/18/2026 is MM/DD).
- */
 function localDateTimeToUtc(
   year: number,
   month: number,
@@ -72,6 +65,13 @@ function localDateTimeToUtc(
   return result;
 }
 
+/**
+ * Parses dates exported by Excel while preserving the source date and time.
+ *
+ * Ambiguous numeric dates use day/month/year, which is the convention used by
+ * the Arabic-language registers. If one component exceeds 12, the ordering is
+ * inferred from the valid calendar range (for example, 10/18/2026 is MM/DD).
+ */
 export function parseImportedDate(
   value?: string,
   time?: string,
@@ -94,9 +94,7 @@ export function parseImportedDate(
       return undefined;
     }
     const wholeDays = Math.floor(serial);
-    const excelDate = new Date(
-      Date.UTC(1899, 11, 30) + wholeDays * 86_400_000
-    );
+    const excelDate = new Date(Date.UTC(1899, 11, 30) + wholeDays * 86_400_000);
     year = excelDate.getUTCFullYear();
     month = excelDate.getUTCMonth() + 1;
     day = excelDate.getUTCDate();

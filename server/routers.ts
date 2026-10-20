@@ -121,7 +121,7 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
-import { buildTelegramWorkbook } from "./telegramWorkbook";
+import { buildTelegramWorkbook, formatTelegramWorkbookDateTime } from "./telegramWorkbook";
 import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
 import { parseImportedDate } from "./importedDate";
 
@@ -1493,6 +1493,12 @@ export const appRouter = router({
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
+        const settings = await getOrCreateSettings(ctx.user.id);
+        const formatRows = (rows: Awaited<ReturnType<typeof listTelegrams>>) =>
+          rows.map(row => ({
+            ...row,
+            ...formatTelegramWorkbookDateTime(row.createdAt, settings.timezone),
+          }));
         const exportedRows = [];
         const pageSize = 1000;
         const maximumRows = 100000;
@@ -1512,7 +1518,7 @@ export const appRouter = router({
             pageSize
           );
           exportedRows.push(...pageRows);
-          if (pageRows.length < pageSize) return exportedRows;
+          if (pageRows.length < pageSize) return formatRows(exportedRows);
         }
         throw new TRPCError({
           code: "BAD_REQUEST",

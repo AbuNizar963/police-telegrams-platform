@@ -579,6 +579,11 @@ void main() {
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
 
+    // The welcome panel is the default view; swipe to reveal the outbox card.
+    expect(find.text('الجهة الحالية'), findsOneWidget);
+    await tester.drag(find.text('الجهة الحالية'), const Offset(300, 0));
+    await _pumpDashboardFrames(tester, frameCount: 8);
+
     final status = find.text('لا توجد برقيات معلقة محليًا.');
     expect(status, findsOneWidget);
     expect(find.text('حالة صندوق الخروج'), findsOneWidget);

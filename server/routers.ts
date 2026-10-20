@@ -2733,7 +2733,7 @@ export const appRouter = router({
               skipped += 1;
               continue;
             }
-            const importedCreatedAt = parseImportedDate(row.date, row.time);
+            const importedCreatedAt = parseImportedDate(row.date, row.time, settings.timezone);
             if (row.date?.trim() && !importedCreatedAt) {
               throw new Error(
                 `تعذر قراءة تاريخ البرقية "${row.date}" في صف Excel. صحح تنسيق التاريخ ثم أعد الاستيراد؛ لم يُستبدل التاريخ بتاريخ اليوم.`

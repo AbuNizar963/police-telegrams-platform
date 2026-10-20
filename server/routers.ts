@@ -121,7 +121,7 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
-import { buildTelegramWorkbook } from "./telegramWorkbook";
+import { buildTelegramWorkbook, formatTelegramWorkbookDateTime } from "./telegramWorkbook";
 import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
 import { parseImportedDate } from "./importedDate";
 
@@ -1459,7 +1459,7 @@ export const appRouter = router({
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
-        return listTelegrams(
+        const rows = await listTelegrams(
           ctx.user.id,
           canViewAll,
           organizationId,
@@ -1473,6 +1473,11 @@ export const appRouter = router({
           1,
           1000
         );
+        const settings = await getOrCreateSettings(ctx.user.id);
+        return rows.map(row => ({
+          ...row,
+          ...formatTelegramWorkbookDateTime(row.createdAt, settings.timezone),
+        }));
       }),
 
     exportWorkbook: protectedProcedure

@@ -102,6 +102,25 @@ void main() {
     },
   );
 
+  test('normalizes an hour-only source time to HH:mm:ss', () {
+    final bytes = buildTelegramWorkbook([
+      {
+        'serial': '17',
+        'time': '17',
+        'sender': 'مرسل',
+        'date': '2026-10-18',
+        'body': 'نص برقية لاختبار الوقت',
+        'recipient': 'مستلم',
+        'signature': '',
+        'notes': '',
+        'direction': 'صادر',
+      },
+    ]);
+
+    final parsed = parseTelegramWorkbook(bytes);
+    expect(parsed.rows.single.time, '17:00:00');
+  });
+
   test('skips rows whose telegram body is too short', () {
     final bytes = buildTelegramWorkbook([
       {

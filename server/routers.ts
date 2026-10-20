@@ -2712,12 +2712,13 @@ export const appRouter = router({
               );
             }
             const serialNumber = await allocateSerialNumber();
+            const serialDate = importedCreatedAt ?? new Date();
             const dateParts = new Intl.DateTimeFormat("en-CA", {
               timeZone: settings.timezone,
               year: "numeric",
               month: "2-digit",
               day: "2-digit",
-            }).formatToParts(new Date());
+            }).formatToParts(serialDate);
             const dateValues = Object.fromEntries(
               dateParts.map(part => [part.type, part.value])
             );

@@ -111,7 +111,7 @@ export function parseImportedDate(
         .join(":");
     }
   } else {
-    const match = normalized.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
+    const match = normalized.match(/^(\d{1,4})[./-](\d{1,2})[./-](\d{1,4})$/);
     if (!match) return undefined;
 
     const first = Number(match[1]);

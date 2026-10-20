@@ -2407,7 +2407,7 @@ class _DashboardPageState extends State<DashboardPage>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'مرحبًا، $_greetingName',
+                  'مرحبا، $_greetingName',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

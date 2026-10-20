@@ -432,10 +432,12 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
         continue;
       }
       final originalSerial = _cell(row, fallback['serial']!);
-      final date = fallback['date']! >= 0
+      final date = fallback['date']! >= 0 &&
+              fallback['date']! < row.length
           ? _dateText(row[fallback['date']!])
           : '';
-      final time = fallback['time']! < row.length
+      final time = fallback['time']! >= 0 &&
+              fallback['time']! < row.length
           ? _timeText(row[fallback['time']!])
           : '';
       final serialKey = '$direction|${_normalized(originalSerial)}';

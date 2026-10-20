@@ -354,6 +354,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               : const [],
         );
       }
+      if (parsed.rows.isEmpty) {
+        throw Exception('لم يتم العثور على صفوف صالحة للاستيراد في ملف Excel.');
+      }
       if (duplicates.isEmpty) {
         const batchSize = 50;
         for (var start = 0; start < parsed.rows.length; start += batchSize) {

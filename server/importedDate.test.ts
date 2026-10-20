@@ -17,10 +17,11 @@ describe("parseImportedDate", () => {
   it(
     "recognizes month-first Excel dates when the second component exceeds 12",
     () => {
-    expect(parseImportedDate("10/18/2026", "9:05 AM")?.toISOString()).toBe(
-      "2026-10-18T09:05:00.000Z"
-    );
-  });
+      expect(parseImportedDate("10/18/2026", "9:05 AM")?.toISOString()).toBe(
+        "2026-10-18T09:05:00.000Z"
+      );
+    }
+  );
 
   it("parses Arabic-Indic digits and Arabic PM notation", () => {
     expect(parseImportedDate("١٨/١٠/٢٠٢٦", "٠٩:٠٥ م")?.toISOString()).toBe(

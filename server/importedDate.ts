@@ -38,7 +38,7 @@ function localDateTimeToUtc(
     const parts = Object.fromEntries(
       formatter
         .formatToParts(new Date(utcTimestamp))
-        .map(part => [part.type, part.value])
+        .map(part => [part.type, part.value]),
     );
     const representedLocalTimestamp = Date.UTC(
       Number(parts.year),
@@ -150,7 +150,7 @@ export function parseImportedDate(
     .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
     .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
   const timeMatch = normalizedTime.match(
-    /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i
+    /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i,
   );
   if (normalizedTime && !timeMatch) return undefined;
 

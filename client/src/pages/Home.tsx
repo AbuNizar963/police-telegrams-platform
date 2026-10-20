@@ -625,6 +625,7 @@ export default function Home() {
   };
   const importWorkbookPreview =
     trpc.telegrams.importWorkbookPreview.useMutation();
+  const previewExcelImport = trpc.telegrams.importPreview.useMutation();
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -795,7 +796,7 @@ export default function Home() {
   const handleExcelFile = async (file: File) => {
     try {
       const parsed = await parseTelegramWorkbook(file);
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
+      const duplicateResults = await previewExcelImport.mutateAsync({
         rows: parsed.rows,
       });
       const duplicateIndexes = new Set(
@@ -839,7 +840,7 @@ export default function Home() {
         base64,
         password,
       });
-      const duplicateResults = await utils.telegrams.importPreview.fetch({
+      const duplicateResults = await previewExcelImport.mutateAsync({
         rows: parsed.rows,
       });
       const duplicateIndexes = new Set(

@@ -1291,14 +1291,17 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     padding: const EdgeInsets.only(bottom: 10),
     child: DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       ),
       items: options
           .map(
-            (option) =>
-                DropdownMenuItem(value: option.key, child: Text(option.value)),
+            (option) => DropdownMenuItem(
+              value: option.key,
+              child: Text(option.value, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
           )
           .toList(),
       onChanged: _saving ? null : onChanged,

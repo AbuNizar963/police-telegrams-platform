@@ -1622,10 +1622,7 @@ class _DashboardPageState extends State<DashboardPage>
           padding: EdgeInsets.only(bottom: keyboardInset),
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          child: AdvancedCreateTelegramSheet(
-            api: widget.api,
-            outbox: _outbox,
-          ),
+          child: AdvancedCreateTelegramSheet(api: widget.api, outbox: _outbox),
         );
       },
     );

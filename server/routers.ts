@@ -360,7 +360,6 @@ async function assertOwnerOrganizationScope(
   }
 }
 
-
 async function getOrganizationSerialKeys(
   userId: number,
   organizationId: string

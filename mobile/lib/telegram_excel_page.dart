@@ -376,12 +376,10 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                   .whereType<Map>()
                   .where((item) => item['duplicate'] == true)
                   .map(
-                    (item) =>
-                        start + (int.tryParse('${item['index']}') ?? -1),
+                    (item) => start + (int.tryParse('${item['index']}') ?? -1),
                   )
                   .where(
-                    (index) =>
-                        index >= start && index < start + batchRows.length,
+                    (index) => index >= start && index < start + batchRows.length,
                   ),
             );
           }

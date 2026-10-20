@@ -50,7 +50,7 @@ function localDateTimeToUtc(
   const resolved = Object.fromEntries(
     formatter
       .formatToParts(result)
-      .map(part => [part.type, part.value])
+      .map(part => [part.type, part.value]),
   );
   if (
     Number(resolved.year) !== year ||

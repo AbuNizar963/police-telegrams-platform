@@ -14,11 +14,13 @@ on:
       - "server/telegramWorkbook.ts"
       - "server/telegramWorkbook.test.ts"
       - "server/routers.ts"
+      - "mobile/lib/telegram_excel_page.dart"
       - "package.json"
       - "pnpm-lock.yaml"
   pull_request:
     branches:
       - main
+      - flutter-mobile-app
     paths:
       - ".github/workflows/excel-import-export.yml"
       - "client/src/lib/telegramSpreadsheet.ts"
@@ -29,6 +31,7 @@ on:
       - "server/telegramWorkbook.ts"
       - "server/telegramWorkbook.test.ts"
       - "server/routers.ts"
+      - "mobile/lib/telegram_excel_page.dart"
       - "package.json"
       - "pnpm-lock.yaml"
 

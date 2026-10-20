@@ -2687,7 +2687,7 @@ export const appRouter = router({
       }),
     importPreview: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
-      .query(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const normalizeSerial = (value: string | number) =>
           localizeDigits(value, "latin").trim().toLowerCase();

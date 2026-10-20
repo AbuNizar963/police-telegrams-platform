@@ -229,6 +229,9 @@ Map<String, int> _headerIndexes(List<dynamic> header) {
   };
 }
 
+dynamic _cellValue(List<dynamic> row, int index) =>
+    index >= 0 && index < row.length ? row[index] : null;
+
 String _cell(List<dynamic> row, int index) =>
     index >= 0 && index < row.length ? _text(row[index]) : '';
 
@@ -432,14 +435,8 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
         continue;
       }
       final originalSerial = _cell(row, fallback['serial']!);
-      final date = fallback['date']! >= 0 &&
-              fallback['date']! < row.length
-          ? _dateText(row[fallback['date']!])
-          : '';
-      final time = fallback['time']! >= 0 &&
-              fallback['time']! < row.length
-          ? _timeText(row[fallback['time']!])
-          : '';
+      final date = _dateText(_cellValue(row, fallback['date']!));
+      final time = _timeText(_cellValue(row, fallback['time']!));
       final serialKey = '$direction|${_normalized(originalSerial)}';
       final fingerprint = [
         direction,

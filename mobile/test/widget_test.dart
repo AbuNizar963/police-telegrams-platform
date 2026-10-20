@@ -376,6 +376,11 @@ void main() {
       authenticationResult.complete(true);
       await tester.pumpAndSettle();
 
+      // A delayed resume event from the native prompt must not relock a
+      // session after biometric authentication has already succeeded.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
       expect(find.text('protected content'), findsOneWidget);
       expect(find.text('قم بإدخال رمز PIN'), findsNothing);
     },

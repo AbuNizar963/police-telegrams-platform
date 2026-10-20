@@ -389,7 +389,10 @@ class _AppLockOverlayState extends State<AppLockOverlay>
         });
       }
     } else if (state == AppLifecycleState.resumed) {
-      _loadSettings(forceLock: true);
+      // Background transitions already relock the overlay. Resuming alone
+      // must not relock after a biometric prompt, whose final lifecycle event
+      // can arrive after the authentication future has completed.
+      _loadSettings();
     }
   }
 

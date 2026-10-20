@@ -679,7 +679,8 @@ class _AnimatedWelcomeGreeting extends StatefulWidget {
 }
 
 class _AnimatedWelcomeGreetingState extends State<_AnimatedWelcomeGreeting> {
-  static const _flipInterval = Duration(seconds: 4);
+  static const _flipInterval = Duration(seconds: 7);
+  static const _flipDuration = Duration(milliseconds: 1200);
   Timer? _flipTimer;
   bool _showTimeGreeting = false;
 
@@ -715,23 +716,17 @@ class _AnimatedWelcomeGreetingState extends State<_AnimatedWelcomeGreeting> {
       liveRegion: true,
       label: greeting,
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 700),
+        duration: _flipDuration,
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, animation) {
-          final rotation = Tween<double>(begin: math.pi / 2, end: 0).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          );
-          return AnimatedBuilder(
-            animation: rotation,
-            child: child,
-            builder: (context, child) => Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001)
-                ..rotateY(rotation.value),
-              child: child,
+          // A gentle fade keeps the greeting calm and avoids the 3D flip.
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
             ),
+            child: child,
           );
         },
         child: Text(

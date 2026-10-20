@@ -787,6 +787,7 @@ class _DashboardPageState extends State<DashboardPage>
   bool loading = true;
   String? error;
   bool _usingCachedData = false;
+  bool _showOutboxInTopCard = false;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
@@ -1867,12 +1868,6 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _outboxAlert() {
-    if (_pendingOutbox <= 0 &&
-        !_outboxSyncing &&
-        _syncPhase == 'idle' &&
-        _lastSyncMessage == null) {
-      return const SizedBox.shrink();
-    }
     final Color accent = switch (_syncPhase) {
       'error' => const Color(0xFFB42332),
       'success' => const Color(0xFF16836B),
@@ -2424,6 +2419,84 @@ class _DashboardPageState extends State<DashboardPage>
     ),
   );
 
+  Widget _swipeableWelcomeOutboxPanel() {
+    final showingOutbox = _showOutboxInTopCard;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragEnd: (details) {
+            final velocity = details.primaryVelocity ?? 0;
+            if (velocity.abs() < 180) return;
+            setState(() => _showOutboxInTopCard = !_showOutboxInTopCard);
+          },
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 420),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final slide = Tween<Offset>(
+                  begin: const Offset(0.045, 0),
+                  end: Offset.zero,
+                ).animate(animation);
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(position: slide, child: child),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<bool>(showingOutbox),
+                child: showingOutbox ? _outboxAlert() : _welcomePanel(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.swipe_rounded,
+              size: 15,
+              color: const Color(0xFF7A8493),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              showingOutbox
+                  ? 'اسحب للتبديل إلى لوحة الترحيب'
+                  : 'اسحب لعرض بطاقة صندوق الخروج',
+              style: const TextStyle(
+                color: Color(0xFF7A8493),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 9),
+            _swipePageIndicator(active: !showingOutbox),
+            const SizedBox(width: 4),
+            _swipePageIndicator(active: showingOutbox),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _swipePageIndicator({required bool active}) => AnimatedContainer(
+    duration: const Duration(milliseconds: 220),
+    width: active ? 16 : 5,
+    height: 5,
+    decoration: BoxDecoration(
+      color: active ? navy : const Color(0xFFD0D5DD),
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
+
   Widget _welcomePanel() {
     final logoBytes = _organizationLogoBytes;
     return Container(
@@ -2680,9 +2753,8 @@ class _DashboardPageState extends State<DashboardPage>
               ),
             ),
           ),
-        _welcomePanel(),
+        _swipeableWelcomeOutboxPanel(),
         _dashboardActions(),
-        _outboxAlert(),
         _urgentAlert(),
         const SizedBox(height: 12),
         LayoutBuilder(

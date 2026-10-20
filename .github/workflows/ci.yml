@@ -28,7 +28,11 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      # The dedicated mobile workflow formats, analyzes, tests, and commits canonical
+      # Dart formatting on direct pushes to flutter-mobile-app. Skip this duplicate
+      # check there to avoid racing its formatter commit; keep it enforced elsewhere.
       - name: Check mobile formatting
+        if: github.ref != 'refs/heads/flutter-mobile-app'
         working-directory: mobile
         run: ./tool/format_dart.sh --check
 

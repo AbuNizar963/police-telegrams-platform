@@ -123,6 +123,7 @@ import {
 } from "./_core/notification";
 import { buildTelegramWorkbook } from "./telegramWorkbook";
 import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
+import { parseImportedDate } from "./importedDate";
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
 const categorySchema = z.enum([
@@ -358,32 +359,7 @@ async function assertOwnerOrganizationScope(
   }
 }
 
-function parseImportedDate(value?: string, time?: string): Date | undefined {
-  const normalized = (value ?? "")
-    .trim()
-    .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-    .replace(/[.]/g, "/");
-  const match = normalized.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
-  if (!match) return undefined;
-  const first = Number(match[1]);
-  const second = Number(match[2]);
-  const third = Number(match[3]);
-  const year = first > 31 ? first : third;
-  const month = first > 31 ? second : second;
-  const day = first > 31 ? third : first;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return undefined;
-  }
-  const timeMatch = (time ?? "").trim().match(/^(\d{1,2})(?::(\d{2}))?/);
-  if (timeMatch)
-    date.setUTCHours(Number(timeMatch[1]), Number(timeMatch[2] ?? 0));
-  return date;
-}
+
 
 async function getOrganizationSerialKeys(
   userId: number,
@@ -2749,8 +2725,13 @@ export const appRouter = router({
               skipped += 1;
               continue;
             }
-            const serialNumber = await allocateSerialNumber();
             const importedCreatedAt = parseImportedDate(row.date, row.time);
+            if (row.date?.trim() && !importedCreatedAt) {
+              throw new Error(
+                `تعذر قراءة تاريخ البرقية "${row.date}" في صف Excel. صحح تنسيق التاريخ ثم أعد الاستيراد؛ لم يُستبدل التاريخ بتاريخ اليوم.`
+              );
+            }
+            const serialNumber = await allocateSerialNumber();
             const organizationDirection =
               row.sheetName === "وارد" ? "incoming" : "outgoing";
             const organizationSerialNumber =

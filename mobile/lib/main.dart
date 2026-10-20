@@ -712,6 +712,7 @@ class _DashboardPageState extends State<DashboardPage>
     if (hour >= 17 && hour < 22) return 'مساء الخير';
     return 'ليلة سعيدة';
   }
+
   late final Map<String, dynamic> _account;
   bool loading = true;
   String? error;

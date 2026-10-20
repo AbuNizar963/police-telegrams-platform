@@ -23,7 +23,7 @@ export function formatTelegramWorkbookDateTime(
   value: Date | string | number,
   timezone: string
 ): { date: string; time: string } {
-  const sourceDate = new Date(value);
+  const sourceDate = value instanceof Date ? value : new Date(value);
   if (!Number.isFinite(sourceDate.getTime())) {
     return { date: "", time: "" };
   }

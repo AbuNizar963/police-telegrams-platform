@@ -2489,9 +2489,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: _AnimatedWelcomeGreeting(name: _greetingName),
-              ),
+              Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),
               const SizedBox(width: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 112),

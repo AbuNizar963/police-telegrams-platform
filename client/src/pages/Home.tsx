@@ -626,6 +626,24 @@ export default function Home() {
   const importWorkbookPreview =
     trpc.telegrams.importWorkbookPreview.useMutation();
   const previewExcelImport = trpc.telegrams.importPreview.useMutation();
+  const checkExcelDuplicates = async (rows: TelegramSpreadsheetRow[]) => {
+    const duplicateIndexes = new Set<number>();
+    const batchSize = 50;
+
+    for (let start = 0; start < rows.length; start += batchSize) {
+      const batchResults = await previewExcelImport.mutateAsync({
+        rows: rows.slice(start, start + batchSize),
+      });
+
+      for (const result of batchResults) {
+        if (result.duplicate) {
+          duplicateIndexes.add(start + result.index);
+        }
+      }
+    }
+
+    return duplicateIndexes;
+  };
   const importExcel = trpc.telegrams.importRows.useMutation({
     onSuccess: result => {
       toast.success(
@@ -796,12 +814,7 @@ export default function Home() {
   const handleExcelFile = async (file: File) => {
     try {
       const parsed = await parseTelegramWorkbook(file);
-      const duplicateResults = await previewExcelImport.mutateAsync({
-        rows: parsed.rows,
-      });
-      const duplicateIndexes = new Set(
-        duplicateResults.filter(item => item.duplicate).map(item => item.index)
-      );
+      const duplicateIndexes = await checkExcelDuplicates(parsed.rows);
       setExcelRows(parsed.rows);
       setExcelDuplicateIndexes(duplicateIndexes);
       setExcelSelectedRows(
@@ -840,12 +853,7 @@ export default function Home() {
         base64,
         password,
       });
-      const duplicateResults = await previewExcelImport.mutateAsync({
-        rows: parsed.rows,
-      });
-      const duplicateIndexes = new Set(
-        duplicateResults.filter(item => item.duplicate).map(item => item.index)
-      );
+      const duplicateIndexes = await checkExcelDuplicates(parsed.rows);
       setExcelRows(parsed.rows);
       setExcelDuplicateIndexes(duplicateIndexes);
       setExcelSelectedRows(

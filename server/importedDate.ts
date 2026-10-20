@@ -24,7 +24,9 @@ export function parseImportedDate(value?: string, time?: string): Date | undefin
     if (!Number.isFinite(serial) || serial < 1 || serial > 2_958_465) {
       return undefined;
     }
-    const excelDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86_400_000);
+    const excelDate = new Date(
+      Date.UTC(1899, 11, 30) + Math.floor(serial) * 86_400_000
+    );
     year = excelDate.getUTCFullYear();
     month = excelDate.getUTCMonth() + 1;
     day = excelDate.getUTCDate();

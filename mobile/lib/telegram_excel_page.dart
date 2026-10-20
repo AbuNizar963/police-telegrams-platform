@@ -372,8 +372,14 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               checked
                   .whereType<Map>()
                   .where((item) => item['duplicate'] == true)
-                  .map((item) => start + (int.tryParse('${item['index']}') ?? -1))
-                  .where((index) => index >= start && index < start + batchRows.length),
+                  .map(
+                    (item) =>
+                        start + (int.tryParse('${item['index']}') ?? -1),
+                  )
+                  .where(
+                    (index) =>
+                        index >= start && index < start + batchRows.length,
+                  ),
             );
           }
         }

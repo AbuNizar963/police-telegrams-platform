@@ -788,6 +788,7 @@ class _DashboardPageState extends State<DashboardPage>
   String? error;
   bool _usingCachedData = false;
   bool _showOutboxInTopCard = false;
+  double _outboxSwipeDistance = 0;
   Map<String, dynamic> stats = {};
   List<dynamic> telegrams = [];
   String? activeOrganizationId;
@@ -2434,9 +2435,17 @@ class _DashboardPageState extends State<DashboardPage>
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) {
+            _outboxSwipeDistance = 0;
+          },
+          onHorizontalDragUpdate: (details) {
+            _outboxSwipeDistance += details.delta.dx;
+          },
           onHorizontalDragEnd: (details) {
             final velocity = details.primaryVelocity ?? 0;
-            if (velocity.abs() < 180) return;
+            final distance = _outboxSwipeDistance;
+            _outboxSwipeDistance = 0;
+            if (velocity.abs() < 180 && distance.abs() < 40) return;
             setState(() => _showOutboxInTopCard = !_showOutboxInTopCard);
           },
           child: AnimatedSize(

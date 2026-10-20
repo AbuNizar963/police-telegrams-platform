@@ -13,7 +13,7 @@ function localDateTimeToUtc(
     day,
     hours,
     minutes,
-    seconds,
+    seconds
   );
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -31,7 +31,7 @@ function localDateTimeToUtc(
     const parts = Object.fromEntries(
       formatter
         .formatToParts(new Date(utcTimestamp))
-        .map(part => [part.type, part.value]),
+        .map(part => [part.type, part.value])
     );
     const representedLocalTimestamp = Date.UTC(
       Number(parts.year),
@@ -39,7 +39,7 @@ function localDateTimeToUtc(
       Number(parts.day),
       Number(parts.hour),
       Number(parts.minute),
-      Number(parts.second),
+      Number(parts.second)
     );
     const adjustment = desiredLocalTimestamp - representedLocalTimestamp;
     if (adjustment === 0) break;
@@ -48,9 +48,7 @@ function localDateTimeToUtc(
 
   const result = new Date(utcTimestamp);
   const resolved = Object.fromEntries(
-    formatter
-      .formatToParts(result)
-      .map(part => [part.type, part.value]),
+    formatter.formatToParts(result).map(part => [part.type, part.value])
   );
   if (
     Number(resolved.year) !== year ||
@@ -148,7 +146,7 @@ export function parseImportedDate(
     .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
     .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
   const timeMatch = normalizedTime.match(
-    /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i,
+    /^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$/i
   );
   if (normalizedTime && !timeMatch) return undefined;
 
@@ -192,7 +190,7 @@ export function parseImportedDate(
       hours,
       minutes,
       seconds,
-      timezone,
+      timezone
     );
   } catch {
     return undefined;

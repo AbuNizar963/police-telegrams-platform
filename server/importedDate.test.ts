@@ -26,6 +26,18 @@ describe("parseImportedDate", () => {
     );
   });
 
+  it("preserves the configured local timezone", () => {
+    expect(
+      parseImportedDate("2026-10-18", "17", "Asia/Riyadh")?.toISOString()
+    ).toBe("2026-10-18T14:00:00.000Z");
+  });
+
+  it("reads a time stored in the fractional part of an Excel serial date", () => {
+    expect(parseImportedDate("46313.7083333333")?.toISOString()).toBe(
+      "2026-10-18T17:00:00.000Z"
+    );
+  });
+
   it("normalizes an hour-only source time to the start of that hour", () => {
     expect(parseImportedDate("2026-10-18", "17")?.toISOString()).toBe(
       "2026-10-18T17:00:00.000Z"

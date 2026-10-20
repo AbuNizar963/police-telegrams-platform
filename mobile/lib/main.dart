@@ -1617,7 +1617,8 @@ class _DashboardPageState extends State<DashboardPage>
       isScrollControlled: true,
       useSafeArea: true,
       builder: (sheetContext) {
-        final keyboardInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final keyboardInset =
+            MediaQuery.viewInsetsOf(sheetContext).bottom;
         return AnimatedPadding(
           padding: EdgeInsets.only(bottom: keyboardInset),
           duration: const Duration(milliseconds: 180),

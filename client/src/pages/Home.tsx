@@ -627,6 +627,10 @@ export default function Home() {
     trpc.telegrams.importWorkbookPreview.useMutation();
   const previewExcelImport = trpc.telegrams.importPreview.useMutation();
   const checkExcelDuplicates = async (rows: TelegramSpreadsheetRow[]) => {
+    if (rows.length === 0) {
+      throw new Error("لم يتم العثور على صفوف صالحة للاستيراد في ملف Excel.");
+    }
+
     const duplicateIndexes = new Set<number>();
     const batchSize = 50;
 

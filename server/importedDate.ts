@@ -88,8 +88,7 @@ export function parseImportedDate(
       if (hours < 1 || hours > 12) return undefined;
       if (meridiem === "م" || meridiem === "PM") {
         hours = (hours % 12) + 12;
-      }
-      else hours %= 12;
+      } else hours %= 12;
     } else if (hours === 24 && (minutes !== 0 || seconds !== 0)) {
       return undefined;
     }

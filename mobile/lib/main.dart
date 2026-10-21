@@ -1514,8 +1514,36 @@ class _DashboardPageState extends State<DashboardPage>
         ),
       ]);
       final organizationContext = results[1];
-      final settings = results[2];
+      var settings = results[2];
       final list = results[3];
+
+      // Organization settings are stored separately from legacy user settings.
+      // Prefer the active organization's logo when the current account can read
+      // its scoped settings; keep the legacy settings path for other accounts.
+      if (organizationContext is Map) {
+        final organizationId =
+            organizationContext['organizationId']?.toString().trim();
+        if (organizationId != null && organizationId.isNotEmpty) {
+          try {
+            final organizationSettings = await widget.api.call(
+              'organizations.settings.get',
+              input: {'organizationId': organizationId},
+            );
+            if (organizationSettings is Map &&
+                organizationSettings['settingsExists'] == true) {
+              final mergedSettings = settings is Map
+                  ? Map<String, dynamic>.from(settings)
+                  : <String, dynamic>{};
+              mergedSettings['logoUrl'] = organizationSettings['logoUrl'];
+              settings = mergedSettings;
+            }
+          } catch (_) {
+            // Non-owner accounts cannot read platform-owner organization
+            // settings; retain the compatible legacy settings response.
+          }
+        }
+      }
+
       final logoUrl = settings is Map
           ? settings['logoUrl']?.toString().trim()
           : null;

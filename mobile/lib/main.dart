@@ -1551,7 +1551,7 @@ class _DashboardPageState extends State<DashboardPage>
             final mergedSettings = settings is Map
                 ? Map<String, dynamic>.from(settings)
                 : <String, dynamic>{};
-            // The active organization's logo is authoritative. Do not show a
+            // The active organization's logo is authoritative. Never show
             // legacy user's logo when this organization has no configured one.
             mergedSettings['logoUrl'] =
                 scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;

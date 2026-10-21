@@ -187,13 +187,15 @@ class _OfficialTelegramDocumentPageState
               ? organizationSettings['logoUrl']?.toString().trim()
               : null;
           if (organizationSettings is Map &&
-              organizationSettings['settingsExists'] == true &&
-              scopedLogo != null &&
-              scopedLogo.isNotEmpty) {
-            settingsData['logoUrl'] = scopedLogo;
+              organizationSettings['organizationId']?.toString() ==
+                  logoOrganizationId) {
+            // Never substitute a legacy logo from another organization.
+            settingsData['logoUrl'] =
+                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
           }
         } catch (_) {
-          // Keep the legacy logo source as a compatibility fallback.
+          // Without a verified organization-scoped logo, render no logo.
+          settingsData['logoUrl'] = null;
         }
       }
 

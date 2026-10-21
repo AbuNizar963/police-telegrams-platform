@@ -177,26 +177,26 @@ class _OfficialTelegramDocumentPageState
         telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
         fallback: '',
       );
+      // Never use a legacy settings logo when the telegram's organization
+      // cannot be identified and verified against the scoped logo endpoint.
+      settingsData['logoUrl'] = null;
       if (logoOrganizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
             'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
-          final scopedLogo = organizationSettings is Map
-              ? organizationSettings['logoUrl']?.toString().trim()
-              : null;
           if (organizationSettings is Map &&
               organizationSettings['organizationId']?.toString() ==
                   logoOrganizationId) {
-            // Never substitute a legacy logo from another organization.
-            settingsData['logoUrl'] = scopedLogo == null || scopedLogo.isEmpty
-                ? null
-                : scopedLogo;
+            final scopedLogo = organizationSettings['logoUrl']
+                ?.toString()
+                .trim();
+            settingsData['logoUrl'] =
+                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
           }
         } catch (_) {
-          // Without a verified organization-scoped logo, render no logo.
-          settingsData['logoUrl'] = null;
+          // Keep the logo absent when the scoped source cannot be verified.
         }
       }
 

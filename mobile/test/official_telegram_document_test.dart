@@ -58,10 +58,9 @@ void main() {
       expect(html, contains('font-family:"Cairo"'));
       expect(html, contains('برقية صادرة'));
       expect(html, contains('درجة الأولوية:</strong> عاجل'));
-      expect(html, contains('class="page-watermark" aria-hidden="true"'));
-      expect(html, contains('class="watermark-seal"'));
-      expect(html, contains('width:560px;height:560px'));
-      expect(html, contains('opacity:.16'));
+      expect(html, isNot(contains('class="page-watermark"')));
+      expect(html, isNot(contains('class="watermark-seal"')));
+      expect(html, isNot(contains('class="official-seal"')));
       expect(html, contains('رمز QR للتحقق من أصالة البرقية'));
       expect(html, contains('<svg'));
       expect(html, contains('<path d="M'));

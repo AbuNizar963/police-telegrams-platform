@@ -1034,6 +1034,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   String? _error;
   String? _logoUrl;
   Uint8List? _pendingLogoPreviewBytes;
+  Uint8List? _savedLogoPreviewBytes;
   String _timezone = 'Asia/Riyadh';
   String _dateFormat = 'yyyy/MM/dd HH:mm:ss';
   String _timeFormat = '24';
@@ -1078,6 +1079,10 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       final result = await widget.api.call('settings.get');
       final settings = Map<String, dynamic>.from(result as Map);
       if (!mounted) return;
+      final savedLogoBytes = logo.isEmpty
+          ? null
+          : await widget.api.fetchImageAsset(logo);
+      if (!mounted) return;
       setState(() {
         _settings = settings;
         _departmentName.text = _text(settings['departmentName']);
@@ -1101,6 +1106,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         final logo = _text(settings['logoUrl']);
         _logoUrl = logo.isEmpty ? null : logo;
         _pendingLogoPreviewBytes = null;
+        _savedLogoPreviewBytes = savedLogoBytes;
         _error = null;
       });
     } catch (exception) {
@@ -1175,14 +1181,21 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       if (!mounted) return;
       if (result is Map) {
         final saved = Map<String, dynamic>.from(result);
+        final savedLogo = _text(saved['logoUrl']);
+        final savedLogoBytes = savedLogo.isEmpty
+            ? null
+            : await widget.api.fetchImageAsset(savedLogo);
+        if (!mounted) return;
         setState(() {
           _settings = saved;
           if (saved.containsKey('logoUrl')) {
-            final logo = _text(saved['logoUrl']);
-            _logoUrl = logo.isEmpty ? null : logo;
-            // The server returns the authorized, signed URL after saving.
-            // Drop the local upload preview only after that URL is available.
-            _pendingLogoPreviewBytes = null;
+            _logoUrl = savedLogo.isEmpty ? null : savedLogo;
+            _savedLogoPreviewBytes = savedLogoBytes;
+            // Keep the local image visible if the remote preview cannot yet
+            // be fetched; a fresh signed URL is loaded when settings reopen.
+            if (savedLogoBytes != null || savedLogo.isEmpty) {
+              _pendingLogoPreviewBytes = null;
+            }
           }
         });
       }
@@ -1264,14 +1277,6 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     } finally {
       if (mounted) setState(() => _uploadingLogo = false);
     }
-  }
-
-  String? get _logoPreviewUrl {
-    final value = _logoUrl;
-    if (value == null || value.isEmpty) return null;
-    final uri = Uri.tryParse(value);
-    if (uri != null && uri.hasScheme) return value;
-    return Uri.parse(widget.api.baseUrl).resolve(value).toString();
   }
 
   Widget _input(
@@ -1372,31 +1377,21 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const Icon(
-                                          Icons.broken_image_outlined,
-                                          color: Colors.white70,
-                                        ),
+                                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
                                       ),
                                     )
-                                  : _logoPreviewUrl == null
-                                  ? const Icon(
-                                      Icons.shield_outlined,
-                                      color: Color(0xFFC9A45C),
-                                      size: 32,
-                                    )
-                                  : ClipRRect(
+                                  : _savedLogoPreviewBytes != null
+                                  ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
-                                        _logoPreviewUrl!,
+                                      child: Image.memory(
+                                        _savedLogoPreviewBytes!,
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const Icon(
-                                          Icons.broken_image_outlined,
-                                          color: Colors.white70,
-                                        ),
+                                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
                                       ),
-                                    ),
+                                    )
+                                  : const SizedBox.shrink(),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1424,6 +1419,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                   : () => setState(() {
                                       _logoUrl = null;
                                       _pendingLogoPreviewBytes = null;
+                                      _savedLogoPreviewBytes = null;
                                     }),
                               icon: const Icon(Icons.delete_outline),
                               label: const Text('إزالة الشعار عند الحفظ'),

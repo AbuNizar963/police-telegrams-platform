@@ -181,7 +181,7 @@ class _OfficialTelegramDocumentPageState
       if (logoOrganizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
-            'organizations.settings.get',
+            'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
           if (organizationSettings is Map &&

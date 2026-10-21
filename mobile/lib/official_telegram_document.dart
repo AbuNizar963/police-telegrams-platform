@@ -177,23 +177,27 @@ class _OfficialTelegramDocumentPageState
         telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
         fallback: '',
       );
+      // Never use a legacy settings logo when the telegram's organization
+      // cannot be identified and verified against the scoped logo endpoint.
+      settingsData['logoUrl'] = null;
       if (logoOrganizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
             'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
-          final scopedLogo = organizationSettings is Map
-              ? organizationSettings['logoUrl']?.toString().trim()
-              : null;
           if (organizationSettings is Map &&
-              organizationSettings['settingsExists'] == true &&
-              scopedLogo != null &&
-              scopedLogo.isNotEmpty) {
-            settingsData['logoUrl'] = scopedLogo;
+              organizationSettings['organizationId']?.toString() ==
+                  logoOrganizationId) {
+            final scopedLogo = organizationSettings['logoUrl']
+                ?.toString()
+                .trim();
+            if (scopedLogo != null && scopedLogo.isNotEmpty) {
+              settingsData['logoUrl'] = scopedLogo;
+            }
           }
         } catch (_) {
-          // Keep the legacy logo source as a compatibility fallback.
+          // Keep the logo absent when the scoped source cannot be verified.
         }
       }
 
@@ -276,7 +280,8 @@ class _OfficialTelegramDocumentPageState
       final normalized = await normalizeOfficialDocumentLogo(bytes);
       return 'data:image/png;base64,${base64Encode(normalized)}';
     } catch (_) {
-      // Use the same vector seal as the web template if an optional logo fails.
+      // A missing or unreadable organization logo must remain absent; never
+      // substitute a default seal or watermark.
       return null;
     }
   }
@@ -861,11 +866,11 @@ String buildOfficialTelegramHtml({
     'archived': 'مؤرشفة',
   }, telegram['status']);
   final logo = logoDataUrl == null
-      ? '<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>'
+      ? ''
       : '<img class="official-logo" src="${_escapeHtml(logoDataUrl)}" alt="الشعار الرسمي" />';
   final watermark = logoDataUrl == null
-      ? '<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>'
-      : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" aria-hidden="true" />';
+      ? ''
+      : '<div class="page-watermark" aria-hidden="true"><img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" /></div>';
   final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
   final fontFaces = [400, 500, 600, 700]
       .map((weight) {
@@ -884,9 +889,7 @@ $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;top:50%;left:50%;z-index:0;width:560px;height:560px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;opacity:.16;pointer-events:none}
-.telegram-export-page .watermark-logo{display:block;width:100%;height:100%;object-fit:contain}
-.telegram-export-page .watermark-seal{width:100%;height:100%;border:7px solid #9a813c;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9a813c;text-align:center;line-height:1.25}
-.telegram-export-page .watermark-seal span{font-size:68px}.telegram-export-page .watermark-seal strong{font-size:28px}
+ .telegram-export-page .watermark-logo{display:block;width:100%;height:100%;object-fit:contain}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:1}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid #b49a55;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}
@@ -895,8 +898,6 @@ $fontFaces
 .telegram-export-page .header-date-value{display:inline-block;direction:ltr;unicode-bidi:isolate;font-size:13pt;letter-spacing:0;white-space:nowrap}
 .telegram-export-page .government-name,.telegram-export-page .government-subtitle{font-size:15pt;font-weight:700;white-space:nowrap}.telegram-export-page .header-metadata{font-size:15pt;font-weight:700;line-height:1.25;white-space:nowrap}
 .telegram-export-page .header-logo-cell{display:flex;align-items:center;justify-content:center;min-width:0}.telegram-export-page .official-logo{display:block;width:120px;height:120px;margin:0 auto;object-fit:contain}
-.telegram-export-page .official-seal{width:110px;height:110px;margin:0 auto;border:2px solid #b49a55;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9a813c;text-align:center;line-height:1.2}
-.telegram-export-page .official-seal span{font-size:20px}.telegram-export-page .official-seal strong{font-size:11px}
 .telegram-export-page .classification{display:flex;justify-content:space-between;gap:16px;margin:18px 0;padding:10px 14px;border:1px solid #d8dee8;background:#f8fafc;font-size:13px}.telegram-export-page .classification-value{font-weight:500}
 .telegram-export-page .telegram-content{min-height:570px;padding:22px 24px;border:1.5px solid #253247;display:flex;flex-direction:column}
 .telegram-export-page .routing{padding-bottom:14px;border-bottom:1px dotted #7b8493;line-height:2}.telegram-export-page .routing-layout{display:grid;grid-template-columns:${showVerificationQr ? 'minmax(0,1fr) 113px' : '1fr'};align-items:start;gap:16px;direction:rtl}
@@ -910,7 +911,7 @@ $fontFaces
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
-<div class="page-watermark" aria-hidden="true">$watermark</div>
+$watermark
 <header class="official-header">
 <div class="header-government"><p class="government-name">الجمهورية العربية السورية</p><p class="government-subtitle">وزارة الداخلية</p>$organizationHierarchy</div>
 <div class="header-logo-cell">$logo</div>

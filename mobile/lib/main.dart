@@ -1517,9 +1517,8 @@ class _DashboardPageState extends State<DashboardPage>
       var settings = results[2];
       final list = results[3];
 
-      // Organization settings are stored separately from legacy user settings.
-      // Prefer the active organization's authorized logo endpoint and retain
-      // legacy settings only as a compatibility fallback.
+      // Organization logos must come only from the verified active
+      // organization. Never fall back to a legacy user-level logo.
       final contextOrganizationId = organizationContext is Map
           ? organizationContext['organizationId']?.toString().trim()
           : null;
@@ -1533,37 +1532,35 @@ class _DashboardPageState extends State<DashboardPage>
           ? contextOrganizationId
           : accountOrganizationId?.toString().trim();
 
-      // Some platform-owner sessions do not have a regular membership row.
-      // In that case, use the organization already associated with the signed-in
-      // account instead of silently skipping the organization-scoped logo.
+      final mergedSettings = settings is Map
+          ? Map<String, dynamic>.from(settings)
+          : <String, dynamic>{};
+      // Clear legacy values first, including when the organization context is
+      // missing or the scoped endpoint returns an unexpected organization.
+      mergedSettings['logoUrl'] = null;
       if (organizationId != null && organizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
             'organizations.logo',
             input: {'organizationId': organizationId},
           );
-          final scopedLogo = organizationSettings is Map
-              ? organizationSettings['logoUrl']?.toString().trim()
-              : null;
           if (organizationSettings is Map &&
-              organizationSettings['settingsExists'] == true &&
-              scopedLogo != null &&
-              scopedLogo.isNotEmpty) {
-            final mergedSettings = settings is Map
-                ? Map<String, dynamic>.from(settings)
-                : <String, dynamic>{};
-            mergedSettings['logoUrl'] = scopedLogo;
-            settings = mergedSettings;
+              organizationSettings['organizationId']?.toString() ==
+                  organizationId) {
+            final scopedLogo = organizationSettings['logoUrl']
+                ?.toString()
+                .trim();
+            if (scopedLogo != null && scopedLogo.isNotEmpty) {
+              mergedSettings['logoUrl'] = scopedLogo;
+            }
           }
         } catch (_) {
-          // Keep the compatible legacy settings response if the scoped
-          // logo endpoint is unavailable for this account or organization.
+          // Keep the logo absent when its organization cannot be verified.
         }
       }
+      settings = mergedSettings;
 
-      final logoUrl = settings is Map
-          ? settings['logoUrl']?.toString().trim()
-          : null;
+      final logoUrl = settings['logoUrl']?.toString().trim();
       final rows = list is Map && list['items'] is List
           ? list['items'] as List
           : list is List
@@ -1603,9 +1600,7 @@ class _DashboardPageState extends State<DashboardPage>
           _usingCachedData = false;
         });
       }
-      if (settings is Map) {
-        unawaited(_loadOrganizationLogo(_organizationLogoUrl));
-      }
+      unawaited(_loadOrganizationLogo(_organizationLogoUrl));
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&
@@ -2582,44 +2577,28 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE1E5EB)),
+              if (logoBytes != null)
+                Container(
+                  width: 52,
+                  height: 52,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE1E5EB)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Image.memory(
+                      logoBytes,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'شعار الجهة',
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
+                    ),
+                  ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: logoBytes == null
-                      ? const ColoredBox(
-                          color: Color(0xFFF1F4F7),
-                          child: Center(
-                            child: Icon(
-                              Icons.account_balance_outlined,
-                              color: Color(0xFF748196),
-                              size: 24,
-                            ),
-                          ),
-                        )
-                      : Image.memory(
-                          logoBytes,
-                          fit: BoxFit.cover,
-                          semanticLabel: 'شعار الجهة',
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: Icon(
-                                  Icons.account_balance_outlined,
-                                  color: Color(0xFF748196),
-                                  size: 24,
-                                ),
-                              ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 10),
+              if (logoBytes != null) const SizedBox(width: 10),
               Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),
               const SizedBox(width: 8),
               ConstrainedBox(

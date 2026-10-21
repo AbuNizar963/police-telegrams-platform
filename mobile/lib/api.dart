@@ -284,10 +284,12 @@ class PoliceApi {
     ]);
     final isJpeg = startsWith(const [0xFF, 0xD8, 0xFF]);
     final isGif =
-        startsWith(const [0x47, 0x49, 0x46, 0x38]) && bytes.length >= 6 &&
+        startsWith(const [0x47, 0x49, 0x46, 0x38]) &&
+        bytes.length >= 6 &&
         (bytes[4] == 0x37 || bytes[4] == 0x39) &&
         bytes[5] == 0x61;
-    final isWebp = bytes.length >= 12 &&
+    final isWebp =
+        bytes.length >= 12 &&
         startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
         bytes[8] == 0x57 &&
         bytes[9] == 0x45 &&

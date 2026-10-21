@@ -40,6 +40,34 @@ describe("telegram spreadsheet parsing", () => {
     });
   });
 
+  it("normalizes an hour-only source time to HH:mm:ss", async () => {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([
+      [...TELEGRAM_SHEET_HEADERS],
+      [
+        "17",
+        "17",
+        "قسم شرطة",
+        "2026-10-18",
+        "نص برقية لاختبار الوقت",
+        "القيادة",
+        "",
+        "",
+      ],
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "صادر");
+    const output = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    }) as ArrayBuffer;
+
+    const result = await parseTelegramWorkbook(
+      new File([output], "hour-only-time.xlsx")
+    );
+
+    expect(result.rows[0].time).toBe("17:00:00");
+  });
+
   it("opens an Agile-encrypted workbook with a supplied password", async () => {
     const workbook = await XlsxPopulate.fromBlankAsync();
     const sheet = workbook.sheet(0).name("صادر");

@@ -806,11 +806,9 @@ export default function Home() {
             getTelegramDisplayNumber(getTelegramSerialCode(row)),
             numberSystem
           ),
-          time: formatConfiguredDate(row.createdAt, settings.data),
+          time: row.time,
           sender: row.creatorName,
-          date:
-            formatConfiguredDate(row.createdAt, settings.data).split(" ")[0] ??
-            "",
+          date: row.date,
           body: row.body,
           recipient: row.recipient,
           signature: row.creatorName,

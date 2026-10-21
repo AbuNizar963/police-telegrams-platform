@@ -1560,9 +1560,7 @@ class _DashboardPageState extends State<DashboardPage>
       }
       settings = mergedSettings;
 
-      final logoUrl = settings is Map
-          ? settings['logoUrl']?.toString().trim()
-          : null;
+      final logoUrl = settings['logoUrl']?.toString().trim();
       final rows = list is Map && list['items'] is List
           ? list['items'] as List
           : list is List
@@ -1602,9 +1600,7 @@ class _DashboardPageState extends State<DashboardPage>
           _usingCachedData = false;
         });
       }
-      if (settings is Map) {
-        unawaited(_loadOrganizationLogo(_organizationLogoUrl));
-      }
+      unawaited(_loadOrganizationLogo(_organizationLogoUrl));
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&

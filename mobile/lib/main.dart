@@ -2591,33 +2591,18 @@ class _DashboardPageState extends State<DashboardPage>
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE1E5EB)),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: logoBytes == null
-                      ? const ColoredBox(
-                          color: Color(0xFFF1F4F7),
-                          child: Center(
-                            child: Icon(
-                              Icons.account_balance_outlined,
-                              color: Color(0xFF748196),
-                              size: 24,
-                            ),
-                          ),
-                        )
-                      : Image.memory(
+                child: logoBytes == null
+                    ? const SizedBox.shrink()
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: Image.memory(
                           logoBytes,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           semanticLabel: 'شعار الجهة',
                           errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: Icon(
-                                  Icons.account_balance_outlined,
-                                  color: Color(0xFF748196),
-                                  size: 24,
-                                ),
-                              ),
+                              const SizedBox.shrink(),
                         ),
-                ),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),

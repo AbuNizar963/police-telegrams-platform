@@ -2582,29 +2582,28 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE1E5EB)),
+              if (logoBytes != null)
+                Container(
+                  width: 52,
+                  height: 52,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE1E5EB)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Image.memory(
+                      logoBytes,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'شعار الجهة',
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
+                    ),
+                  ),
                 ),
-                child: logoBytes == null
-                    ? const SizedBox.shrink()
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(13),
-                        child: Image.memory(
-                          logoBytes,
-                          fit: BoxFit.contain,
-                          semanticLabel: 'شعار الجهة',
-                          errorBuilder: (context, error, stackTrace) =>
-                              const SizedBox.shrink(),
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 10),
+              if (logoBytes != null) const SizedBox(width: 10),
               Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),
               const SizedBox(width: 8),
               ConstrainedBox(

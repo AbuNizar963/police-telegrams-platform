@@ -1074,10 +1074,41 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     return [MapEntry(current, current), ...options];
   }
 
+  Future<Map<String, dynamic>> _withOrganizationLogo(
+    Map<String, dynamic> settings,
+  ) async {
+    final resolved = Map<String, dynamic>.from(settings);
+    // Never show a legacy or stale logo if the active organization cannot be
+    // verified. The scoped endpoint is the source of truth for this image.
+    resolved['logoUrl'] = null;
+    try {
+      final context = await widget.api.call('organizations.context');
+      final organizationId = context is Map
+          ? context['organizationId']?.toString().trim()
+          : null;
+      if (organizationId == null || organizationId.isEmpty) return resolved;
+
+      final organization = await widget.api.call(
+        'organizations.logo',
+        input: {'organizationId': organizationId},
+      );
+      if (organization is Map &&
+          organization['organizationId']?.toString() == organizationId) {
+        final logo = organization['logoUrl']?.toString().trim();
+        resolved['logoUrl'] = logo == null || logo.isEmpty ? null : logo;
+      }
+    } catch (_) {
+      // Keep the logo absent when its organization-scoped source is unavailable.
+    }
+    return resolved;
+  }
+
   Future<void> _load() async {
     try {
       final result = await widget.api.call('settings.get');
-      final settings = Map<String, dynamic>.from(result as Map);
+      final settings = await _withOrganizationLogo(
+        Map<String, dynamic>.from(result as Map),
+      );
       final logo = _text(settings['logoUrl']);
       final savedLogoBytes = logo.isEmpty
           ? null
@@ -1179,7 +1210,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       );
       if (!mounted) return;
       if (result is Map) {
-        final saved = Map<String, dynamic>.from(result);
+        final saved = await _withOrganizationLogo(
+          Map<String, dynamic>.from(result),
+        );
         final savedLogo = _text(saved['logoUrl']);
         final savedLogoBytes = savedLogo.isEmpty
             ? null

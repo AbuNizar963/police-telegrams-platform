@@ -1535,10 +1535,22 @@ class _DashboardPageState extends State<DashboardPage>
       final mergedSettings = settings is Map
           ? Map<String, dynamic>.from(settings)
           : <String, dynamic>{};
-      // Clear legacy values first, including when the organization context is
-      // missing or the scoped endpoint returns an unexpected organization.
-      mergedSettings['logoUrl'] = null;
+      final settingsOrganizationId =
+          mergedSettings['organizationId']?.toString().trim();
+      final savedOrganizationLogo = mergedSettings['logoUrl']?.toString().trim();
+      // settings.get is scoped to the signed-in account and remains available
+      // to organization administrators. Keep its logo as the safe fallback;
+      // the platform-owner-only organization endpoint is only a refresh.
+      mergedSettings['logoUrl'] =
+          savedOrganizationLogo == null || savedOrganizationLogo.isEmpty
+          ? null
+          : savedOrganizationLogo;
       if (organizationId != null && organizationId.isNotEmpty) {
+        if (settingsOrganizationId != null &&
+            settingsOrganizationId.isNotEmpty &&
+            settingsOrganizationId != organizationId) {
+          mergedSettings['logoUrl'] = null;
+        }
         try {
           final organizationSettings = await widget.api.call(
             'organizations.settings.get',
@@ -1550,13 +1562,14 @@ class _DashboardPageState extends State<DashboardPage>
             final scopedLogo = organizationSettings['logoUrl']
                 ?.toString()
                 .trim();
-            if (scopedLogo != null && scopedLogo.isNotEmpty) {
-              mergedSettings['logoUrl'] = scopedLogo;
-            }
+            mergedSettings['logoUrl'] =
+                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
           }
         } catch (_) {
-          // Keep the logo absent when its organization cannot be verified.
+          // Preserve the account-scoped logo when owner-only refresh is denied.
         }
+      } else {
+        mergedSettings['logoUrl'] = null;
       }
       settings = mergedSettings;
 

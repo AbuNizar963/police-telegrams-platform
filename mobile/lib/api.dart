@@ -254,15 +254,54 @@ class PoliceApi {
             .trim()
             .toLowerCase() ??
         '';
-    if (!const {
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-      'image/gif',
-    }.contains(contentType)) {
-      return null;
+    final bytes = response.bodyBytes;
+    if (!_isSupportedImagePayload(contentType, bytes)) return null;
+    return bytes;
+  }
+
+  bool _isSupportedImagePayload(String contentType, Uint8List bytes) {
+    // Some object-storage/CDN responses use application/octet-stream even
+    // when the stored object is a valid image. Verify its file signature
+    // before accepting that generic content type; never treat HTML/error
+    // responses as images.
+    bool startsWith(List<int> signature) {
+      if (bytes.length < signature.length) return false;
+      for (var index = 0; index < signature.length; index++) {
+        if (bytes[index] != signature[index]) return false;
+      }
+      return true;
     }
-    return response.bodyBytes;
+
+    final isPng = startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    final isJpeg = startsWith(const [0xFF, 0xD8, 0xFF]);
+    final isGif = startsWith(const [0x47, 0x49, 0x46, 0x38]) &&
+        bytes.length >= 6 &&
+        (bytes[4] == 0x37 || bytes[4] == 0x39) &&
+        bytes[5] == 0x61;
+    final isWebp = bytes.length >= 12 &&
+        startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
+        bytes[8] == 0x57 &&
+        bytes[9] == 0x45 &&
+        bytes[10] == 0x42 &&
+        bytes[11] == 0x50;
+
+    switch (contentType) {
+      case 'image/png':
+        return isPng;
+      case 'image/jpeg':
+      case 'image/jpg':
+        return isJpeg;
+      case 'image/gif':
+        return isGif;
+      case 'image/webp':
+        return isWebp;
+      case '':
+      case 'application/octet-stream':
+      case 'binary/octet-stream':
+        return isPng || isJpeg || isGif || isWebp;
+      default:
+        return false;
+    }
   }
 
   Future<void> cacheDashboard({

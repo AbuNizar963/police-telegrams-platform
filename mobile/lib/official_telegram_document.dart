@@ -170,16 +170,28 @@ class _OfficialTelegramDocumentPageState
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
 
-      // The web administration interface stores organization settings in a
-      // separate, organization-scoped record. Prefer its authorized logo
-      // endpoint for this telegram, preserving legacy settings as a fallback.
+      // Resolve the logo against the telegram's organization, not merely
+      // whichever account settings happen to be cached on this device.
       final logoOrganizationId = _value(
         telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
         fallback: '',
       );
-      // Never use a legacy settings logo when the telegram's organization
-      // cannot be identified and verified against the scoped logo endpoint.
-      settingsData['logoUrl'] = null;
+      final settingsOrganizationId = _value(
+        settingsData['organizationId'],
+        fallback: '',
+      );
+      final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
+      settingsData['logoUrl'] =
+          logoOrganizationId.isNotEmpty &&
+              settingsOrganizationId == logoOrganizationId &&
+              savedSettingsLogo.isNotEmpty
+          ? savedSettingsLogo
+          : null;
+
+      // Prefer the organization-scoped logo used by the web interface. If
+      // this endpoint is unavailable to a non-owner account, retain the
+      // account-settings logo only when its organization ID matches the
+      // telegram's organization; never display a logo from another unit.
       if (logoOrganizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
@@ -197,7 +209,7 @@ class _OfficialTelegramDocumentPageState
             }
           }
         } catch (_) {
-          // Keep the logo absent when the scoped source cannot be verified.
+          // Keep the verified account-settings fallback when available.
         }
       }
 

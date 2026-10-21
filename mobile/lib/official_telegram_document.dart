@@ -192,8 +192,9 @@ class _OfficialTelegramDocumentPageState
             final scopedLogo = organizationSettings['logoUrl']
                 ?.toString()
                 .trim();
-            settingsData['logoUrl'] =
-                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
+            if (scopedLogo != null && scopedLogo.isNotEmpty) {
+              settingsData['logoUrl'] = scopedLogo;
+            }
           }
         } catch (_) {
           // Keep the logo absent when the scoped source cannot be verified.

@@ -1033,6 +1033,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   bool _uploadingLogo = false;
   String? _error;
   String? _logoUrl;
+  Uint8List? _pendingLogoPreviewBytes;
   String _timezone = 'Asia/Riyadh';
   String _dateFormat = 'yyyy/MM/dd HH:mm:ss';
   String _timeFormat = '24';
@@ -1099,6 +1100,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         _showVerificationQr = settings['showVerificationQr'] != false;
         final logo = _text(settings['logoUrl']);
         _logoUrl = logo.isEmpty ? null : logo;
+        _pendingLogoPreviewBytes = null;
         _error = null;
       });
     } catch (exception) {
@@ -1178,6 +1180,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           if (saved.containsKey('logoUrl')) {
             final logo = _text(saved['logoUrl']);
             _logoUrl = logo.isEmpty ? null : logo;
+            // The server returns the authorized, signed URL after saving.
+            // Drop the local upload preview only after that URL is available.
+            _pendingLogoPreviewBytes = null;
           }
         });
       }
@@ -1240,7 +1245,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       final uploaded = Map<String, dynamic>.from(result as Map);
       final logo = _text(uploaded['url']);
       if (logo.isEmpty) throw Exception('لم يُرجع الخادم رابط الشعار.');
-      setState(() => _logoUrl = logo);
+      setState(() {
+        _logoUrl = logo;
+        // The upload endpoint returns an internal storage URL, not a public
+        // image URL. Preview the selected bytes until settings are saved and
+        // the server returns the authorized signed URL.
+        _pendingLogoPreviewBytes = Uint8List.fromList(bytes);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم رفع الشعار. اضغط حفظ لاعتماده.')),
       );
@@ -1353,7 +1364,21 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                 color: _navy,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: _logoPreviewUrl == null
+                              child: _pendingLogoPreviewBytes != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _pendingLogoPreviewBytes!,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.broken_image_outlined,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    )
+                                  : _logoPreviewUrl == null
                                   ? const Icon(
                                       Icons.shield_outlined,
                                       color: Color(0xFFC9A45C),
@@ -1396,7 +1421,10 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                             child: TextButton.icon(
                               onPressed: _saving || _uploadingLogo
                                   ? null
-                                  : () => setState(() => _logoUrl = null),
+                                  : () => setState(() {
+                                      _logoUrl = null;
+                                      _pendingLogoPreviewBytes = null;
+                                    }),
                               icon: const Icon(Icons.delete_outline),
                               label: const Text('إزالة الشعار عند الحفظ'),
                             ),

@@ -1521,8 +1521,9 @@ class _DashboardPageState extends State<DashboardPage>
       // Prefer the active organization's logo when the current account can read
       // its scoped settings; keep the legacy settings path for other accounts.
       if (organizationContext is Map) {
-        final organizationId =
-            organizationContext['organizationId']?.toString().trim();
+        final organizationId = organizationContext['organizationId']
+            ?.toString()
+            .trim();
         if (organizationId != null && organizationId.isNotEmpty) {
           try {
             final organizationSettings = await widget.api.call(

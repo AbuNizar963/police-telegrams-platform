@@ -5,6 +5,7 @@ import { ENV } from "./_core/env";
 
 const mocks = vi.hoisted(() => ({
   getOrganizationByIdIncludingInactive: vi.fn(),
+  getUserOrganizationMembership: vi.fn(),
   getOrganizationSettings: vi.fn(),
   upsertOrganizationSettingsForOrganization: vi.fn(),
   writeAuditLog: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("./organization", async importOriginal => {
     ...actual,
     getOrganizationByIdIncludingInactive:
       mocks.getOrganizationByIdIncludingInactive,
+    getUserOrganizationMembership: mocks.getUserOrganizationMembership,
   };
 });
 
@@ -37,6 +39,26 @@ function ownerContext(): TrpcContext {
       loginMethod: "local",
       username: ENV.ownerUsername,
       role: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    },
+    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
+
+function memberContext(): TrpcContext {
+  return {
+    user: {
+      id: 7,
+      authUserId: "00000000-0000-4000-8000-000000000007",
+      name: "مستخدم الجهة",
+      badgeNumber: null,
+      email: "member@example.com",
+      loginMethod: "local",
+      username: "member-test",
+      role: "dispatcher",
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
@@ -84,6 +106,12 @@ describe("platform owner organization settings", () => {
         [organizationA, organizationB].find(item => item.id === organizationId)
     );
     mocks.getOrganizationSettings.mockResolvedValue(undefined);
+    mocks.getUserOrganizationMembership.mockResolvedValue({
+      userId: 7,
+      organizationId: organizationA.id,
+      role: "dispatcher",
+      isActive: true,
+    });
     mocks.upsertOrganizationSettingsForOrganization.mockImplementation(
       async (organizationId: string, values: Record<string, unknown>) => ({
         id: organizationId === organizationA.id ? 11 : 12,
@@ -146,6 +174,40 @@ describe("platform owner organization settings", () => {
       })
     );
     expect(mocks.writeAuditLog).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a member read only their own organization's logo", async () => {
+    const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl,
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logo({ organizationId: organizationA.id })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl,
+      settingsExists: true,
+    });
+
+    await expect(
+      caller.organizations.logo({ organizationId: organizationB.id })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("allows the platform owner to read a logo without an organization membership", async () => {
+    const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationB.id,
+      logoUrl,
+    });
+    const caller = appRouter.createCaller(ownerContext());
+
+    await expect(
+      caller.organizations.logo({ organizationId: organizationB.id })
+    ).resolves.toMatchObject({ logoUrl, settingsExists: true });
   });
 
   it("accepts a credential-free HTTPS logo URL from an approved external CDN", async () => {

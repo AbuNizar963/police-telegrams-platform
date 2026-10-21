@@ -479,6 +479,34 @@ export const appRouter = router({
       };
     }),
 
+    // Expose only the logo for the user's own organization. Full settings remain
+    // restricted to platform owners, while mobile users can render their
+    // organization's letterhead and welcome branding.
+    logo: protectedProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          const membership = await getUserOrganizationMembership(ctx.user.id);
+          if (
+            !membership ||
+            !membership.isActive ||
+            membership.organizationId !== input.organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية عرض شعار هذه الجهة",
+            });
+          }
+        }
+
+        const settings = await getOrganizationSettings(input.organizationId);
+        return {
+          organizationId: input.organizationId,
+          logoUrl: settings?.logoUrl ?? null,
+          settingsExists: Boolean(settings),
+        };
+      }),
+
     selectWorkplace: protectedProcedure
       .input(z.object({ organizationId: z.string().uuid() }))
       .mutation(async ({ ctx, input }) => {

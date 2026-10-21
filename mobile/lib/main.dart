@@ -1537,7 +1537,8 @@ class _DashboardPageState extends State<DashboardPage>
           : <String, dynamic>{};
       final settingsOrganizationId =
           mergedSettings['organizationId']?.toString().trim();
-      final savedOrganizationLogo = mergedSettings['logoUrl']?.toString().trim();
+      final savedOrganizationLogo =
+          mergedSettings['logoUrl']?.toString().trim();
       // settings.get is scoped to the signed-in account and remains available
       // to organization administrators. Keep its logo as the safe fallback;
       // the platform-owner-only organization endpoint is only a refresh.

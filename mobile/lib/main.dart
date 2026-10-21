@@ -1517,9 +1517,8 @@ class _DashboardPageState extends State<DashboardPage>
       var settings = results[2];
       final list = results[3];
 
-      // Organization settings are stored separately from legacy user settings.
-      // Prefer the active organization's authorized logo endpoint and retain
-      // legacy settings only as a compatibility fallback.
+      // Organization logos must come only from the verified active
+      // organization. Never fall back to a legacy user-level logo.
       final contextOrganizationId = organizationContext is Map
           ? organizationContext['organizationId']?.toString().trim()
           : null;
@@ -1533,41 +1532,32 @@ class _DashboardPageState extends State<DashboardPage>
           ? contextOrganizationId
           : accountOrganizationId?.toString().trim();
 
-      // Some platform-owner sessions do not have a regular membership row.
-      // In that case, use the organization already associated with the signed-in
-      // account instead of silently skipping the organization-scoped logo.
+      final mergedSettings = settings is Map
+          ? Map<String, dynamic>.from(settings)
+          : <String, dynamic>{};
+      // Clear legacy values first, including when the organization context is
+      // missing or the scoped endpoint returns an unexpected organization.
+      mergedSettings['logoUrl'] = null;
       if (organizationId != null && organizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
             'organizations.logo',
             input: {'organizationId': organizationId},
           );
-          final scopedLogo = organizationSettings is Map
-              ? organizationSettings['logoUrl']?.toString().trim()
-              : null;
           if (organizationSettings is Map &&
               organizationSettings['organizationId']?.toString() ==
                   organizationId) {
-            final mergedSettings = settings is Map
-                ? Map<String, dynamic>.from(settings)
-                : <String, dynamic>{};
-            // The active organization's logo is authoritative. Never show
-            // legacy user's logo when this organization has no configured one.
-            mergedSettings['logoUrl'] = scopedLogo == null || scopedLogo.isEmpty
-                ? null
-                : scopedLogo;
-            settings = mergedSettings;
+            final scopedLogo = organizationSettings['logoUrl']
+                ?.toString()
+                .trim();
+            mergedSettings['logoUrl'] =
+                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
           }
         } catch (_) {
-          // If the organization-scoped source cannot be verified, do not show
-          // a potentially unrelated legacy logo.
-          final mergedSettings = settings is Map
-              ? Map<String, dynamic>.from(settings)
-              : <String, dynamic>{};
-          mergedSettings['logoUrl'] = null;
-          settings = mergedSettings;
+          // Keep the logo absent when its organization cannot be verified.
         }
       }
+      settings = mergedSettings;
 
       final logoUrl = settings is Map
           ? settings['logoUrl']?.toString().trim()

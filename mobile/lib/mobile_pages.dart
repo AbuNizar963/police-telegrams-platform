@@ -1078,7 +1078,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     try {
       final result = await widget.api.call('settings.get');
       final settings = Map<String, dynamic>.from(result as Map);
-      if (!mounted) return;
+      final logo = _text(settings['logoUrl']);
       final savedLogoBytes = logo.isEmpty
           ? null
           : await widget.api.fetchImageAsset(logo);
@@ -1103,7 +1103,6 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
             ? 'arabic'
             : 'latin';
         _showVerificationQr = settings['showVerificationQr'] != false;
-        final logo = _text(settings['logoUrl']);
         _logoUrl = logo.isEmpty ? null : logo;
         _pendingLogoPreviewBytes = null;
         _savedLogoPreviewBytes = savedLogoBytes;

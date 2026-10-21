@@ -1518,8 +1518,8 @@ class _DashboardPageState extends State<DashboardPage>
       final list = results[3];
 
       // Organization settings are stored separately from legacy user settings.
-      // Prefer the active organization's logo when the current account can read
-      // its scoped settings; keep the legacy settings path for other accounts.
+      // Prefer the active organization's authorized logo endpoint and retain
+      // legacy settings only as a compatibility fallback.
       if (organizationContext is Map) {
         final organizationId = organizationContext['organizationId']
             ?.toString()
@@ -1539,8 +1539,8 @@ class _DashboardPageState extends State<DashboardPage>
               settings = mergedSettings;
             }
           } catch (_) {
-            // Non-owner accounts cannot read platform-owner organization
-            // settings; retain the compatible legacy settings response.
+            // Keep the compatible legacy settings response if the scoped
+            // logo endpoint is unavailable for this account or organization.
           }
         }
       }

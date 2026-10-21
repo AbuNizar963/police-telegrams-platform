@@ -1078,15 +1078,28 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     Map<String, dynamic> settings,
   ) async {
     final resolved = Map<String, dynamic>.from(settings);
-    // Never show a legacy or stale logo if the active organization cannot be
-    // verified. The scoped endpoint is the source of truth for this image.
-    resolved['logoUrl'] = null;
+    final settingsOrganizationId = resolved['organizationId']
+        ?.toString()
+        .trim();
+    final settingsLogo = resolved['logoUrl']?.toString().trim();
+    // The signed-in organization's settings are readable by its administrators.
+    // The platform-owner-only organization settings endpoint is an optional
+    // authoritative refresh, not a reason to discard a valid saved logo.
+    resolved['logoUrl'] = settingsLogo == null || settingsLogo.isEmpty
+        ? null
+        : settingsLogo;
     try {
       final context = await widget.api.call('organizations.context');
       final organizationId = context is Map
           ? context['organizationId']?.toString().trim()
           : null;
       if (organizationId == null || organizationId.isEmpty) return resolved;
+
+      if (settingsOrganizationId != null &&
+          settingsOrganizationId.isNotEmpty &&
+          settingsOrganizationId != organizationId) {
+        resolved['logoUrl'] = null;
+      }
 
       final organization = await widget.api.call(
         'organizations.settings.get',
@@ -1098,7 +1111,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         resolved['logoUrl'] = logo == null || logo.isEmpty ? null : logo;
       }
     } catch (_) {
-      // Keep the logo absent when its organization-scoped source is unavailable.
+      // Keep the user's organization-scoped saved logo if owner-only refresh is
+      // unavailable; never replace it with data from a different organization.
     }
     return resolved;
   }

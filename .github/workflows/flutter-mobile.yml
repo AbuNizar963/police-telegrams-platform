@@ -79,7 +79,8 @@ jobs:
 
           branch="${{ github.event.pull_request.head.ref }}"
           git fetch origin "$branch"
-          git rebase "origin/$branch"
+          # flutter pub get may update tracked dependency metadata; preserve it safely during rebase.
+          git rebase --autostash "origin/$branch"
           git push origin "HEAD:$branch"
 
       - name: Format Dart source on direct pushes

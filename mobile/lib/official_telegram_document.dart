@@ -169,6 +169,30 @@ class _OfficialTelegramDocumentPageState
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
+
+      // The web administration interface stores organization settings in a
+      // separate, organization-scoped record. Prefer its logo for this
+      // telegram when available, while preserving legacy settings for accounts
+      // that are not permitted to read the owner-only organization settings.
+      final logoOrganizationId = _value(
+        telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
+        fallback: '',
+      );
+      if (logoOrganizationId.isNotEmpty) {
+        try {
+          final organizationSettings = await widget.api.call(
+            'organizations.settings.get',
+            input: {'organizationId': logoOrganizationId},
+          );
+          if (organizationSettings is Map &&
+              organizationSettings['settingsExists'] == true) {
+            settingsData['logoUrl'] = organizationSettings['logoUrl'];
+          }
+        } catch (_) {
+          // Keep the legacy logo source as a compatibility fallback.
+        }
+      }
+
       final routingDirectory = results[2] is List
           ? (results[2] as List)
                 .whereType<Map>()

@@ -1089,7 +1089,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       if (organizationId == null || organizationId.isEmpty) return resolved;
 
       final organization = await widget.api.call(
-        'organizations.logo',
+        'organizations.settings.get',
         input: {'organizationId': organizationId},
       );
       if (organization is Map &&

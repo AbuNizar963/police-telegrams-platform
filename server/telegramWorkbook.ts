@@ -19,6 +19,43 @@ const TEMPLATE_PATH = path.resolve(
   "server/assets/telegram-register-template.xlsx"
 );
 
+export function formatTelegramWorkbookDateTime(
+  value: Date | string | number,
+  timezone: string
+): { date: string; time: string } {
+  const sourceDate = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(sourceDate.getTime())) {
+    return { date: "", time: "" };
+  }
+
+  const dateParts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(sourceDate)
+      .map(part => [part.type, part.value])
+  );
+  const timeParts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(sourceDate)
+      .map(part => [part.type, part.value])
+  );
+
+  return {
+    date: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    time: `${timeParts.hour}:${timeParts.minute}:${timeParts.second}`,
+  };
+}
+
 export async function buildTelegramWorkbook(input: {
   rows: TelegramWorkbookExportRow[];
   password?: string;

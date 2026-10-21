@@ -119,13 +119,80 @@ String _text(dynamic value) {
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')} '
         '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
+        '${date.minute.toString().padLeft(2, '0')}:'
+        '${date.second.toString().padLeft(2, '0')}';
   }
   if (value is TimeCellValue) {
     return '${value.hour.toString().padLeft(2, '0')}:'
-        '${value.minute.toString().padLeft(2, '0')}';
+        '${value.minute.toString().padLeft(2, '0')}:00';
   }
   return '$value'.trim();
+}
+
+String _dateText(dynamic value) {
+  if (value is DateTimeCellValue) {
+    final date = value.asDateTimeLocal();
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+  return _text(value);
+}
+
+String _timeText(dynamic value) {
+  if (value is DateTimeCellValue) {
+    final date = value.asDateTimeLocal();
+    return '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}:'
+        '${date.second.toString().padLeft(2, '0')}';
+  }
+  if (value is TimeCellValue) return _text(value);
+
+  if (value is IntCellValue || value is DoubleCellValue) {
+    final number = value is IntCellValue
+        ? value.value.toDouble()
+        : (value as DoubleCellValue).value;
+    if (number >= 0 && number < 1) {
+      final totalSeconds = (number * 86400).round() % 86400;
+      return '${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
+          '${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
+          '${(totalSeconds % 60).toString().padLeft(2, '0')}';
+    }
+    if (number >= 0 && number <= 24) {
+      final totalSeconds = (number * 3600).round();
+      return '${(totalSeconds ~/ 3600).toString().padLeft(2, '0')}:'
+          '${((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:'
+          '${(totalSeconds % 60).toString().padLeft(2, '0')}';
+    }
+  }
+
+  final normalized = _text(value).replaceAllMapped(
+    RegExp('[٠-٩۰-۹]'),
+    (match) => '${'٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(match.group(0)!) % 10}',
+  );
+  final match = RegExp(
+    r'^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*(ص|م|AM|PM)?$',
+    caseSensitive: false,
+  ).firstMatch(normalized);
+  if (match == null) return normalized;
+
+  var hour = int.parse(match.group(1)!);
+  final minute = int.tryParse(match.group(2) ?? '') ?? 0;
+  final second = int.tryParse(match.group(3) ?? '') ?? 0;
+  final meridiem = (match.group(4) ?? '').toUpperCase();
+  if (minute > 59 || second > 59 || hour > 24) return normalized;
+  if (meridiem.isNotEmpty) {
+    if (hour < 1 || hour > 12) return normalized;
+    if (meridiem == 'م' || meridiem == 'PM') {
+      hour = hour % 12 + 12;
+    } else {
+      hour %= 12;
+    }
+  }
+
+  return '${hour.toString().padLeft(2, '0')}:'
+      '${minute.toString().padLeft(2, '0')}:'
+      '${second.toString().padLeft(2, '0')}';
 }
 
 String _normalized(String value) => value
@@ -161,6 +228,9 @@ Map<String, int> _headerIndexes(List<dynamic> header) {
     'notes': find(['ملاحظات', 'الملاحظة']),
   };
 }
+
+dynamic _cellValue(List<dynamic> row, int index) =>
+    index >= 0 && index < row.length ? row[index] : null;
 
 String _cell(List<dynamic> row, int index) =>
     index >= 0 && index < row.length ? _text(row[index]) : '';
@@ -365,8 +435,8 @@ TelegramExcelParseResult parseTelegramWorkbook(List<int> bytes) {
         continue;
       }
       final originalSerial = _cell(row, fallback['serial']!);
-      final date = _cell(row, fallback['date']!);
-      final time = _cell(row, fallback['time']!);
+      final date = _dateText(_cellValue(row, fallback['date']!));
+      final time = _timeText(_cellValue(row, fallback['time']!));
       final serialKey = '$direction|${_normalized(originalSerial)}';
       final fingerprint = [
         direction,

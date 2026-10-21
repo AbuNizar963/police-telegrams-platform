@@ -121,8 +121,13 @@ import {
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
 } from "./_core/notification";
-import { buildTelegramWorkbook } from "./telegramWorkbook";
+import {
+  buildTelegramWorkbook,
+  formatTelegramWorkbookDateTime,
+} from "./telegramWorkbook";
 import { parseTelegramWorkbookBase64 } from "./telegramImportWorkbook";
+import { parseImportedDate } from "./importedDate";
+
 const classificationSchema = z.enum(["secret", "normal"]);
 const prioritySchema = z.enum(["slow", "normal", "urgent"]);
 const categorySchema = z.enum([
@@ -356,33 +361,6 @@ async function assertOwnerOrganizationScope(
   if (organizationId !== activeOrganizationId) {
     throw new TRPCError({ code: "FORBIDDEN", message });
   }
-}
-
-function parseImportedDate(value?: string, time?: string): Date | undefined {
-  const normalized = (value ?? "")
-    .trim()
-    .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-    .replace(/[.]/g, "/");
-  const match = normalized.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
-  if (!match) return undefined;
-  const first = Number(match[1]);
-  const second = Number(match[2]);
-  const third = Number(match[3]);
-  const year = first > 31 ? first : third;
-  const month = first > 31 ? second : second;
-  const day = first > 31 ? third : first;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return undefined;
-  }
-  const timeMatch = (time ?? "").trim().match(/^(\d{1,2})(?::(\d{2}))?/);
-  if (timeMatch)
-    date.setUTCHours(Number(timeMatch[1]), Number(timeMatch[2] ?? 0));
-  return date;
 }
 
 async function getOrganizationSerialKeys(
@@ -1518,6 +1496,12 @@ export const appRouter = router({
         const organizationId = canViewAll
           ? null
           : await getUserOrganizationId(ctx.user.id);
+        const settings = await getOrCreateSettings(ctx.user.id);
+        const formatRows = (rows: Awaited<ReturnType<typeof listTelegrams>>) =>
+          rows.map(row => ({
+            ...row,
+            ...formatTelegramWorkbookDateTime(row.createdAt, settings.timezone),
+          }));
         const exportedRows = [];
         const pageSize = 1000;
         const maximumRows = 100000;
@@ -1537,7 +1521,7 @@ export const appRouter = router({
             pageSize
           );
           exportedRows.push(...pageRows);
-          if (pageRows.length < pageSize) return exportedRows;
+          if (pageRows.length < pageSize) return formatRows(exportedRows);
         }
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -2749,8 +2733,17 @@ export const appRouter = router({
               skipped += 1;
               continue;
             }
+            const importedCreatedAt = parseImportedDate(
+              row.date,
+              row.time,
+              settings.timezone
+            );
+            if (row.date?.trim() && !importedCreatedAt) {
+              throw new Error(
+                `تعذر قراءة تاريخ البرقية "${row.date}" في صف Excel. صحح تنسيق التاريخ ثم أعد الاستيراد؛ لم يُستبدل التاريخ بتاريخ اليوم.`
+              );
+            }
             const serialNumber = await allocateSerialNumber();
-            const importedCreatedAt = parseImportedDate(row.date, row.time);
             const organizationDirection =
               row.sheetName === "وارد" ? "incoming" : "outgoing";
             const organizationSerialNumber =

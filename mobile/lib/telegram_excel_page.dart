@@ -106,13 +106,19 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
             (direction.isEmpty &&
                 organization.isNotEmpty &&
                 organization == current);
+        final sourceTime = value(row['time']);
+        final sourceDate = value(row['date']);
         rows.add({
           'serial': value(row['organizationSerialCode']),
-          'time': date == null
+          'time': sourceTime.isNotEmpty
+              ? sourceTime
+              : date == null
               ? ''
-              : '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
+              : '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}',
           'sender': value(row['creatorName'] ?? row['senderName']),
-          'date': date == null
+          'date': sourceDate.isNotEmpty
+              ? sourceDate
+              : date == null
               ? ''
               : '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
           'body': value(row['body']),

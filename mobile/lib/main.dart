@@ -1520,28 +1520,44 @@ class _DashboardPageState extends State<DashboardPage>
       // Organization settings are stored separately from legacy user settings.
       // Prefer the active organization's authorized logo endpoint and retain
       // legacy settings only as a compatibility fallback.
-      if (organizationContext is Map) {
-        final organizationId = organizationContext['organizationId']
-            ?.toString()
-            .trim();
-        if (organizationId != null && organizationId.isNotEmpty) {
-          try {
-            final organizationSettings = await widget.api.call(
-              'organizations.logo',
-              input: {'organizationId': organizationId},
-            );
-            if (organizationSettings is Map &&
-                organizationSettings['settingsExists'] == true) {
-              final mergedSettings = settings is Map
-                  ? Map<String, dynamic>.from(settings)
-                  : <String, dynamic>{};
-              mergedSettings['logoUrl'] = organizationSettings['logoUrl'];
-              settings = mergedSettings;
-            }
-          } catch (_) {
-            // Keep the compatible legacy settings response if the scoped
-            // logo endpoint is unavailable for this account or organization.
+      final contextOrganizationId = organizationContext is Map
+          ? organizationContext['organizationId']?.toString().trim()
+          : null;
+      final accountOrganization = _account['organization'];
+      final accountOrganizationId =
+          _account['organizationId'] ??
+          _account['organization_id'] ??
+          (accountOrganization is Map ? accountOrganization['id'] : null);
+      final organizationId =
+          (contextOrganizationId != null && contextOrganizationId.isNotEmpty)
+          ? contextOrganizationId
+          : accountOrganizationId?.toString().trim();
+
+      // Some platform-owner sessions do not have a regular membership row.
+      // In that case, use the organization already associated with the signed-in
+      // account instead of silently skipping the organization-scoped logo.
+      if (organizationId != null && organizationId.isNotEmpty) {
+        try {
+          final organizationSettings = await widget.api.call(
+            'organizations.logo',
+            input: {'organizationId': organizationId},
+          );
+          final scopedLogo = organizationSettings is Map
+              ? organizationSettings['logoUrl']?.toString().trim()
+              : null;
+          if (organizationSettings is Map &&
+              organizationSettings['settingsExists'] == true &&
+              scopedLogo != null &&
+              scopedLogo.isNotEmpty) {
+            final mergedSettings = settings is Map
+                ? Map<String, dynamic>.from(settings)
+                : <String, dynamic>{};
+            mergedSettings['logoUrl'] = scopedLogo;
+            settings = mergedSettings;
           }
+        } catch (_) {
+          // Keep the compatible legacy settings response if the scoped
+          // logo endpoint is unavailable for this account or organization.
         }
       }
 

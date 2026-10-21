@@ -183,9 +183,14 @@ class _OfficialTelegramDocumentPageState
             'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
+          final scopedLogo = organizationSettings is Map
+              ? organizationSettings['logoUrl']?.toString().trim()
+              : null;
           if (organizationSettings is Map &&
-              organizationSettings['settingsExists'] == true) {
-            settingsData['logoUrl'] = organizationSettings['logoUrl'];
+              organizationSettings['settingsExists'] == true &&
+              scopedLogo != null &&
+              scopedLogo.isNotEmpty) {
+            settingsData['logoUrl'] = scopedLogo;
           }
         } catch (_) {
           // Keep the legacy logo source as a compatibility fallback.

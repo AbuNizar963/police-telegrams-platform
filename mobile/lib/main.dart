@@ -1541,7 +1541,7 @@ class _DashboardPageState extends State<DashboardPage>
       if (organizationId != null && organizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
-            'organizations.logo',
+            'organizations.settings.get',
             input: {'organizationId': organizationId},
           );
           if (organizationSettings is Map &&

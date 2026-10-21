@@ -1546,18 +1546,25 @@ class _DashboardPageState extends State<DashboardPage>
               ? organizationSettings['logoUrl']?.toString().trim()
               : null;
           if (organizationSettings is Map &&
-              organizationSettings['settingsExists'] == true &&
-              scopedLogo != null &&
-              scopedLogo.isNotEmpty) {
+              organizationSettings['organizationId']?.toString() ==
+                  organizationId) {
             final mergedSettings = settings is Map
                 ? Map<String, dynamic>.from(settings)
                 : <String, dynamic>{};
-            mergedSettings['logoUrl'] = scopedLogo;
+            // The active organization's logo is authoritative. Do not show a
+            // legacy user's logo when this organization has no configured one.
+            mergedSettings['logoUrl'] =
+                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
             settings = mergedSettings;
           }
         } catch (_) {
-          // Keep the compatible legacy settings response if the scoped
-          // logo endpoint is unavailable for this account or organization.
+          // If the organization-scoped source cannot be verified, do not show
+          // a potentially unrelated legacy logo.
+          final mergedSettings = settings is Map
+              ? Map<String, dynamic>.from(settings)
+              : <String, dynamic>{};
+          mergedSettings['logoUrl'] = null;
+          settings = mergedSettings;
         }
       }
 

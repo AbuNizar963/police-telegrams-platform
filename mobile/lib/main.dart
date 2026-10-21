@@ -1550,8 +1550,9 @@ class _DashboardPageState extends State<DashboardPage>
             final scopedLogo = organizationSettings['logoUrl']
                 ?.toString()
                 .trim();
-            mergedSettings['logoUrl'] =
-                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
+            if (scopedLogo != null && scopedLogo.isNotEmpty) {
+              mergedSettings['logoUrl'] = scopedLogo;
+            }
           }
         } catch (_) {
           // Keep the logo absent when its organization cannot be verified.

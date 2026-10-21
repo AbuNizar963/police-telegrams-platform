@@ -8,11 +8,7 @@ import type {
   User,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import {
-  storageCreateSignedUrl,
-  storageKeyFromStoredUrl,
-  storageStableUrl,
-} from "./storage";
+import { storageCreateSignedUrl, storageKeyFromStoredUrl } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
 import {
   addOrganizationMembership,
@@ -73,14 +69,10 @@ async function mapSettingsView(
     logoKey,
     ENV.supabaseStorageBucket
   );
-  if (resolvedKey?.startsWith("department/logos/")) {
-    return {
-      ...settings,
-      logoUrl: storageStableUrl(resolvedKey),
-      logoKey: resolvedKey,
-    };
-  }
-
+  // Organization logo keys are not authorized by the generic /api/storage
+  // route, which is intentionally scoped to telegram attachments. Return a
+  // short-lived signed URL so web and mobile clients can load the logo without
+  // weakening attachment access controls or exposing the storage key publicly.
   const logoUrl =
     /^https?:\/\//i.test(logoKey) && !resolvedKey
       ? logoKey

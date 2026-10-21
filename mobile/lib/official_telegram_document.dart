@@ -866,7 +866,7 @@ String buildOfficialTelegramHtml({
       : '<img class="official-logo" src="${_escapeHtml(logoDataUrl)}" alt="الشعار الرسمي" />';
   final watermark = logoDataUrl == null
       ? ''
-      : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" aria-hidden="true" />';
+      : '<div class="page-watermark" aria-hidden="true"><img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" /></div>';
   final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
   final fontFaces = [400, 500, 600, 700]
       .map((weight) {
@@ -907,7 +907,7 @@ $fontFaces
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
-<div class="page-watermark" aria-hidden="true">$watermark</div>
+$watermark
 <header class="official-header">
 <div class="header-government"><p class="government-name">الجمهورية العربية السورية</p><p class="government-subtitle">وزارة الداخلية</p>$organizationHierarchy</div>
 <div class="header-logo-cell">$logo</div>

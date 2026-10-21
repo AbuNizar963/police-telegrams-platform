@@ -1376,7 +1376,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                                        errorBuilder: (_, _, _) =>
+                                            const SizedBox.shrink(),
                                       ),
                                     )
                                   : _savedLogoPreviewBytes != null
@@ -1387,7 +1388,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                                        errorBuilder: (_, _, _) =>
+                                            const SizedBox.shrink(),
                                       ),
                                     )
                                   : const SizedBox.shrink(),

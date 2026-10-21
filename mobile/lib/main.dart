@@ -1553,8 +1553,9 @@ class _DashboardPageState extends State<DashboardPage>
                 : <String, dynamic>{};
             // The active organization's logo is authoritative. Never show
             // legacy user's logo when this organization has no configured one.
-            mergedSettings['logoUrl'] =
-                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
+            mergedSettings['logoUrl'] = scopedLogo == null || scopedLogo.isEmpty
+                ? null
+                : scopedLogo;
             settings = mergedSettings;
           }
         } catch (_) {

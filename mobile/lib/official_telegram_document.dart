@@ -190,8 +190,9 @@ class _OfficialTelegramDocumentPageState
               organizationSettings['organizationId']?.toString() ==
                   logoOrganizationId) {
             // Never substitute a legacy logo from another organization.
-            settingsData['logoUrl'] =
-                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
+            settingsData['logoUrl'] = scopedLogo == null || scopedLogo.isEmpty
+                ? null
+                : scopedLogo;
           }
         } catch (_) {
           // Without a verified organization-scoped logo, render no logo.

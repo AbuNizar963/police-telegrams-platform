@@ -171,9 +171,8 @@ class _OfficialTelegramDocumentPageState
           : <String, dynamic>{};
 
       // The web administration interface stores organization settings in a
-      // separate, organization-scoped record. Prefer its logo for this
-      // telegram when available, while preserving legacy settings for accounts
-      // that are not permitted to read the owner-only organization settings.
+      // separate, organization-scoped record. Prefer its authorized logo
+      // endpoint for this telegram, preserving legacy settings as a fallback.
       final logoOrganizationId = _value(
         telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
         fallback: '',

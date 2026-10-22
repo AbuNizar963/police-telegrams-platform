@@ -1643,7 +1643,7 @@ const qrBitBuffer = function () {
     }
 
     if (bit) {
-      _buffer[bufIndex] |= 0x80 >>> _length % 8;
+      _buffer[bufIndex] |= 0x80 >>> (_length % 8);
     }
 
     _length += 1;

@@ -181,10 +181,3 @@ BEGIN
   );
 END;
 $$;
-
-REVOKE ALL ON FUNCTION public.route_telegram_broadcast_atomic(
-  integer, uuid, uuid, integer, text, jsonb
-) FROM public, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.route_telegram_broadcast_atomic(
-  integer, uuid, uuid, integer, text, jsonb
-) TO service_role;

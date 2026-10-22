@@ -49,7 +49,7 @@ jobs:
       - name: Verify Dart formatting
         id: dart_format_check
         continue-on-error: true
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: ./tool/format_dart.sh --check
 
       # When formatting fails, print the exact formatter-produced diff so the
       # developer can apply the same Dart SDK formatter locally.

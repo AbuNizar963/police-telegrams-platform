@@ -7,8 +7,8 @@ import {
 } from "../storage";
 
 export function registerStorageRoutes(app: Express): void {
-  app.get("/api/storage/*", async (req, res) => {
-    const rawKey = req.params[0];
+  app.get("/api/storage/*key", async (req, res) => {
+    const rawKey = req.params.key;
     const key = Array.isArray(rawKey) ? rawKey.join("/") : rawKey;
 
     if (!key) {

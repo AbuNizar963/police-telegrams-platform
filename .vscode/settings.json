@@ -1,0 +1,14 @@
+{
+  "[dart]": {
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.trimAutoWhitespace": true
+  },
+  "dart.lineLength": 80,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

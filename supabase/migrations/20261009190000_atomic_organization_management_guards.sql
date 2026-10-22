@@ -227,8 +227,3 @@ BEGIN
   RETURN v_id;
 END;
 $save_department_settings_atomic$;
-
-REVOKE ALL ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
-  TO service_role;

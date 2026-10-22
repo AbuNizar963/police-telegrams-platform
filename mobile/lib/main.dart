@@ -1546,8 +1546,8 @@ class _DashboardPageState extends State<DashboardPage>
       // the platform-owner-only organization endpoint is only a refresh.
       mergedSettings['logoUrl'] =
           savedOrganizationLogo == null || savedOrganizationLogo.isEmpty
-              ? null
-              : savedOrganizationLogo;
+          ? null
+          : savedOrganizationLogo;
       if (organizationId != null && organizationId.isNotEmpty) {
         if (settingsOrganizationId != null &&
             settingsOrganizationId.isNotEmpty &&

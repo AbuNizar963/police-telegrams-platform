@@ -2595,28 +2595,39 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           Row(
             children: [
-              if (logoBytes != null)
-                Container(
-                  width: 52,
-                  height: 52,
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE1E5EB)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: Image.memory(
-                      logoBytes,
-                      fit: BoxFit.contain,
-                      semanticLabel: 'شعار الجهة',
-                      errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
-                    ),
-                  ),
+              Container(
+                width: 52,
+                height: 52,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE1E5EB)),
                 ),
-              if (logoBytes != null) const SizedBox(width: 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(13),
+                  child: logoBytes == null
+                      ? Image.asset(
+                          'assets/police-telegrams-icon.png',
+                          fit: BoxFit.contain,
+                          semanticLabel:
+                              'الصورة الافتراضية لنظام برقيات الشرطة',
+                        )
+                      : Image.memory(
+                          logoBytes,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'شعار الجهة',
+                          errorBuilder: (context, error, stackTrace) =>
+                              Image.asset(
+                                'assets/police-telegrams-icon.png',
+                                fit: BoxFit.contain,
+                                semanticLabel:
+                                    'الصورة الافتراضية لنظام برقيات الشرطة',
+                              ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),
               const SizedBox(width: 8),
               ConstrainedBox(

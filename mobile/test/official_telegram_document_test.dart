@@ -59,6 +59,7 @@ void main() {
       expect(html, contains('برقية صادرة'));
       expect(html, contains('درجة الأولوية:</strong> عاجل'));
       expect(html, isNot(contains('class="page-watermark"')));
+      expect(html, isNot(contains('class="official-logo"')));
       expect(html, isNot(contains('class="watermark-seal"')));
       expect(html, isNot(contains('class="official-seal"')));
       expect(html, contains('رمز QR للتحقق من أصالة البرقية'));

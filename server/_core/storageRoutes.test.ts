@@ -89,7 +89,7 @@ describe("storage route", () => {
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
     const { handler, res } = createRouteHarness();
 
-    await handler({ params: { 0: "department/logos/123" } }, res);
+    await handler({ params: { key: ["department", "logos", "123"] } }, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.redirect).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe("storage route", () => {
       "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
     const { handler, res } = createRouteHarness();
 
-    await handler({ params: { 0: key } }, res);
+    await handler({ params: { key: key.split("/") } }, res);
 
     expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe("storage route", () => {
     const key = "department/logos/not-a-uuid-badge.png";
     const { handler, res } = createRouteHarness();
 
-    await handler({ params: { 0: key } }, res);
+    await handler({ params: { key: key.split("/") } }, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
     expect(storageCreateSignedUrl).not.toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe("storage route", () => {
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(user);
     const { handler, res } = createRouteHarness();
 
-    await handler({ params: { 0: key } }, res);
+    await handler({ params: { key: key.split("/") } }, res);
 
     expect(storageGetSignedUrl).toHaveBeenCalledWith(key, user);
     expect(storageCreateSignedUrl).not.toHaveBeenCalled();

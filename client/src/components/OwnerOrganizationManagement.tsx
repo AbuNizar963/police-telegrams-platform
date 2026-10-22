@@ -344,13 +344,13 @@ export default function OwnerOrganizationManagement() {
       organizationSettings.data?.organizationId === editingId);
   const settingsRecordMissing = Boolean(
     editingId &&
-      settingsQueryOrgId === editingId &&
-      organizationSettings.isSuccess &&
-      organizationSettings.data?.settingsExists === false
+    settingsQueryOrgId === editingId &&
+    organizationSettings.isSuccess &&
+    organizationSettings.data?.settingsExists === false
   );
   const showSettingsNotSavedWarning = Boolean(
     editingId &&
-      (settingsSaveFailedForId === editingId || settingsRecordMissing)
+    (settingsSaveFailedForId === editingId || settingsRecordMissing)
   );
 
   const submit = async (event: React.FormEvent) => {
@@ -1217,8 +1217,7 @@ export default function OwnerOrganizationManagement() {
                         setSettingsDraft(current => ({
                           ...current,
                           numberSystem: event.target.value as
-                            | "latin"
-                            | "arabic",
+                            "latin" | "arabic",
                         }))
                       }
                     >

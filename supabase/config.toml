@@ -4,9 +4,8 @@ project_id = "police-telegrams-platform"
 major_version = 15
 
 [auth]
+# Keep self-service account creation disabled in local Supabase environments.
 enable_signup = false
-enable_email_signup = true
-enable_email_autoconfirm = false
 
 [storage]
 enabled = true

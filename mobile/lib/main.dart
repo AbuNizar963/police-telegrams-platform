@@ -1555,7 +1555,7 @@ class _DashboardPageState extends State<DashboardPage>
       if (organizationId != null && organizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
-            'organizations.settings.get',
+            'organizations.logo',
             input: {'organizationId': organizationId},
           );
           if (organizationSettings is Map &&
@@ -1571,7 +1571,7 @@ class _DashboardPageState extends State<DashboardPage>
             }
           }
         } catch (_) {
-          // Preserve the account-scoped logo when owner-only refresh is denied.
+          // Preserve the verified account-scoped fallback if logo lookup is unavailable.
         }
       } else {
         mergedSettings['logoUrl'] = null;

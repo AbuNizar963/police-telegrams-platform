@@ -1082,9 +1082,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         ?.toString()
         .trim();
     final settingsLogo = resolved['logoUrl']?.toString().trim();
-    // The signed-in organization's settings are readable by its administrators.
-    // The platform-owner-only organization settings endpoint is an optional
-    // authoritative refresh, not a reason to discard a valid saved logo.
+    // Read the logo through the authorized, organization-scoped endpoint.
+    // Full organization settings remain restricted to platform owners.
     resolved['logoUrl'] = settingsLogo == null || settingsLogo.isEmpty
         ? null
         : settingsLogo;
@@ -1102,7 +1101,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       }
 
       final organization = await widget.api.call(
-        'organizations.settings.get',
+        'organizations.logo',
         input: {'organizationId': organizationId},
       );
       if (organization is Map &&
@@ -1111,8 +1110,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         resolved['logoUrl'] = logo == null || logo.isEmpty ? null : logo;
       }
     } catch (_) {
-      // Keep the user's organization-scoped saved logo if owner-only refresh is
-      // unavailable; never replace it with data from a different organization.
+      // Keep the verified saved-logo fallback if lookup is unavailable; never
+      // replace it with data from a different organization.
     }
     return resolved;
   }

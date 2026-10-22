@@ -53,7 +53,9 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pin the CLI to avoid a GitHub release API lookup for "latest",
+          # which can fail when unauthenticated runner rate limits are reached.
+          version: 2.53.1
 
       - name: Start local Supabase services
         run: supabase start -x studio,edge-runtime,logflare,vector

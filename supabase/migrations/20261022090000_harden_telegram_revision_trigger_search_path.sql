@@ -1,4 +1,4 @@
--- Keep trigger function name resolution deterministic and satisfy the
--- Supabase security advisor's mutable search_path check.
+-- The trigger function only uses NEW/OLD and pg_catalog built-ins.
+-- An empty search_path prevents object shadowing from writable schemas.
 ALTER FUNCTION public.bump_telegram_revision()
-  SET search_path = public;
+  SET search_path = '';

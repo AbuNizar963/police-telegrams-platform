@@ -152,7 +152,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   }
 
   Future<void> pickAttachment() async {
-    final result = await FilePicker.platform.pickFiles(withData: true);
+    final result = await FilePicker.pickFiles(withData: true);
     if (result == null || result.files.single.bytes == null) return;
     final file = result.files.single;
     final contentType = _contentType(file.extension);

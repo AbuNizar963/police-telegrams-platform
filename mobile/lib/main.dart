@@ -2610,7 +2610,8 @@ class _DashboardPageState extends State<DashboardPage>
                       ? Image.asset(
                           'assets/police-telegrams-icon.png',
                           fit: BoxFit.contain,
-                          semanticLabel: 'الصورة الافتراضية لنظام برقيات الشرطة',
+                          semanticLabel:
+                              'الصورة الافتراضية لنظام برقيات الشرطة',
                         )
                       : Image.memory(
                           logoBytes,
@@ -2620,7 +2621,8 @@ class _DashboardPageState extends State<DashboardPage>
                               Image.asset(
                                 'assets/police-telegrams-icon.png',
                                 fit: BoxFit.contain,
-                                semanticLabel: 'الصورة الافتراضية لنظام برقيات الشرطة',
+                                semanticLabel:
+                                    'الصورة الافتراضية لنظام برقيات الشرطة',
                               ),
                         ),
                 ),

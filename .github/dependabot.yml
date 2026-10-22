@@ -5,8 +5,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 8
+    versioning-strategy: increase
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
       production-and-development-dependencies:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
@@ -20,8 +26,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    versioning-strategy: increase
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
       flutter-dependencies:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
@@ -35,5 +47,6 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    versioning-strategy: increase
     commit-message:
       prefix: "ci"

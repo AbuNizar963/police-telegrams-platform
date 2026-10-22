@@ -8,7 +8,8 @@ import {
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
+    const rawKey = req.params[0];
+    const key = Array.isArray(rawKey) ? rawKey.join("/") : rawKey;
 
     if (!key) {
       res.status(400).send("Missing storage key");

@@ -84,7 +84,7 @@ RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public
-AS $$
+AS $save_department_settings_atomic$
 DECLARE
   v_id integer;
   v_serial_start integer := GREATEST(
@@ -226,7 +226,7 @@ BEGIN
 
   RETURN v_id;
 END;
-$$;
+$save_department_settings_atomic$;
 
 REVOKE ALL ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
   FROM PUBLIC, anon, authenticated;

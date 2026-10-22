@@ -1565,8 +1565,11 @@ class _DashboardPageState extends State<DashboardPage>
             final scopedLogo = organizationSettings['logoUrl']
                 ?.toString()
                 .trim();
-            mergedSettings['logoUrl'] =
-                scopedLogo == null || scopedLogo.isEmpty ? null : scopedLogo;
+            if (scopedLogo == null || scopedLogo.isEmpty) {
+              mergedSettings['logoUrl'] = null;
+            } else {
+              mergedSettings['logoUrl'] = scopedLogo;
+            }
           }
         } catch (_) {
           // Preserve the account-scoped logo when owner-only refresh is denied.

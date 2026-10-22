@@ -5,3 +5,10 @@ REVOKE ALL ON FUNCTION public.save_department_settings_atomic(integer, uuid, jso
 
 GRANT EXECUTE ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
   TO service_role;
+
+-- Restrict the global serial allocator to trusted server-side callers.
+REVOKE ALL ON FUNCTION public.allocate_serial_number()
+  FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.allocate_serial_number()
+  TO service_role;

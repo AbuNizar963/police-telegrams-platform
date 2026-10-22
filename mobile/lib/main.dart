@@ -1544,16 +1544,18 @@ class _DashboardPageState extends State<DashboardPage>
       // settings.get is scoped to the signed-in account and remains available
       // to organization administrators. Keep its logo as the safe fallback;
       // the platform-owner-only organization endpoint is only a refresh.
+      // A settings logo is safe to use only when the response identifies
+      // the same organization as the active session. Missing organization
+      // metadata is not proof that a legacy logo belongs to this unit.
       mergedSettings['logoUrl'] =
-          savedOrganizationLogo == null || savedOrganizationLogo.isEmpty
-          ? null
-          : savedOrganizationLogo;
+          organizationId != null &&
+              organizationId.isNotEmpty &&
+              settingsOrganizationId == organizationId &&
+              savedOrganizationLogo != null &&
+              savedOrganizationLogo.isNotEmpty
+          ? savedOrganizationLogo
+          : null;
       if (organizationId != null && organizationId.isNotEmpty) {
-        if (settingsOrganizationId != null &&
-            settingsOrganizationId.isNotEmpty &&
-            settingsOrganizationId != organizationId) {
-          mergedSettings['logoUrl'] = null;
-        }
         try {
           final organizationSettings = await widget.api.call(
             'organizations.settings.get',

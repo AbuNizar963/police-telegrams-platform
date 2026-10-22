@@ -44,15 +44,41 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # CI verifies formatting without modifying the checked-out source.
+      # Keep the source-of-truth check strict: CI must never hide unformatted
+      # files by silently accepting formatter changes.
       - name: Verify Dart formatting
+        id: dart_format_check
+        continue-on-error: true
         run: dart format --output=none --set-exit-if-changed lib test
+
+      # When formatting fails, print the exact formatter-produced diff so the
+      # developer can apply the same Dart SDK formatter locally.
+      - name: Show required Dart formatting changes
+        if: steps.dart_format_check.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format lib test
+          git --no-pager diff -- lib test
+          echo "::error::Dart formatting is required. Apply the diff above, commit it, and rerun Actions."
+          exit 1
 
       - name: Analyze Dart source
         run: flutter analyze
 
       - name: Run Flutter tests
         run: flutter test
+
+      - name: Enforce clean formatting and whitespace
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          if [ "${{ steps.dart_format_check.outcome }}" != "success" ]; then
+            echo "::error::Dart formatter check failed. The required formatting diff is printed in the preceding step."
+            exit 1
+          fi
 
 
   build-android-apk:

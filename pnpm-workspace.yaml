@@ -16,10 +16,14 @@ overrides:
   mermaid: ">=11.16.1"
   uuid: ">=11.1.1"
   katex: ">=0.18.2"
+  "@babel/core": ">=7.29.6"
+  browserslist: ">=4.28.7"
+  baseline-browser-mapping: ">=2.11.0"
+  source-map-js: ">=1.2.2"
 
 allowBuilds:
-  '@firebase/util': true
-  '@tailwindcss/oxide': true
+  "@firebase/util": true
+  "@tailwindcss/oxide": true
   esbuild: true
   pnpm: true
   protobufjs: true

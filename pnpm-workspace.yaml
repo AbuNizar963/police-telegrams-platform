@@ -17,7 +17,9 @@ overrides:
   uuid: ">=11.1.1"
   katex: ">=0.18.2"
 
-onlyBuiltDependencies:
-  - "@tailwindcss/oxide"
-  - core-js
-  - esbuild
+allowBuilds:
+  '@firebase/util': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  pnpm: true
+  protobufjs: true

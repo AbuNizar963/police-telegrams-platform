@@ -30,16 +30,17 @@ class OfflineOutboxItem {
   final String state;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'procedure': procedure,
-        'input': input,
-        'createdAt': createdAt,
-        'attempts': attempts,
-        'lastError': lastError,
-        'state': state,
-      };
+    'id': id,
+    'procedure': procedure,
+    'input': input,
+    'createdAt': createdAt,
+    'attempts': attempts,
+    'lastError': lastError,
+    'state': state,
+  };
 
-  factory OfflineOutboxItem.fromJson(Map<String, dynamic> json) => OfflineOutboxItem(
+  factory OfflineOutboxItem.fromJson(Map<String, dynamic> json) =>
+      OfflineOutboxItem(
         id: '${json['id']}',
         procedure: '${json['procedure']}',
         input: Map<String, dynamic>.from(json['input'] as Map),
@@ -50,16 +51,17 @@ class OfflineOutboxItem {
       );
 
   OfflineOutboxItem failed(String message) => OfflineOutboxItem(
-        id: id,
-        procedure: procedure,
-        input: input,
-        createdAt: createdAt,
-        attempts: attempts + 1,
-        lastError: message,
-        state: 'retryable',
-      );
+    id: id,
+    procedure: procedure,
+    input: input,
+    createdAt: createdAt,
+    attempts: attempts + 1,
+    lastError: message,
+    state: 'retryable',
+  );
 
-  OfflineOutboxItem marked(String nextState, String message) => OfflineOutboxItem(
+  OfflineOutboxItem marked(String nextState, String message) =>
+      OfflineOutboxItem(
         id: id,
         procedure: procedure,
         input: input,
@@ -88,7 +90,9 @@ class OfflineFirstService {
 
   Future<void> start({required String scope}) async {
     _scope = _safeScope(scope);
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
       if (results.any((result) => result != ConnectivityResult.none)) {
         unawaited(sync());
       }
@@ -111,8 +115,11 @@ class OfflineFirstService {
       final raw = await _readChunked('$_prefix.outbox.$id');
       if (raw == null) continue;
       try {
-        items.add(OfflineOutboxItem.fromJson(
-            Map<String, dynamic>.from(jsonDecode(raw) as Map)));
+        items.add(
+          OfflineOutboxItem.fromJson(
+            Map<String, dynamic>.from(jsonDecode(raw) as Map),
+          ),
+        );
       } catch (_) {
         // Corrupt entries are not allowed to break the rest of the outbox.
       }
@@ -125,7 +132,9 @@ class OfflineFirstService {
 
   Future<Map<String, dynamic>?> cachedStats() async {
     final raw = await _storage.read(key: _statsKey);
-    return raw == null ? null : Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    return raw == null
+        ? null
+        : Map<String, dynamic>.from(jsonDecode(raw) as Map);
   }
 
   Future<List<dynamic>?> cachedTelegrams() async {
@@ -133,16 +142,25 @@ class OfflineFirstService {
     return raw == null ? null : jsonDecode(raw) as List<dynamic>;
   }
 
-  Future<void> cacheDashboard({required Map<String, dynamic> stats, required List<dynamic> telegrams}) async {
+  Future<void> cacheDashboard({
+    required Map<String, dynamic> stats,
+    required List<dynamic> telegrams,
+  }) async {
     await _storage.write(key: _statsKey, value: jsonEncode(stats));
     await _storage.write(key: _telegramsKey, value: jsonEncode(telegrams));
   }
 
-  Future<Map<String, dynamic>> createTelegram(Map<String, dynamic> input) async {
+  Future<Map<String, dynamic>> createTelegram(
+    Map<String, dynamic> input,
+  ) async {
     final enriched = Map<String, dynamic>.from(input);
     enriched['idempotencyKey'] ??= _uuid.v4();
     try {
-      final result = await api.call('telegrams.create', mutation: true, input: enriched);
+      final result = await api.call(
+        'telegrams.create',
+        mutation: true,
+        input: enriched,
+      );
       return Map<String, dynamic>.from(result as Map);
     } on NetworkException {
       final item = OfflineOutboxItem(
@@ -161,7 +179,10 @@ class OfflineFirstService {
         'offlinePending': true,
       };
       final current = await cachedTelegrams() ?? <dynamic>[];
-      await cacheDashboard(stats: await cachedStats() ?? {}, telegrams: [local, ...current]);
+      await cacheDashboard(
+        stats: await cachedStats() ?? {},
+        telegrams: [local, ...current],
+      );
       return local;
     }
   }
@@ -201,12 +222,14 @@ class OfflineFirstService {
       await api.call(procedure, mutation: true, input: input);
       return true;
     } on NetworkException {
-      await _append(OfflineOutboxItem(
-        id: _uuid.v4(),
-        procedure: procedure,
-        input: input,
-        createdAt: DateTime.now().toUtc().toIso8601String(),
-      ));
+      await _append(
+        OfflineOutboxItem(
+          id: _uuid.v4(),
+          procedure: procedure,
+          input: input,
+          createdAt: DateTime.now().toUtc().toIso8601String(),
+        ),
+      );
       return false;
     }
   }
@@ -218,25 +241,32 @@ class OfflineFirstService {
     required List<int> bytes,
   }) async {
     if (bytes.length > _maxOfflineAttachmentBytes) {
-      throw StateError('لا يمكن حفظ مرفق بهذا الحجم دون اتصال. أعد المحاولة مع اتصال الإنترنت أو اختر مرفقًا أصغر من 2 ميغابايت');
+      throw StateError(
+        'لا يمكن حفظ مرفق بهذا الحجم دون اتصال. أعد المحاولة مع اتصال الإنترنت أو اختر مرفقًا أصغر من 2 ميغابايت',
+      );
     }
-    await _append(OfflineOutboxItem(
-      id: _uuid.v4(),
-      procedure: 'telegrams.uploadAttachment',
-      input: {
-        'telegramId': telegramId,
-        'fileName': fileName,
-        'contentType': contentType,
-        'base64': base64Encode(bytes),
-      },
-      createdAt: DateTime.now().toUtc().toIso8601String(),
-    ));
+    await _append(
+      OfflineOutboxItem(
+        id: _uuid.v4(),
+        procedure: 'telegrams.uploadAttachment',
+        input: {
+          'telegramId': telegramId,
+          'fileName': fileName,
+          'contentType': contentType,
+          'base64': base64Encode(bytes),
+        },
+        createdAt: DateTime.now().toUtc().toIso8601String(),
+      ),
+    );
   }
 
   Future<void> _append(OfflineOutboxItem item) async {
     final ids = await _readJsonList(_outboxIndexKey);
     ids.add(item.id);
-    await _writeChunked('$_prefix.outbox.${item.id}', jsonEncode(item.toJson()));
+    await _writeChunked(
+      '$_prefix.outbox.${item.id}',
+      jsonEncode(item.toJson()),
+    );
     await _storage.write(key: _outboxIndexKey, value: jsonEncode(ids));
   }
 
@@ -275,7 +305,8 @@ class OfflineFirstService {
   }
 
   Future<void> _writeChunked(String prefix, String value) async {
-    final oldCount = int.tryParse(await _storage.read(key: '$prefix.parts') ?? '') ?? 0;
+    final oldCount =
+        int.tryParse(await _storage.read(key: '$prefix.parts') ?? '') ?? 0;
     for (var index = 0; index < oldCount; index++) {
       await _storage.delete(key: '$prefix.$index');
     }
@@ -283,13 +314,19 @@ class OfflineFirstService {
     for (var index = 0; index < count; index++) {
       final start = index * _chunkSize;
       final end = (start + _chunkSize).clamp(0, value.length).toInt();
-      await _storage.write(key: '$prefix.$index', value: value.substring(start, end));
+      await _storage.write(
+        key: '$prefix.$index',
+        value: value.substring(start, end),
+      );
     }
     await _storage.write(key: '$prefix.parts', value: '$count');
   }
 
-  String _safeScope(String value) => value.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
-  String _message(Object error) => error.toString().replaceFirst('Exception: ', '');
+  String _safeScope(String value) =>
+      value.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
+  String _message(Object error) =>
+      error.toString().replaceFirst('Exception: ', '');
 }
 
-bool isOfflineAttachmentSizeAllowed(int bytes) => bytes <= _maxOfflineAttachmentBytes;
+bool isOfflineAttachmentSizeAllowed(int bytes) =>
+    bytes <= _maxOfflineAttachmentBytes;

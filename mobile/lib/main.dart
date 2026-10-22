@@ -1541,12 +1541,9 @@ class _DashboardPageState extends State<DashboardPage>
       final savedOrganizationLogo = mergedSettings['logoUrl']
           ?.toString()
           .trim();
-      // settings.get is scoped to the signed-in account and remains available
-      // to organization administrators. Keep its logo as the safe fallback;
-      // the platform-owner-only organization endpoint is only a refresh.
-      // A settings logo is safe to use only when the response identifies
-      // the same organization as the active session. Missing organization
-      // metadata is not proof that a legacy logo belongs to this unit.
+      // Use settings.get as a fallback only when its organization ID
+      // matches the active organization. Missing metadata cannot prove that
+      // a legacy logo belongs to this unit; the scoped endpoint may refresh it.
       mergedSettings['logoUrl'] =
           organizationId != null &&
               organizationId.isNotEmpty &&

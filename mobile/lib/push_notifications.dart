@@ -26,6 +26,10 @@ class PushNotificationService {
         sound: true,
         provisional: false,
       );
+      // Keep sending the FCM registration token expected by the current server.
+      // register/onRegistered now exposes a Firebase Installation ID and needs
+      // a matching backend delivery migration before it can replace this call.
+      // ignore: deprecated_member_use
       final token = await _messaging.getToken();
       if (token != null && token.isNotEmpty) onToken(token);
 

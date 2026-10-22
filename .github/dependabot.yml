@@ -9,6 +9,9 @@ updates:
       production-and-development-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
     commit-message:
       prefix: "deps"
 
@@ -21,6 +24,9 @@ updates:
       flutter-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
     commit-message:
       prefix: "deps(mobile)"
 

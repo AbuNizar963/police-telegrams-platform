@@ -20,6 +20,8 @@ overrides:
   browserslist: ">=4.28.7"
   baseline-browser-mapping: ">=2.11.0"
   source-map-js: ">=1.2.2"
+  esbuild: ">=0.25.0"
+  postcss-selector-parser: ">=7.1.6"
 
 allowBuilds:
   "@firebase/util": true

@@ -163,12 +163,6 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.save_department_settings_atomic(integer, uuid, jsonb)
-  TO service_role;
-
-
 -- The global serial allocator also inserts the legacy template row. Point its
 -- conflict target at the partial unique index created above.
 -- Keep telegram numbering monotonic even when settings drift behind existing rows.
@@ -221,6 +215,3 @@ begin
   return allocated::integer;
 end;
 $$;
-
-revoke all on function public.allocate_serial_number() from public, anon, authenticated;
-grant execute on function public.allocate_serial_number() to service_role;

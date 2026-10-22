@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -152,18 +153,35 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   }
 
   Future<void> pickAttachment() async {
-    final result = await FilePicker.platform.pickFiles(withData: true);
-    if (result == null || result.files.single.bytes == null) return;
-    final file = result.files.single;
+    final file = await FilePicker.pickFile();
+    if (file == null) return;
     final contentType = _contentType(file.extension);
     if (contentType == null) {
       _show('نوع الملف غير مدعوم');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    const maxAttachmentSize = 10 * 1024 * 1024;
+    final knownSize = file.lengthSync();
+    if (knownSize != null && knownSize > maxAttachmentSize) {
       _show('حجم المرفق يتجاوز 10 ميغابايت');
       return;
     }
+    final bytesBuilder = BytesBuilder(copy: false);
+    var totalBytes = 0;
+    try {
+      await for (final chunk in file.readAsByteStream()) {
+        totalBytes += chunk.length;
+        if (totalBytes > maxAttachmentSize) {
+          _show('حجم المرفق يتجاوز 10 ميغابايت');
+          return;
+        }
+        bytesBuilder.add(chunk);
+      }
+    } catch (_) {
+      _show('تعذر قراءة الملف');
+      return;
+    }
+    final bytes = bytesBuilder.takeBytes();
     await _run(() async {
       try {
         await widget.api.call(
@@ -173,7 +191,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             'telegramId': widget.telegramId,
             'fileName': file.name,
             'contentType': contentType,
-            'base64': base64Encode(file.bytes!),
+            'base64': base64Encode(bytes),
           },
         );
       } catch (_) {
@@ -181,7 +199,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           telegramId: widget.telegramId,
           fileName: file.name,
           contentType: contentType,
-          bytes: file.bytes!,
+          bytes: bytes,
         );
         _show('تم حفظ المرفق محليًا، وسيُرفع عند عودة الاتصال');
         return;

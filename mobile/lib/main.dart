@@ -210,7 +210,9 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     offline = OfflineFirstService(api: widget.api);
-    connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+    connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
       if (!mounted) return;
       final online = results.any((item) => item != ConnectivityResult.none);
       setState(() {
@@ -218,9 +220,12 @@ class _DashboardPageState extends State<DashboardPage> {
       });
       if (online) unawaited(refresh());
     });
-    unawaited(offline.start(
-      scope: '${widget.account['id'] ?? widget.account['username'] ?? 'default'}',
-    ));
+    unawaited(
+      offline.start(
+        scope:
+            '${widget.account['id'] ?? widget.account['username'] ?? 'default'}',
+      ),
+    );
     unawaited(_loadCachedThenRefresh());
     push.initialize(
       onToken: _registerPushToken,
@@ -245,12 +250,11 @@ class _DashboardPageState extends State<DashboardPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            TelegramDetailsPage(
-              api: widget.api,
-              offline: offline,
-              telegramId: telegramId,
-            ),
+        builder: (_) => TelegramDetailsPage(
+          api: widget.api,
+          offline: offline,
+          telegramId: telegramId,
+        ),
       ),
     );
   }

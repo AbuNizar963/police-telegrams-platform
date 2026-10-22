@@ -1,0 +1,1 @@
+-- RPC privilege changes are split into one statement per migration for Supabase compatibility.

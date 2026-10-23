@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -82,7 +83,15 @@ class PoliceApi {
                       : 8,
                 ),
               );
-    } catch (_) {
+    } catch (error) {
+      // Only transport failures should trigger offline fallback. Unexpected
+      // programming errors must remain visible instead of masquerading as
+      // connectivity problems.
+      if (error is! IOException &&
+          error is! http.ClientException &&
+          error is! TimeoutException) {
+        rethrow;
+      }
       if (!mutation && allowOfflineCache) {
         final cached = await _readOfflineResponse(procedure, input);
         if (cached != null) return cached;
@@ -90,6 +99,14 @@ class PoliceApi {
       throw const NetworkException();
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final isTransientFailure =
+          response.statusCode == 408 ||
+          response.statusCode == 429 ||
+          response.statusCode >= 500;
+      if (!mutation && allowOfflineCache && isTransientFailure) {
+        final cached = await _readOfflineResponse(procedure, input);
+        if (cached != null) return cached;
+      }
       throw ApiException(response.statusCode, _message(response.body));
     }
     final decoded = jsonDecode(response.body);
@@ -112,6 +129,14 @@ class PoliceApi {
         final id = input?['id'];
         if (id == null || '$id'.trim().isEmpty) return null;
         return 'offline_telegram_$id';
+      case 'telegrams.list':
+        return _offlineInputResponseKey('offline_telegrams_list', input);
+      case 'reports.telegrams':
+        return _offlineInputResponseKey('offline_telegram_report', input);
+      case 'notifications.inbox':
+        return 'offline_notifications_inbox';
+      case 'profile.get':
+        return 'offline_profile';
       case 'settings.get':
         return 'offline_settings';
       case 'platformDocumentSettings.get':
@@ -125,6 +150,16 @@ class PoliceApi {
       default:
         return null;
     }
+  }
+
+  String? _offlineInputResponseKey(String prefix, Map<String, dynamic>? input) {
+    // Keep cache keys bounded. The same query input maps to the same key,
+    // while different filters/searches can never reuse each other's results.
+    final encoded = base64Url
+        .encode(utf8.encode(jsonEncode(input ?? <String, dynamic>{})))
+        .replaceAll('=', '');
+    if (encoded.length > 180) return null;
+    return '${prefix}_$encoded';
   }
 
   Future<dynamic> _readOfflineResponse(
@@ -179,6 +214,9 @@ class PoliceApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(response.statusCode, _message(response.body));
     }
+    // Do not let a newly authenticated account inherit the previous
+    // account's offline responses on a shared device.
+    await _clearOfflineCache();
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
       await _storage.write(
@@ -228,8 +266,41 @@ class PoliceApi {
     try {
       await call('auth.logout', mutation: true);
     } finally {
+      await _clearOfflineCache();
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
+    }
+  }
+
+  Future<void> _clearOfflineCache() async {
+    try {
+      final storedValues = await _storage.readAll();
+      final keys = storedValues.keys
+          .where(
+            (key) => key.startsWith('offline_') || key == 'cached_dashboard',
+          )
+          .toList(growable: false);
+      for (final key in keys) {
+        await _storage.delete(key: key);
+      }
+    } catch (_) {
+      // Keep logout/login resilient even if secure-storage enumeration fails.
+      for (final key in const [
+        'offline_settings',
+        'offline_platform_document_settings',
+        'offline_routing_directory',
+        'offline_organization_context',
+        'offline_dashboard_stats',
+        'offline_notifications_inbox',
+        'offline_profile',
+        'cached_dashboard',
+      ]) {
+        try {
+          await _storage.delete(key: key);
+        } catch (_) {
+          // Best-effort cleanup; authentication state is cleared separately.
+        }
+      }
     }
   }
 

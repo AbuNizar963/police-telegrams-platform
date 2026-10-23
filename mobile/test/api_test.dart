@@ -9,6 +9,25 @@ import 'package:police_telegrams/api.dart';
 
 final _secureStorageForTest = <String, String>{};
 
+Future<T> _withOfflineCacheContext<T>(
+  String operation,
+  Future<T> Function() action,
+) async {
+  try {
+    return await action();
+  } on NetworkException catch (error) {
+    final cacheKeys =
+        _secureStorageForTest.keys
+            .where((key) => key.startsWith('offline_'))
+            .toList(growable: false)
+          ..sort();
+    throw StateError(
+      '$operation could not read its cached response: $error. '
+      'Available offline cache keys: ${cacheKeys.join(', ')}',
+    );
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -34,6 +53,8 @@ void main() {
               case 'deleteAll':
                 _secureStorageForTest.clear();
                 return null;
+              case 'readAll':
+                return Map<String, String>.from(_secureStorageForTest);
               default:
                 return null;
             }
@@ -44,7 +65,9 @@ void main() {
   test(
     'critical platform document reads ignore stale cached settings',
     () async {
-      final onlineClient = MockClient((request) async {
+      var offline = false;
+      final client = MockClient((request) async {
+        if (offline) throw const SocketException('offline');
         return http.Response(
           jsonEncode({
             'result': {
@@ -61,32 +84,214 @@ void main() {
           200,
         );
       });
-      addTearDown(onlineClient.close);
-      final onlineApi = PoliceApi(
+      addTearDown(client.close);
+      final api = PoliceApi(
         baseUrl: 'https://police.example.test',
-        httpClient: onlineClient,
+        httpClient: client,
       );
-      await onlineApi.call('platformDocumentSettings.get');
+      await api.call('platformDocumentSettings.get');
 
-      final offlineClient = MockClient((request) async {
-        throw const SocketException('offline');
-      });
-      addTearDown(offlineClient.close);
-      final offlineApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: offlineClient,
-      );
-
-      expect(await offlineApi.call('platformDocumentSettings.get'), isA<Map>());
+      offline = true;
+      expect(await api.call('platformDocumentSettings.get'), isA<Map>());
       await expectLater(
-        offlineApi.call(
-          'platformDocumentSettings.get',
-          allowOfflineCache: false,
-        ),
+        api.call('platformDocumentSettings.get', allowOfflineCache: false),
         throwsA(isA<NetworkException>()),
       );
     },
   );
+
+  test(
+    'read-only lists, reports, notifications, and profile work offline',
+    () async {
+      var offline = false;
+      final client = MockClient((request) async {
+        if (offline) throw const SocketException('offline');
+        final path = request.url.path;
+        final value = path.endsWith('/notifications.inbox')
+            ? <dynamic>[
+                {'id': 3, 'title': 'إشعار محفوظ'},
+              ]
+            : path.endsWith('/profile.get')
+            ? <String, dynamic>{'name': 'مشغل محفوظ'}
+            : path.endsWith('/reports.telegrams')
+            ? <String, dynamic>{'total': 4, 'items': <dynamic>[]}
+            : <String, dynamic>{
+                'items': [
+                  {'id': 7, 'subject': 'برقية محفوظة'},
+                ],
+              };
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'result': {
+                'data': {'json': value},
+              },
+            }),
+          ),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+      addTearDown(client.close);
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      final listInput = {'status': 'all', 'page': 1};
+      final reportInput = {'from': '2026-10-01', 'to': '2026-10-23'};
+      await _withOfflineCacheContext(
+        'telegrams.list online seed',
+        () => api.call('telegrams.list', input: listInput),
+      );
+      expect(
+        _secureStorageForTest.keys.any(
+          (key) => key.startsWith('offline_telegrams_list_'),
+        ),
+        isTrue,
+        reason: 'The successful telegram list response should be cached.',
+      );
+      await _withOfflineCacheContext(
+        'reports.telegrams online seed',
+        () => api.call('reports.telegrams', input: reportInput),
+      );
+      expect(
+        _secureStorageForTest.keys.any(
+          (key) => key.startsWith('offline_telegram_report_'),
+        ),
+        isTrue,
+        reason: 'The successful report response should be cached.',
+      );
+      await _withOfflineCacheContext(
+        'notifications.inbox online seed',
+        () => api.call('notifications.inbox'),
+      );
+      expect(
+        _secureStorageForTest.containsKey('offline_notifications_inbox'),
+        isTrue,
+      );
+      await _withOfflineCacheContext(
+        'profile.get online seed',
+        () => api.call('profile.get'),
+      );
+      expect(_secureStorageForTest.containsKey('offline_profile'), isTrue);
+
+      offline = true;
+      expect(
+        (await _withOfflineCacheContext(
+          'telegrams.list offline read',
+          () => api.call('telegrams.list', input: listInput),
+        ))['items'],
+        hasLength(1),
+      );
+      final reportResult = await _withOfflineCacheContext(
+        'reports.telegrams offline read',
+        () => api.call('reports.telegrams', input: reportInput),
+      );
+      expect(reportResult['total'], 4);
+      expect(
+        await _withOfflineCacheContext(
+          'notifications.inbox offline read',
+          () => api.call('notifications.inbox'),
+        ),
+        hasLength(1),
+      );
+      expect(
+        (await _withOfflineCacheContext(
+          'profile.get offline read',
+          () => api.call('profile.get'),
+        ))['name'],
+        'مشغل محفوظ',
+      );
+      await expectLater(
+        api.call('telegrams.list', input: {'status': 'urgent', 'page': 1}),
+        throwsA(isA<NetworkException>()),
+      );
+    },
+  );
+
+  test(
+    'transient server errors use cached reads but auth errors do not',
+    () async {
+      var statusCode = 200;
+      final client = MockClient((request) async {
+        if (statusCode != 200) {
+          return http.Response(
+            statusCode == 503 ? 'service unavailable' : 'unauthorized',
+            statusCode,
+          );
+        }
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'result': {
+                'data': {
+                  'json': {'departmentName': 'قسم محفوظ'},
+                },
+              },
+            }),
+          ),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+      addTearDown(client.close);
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      await _withOfflineCacheContext(
+        'settings.get online seed',
+        () => api.call('settings.get'),
+      );
+
+      statusCode = 503;
+      expect(
+        (await _withOfflineCacheContext(
+          'settings.get fallback after HTTP 503',
+          () => api.call('settings.get'),
+        ))['departmentName'],
+        'قسم محفوظ',
+      );
+
+      statusCode = 401;
+      await expectLater(api.call('settings.get'), throwsA(isA<ApiException>()));
+    },
+  );
+
+  test('logout clears offline caches and preserves the outbox', () async {
+    _secureStorageForTest['session_cookie'] = 'session=value';
+    _secureStorageForTest['offline_settings'] = '{"departmentName":"old"}';
+    _secureStorageForTest['offline_telegrams_list_e30'] = '{"items":[]}';
+    _secureStorageForTest['cached_dashboard'] = '{"stats":{},"telegrams":[]}';
+    _secureStorageForTest['telegram_outbox_v1'] = '[{"id":"queued"}]';
+
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {'json': null},
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+
+    await api.logout();
+
+    expect(_secureStorageForTest.containsKey('session_cookie'), isFalse);
+    expect(_secureStorageForTest.containsKey('offline_settings'), isFalse);
+    expect(
+      _secureStorageForTest.containsKey('offline_telegrams_list_e30'),
+      isFalse,
+    );
+    expect(_secureStorageForTest.containsKey('cached_dashboard'), isFalse);
+    expect(_secureStorageForTest.containsKey('telegram_outbox_v1'), isTrue);
+  });
 
   test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(

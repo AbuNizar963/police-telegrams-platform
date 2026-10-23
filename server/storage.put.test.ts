@@ -27,9 +27,7 @@ describe("stable storage URLs", () => {
       "application/pdf"
     );
 
-    expect(result.key).toMatch(
-      /^telegrams\/7\/report_[a-f0-9]{8}\.pdf$/
-    );
+    expect(result.key).toMatch(/^telegrams\/7\/report_[a-f0-9]{8}\.pdf$/);
     expect(result.url).toBe(`/api/storage/${result.key}`);
     expect(upload).toHaveBeenCalledWith(
       result.key,

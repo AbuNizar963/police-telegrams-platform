@@ -192,6 +192,12 @@ class _TestPoliceApi extends PoliceApi {
         'logoUrl': organizationLogoUrl,
       },
       'organizations.routingDirectory' => <dynamic>[],
+      'platformDocumentSettings.get' => {
+        'showMinistryWatermarkText': true,
+        'watermarkOpacityPercent': 16,
+        'headerDividerColor': '#b49a55',
+        'showVerificationQr': true,
+      },
       'notifications.inbox' => <dynamic>[],
       _ => <String, dynamic>{},
     };

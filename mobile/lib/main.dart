@@ -1169,6 +1169,11 @@ class _DashboardPageState extends State<DashboardPage>
       case 'department':
         _pushPage(DepartmentSettingsPage(api: widget.api));
         break;
+      case 'platform_document_settings':
+        if (activeOrganizationIsOwner || _account['isPlatformOwner'] == true) {
+          _pushPage(PlatformDocumentSettingsPage(api: widget.api));
+        }
+        break;
       case 'organizations':
         _pushPage(NativeOrganizationManagementPage(api: widget.api));
         break;
@@ -2284,6 +2289,15 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إدارة المستخدمين وإضافة الحسابات',
                   ),
                 ),
+                if (activeOrganizationIsOwner ||
+                    _account['isPlatformOwner'] == true)
+                  const PopupMenuItem(
+                    value: 'platform_document_settings',
+                    child: _AccountMenuItem(
+                      icon: Icons.tune_rounded,
+                      title: 'إعدادات النظام والوثائق',
+                    ),
+                  ),
                 const PopupMenuItem(
                   value: 'regions',
                   child: _AccountMenuItem(

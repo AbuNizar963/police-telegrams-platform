@@ -77,11 +77,12 @@ void main() {
   );
 
   test(
-    'omits the QR from the document when organization settings disable it',
+    'omits the QR from the document when platform settings disable it',
     () {
       final html = buildOfficialTelegramHtml(
         telegram: telegram(),
-        settings: const {'showVerificationQr': false},
+        settings: const {},
+        platformDocumentSettings: const {'showVerificationQr': false},
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/verify-token',
         fontDataUrls: fonts,
@@ -127,13 +128,45 @@ void main() {
       expect(html, contains('column-gap:10mm;row-gap:10mm'));
       expect(html, contains('grid-template-columns:repeat(8,max-content)'));
       expect(html, contains('grid-template-rows:repeat(22,max-content)'));
-      expect(html, contains('object-fit:contain;opacity:.24'));
-      expect(html, contains('overflow:hidden;opacity:.16'));
+      expect(html, contains('object-fit:contain;opacity:0.16'));
+      expect(html, contains('overflow:hidden;opacity:0.16'));
+      expect(
+        html,
+        contains('border-bottom:3px solid #b49a55'),
+      );
       expect(html, contains('object-fit:contain'));
       expect(html, contains('z-index:0'));
       expect(html, contains('z-index:1'));
     },
   );
+
+  test('applies owner branding settings and can hide only the repeated phrase', () {
+    final html = buildOfficialTelegramHtml(
+      telegram: telegram(),
+      settings: const {},
+      platformDocumentSettings: const {
+        'showMinistryWatermarkText': false,
+        'watermarkOpacityPercent': 35,
+        'headerDividerColor': '#2457A6',
+        'showVerificationQr': false,
+      },
+      routingDirectory: const [],
+      verificationUrl: 'https://example.test/verify/token',
+      fontDataUrls: fonts,
+      logoDataUrl: 'data:image/png;base64,AA==',
+    );
+
+    expect(html, isNot(contains('class="watermark-text-pattern"')));
+    expect(html, contains('class="watermark-logo"'));
+    expect(html, isNot(contains('<span>وزارة الداخلية</span>')));
+    expect(html, contains('class="official-logo"'));
+    expect(html, contains('opacity:0.35'));
+    expect(html, contains('border-bottom:3px solid #2457A6'));
+    expect(html, isNot(contains('class="routing-qr"')));
+    expect(html, isNot(contains('<svg')));
+    // The official heading is separate from the repeated watermark option.
+    expect(html, contains('<p class="government-subtitle">وزارة الداخلية</p>'));
+  });
 
   test('preserves source logo resolution and aspect ratio', () async {
     TestWidgetsFlutterBinding.ensureInitialized();

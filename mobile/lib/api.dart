@@ -97,6 +97,8 @@ class PoliceApi {
     final value = data is Map && data.containsKey('json') ? data['json'] : data;
     if (!mutation) {
       await _writeOfflineResponse(procedure, input, value);
+    } else if (procedure == 'platformDocumentSettings.update') {
+      await _writeOfflineResponse('platformDocumentSettings.get', null, value);
     }
     return value;
   }
@@ -111,6 +113,8 @@ class PoliceApi {
         return 'offline_telegram_$id';
       case 'settings.get':
         return 'offline_settings';
+      case 'platformDocumentSettings.get':
+        return 'offline_platform_document_settings';
       case 'organizations.routingDirectory':
         return 'offline_routing_directory';
       case 'organizations.context':

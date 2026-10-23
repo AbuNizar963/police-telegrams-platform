@@ -63,7 +63,7 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
-        hasLength(30),
+        hasLength(176),
       );
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, isNot(contains('class="official-logo"')));
@@ -118,13 +118,15 @@ void main() {
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(
-        html.indexOf('class="watermark-logo"'),
-        lessThan(html.indexOf('class="watermark-text-pattern"')),
+        html.indexOf('class="watermark-text-pattern"'),
+        lessThan(html.indexOf('class="watermark-logo"')),
       );
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(html, isNot(contains('وزارة التربية')));
-      expect(html, contains('width:75%;height:54%'));
-      expect(html, contains('inset:79% 3% 3%'));
+      expect(html, contains('width:93.75%;height:93.75%'));
+      expect(html, contains('column-gap:10mm;row-gap:10mm'));
+      expect(html, contains('grid-template-columns:repeat(8,max-content)'));
+      expect(html, contains('grid-template-rows:repeat(22,max-content)'));
       expect(html, contains('object-fit:contain'));
       expect(html, contains('z-index:0'));
       expect(html, contains('z-index:1'));

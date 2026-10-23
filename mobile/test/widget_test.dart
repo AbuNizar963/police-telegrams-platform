@@ -112,11 +112,13 @@ class _TestPoliceApi extends PoliceApi {
     this.signedIn = false,
     this.organizationLogoUrl,
     this.contextUnavailable = false,
+    this.accountOrganizationId = 'org-1',
   });
 
   final bool signedIn;
   final String? organizationLogoUrl;
   final bool contextUnavailable;
+  final String? accountOrganizationId;
   final calls = <String, Map<String, dynamic>?>{};
   bool logoutCalled = false;
 
@@ -131,7 +133,8 @@ class _TestPoliceApi extends PoliceApi {
           'id': 1,
           'name': 'مشغل النظام',
           'role': 'admin',
-          'organizationId': 'org-1',
+          if (accountOrganizationId != null)
+            'organizationId': accountOrganizationId,
         }
       : null;
 
@@ -673,6 +676,32 @@ void main() {
       final api = _TestPoliceApi(
         signedIn: true,
         contextUnavailable: true,
+        organizationLogoUrl: '/api/storage/department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png',
+      );
+
+      await tester.pumpWidget(PoliceTelegramsApp(api: api));
+      await _pumpDashboardFrames(tester);
+      await _unlockAppIfLocked(tester);
+
+      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'loads the welcome logo from settings when context and account organization are unavailable',
+    (tester) async {
+      _setMobileViewport(tester);
+      _seedExistingPin();
+      final api = _TestPoliceApi(
+        signedIn: true,
+        contextUnavailable: true,
+        accountOrganizationId: null,
         organizationLogoUrl: '/api/storage/department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png',
       );
 

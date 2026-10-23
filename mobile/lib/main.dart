@@ -1549,6 +1549,9 @@ class _DashboardPageState extends State<DashboardPage>
       final contextOrganizationId = organizationContext is Map
           ? organizationContext['organizationId']?.toString().trim()
           : null;
+      final settingsOrganizationId = settings is Map
+          ? settings['organizationId']?.toString().trim()
+          : null;
       final accountOrganization = _account['organization'];
       final accountOrganizationId =
           _account['organizationId'] ??
@@ -1557,14 +1560,13 @@ class _DashboardPageState extends State<DashboardPage>
       final organizationId =
           (contextOrganizationId != null && contextOrganizationId.isNotEmpty)
           ? contextOrganizationId
+          : settingsOrganizationId != null && settingsOrganizationId.isNotEmpty
+          ? settingsOrganizationId
           : accountOrganizationId?.toString().trim();
 
       final mergedSettings = settings is Map
           ? Map<String, dynamic>.from(settings)
           : <String, dynamic>{};
-      final settingsOrganizationId = mergedSettings['organizationId']
-          ?.toString()
-          .trim();
       final savedOrganizationLogo = mergedSettings['logoUrl']
           ?.toString()
           .trim();

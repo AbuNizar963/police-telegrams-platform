@@ -353,7 +353,7 @@ void main() {
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
   });
 
-  testWidgets('official telegram document renders the authorized logo', (
+  testWidgets('official telegram document keeps logo separate from watermark', (
     tester,
   ) async {
     _setMobileViewport(tester);
@@ -379,7 +379,17 @@ void main() {
 
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
     expect(renderer.renderedHtml, contains('class="official-logo"'));
+    expect(
+      renderer.renderedHtml,
+      contains('class="page-watermark"'),
+    );
     expect(renderer.renderedHtml, contains('class="watermark-logo"'));
+    expect(renderer.renderedHtml, contains('class="watermark-text-pattern"'));
+    expect(
+      renderer.renderedHtml.indexOf('class="watermark-text-pattern"'),
+      lessThan(renderer.renderedHtml.indexOf('class="watermark-logo"')),
+    );
+    expect(renderer.renderedHtml, contains('<span>وزارة الداخلية</span>'));
     expect(
       find.byWidgetPredicate(
         (widget) =>

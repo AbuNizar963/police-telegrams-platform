@@ -19,6 +19,8 @@ const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
+const _ministryWatermarkColumns = 5;
+const _ministryWatermarkRows = 30;
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
@@ -886,9 +888,17 @@ String buildOfficialTelegramHtml({
   final logo = logoDataUrl == null
       ? ''
       : '<img class="official-logo" src="${_escapeHtml(logoDataUrl)}" alt="الشعار الرسمي" />';
-  final watermark = logoDataUrl == null
+  final watermarkLogo = logoDataUrl == null
       ? ''
-      : '<div class="page-watermark" aria-hidden="true"><img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" /></div>';
+      : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" />';
+  final watermarkItems = List<String>.filled(
+    _ministryWatermarkColumns * _ministryWatermarkRows,
+    '<span>وزارة الداخلية</span>',
+  ).join();
+  final watermarkText =
+      '<div class="watermark-text-pattern" aria-hidden="true">$watermarkItems</div>';
+  final watermark =
+      '<div class="page-watermark" aria-hidden="true">$watermarkText$watermarkLogo</div>';
   final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
   final fontFaces = [400, 500, 600, 700]
       .map((weight) {
@@ -906,8 +916,10 @@ String buildOfficialTelegramHtml({
 $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
-.telegram-export-page .page-watermark{position:absolute;top:50%;left:50%;z-index:0;width:560px;height:560px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;opacity:.16;pointer-events:none}
- .telegram-export-page .watermark-logo{display:block;width:100%;height:100%;object-fit:contain}
+.telegram-export-page .page-watermark{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:.12}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:3%;display:grid;grid-template-columns:repeat(${_ministryWatermarkColumns},minmax(0,1fr));grid-template-rows:repeat(${_ministryWatermarkRows},minmax(0,1fr));align-items:center;justify-items:center;overflow:hidden;opacity:.2}
+.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:11px;font-weight:400;line-height:1.2;white-space:nowrap}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:1}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid #b49a55;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}

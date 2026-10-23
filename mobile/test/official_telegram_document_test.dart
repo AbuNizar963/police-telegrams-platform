@@ -58,9 +58,15 @@ void main() {
       expect(html, contains('font-family:"Cairo"'));
       expect(html, contains('برقية صادرة'));
       expect(html, contains('درجة الأولوية:</strong> عاجل'));
-      expect(html, isNot(contains('class="page-watermark"')));
+      expect(html, contains('class="page-watermark"'));
+      expect(html, contains('class="watermark-text-pattern"'));
+      expect(html, contains('<span>وزارة الداخلية</span>'));
+      expect(
+        RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
+        hasLength(150),
+      );
+      expect(html, isNot(contains('وزارة التربية')));
       expect(html, isNot(contains('class="official-logo"')));
-      expect(html, isNot(contains('class="watermark-seal"')));
       expect(html, isNot(contains('class="official-seal"')));
       expect(html, contains('رمز QR للتحقق من أصالة البرقية'));
       expect(html, contains('<svg'));
@@ -88,24 +94,39 @@ void main() {
     },
   );
 
-  test('includes the configured organization logo as a visible watermark', () {
-    final html = buildOfficialTelegramHtml(
-      telegram: telegram(),
-      settings: const {},
-      routingDirectory: const [],
-      verificationUrl: 'https://example.test/verify/token',
-      fontDataUrls: fonts,
-      logoDataUrl: 'data:image/png;base64,AA==',
-    );
+  test(
+    'keeps the configured logo in the header and ministry text in watermark',
+    () {
+      final html = buildOfficialTelegramHtml(
+        telegram: telegram(),
+        settings: const {},
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/token',
+        fontDataUrls: fonts,
+        logoDataUrl: 'data:image/png;base64,AA==',
+      );
 
-    expect(
-      html,
-      contains('<img class="watermark-logo" src="data:image/png;base64,AA=="'),
-    );
-    expect(html, contains('object-fit:contain'));
-    expect(html, contains('z-index:0'));
-    expect(html, contains('z-index:1'));
-  });
+      expect(
+        html,
+        contains('<img class="official-logo" src="data:image/png;base64,AA=="'),
+      );
+      expect(
+        html,
+        contains('<img class="watermark-logo" src="data:image/png;base64,AA=="'),
+      );
+      expect(html, contains('class="watermark-text-pattern"'));
+      expect(
+        html.indexOf('class="watermark-text-pattern"'),
+        lessThan(html.indexOf('class="watermark-logo"')),
+      );
+      expect(html, contains('<span>وزارة الداخلية</span>'));
+      expect(html, isNot(contains('وزارة التربية')));
+      expect(html, contains('width:93.75%;height:93.75%'));
+      expect(html, contains('object-fit:contain'));
+      expect(html, contains('z-index:0'));
+      expect(html, contains('z-index:1'));
+    },
+  );
 
   test('preserves source logo resolution and aspect ratio', () async {
     TestWidgetsFlutterBinding.ensureInitialized();

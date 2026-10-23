@@ -1453,12 +1453,11 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const
-                                            Icon(
-                                              Icons.broken_image_outlined,
-                                              color: Colors.blueGrey,
-                                              size: 30,
-                                            ),
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.broken_image_outlined,
+                                          color: Colors.blueGrey,
+                                          size: 30,
+                                        ),
                                       ),
                                     )
                                   : _savedLogoPreviewBytes != null
@@ -1469,12 +1468,11 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const
-                                            Icon(
-                                              Icons.broken_image_outlined,
-                                              color: Colors.blueGrey,
-                                              size: 30,
-                                            ),
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.broken_image_outlined,
+                                          color: Colors.blueGrey,
+                                          size: 30,
+                                        ),
                                       ),
                                     )
                                   : const SizedBox.shrink(),

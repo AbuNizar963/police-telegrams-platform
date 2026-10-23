@@ -126,7 +126,7 @@ void main() {
       await onlineApi.call('reports.telegrams', input: reportInput);
       await onlineApi.call('notifications.inbox');
       await onlineApi.call('profile.get');
-  
+
       final offlineClient = MockClient((request) async {
         throw const SocketException('offline');
       });
@@ -135,15 +135,16 @@ void main() {
         baseUrl: 'https://police.example.test',
         httpClient: offlineClient,
       );
-  
+
       expect(
         (await offlineApi.call('telegrams.list', input: listInput))['items'],
         hasLength(1),
       );
-      expect(
-        (await offlineApi.call('reports.telegrams', input: reportInput))['total'],
-        4,
+      final reportResult = await offlineApi.call(
+        'reports.telegrams',
+        input: reportInput,
       );
+      expect(reportResult['total'], 4);
       expect(
         await offlineApi.call('notifications.inbox'),
         hasLength(1),
@@ -153,11 +154,16 @@ void main() {
         'مشغل محفوظ',
       );
       await expectLater(
-        offlineApi.call('telegrams.list', input: {'status': 'urgent', 'page': 1}),
+        offlineApi.call(
+          'telegrams.list',
+          input: {'status': 'urgent', 'page': 1},
+        ),
         throwsA(isA<NetworkException>()),
       );
     },
-  );  test(
+  );
+
+  test(
     'transient server errors use cached reads but auth errors do not',
     () async {
       final onlineClient = MockClient((request) async {
@@ -178,7 +184,7 @@ void main() {
         httpClient: onlineClient,
       );
       await onlineApi.call('settings.get');
-  
+
       final unavailableClient = MockClient((request) async {
         return http.Response('service unavailable', 503);
       });
@@ -191,7 +197,7 @@ void main() {
         (await unavailableApi.call('settings.get'))['departmentName'],
         'قسم محفوظ',
       );
-  
+
       final unauthorizedClient = MockClient((request) async {
         return http.Response('unauthorized', 401);
       });
@@ -205,7 +211,9 @@ void main() {
         throwsA(isA<ApiException>()),
       );
     },
-  );  test('organization logo is reused when a signed URL token rotates', () async {
+  );
+
+  test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
       'police-telegrams-logo-test-',
     );

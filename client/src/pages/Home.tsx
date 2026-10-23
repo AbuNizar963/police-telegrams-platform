@@ -54,8 +54,8 @@ import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import {
   buildTelegramWatermarkHtml,
   TELEGRAM_WATERMARK_COLUMNS,
+  TELEGRAM_WATERMARK_GAP_MM,
   TELEGRAM_WATERMARK_ROWS,
-  TELEGRAM_WATERMARK_TEXT_TOP_PERCENT,
 } from "@/lib/telegramWatermark";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
@@ -3085,22 +3085,26 @@ function TelegramDetail({
         }
         .telegram-export-page .watermark-logo {
           position: absolute;
-          z-index: 0;
+          z-index: 1;
           top: 50%;
           left: 50%;
-          width: 75%;
-          height: 54%;
+          width: 93.75%;
+          height: 93.75%;
           transform: translate(-50%, -50%);
           object-fit: contain;
           opacity: 0.12;
         }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
-          z-index: 1;
-          inset: ${TELEGRAM_WATERMARK_TEXT_TOP_PERCENT}% 3% 3%;
+          z-index: 0;
+          inset: 1%;
           display: grid;
-          grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, minmax(0, 1fr));
-          grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, minmax(0, 1fr));
+          grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
+          grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);
+          column-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+          row-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+          justify-content: center;
+          align-content: start;
           align-items: center;
           justify-items: center;
           overflow: hidden;

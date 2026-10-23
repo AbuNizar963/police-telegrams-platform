@@ -129,9 +129,6 @@ export default function OwnerOrganizationManagement() {
   const [organizationStatusFilter, setOrganizationStatusFilter] = useState<
     "all" | "active" | "inactive"
   >("all");
-  const [online, setOnline] = useState(
-    () => typeof navigator === "undefined" || navigator.onLine
-  );
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -183,7 +180,6 @@ export default function OwnerOrganizationManagement() {
   });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
-  const uploadLogo = trpc.settings.uploadLogo.useMutation();
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
       setCreatedAccount(result);
@@ -198,15 +194,6 @@ export default function OwnerOrganizationManagement() {
     window.addEventListener("open-owner-organization-management", show);
     return () =>
       window.removeEventListener("open-owner-organization-management", show);
-  }, []);
-  useEffect(() => {
-    const updateOnlineState = () => setOnline(navigator.onLine);
-    window.addEventListener("online", updateOnlineState);
-    window.addEventListener("offline", updateOnlineState);
-    return () => {
-      window.removeEventListener("online", updateOnlineState);
-      window.removeEventListener("offline", updateOnlineState);
-    };
   }, []);
   useEffect(() => {
     if (!editingId || !selectedOrganizationId || !accounts.data?.length) return;
@@ -365,12 +352,6 @@ export default function OwnerOrganizationManagement() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!online) {
-      toast.error(
-        "لا يوجد اتصال؛ لم تُحفظ إعدادات الجهة. أعد المحاولة عند عودة الاتصال."
-      );
-      return;
-    }
     if (form.type !== "central" && !form.parentOrganizationId) {
       toast.error("اختر الجهة الأب من الهيكل التنظيمي قبل الحفظ");
       return;
@@ -467,51 +448,6 @@ export default function OwnerOrganizationManagement() {
           ? `تم حفظ بيانات الجهة، لكن تعذر حفظ إعداداتها: ${message}`
           : message
       );
-    }
-  };
-
-  const handleLogoFile = async (file?: File) => {
-    if (!file) return;
-    if (!online) {
-      toast.error(
-        "لا يوجد اتصال؛ لا يمكن رفع الشعار الآن. أعد المحاولة عند عودة الاتصال."
-      );
-      return;
-    }
-    if (!editingId) {
-      toast.error("احفظ بيانات الجهة أولًا، ثم ارفع شعارها من شاشة التعديل");
-      return;
-    }
-    if (file.type !== "image/png" && file.type !== "image/jpeg") {
-      toast.error("صيغة الشعار يجب أن تكون PNG أو JPG");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("حجم الشعار يجب ألا يتجاوز 5 ميغابايت");
-      return;
-    }
-
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error("تعذر قراءة ملف الشعار"));
-        reader.onload = () => {
-          const value = String(reader.result ?? "");
-          resolve(
-            value.includes(",") ? value.slice(value.indexOf(",") + 1) : value
-          );
-        };
-        reader.readAsDataURL(file);
-      });
-      const result = await uploadLogo.mutateAsync({
-        fileName: file.name,
-        contentType: file.type as "image/png" | "image/jpeg",
-        base64,
-      });
-      setSettingsDraft(current => ({ ...current, logoUrl: result.url }));
-      toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر رفع الشعار");
     }
   };
 
@@ -1286,43 +1222,7 @@ export default function OwnerOrganizationManagement() {
                     </select>
                   </label>
                   <label className="grid gap-1 text-xs font-semibold">
-                    شعار الجهة
-                    <div className="flex items-center gap-3 rounded-lg border bg-muted/20 p-2">
-                      {settingsDraft.logoUrl ? (
-                        <img
-                          src={settingsDraft.logoUrl}
-                          alt="معاينة شعار الجهة"
-                          className="h-14 w-14 rounded-md border bg-white object-contain p-1"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-md border bg-white text-[10px] text-muted-foreground">
-                          بلا شعار
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          className="block w-full text-xs"
-                          disabled={
-                            !editingId || !online || uploadLogo.isPending
-                          }
-                          onChange={event => {
-                            void handleLogoFile(event.target.files?.[0]);
-                            event.currentTarget.value = "";
-                          }}
-                        />
-                        <p className="mt-1 font-normal leading-5 text-muted-foreground">
-                          {uploadLogo.isPending
-                            ? "جارٍ رفع الشعار..."
-                            : !editingId
-                              ? "احفظ الجهة أولًا ثم اختر ملف الشعار"
-                              : !online
-                                ? "الرفع متاح عند عودة الاتصال"
-                                : "PNG أو JPG — الحد الأقصى 5 ميغابايت"}
-                        </p>
-                      </div>
-                    </div>
+                    رابط شعار الجهة
                     <Input
                       dir="ltr"
                       type="url"
@@ -1334,11 +1234,11 @@ export default function OwnerOrganizationManagement() {
                         }))
                       }
                       maxLength={2000}
-                      placeholder="أو أدخل رابط HTTPS آمن"
+                      placeholder="https://..."
                     />
                     <span className="font-normal leading-5 text-muted-foreground">
-                      اترك الرابط فارغًا عند استخدام ملف مرفوع، أو استخدم رابط
-                      HTTPS آمن من CDN رسمي للجهة.
+                      اتركه فارغًا عند عدم وجود شعار، أو استخدم رابط HTTPS آمن
+                      (مثل رابط التخزين أو CDN الرسمي للجهة).
                     </span>
                   </label>
                 </div>

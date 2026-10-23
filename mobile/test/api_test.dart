@@ -215,7 +215,7 @@ void main() {
     },
   );
 
-  test('logout clears cached account data but preserves queued telegrams', () async {
+  test('logout clears offline caches and preserves the outbox', () async {
     _secureStorageForTest['session_cookie'] = 'session=value';
     _secureStorageForTest['offline_settings'] = '{"departmentName":"old"}';
     _secureStorageForTest['offline_telegrams_list_e30'] = '{"items":[]}';

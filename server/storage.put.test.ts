@@ -39,7 +39,7 @@ describe("stable storage URLs", () => {
     expect(createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("returns a stable organization-scoped URL for uploaded logos", async () => {
+  it("returns a stable logo URL", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     const result = await storagePutDepartmentLogo(
       organizationId,

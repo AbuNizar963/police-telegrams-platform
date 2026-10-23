@@ -377,19 +377,17 @@ void main() {
     );
     await tester.pump();
 
+    final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderer.renderedHtml, contains('class="official-logo"'));
+    expect(renderedHtml, contains('class="official-logo"'));
+    expect(renderedHtml, contains('class="page-watermark"'));
+    expect(renderedHtml, contains('class="watermark-logo"'));
+    expect(renderedHtml, contains('class="watermark-text-pattern"'));
     expect(
-      renderer.renderedHtml,
-      contains('class="page-watermark"'),
+      renderedHtml.indexOf('class="watermark-text-pattern"'),
+      lessThan(renderedHtml.indexOf('class="watermark-logo"')),
     );
-    expect(renderer.renderedHtml, contains('class="watermark-logo"'));
-    expect(renderer.renderedHtml, contains('class="watermark-text-pattern"'));
-    expect(
-      renderer.renderedHtml.indexOf('class="watermark-text-pattern"'),
-      lessThan(renderer.renderedHtml.indexOf('class="watermark-logo"')),
-    );
-    expect(renderer.renderedHtml, contains('<span>وزارة الداخلية</span>'));
+    expect(renderedHtml, contains('<span>وزارة الداخلية</span>'));
     expect(
       find.byWidgetPredicate(
         (widget) =>

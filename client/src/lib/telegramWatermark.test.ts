@@ -3,6 +3,7 @@ import {
   buildTelegramWatermarkHtml,
   OFFICIAL_MINISTRY_NAME,
   TELEGRAM_WATERMARK_REPEAT_COUNT,
+  TELEGRAM_WATERMARK_TEXT_TOP_PERCENT,
 } from "./telegramWatermark";
 
 describe("official telegram watermark", () => {
@@ -17,6 +18,8 @@ describe("official telegram watermark", () => {
     );
     expect(html).not.toContain("وزارة التربية");
     expect(OFFICIAL_MINISTRY_NAME).toBe("وزارة الداخلية");
+    expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(30);
+    expect(TELEGRAM_WATERMARK_TEXT_TOP_PERCENT).toBe(79);
   });
 
   it("keeps the organization's logo as a separate watermark layer", () => {
@@ -28,8 +31,8 @@ describe("official telegram watermark", () => {
     expect(html).toContain("mode=mark&amp;size=large");
     expect(html).toContain('class="watermark-text-pattern"');
     expect(html).toContain("وزارة الداخلية");
-    expect(html.indexOf('class="watermark-text-pattern"')).toBeLessThan(
-      html.indexOf('class="watermark-logo"')
+    expect(html.indexOf('class="watermark-logo"')).toBeLessThan(
+      html.indexOf('class="watermark-text-pattern"')
     );
   });
 });

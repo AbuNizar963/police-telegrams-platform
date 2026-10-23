@@ -1,6 +1,7 @@
 export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
 export const TELEGRAM_WATERMARK_COLUMNS = 5;
-export const TELEGRAM_WATERMARK_ROWS = 30;
+export const TELEGRAM_WATERMARK_ROWS = 6;
+export const TELEGRAM_WATERMARK_TEXT_TOP_PERCENT = 79;
 export const TELEGRAM_WATERMARK_REPEAT_COUNT =
   TELEGRAM_WATERMARK_COLUMNS * TELEGRAM_WATERMARK_ROWS;
 
@@ -22,5 +23,5 @@ export function buildTelegramWatermarkHtml(logoUrl?: string | null): string {
     ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" />`
     : "";
 
-  return `<div class="page-watermark" aria-hidden="true"><div class="watermark-text-pattern">${labels}</div>${logo}</div>`;
+  return `<div class="page-watermark" aria-hidden="true">${logo}<div class="watermark-text-pattern">${labels}</div></div>`;
 }

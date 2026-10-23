@@ -55,6 +55,7 @@ import {
   buildTelegramWatermarkHtml,
   TELEGRAM_WATERMARK_COLUMNS,
   TELEGRAM_WATERMARK_ROWS,
+  TELEGRAM_WATERMARK_TEXT_TOP_PERCENT,
 } from "@/lib/telegramWatermark";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
@@ -3084,19 +3085,19 @@ function TelegramDetail({
         }
         .telegram-export-page .watermark-logo {
           position: absolute;
-          z-index: 1;
+          z-index: 0;
           top: 50%;
           left: 50%;
-          width: 93.75%;
-          height: 93.75%;
+          width: 75%;
+          height: 54%;
           transform: translate(-50%, -50%);
           object-fit: contain;
           opacity: 0.12;
         }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
-          z-index: 0;
-          inset: 3%;
+          z-index: 1;
+          inset: ${TELEGRAM_WATERMARK_TEXT_TOP_PERCENT}% 3% 3%;
           display: grid;
           grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, minmax(0, 1fr));
           grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, minmax(0, 1fr));

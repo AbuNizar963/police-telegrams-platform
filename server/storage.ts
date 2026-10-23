@@ -176,14 +176,19 @@ export async function storageGetSignedUrl(
 }
 
 export async function storagePutDepartmentLogo(
+  organizationId: string,
   fileName: string,
   data: Buffer | Uint8Array | string,
   contentType: "image/png" | "image/jpeg"
 ): Promise<{ key: string; url: string }> {
+  const safeOrganizationId = organizationId.trim();
+  if (!/^[0-9a-f-]{36}$/i.test(safeOrganizationId)) {
+    throw new StorageAccessDeniedError();
+  }
   const safeFileName = sanitizeFileName(fileName);
   const extension = contentType === "image/jpeg" ? ".jpg" : ".png";
   const baseName = safeFileName.replace(/\.[^.]*$/, "");
-  const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
+  const key = `department/logos/${safeOrganizationId}/${crypto.randomUUID()}-${baseName}${extension}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
   await getStorageProvider().upload(key, body, {

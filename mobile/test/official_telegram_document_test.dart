@@ -127,6 +127,8 @@ void main() {
       expect(html, contains('column-gap:10mm;row-gap:10mm'));
       expect(html, contains('grid-template-columns:repeat(8,max-content)'));
       expect(html, contains('grid-template-rows:repeat(22,max-content)'));
+      expect(html, contains('object-fit:contain;opacity:.28'));
+      expect(html, contains('overflow:hidden;opacity:.08'));
       expect(html, contains('object-fit:contain'));
       expect(html, contains('z-index:0'));
       expect(html, contains('z-index:1'));

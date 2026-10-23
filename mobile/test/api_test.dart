@@ -16,7 +16,14 @@ Future<T> _withOfflineCacheContext<T>(
   try {
     return await action();
   } on NetworkException catch (error) {
-    throw StateError('$operation could not read its cached response: $error');
+    final cacheKeys = _secureStorageForTest.keys
+        .where((key) => key.startsWith('offline_'))
+        .toList(growable: false)
+      ..sort();
+    throw StateError(
+      '$operation could not read its cached response: $error. '
+      'Available offline cache keys: ${cacheKeys.join(', ')}',
+    );
   }
 }
 

@@ -46,7 +46,9 @@ void main() {
   test(
     'critical platform document reads ignore stale cached settings',
     () async {
-      final onlineClient = MockClient((request) async {
+      var offline = false;
+      final client = MockClient((request) async {
+        if (offline) throw const SocketException('offline');
         return http.Response(
           jsonEncode({
             'result': {
@@ -63,19 +65,17 @@ void main() {
           200,
         );
       });
-      addTearDown(onlineClient.close);
-      final onlineApi = PoliceApi(
+      addTearDown(client.close);
+      final api = PoliceApi(
         baseUrl: 'https://police.example.test',
-        httpClient: onlineClient,
+        httpClient: client,
       );
-      await onlineApi.call('platformDocumentSettings.get');
+      await api.call('platformDocumentSettings.get');
 
       offline = true;
-      final offlineApi = onlineApi;
-
-      expect(await offlineApi.call('platformDocumentSettings.get'), isA<Map>());
+      expect(await api.call('platformDocumentSettings.get'), isA<Map>());
       await expectLater(
-        offlineApi.call(
+        api.call(
           'platformDocumentSettings.get',
           allowOfflineCache: false,
         ),
@@ -87,7 +87,9 @@ void main() {
   test(
     'read-only lists, reports, notifications, and profile work offline',
     () async {
-      final onlineClient = MockClient((request) async {
+      var offline = false;
+      final client = MockClient((request) async {
+        if (offline) throw const SocketException('offline');
         final path = request.url.path;
         final value = path.endsWith('/notifications.inbox')
             ? <dynamic>[
@@ -111,46 +113,32 @@ void main() {
           200,
         );
       });
-      addTearDown(onlineClient.close);
-      final onlineApi = PoliceApi(
+      addTearDown(client.close);
+      final api = PoliceApi(
         baseUrl: 'https://police.example.test',
-        httpClient: onlineClient,
+        httpClient: client,
       );
       final listInput = {'status': 'all', 'page': 1};
       final reportInput = {'from': '2026-10-01', 'to': '2026-10-23'};
-      await onlineApi.call('telegrams.list', input: listInput);
-      await onlineApi.call('reports.telegrams', input: reportInput);
-      await onlineApi.call('notifications.inbox');
-      await onlineApi.call('profile.get');
+      await api.call('telegrams.list', input: listInput);
+      await api.call('reports.telegrams', input: reportInput);
+      await api.call('notifications.inbox');
+      await api.call('profile.get');
 
-      final offlineClient = MockClient((request) async {
-        throw const SocketException('offline');
-      });
-      addTearDown(offlineClient.close);
-      final offlineApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: offlineClient,
-      );
-
+      offline = true;
       expect(
-        (await offlineApi.call('telegrams.list', input: listInput))['items'],
+        (await api.call('telegrams.list', input: listInput))['items'],
         hasLength(1),
       );
-      final reportResult = await offlineApi.call(
+      final reportResult = await api.call(
         'reports.telegrams',
         input: reportInput,
       );
       expect(reportResult['total'], 4);
-      expect(
-        await offlineApi.call('notifications.inbox'),
-        hasLength(1),
-      );
-      expect(
-        (await offlineApi.call('profile.get'))['name'],
-        'مشغل محفوظ',
-      );
+      expect(await api.call('notifications.inbox'), hasLength(1));
+      expect((await api.call('profile.get'))['name'], 'مشغل محفوظ');
       await expectLater(
-        offlineApi.call(
+        api.call(
           'telegrams.list',
           input: {'status': 'urgent', 'page': 1},
         ),
@@ -162,7 +150,14 @@ void main() {
   test(
     'transient server errors use cached reads but auth errors do not',
     () async {
-      final onlineClient = MockClient((request) async {
+      var statusCode = 200;
+      final client = MockClient((request) async {
+        if (statusCode != 200) {
+          return http.Response(
+            statusCode == 503 ? 'service unavailable' : 'unauthorized',
+            statusCode,
+          );
+        }
         return http.Response(
           jsonEncode({
             'result': {
@@ -174,24 +169,19 @@ void main() {
           200,
         );
       });
-      addTearDown(onlineClient.close);
-      final onlineApi = PoliceApi(
+      addTearDown(client.close);
+      final api = PoliceApi(
         baseUrl: 'https://police.example.test',
-        httpClient: onlineClient,
+        httpClient: client,
       );
-      await onlineApi.call('settings.get');
+      await api.call('settings.get');
 
       statusCode = 503;
-      final unavailableApi = onlineApi;
-      expect(
-        (await unavailableApi.call('settings.get'))['departmentName'],
-        'قسم محفوظ',
-      );
+      expect((await api.call('settings.get'))['departmentName'], 'قسم محفوظ');
 
       statusCode = 401;
-      final unauthorizedApi = onlineApi;
       await expectLater(
-        unauthorizedApi.call('settings.get'),
+        api.call('settings.get'),
         throwsA(isA<ApiException>()),
       );
     },

@@ -1087,7 +1087,7 @@ export const appRouter = router({
           base64: z.string().min(1).max(7_000_000),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const bytes = Buffer.from(input.base64, "base64");
         if (bytes.byteLength > 5 * 1024 * 1024) {
           throw new TRPCError({

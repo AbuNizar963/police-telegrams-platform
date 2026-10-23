@@ -493,7 +493,9 @@ export default function OwnerOrganizationManagement() {
             reject(new Error("ملف الشعار فارغ"));
             return;
           }
-          resolve(value.includes(",") ? value.slice(value.indexOf(",") + 1) : value);
+          resolve(
+            value.includes(",") ? value.slice(value.indexOf(",") + 1) : value
+          );
         };
         reader.readAsDataURL(file);
       });
@@ -1299,7 +1301,9 @@ export default function OwnerOrganizationManagement() {
                           type="file"
                           accept="image/png,image/jpeg"
                           className="block w-full text-xs"
-                          disabled={!editingId || !online || uploadLogo.isPending}
+                          disabled={
+                            !editingId || !online || uploadLogo.isPending
+                          }
                           onChange={event => {
                             void handleLogoFile(event.target.files?.[0]);
                             event.currentTarget.value = "";
@@ -1334,14 +1338,18 @@ export default function OwnerOrganizationManagement() {
                         type="button"
                         className="w-fit rounded-md border px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/5"
                         onClick={() =>
-                          setSettingsDraft(current => ({ ...current, logoUrl: "" }))
+                          setSettingsDraft(current => ({
+                            ...current,
+                            logoUrl: "",
+                          }))
                         }
                       >
                         حذف شعار هذه الجهة
                       </button>
                     )}
                     <span className="font-normal leading-5 text-muted-foreground">
-                      حذف الشعار أو استبداله يُعتمد عند الضغط على حفظ الجهة، ولا يؤثر في شعارات الجهات الأخرى.
+                      حذف الشعار أو استبداله يُعتمد عند الضغط على حفظ الجهة، ولا
+                      يؤثر في شعارات الجهات الأخرى.
                     </span>
                   </label>
                 </div>

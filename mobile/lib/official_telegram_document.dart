@@ -919,7 +919,7 @@ $fontFaces
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .telegram-export-page .watermark-logo{position:absolute;z-index:0;top:50%;left:50%;width:75%;height:54%;transform:translate(-50%,-50%);object-fit:contain;opacity:.12}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:1;inset:${_ministryWatermarkTextTopPercent}% 3% 3%;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,minmax(0,1fr));grid-template-rows:repeat($_ministryWatermarkRows,minmax(0,1fr));align-items:center;justify-items:center;overflow:hidden;opacity:.2}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:1;inset:$_ministryWatermarkTextTopPercent% 3% 3%;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,minmax(0,1fr));grid-template-rows:repeat($_ministryWatermarkRows,minmax(0,1fr));align-items:center;justify-items:center;overflow:hidden;opacity:.2}
 .telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:11px;font-weight:400;line-height:1.2;white-space:nowrap}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:1}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid #b49a55;font-weight:700}

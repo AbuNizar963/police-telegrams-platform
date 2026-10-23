@@ -422,10 +422,13 @@ class PoliceApi {
           final cachedAt = DateTime.tryParse(
             metadata['cachedAt']?.toString() ?? '',
           );
+          // Always revalidate: the logo can be overwritten at the same storage
+          // path, which a URL-only cache identity cannot detect. Keep cached
+          // bytes as an offline fallback if the refresh fails.
           if (cachedAt != null &&
               DateTime.now().difference(cachedAt) <
                   _organizationLogoCacheLifetime) {
-            return staleBytes;
+            // Retain the valid cache while the network refresh runs below.
           }
         }
       }

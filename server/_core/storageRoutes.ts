@@ -24,7 +24,7 @@ export function registerStorageRoutes(app: Express): void {
 
     try {
       const isDepartmentLogo =
-        /^department\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i.test(
+        /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i.test(
           key
         );
       if (key.startsWith("department/logos/") && !isDepartmentLogo) {

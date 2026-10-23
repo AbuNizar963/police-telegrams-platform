@@ -108,10 +108,15 @@ Future<void> _unlockAppIfLocked(WidgetTester tester) async {
 }
 
 class _TestPoliceApi extends PoliceApi {
-  _TestPoliceApi({this.signedIn = false, this.organizationLogoUrl});
+  _TestPoliceApi({
+    this.signedIn = false,
+    this.organizationLogoUrl,
+    this.contextUnavailable = false,
+  });
 
   final bool signedIn;
   final String? organizationLogoUrl;
+  final bool contextUnavailable;
   final calls = <String, Map<String, dynamic>?>{};
   bool logoutCalled = false;
 
@@ -121,8 +126,14 @@ class _TestPoliceApi extends PoliceApi {
   }
 
   @override
-  Future<Map<String, dynamic>?> restoreSession() async =>
-      signedIn ? {'id': 1, 'name': 'مشغل النظام', 'role': 'admin'} : null;
+  Future<Map<String, dynamic>?> restoreSession() async => signedIn
+      ? {
+          'id': 1,
+          'name': 'مشغل النظام',
+          'role': 'admin',
+          'organizationId': 'org-1',
+        }
+      : null;
 
   @override
   Future<void> cacheDashboard({
@@ -154,11 +165,14 @@ class _TestPoliceApi extends PoliceApi {
         'inProgress': 2,
         'urgentAwaitingReceipt': 0,
       },
-      'organizations.context' => {
-        'organizationId': 'org-1',
-        'organizationName': 'إدارة الاختبار',
-        'role': 'organization_admin',
-      },
+      'organizations.context' =>
+        contextUnavailable
+            ? null
+            : {
+                'organizationId': 'org-1',
+                'organizationName': 'إدارة الاختبار',
+                'role': 'organization_admin',
+              },
       'organizations.logo' => {
         'organizationId': input?['organizationId'],
         'logoUrl': organizationLogoUrl,
@@ -183,6 +197,14 @@ class _TestPoliceApi extends PoliceApi {
   @override
   Future<Uint8List?> fetchImageAsset(String source) async =>
       source == organizationLogoUrl ? _testPng : null;
+
+  @override
+  Future<Uint8List?> fetchOrganizationLogo({
+    required String organizationId,
+    required String source,
+  }) async => organizationId == 'org-1' && source == organizationLogoUrl
+      ? _testPng
+      : null;
 }
 
 class _UnavailablePoliceApi extends _TestPoliceApi {
@@ -640,6 +662,31 @@ void main() {
       expect(api.calls['telegrams.list']?['direction'], 'incoming');
       expect(api.calls['telegrams.list']?['from'], isA<String>());
       expect(api.calls['telegrams.list']?['to'], isA<String>());
+    },
+  );
+
+  testWidgets(
+    'loads the welcome logo from the account organization when context is unavailable',
+    (tester) async {
+      _setMobileViewport(tester);
+      _seedExistingPin();
+      final api = _TestPoliceApi(
+        signedIn: true,
+        contextUnavailable: true,
+        organizationLogoUrl: '/api/storage/department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png',
+      );
+
+      await tester.pumpWidget(PoliceTelegramsApp(api: api));
+      await _pumpDashboardFrames(tester);
+      await _unlockAppIfLocked(tester);
+
+      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
+        ),
+        findsOneWidget,
+      );
     },
   );
 

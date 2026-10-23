@@ -796,7 +796,12 @@ class _DashboardPageState extends State<DashboardPage>
   String? activeOrganizationRole;
   bool activeOrganizationIsOwner = false;
   String? _organizationLogoUrl;
-  String? _loadedOrganizationLogoUrl;
+  String? _loadedOrganizationLogoIdentity;
+  String? _logoResolvedOrganizationId;
+  DateTime? _logoResolvedAt;
+  bool _logoLookupResolved = false;
+  bool _lastLogoLookupSucceeded = false;
+  DateTime? _lastLogoLoadAttemptAt;
   Uint8List? _organizationLogoBytes;
   String numberSystem = 'latin';
   int unreadNotificationCount = 0;
@@ -903,22 +908,44 @@ class _DashboardPageState extends State<DashboardPage>
         });
   }
 
-  Future<void> _loadOrganizationLogo(String? source) async {
+  Future<void> _loadOrganizationLogo(
+    String? organizationIdValue,
+    String? source,
+  ) async {
     final value = source?.trim();
-    if (value == _loadedOrganizationLogoUrl) return;
-    _loadedOrganizationLogoUrl = value;
     if (value == null || value.isEmpty) {
+      _loadedOrganizationLogoIdentity = null;
+      _lastLogoLoadAttemptAt = null;
       if (mounted) setState(() => _organizationLogoBytes = null);
       return;
     }
+    final organizationId = organizationIdValue?.trim() ?? '';
+    final sourceIdentity = widget.api.organizationLogoCacheIdentity(value);
+    if (organizationId.isEmpty || sourceIdentity.isEmpty) return;
+    final identity = '$organizationId\n$sourceIdentity';
+    final now = DateTime.now();
+    if (_loadedOrganizationLogoIdentity == identity &&
+        _organizationLogoBytes != null) {
+      return;
+    }
+    final lastAttempt = _lastLogoLoadAttemptAt;
+    if (_loadedOrganizationLogoIdentity == identity &&
+        lastAttempt != null &&
+        now.difference(lastAttempt) < const Duration(minutes: 5)) {
+      return;
+    }
+    _loadedOrganizationLogoIdentity = identity;
+    _lastLogoLoadAttemptAt = now;
     Uint8List? imageBytes;
     try {
-      imageBytes = await widget.api.fetchImageAsset(value);
+      imageBytes = await widget.api.fetchOrganizationLogo(
+        organizationId: organizationId,
+        source: value,
+      );
     } catch (_) {
       imageBytes = null;
     }
-    if (!mounted || _loadedOrganizationLogoUrl != value) return;
-    if (imageBytes == null) _loadedOrganizationLogoUrl = null;
+    if (!mounted || _loadedOrganizationLogoIdentity != identity) return;
     setState(() => _organizationLogoBytes = imageBytes);
   }
 
@@ -943,7 +970,7 @@ class _DashboardPageState extends State<DashboardPage>
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       refresh(showLoading: false);
       unawaited(_syncOutbox(showProgress: false));
       _loadUnreadNotificationCount();
@@ -1552,7 +1579,21 @@ class _DashboardPageState extends State<DashboardPage>
               savedOrganizationLogo.isNotEmpty
           ? savedOrganizationLogo
           : null;
-      if (organizationId != null && organizationId.isNotEmpty) {
+      final now = DateTime.now();
+      final logoResolutionIsFresh =
+          organizationId != null &&
+          organizationId.isNotEmpty &&
+          _logoLookupResolved &&
+          _logoResolvedOrganizationId == organizationId &&
+          _logoResolvedAt != null &&
+          now.difference(_logoResolvedAt!) <
+              (_lastLogoLookupSucceeded
+                  ? const Duration(minutes: 10)
+                  : const Duration(minutes: 2));
+      var logoLookupSucceeded = false;
+      if (logoResolutionIsFresh) {
+        mergedSettings['logoUrl'] = _organizationLogoUrl;
+      } else if (organizationId != null && organizationId.isNotEmpty) {
         try {
           final organizationSettings = await widget.api.call(
             'organizations.logo',
@@ -1569,12 +1610,25 @@ class _DashboardPageState extends State<DashboardPage>
             } else {
               mergedSettings['logoUrl'] = scopedLogo;
             }
+            logoLookupSucceeded = true;
           }
         } catch (_) {
           // Preserve the verified account-scoped fallback if logo lookup is unavailable.
         }
       } else {
         mergedSettings['logoUrl'] = null;
+      }
+      if (organizationId != null && organizationId.isNotEmpty) {
+        _logoLookupResolved = true;
+        _logoResolvedOrganizationId = organizationId;
+        _logoResolvedAt = now;
+        _lastLogoLookupSucceeded =
+            logoLookupSucceeded || mergedSettings['logoUrl'] != null;
+      } else {
+        _logoLookupResolved = false;
+        _logoResolvedOrganizationId = null;
+        _logoResolvedAt = null;
+        _lastLogoLookupSucceeded = false;
       }
       settings = mergedSettings;
 
@@ -1590,9 +1644,7 @@ class _DashboardPageState extends State<DashboardPage>
         setState(() {
           _recordServerCheck(true);
           stats = Map<String, dynamic>.from(results[0] as Map);
-          activeOrganizationId = organizationContext is Map
-              ? organizationContext['organizationId']?.toString()
-              : null;
+          activeOrganizationId = organizationId;
           activeOrganizationName = organizationContext is Map
               ? (organizationContext['organizationName'] ??
                         organizationContext['name'])
@@ -1618,7 +1670,7 @@ class _DashboardPageState extends State<DashboardPage>
           _usingCachedData = false;
         });
       }
-      unawaited(_loadOrganizationLogo(_organizationLogoUrl));
+      unawaited(_loadOrganizationLogo(organizationId, _organizationLogoUrl));
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&

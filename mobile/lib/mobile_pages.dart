@@ -1093,6 +1093,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           ? context['organizationId']?.toString().trim()
           : null;
       if (organizationId == null || organizationId.isEmpty) return resolved;
+      resolved['organizationId'] = organizationId;
 
       if (settingsOrganizationId != null &&
           settingsOrganizationId.isNotEmpty &&
@@ -1123,9 +1124,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         Map<String, dynamic>.from(result as Map),
       );
       final logo = _text(settings['logoUrl']);
-      final savedLogoBytes = logo.isEmpty
+      final organizationId = _text(settings['organizationId']);
+      final savedLogoBytes = logo.isEmpty || organizationId.isEmpty
           ? null
-          : await widget.api.fetchImageAsset(logo);
+          : await widget.api.fetchOrganizationLogo(
+              organizationId: organizationId,
+              source: logo,
+            );
       if (!mounted) return;
       setState(() {
         _settings = settings;
@@ -1227,9 +1232,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           Map<String, dynamic>.from(result),
         );
         final savedLogo = _text(saved['logoUrl']);
-        final savedLogoBytes = savedLogo.isEmpty
+        final savedOrganizationId = _text(saved['organizationId']);
+        final savedLogoBytes = savedLogo.isEmpty || savedOrganizationId.isEmpty
             ? null
-            : await widget.api.fetchImageAsset(savedLogo);
+            : await widget.api.fetchOrganizationLogo(
+                organizationId: savedOrganizationId,
+                source: savedLogo,
+              );
         if (!mounted) return;
         setState(() {
           _settings = saved;

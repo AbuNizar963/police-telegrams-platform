@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -24,15 +25,28 @@ class ApiException implements Exception {
 }
 
 class PoliceApi {
-  PoliceApi({String? baseUrl})
-    : baseUrl =
-          baseUrl ??
-          const String.fromEnvironment(
-            'API_BASE_URL',
-            defaultValue: 'https://police-telegrams-platform.vercel.app',
-          );
+  PoliceApi({
+    String? baseUrl,
+    http.Client? httpClient,
+    Directory? imageCacheDirectory,
+  }) : baseUrl =
+           baseUrl ??
+           const String.fromEnvironment(
+             'API_BASE_URL',
+             defaultValue: 'https://police-telegrams-platform.vercel.app',
+           ),
+       _httpClient = httpClient ?? _sharedHttpClient,
+       _imageCacheDirectory = imageCacheDirectory ?? Directory.systemTemp;
+
+  static final http.Client _sharedHttpClient = http.Client();
+  static const _organizationLogoCacheLifetime = Duration(days: 7);
+  static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
+
   final String baseUrl;
+  final http.Client _httpClient;
+  final Directory _imageCacheDirectory;
   final _storage = const FlutterSecureStorage();
+  final Map<String, Future<Uint8List?>> _organizationLogoRequests = {};
 
   Future<dynamic> call(
     String procedure, {
@@ -240,7 +254,7 @@ class PoliceApi {
     }
     late final http.Response response;
     try {
-      response = await http
+      response = await _httpClient
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 8));
     } catch (_) {
@@ -256,6 +270,115 @@ class PoliceApi {
         '';
     final bytes = response.bodyBytes;
     if (!_isSupportedImagePayload(contentType, bytes)) return null;
+    return bytes;
+  }
+
+  String organizationLogoCacheIdentity(String source) {
+    final value = source.trim();
+    if (value.isEmpty) return '';
+    final parsed = Uri.tryParse(value);
+    final baseUri = Uri.parse(baseUrl);
+    final uri = parsed != null && parsed.hasScheme
+        ? parsed
+        : baseUri.resolve(value);
+    if (!uri.isScheme('http') && !uri.isScheme('https')) return '';
+    final path = uri.path;
+    final isSignedStorageUrl =
+        path.contains('/storage/v1/object/sign/') ||
+        path.startsWith('/api/storage/department/logos/');
+    final query = isSignedStorageUrl ? '' : uri.query;
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port$path'
+        '${query.isEmpty ? '' : '?$query'}';
+  }
+
+  Future<Uint8List?> fetchOrganizationLogo({
+    required String organizationId,
+    required String source,
+  }) {
+    final normalizedOrganizationId = organizationId.trim();
+    final identity = organizationLogoCacheIdentity(source);
+    if (normalizedOrganizationId.isEmpty || identity.isEmpty) {
+      return Future.value(null);
+    }
+    final requestKey = '$normalizedOrganizationId\n$identity';
+    final existing = _organizationLogoRequests[requestKey];
+    if (existing != null) return existing;
+
+    final request = _fetchOrganizationLogo(
+      organizationId: normalizedOrganizationId,
+      source: source,
+      identity: identity,
+    );
+    _organizationLogoRequests[requestKey] = request;
+    return request.whenComplete(() {
+      _organizationLogoRequests.remove(requestKey);
+    });
+  }
+
+  Future<Uint8List?> _fetchOrganizationLogo({
+    required String organizationId,
+    required String source,
+    required String identity,
+  }) async {
+    final fileStem = base64Url
+        .encode(utf8.encode(organizationId))
+        .replaceAll('=', '');
+    final cacheDirectory = Directory(
+      '${_imageCacheDirectory.path}${Platform.pathSeparator}'
+      'police-telegrams-organization-logos',
+    );
+    final imageFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
+    );
+    final metadataFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.json',
+    );
+    Uint8List? staleBytes;
+
+    try {
+      final metadata = jsonDecode(await metadataFile.readAsString());
+      if (metadata is Map && metadata['identity'] == identity) {
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isNotEmpty &&
+            bytes.length <= _maximumCachedOrganizationLogoBytes) {
+          staleBytes = Uint8List.fromList(bytes);
+          final cachedAt = DateTime.tryParse(
+            metadata['cachedAt']?.toString() ?? '',
+          );
+          if (cachedAt != null &&
+              DateTime.now().difference(cachedAt) <
+                  _organizationLogoCacheLifetime) {
+            return staleBytes;
+          }
+        }
+      }
+    } catch (_) {
+      // A missing, incomplete, or expired cache is refreshed below.
+    }
+
+    final bytes = await fetchImageAsset(source);
+    if (bytes == null || bytes.isEmpty) return staleBytes;
+    if (bytes.length <= _maximumCachedOrganizationLogoBytes) {
+      try {
+        await cacheDirectory.create(recursive: true);
+        final temporaryImage = File('${imageFile.path}.tmp');
+        final temporaryMetadata = File('${metadataFile.path}.tmp');
+        await temporaryImage.writeAsBytes(bytes, flush: true);
+        await temporaryMetadata.writeAsString(
+          jsonEncode({
+            'identity': identity,
+            'cachedAt': DateTime.now().toIso8601String(),
+          }),
+          flush: true,
+        );
+        await temporaryImage.rename(imageFile.path);
+        await temporaryMetadata.rename(metadataFile.path);
+      } catch (_) {
+        // Image caching is best-effort; a writable cache must not be required
+        // for a valid organization logo to render.
+      }
+    }
     return bytes;
   }
 

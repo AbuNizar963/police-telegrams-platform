@@ -224,7 +224,7 @@ class _OfficialTelegramDocumentPageState
       // Load them together so preview generation does not wait for them in series.
       final resources = await Future.wait<Object?>([
         _loadFontDataUrls(),
-        _loadLogoDataUrl(settingsData['logoUrl']),
+        _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
       final logoDataUrl = resources[1] as String?;
@@ -283,11 +283,17 @@ class _OfficialTelegramDocumentPageState
     return Map<int, String>.fromEntries(entries);
   }
 
-  Future<String?> _loadLogoDataUrl(Object? source) async {
+  Future<String?> _loadLogoDataUrl(
+    Object? source,
+    String organizationId,
+  ) async {
     final url = _value(source, fallback: '');
-    if (url.isEmpty) return null;
+    if (url.isEmpty || organizationId.isEmpty) return null;
     try {
-      final bytes = await widget.api.fetchImageAsset(url);
+      final bytes = await widget.api.fetchOrganizationLogo(
+        organizationId: organizationId,
+        source: url,
+      );
       if (bytes == null || bytes.isEmpty) return null;
       final normalized = await normalizeOfficialDocumentLogo(bytes);
       return 'data:image/png;base64,${base64Encode(normalized)}';

@@ -120,12 +120,14 @@ void main() {
                   {'id': 7, 'subject': 'برقية محفوظة'},
                 ],
               };
-        return http.Response(
-          jsonEncode({
-            'result': {
-              'data': {'json': value},
-            },
-          }),
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'result': {
+                'data': {'json': value},
+              },
+            }),
+          ),
           200,
         );
       });
@@ -217,14 +219,16 @@ void main() {
             statusCode,
           );
         }
-        return http.Response(
-          jsonEncode({
-            'result': {
-              'data': {
-                'json': {'departmentName': 'قسم محفوظ'},
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'result': {
+                'data': {
+                  'json': {'departmentName': 'قسم محفوظ'},
+                },
               },
-            },
-          }),
+            }),
+          ),
           200,
         );
       });

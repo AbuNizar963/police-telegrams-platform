@@ -129,6 +129,7 @@ void main() {
             }),
           ),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       });
       addTearDown(client.close);
@@ -230,6 +231,7 @@ void main() {
             }),
           ),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       });
       addTearDown(client.close);

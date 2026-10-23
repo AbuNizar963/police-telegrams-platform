@@ -4,10 +4,12 @@ const {
   getAuthenticatedUserFromRequest,
   storageCreateSignedUrl,
   storageGetSignedUrl,
+  fetchMock,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageCreateSignedUrl: vi.fn(),
   storageGetSignedUrl: vi.fn(),
+  fetchMock: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
@@ -76,6 +78,8 @@ describe("storage key authorization", () => {
 describe("storage route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockRejectedValue(new Error("network unavailable"));
     getAuthenticatedUserFromRequest.mockResolvedValue({
       id: 7,
       role: "user",
@@ -98,6 +102,22 @@ describe("storage route", () => {
   it("serves a valid department logo only through a short-lived signed URL", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
+    expect(storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+    expect(res.redirect).toHaveBeenCalledWith(
+      307,
+      "https://storage.example/logo"
+    );
+  });
+
+  it("supports organization-scoped logo keys without weakening key validation", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

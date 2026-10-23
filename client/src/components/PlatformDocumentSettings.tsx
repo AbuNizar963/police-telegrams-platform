@@ -35,6 +35,8 @@ export default function PlatformDocumentSettings() {
   const settings = trpc.platformDocumentSettings.get.useQuery(undefined, {
     enabled: open && isOwner,
     retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const update = trpc.platformDocumentSettings.update.useMutation({
     onSuccess: async saved => {
@@ -59,12 +61,12 @@ export default function PlatformDocumentSettings() {
   }, [isOwner]);
 
   useEffect(() => {
-    if (!settings.data) return;
+    if (!open || !settings.data) return;
     setShowMinistryWatermarkText(settings.data.showMinistryWatermarkText);
     setWatermarkOpacityPercent(settings.data.watermarkOpacityPercent);
     setHeaderDividerColor(settings.data.headerDividerColor);
     setShowVerificationQr(settings.data.showVerificationQr);
-  }, [settings.data]);
+  }, [open, settings.data]);
 
   if (!open || !isOwner) return null;
 

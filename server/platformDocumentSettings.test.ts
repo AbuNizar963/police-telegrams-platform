@@ -96,6 +96,67 @@ describe("platform document settings", () => {
     expect(mocks.writeAuditLog).not.toHaveBeenCalled();
   });
 
+  it("rejects an ordinary user before any save or audit write", async () => {
+    const caller = appRouter.createCaller(
+      context({ id: 8, username: "dispatcher", role: "user" })
+    );
+    await expect(
+      caller.platformDocumentSettings.update(input)
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(mocks.updatePlatformDocumentSettings).not.toHaveBeenCalled();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects unauthenticated reads and writes", async () => {
+    const anonymous = context({ id: 8, username: "dispatcher", role: "user" });
+    anonymous.user = null;
+    const caller = appRouter.createCaller(anonymous);
+    await expect(caller.platformDocumentSettings.get()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    await expect(
+      caller.platformDocumentSettings.update(input)
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    expect(mocks.getPlatformDocumentSettings).not.toHaveBeenCalled();
+    expect(mocks.updatePlatformDocumentSettings).not.toHaveBeenCalled();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 60])("accepts the safe opacity boundary %s", async opacity => {
+    const caller = appRouter.createCaller(
+      context({ id: 1, username: ENV.ownerUsername, role: "admin" })
+    );
+    await caller.platformDocumentSettings.update({
+      ...input,
+      watermarkOpacityPercent: opacity,
+    });
+    expect(mocks.updatePlatformDocumentSettings).toHaveBeenCalledWith(
+      { ...input, watermarkOpacityPercent: opacity },
+      1
+    );
+  });
+
+  it.each([-1, 1.5, 61])(
+    "rejects unsafe opacity %s without writing",
+    async opacity => {
+      const caller = appRouter.createCaller(
+        context({ id: 1, username: ENV.ownerUsername, role: "admin" })
+      );
+      await expect(
+        caller.platformDocumentSettings.update({
+          ...input,
+          watermarkOpacityPercent: opacity,
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mocks.updatePlatformDocumentSettings).not.toHaveBeenCalled();
+      expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+    }
+  );
+
   it("rejects opacity outside the safe range and non-hex CSS colors", async () => {
     const caller = appRouter.createCaller(
       context({ id: 1, username: ENV.ownerUsername, role: "admin" })

@@ -205,20 +205,9 @@ export async function getPlatformDocumentSettings(): Promise<PlatformDocumentSet
   throwIfError(error, "Failed to load platform document settings");
 
   if (data) return mapPlatformDocumentSettings(data as Record<string, unknown>);
-
-  const { data: initialized, error: initializeError } = await client
-    .from("platform_document_settings")
-    .upsert(
-      { id: 1, ...DEFAULT_PLATFORM_DOCUMENT_SETTINGS },
-      { onConflict: "id" }
-    )
-    .select("*")
-    .single();
-  throwIfError(
-    initializeError,
-    "Failed to initialize platform document settings"
-  );
-  return mapPlatformDocumentSettings(initialized as Record<string, unknown>);
+  // Reads must never overwrite an owner's concurrent save. The migration
+  // seeds the singleton; only the owner-authorized update path may recreate it.
+  return { ...DEFAULT_PLATFORM_DOCUMENT_SETTINGS, updatedAt: null };
 }
 
 export async function updatePlatformDocumentSettings(

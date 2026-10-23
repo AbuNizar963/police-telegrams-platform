@@ -88,6 +88,121 @@ void main() {
     },
   );
 
+  test('read-only lists, reports, notifications, and profile work offline', () async {
+    final onlineClient = MockClient((request) async {
+      final path = request.url.path;
+      final value = path.endsWith('/notifications.inbox')
+          ? <dynamic>[
+              {'id': 3, 'title': 'إشعار محفوظ'},
+            ]
+          : path.endsWith('/profile.get')
+          ? <String, dynamic>{'name': 'مشغل محفوظ'}
+          : path.endsWith('/reports.telegrams')
+          ? <String, dynamic>{'total': 4, 'items': <dynamic>[]}
+          : <String, dynamic>{
+              'items': [
+                {'id': 7, 'subject': 'برقية محفوظة'},
+              ],
+            };
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {'json': value},
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(onlineClient.close);
+    final onlineApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: onlineClient,
+    );
+    final listInput = {'status': 'all', 'page': 1};
+    final reportInput = {'from': '2026-10-01', 'to': '2026-10-23'};
+    await onlineApi.call('telegrams.list', input: listInput);
+    await onlineApi.call('reports.telegrams', input: reportInput);
+    await onlineApi.call('notifications.inbox');
+    await onlineApi.call('profile.get');
+
+    final offlineClient = MockClient((request) async {
+      throw const SocketException('offline');
+    });
+    addTearDown(offlineClient.close);
+    final offlineApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: offlineClient,
+    );
+
+    expect(
+      (await offlineApi.call('telegrams.list', input: listInput))['items'],
+      hasLength(1),
+    );
+    expect(
+      (await offlineApi.call('reports.telegrams', input: reportInput))['total'],
+      4,
+    );
+    expect(
+      await offlineApi.call('notifications.inbox'),
+      hasLength(1),
+    );
+    expect(
+      (await offlineApi.call('profile.get'))['name'],
+      'مشغل محفوظ',
+    );
+    await expectLater(
+      offlineApi.call('telegrams.list', input: {'status': 'urgent', 'page': 1}),
+      throwsA(isA<NetworkException>()),
+    );
+  });
+
+  test('transient server errors use cached reads but auth errors do not', () async {
+    final onlineClient = MockClient((request) async {
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {
+              'json': {'departmentName': 'قسم محفوظ'},
+            },
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(onlineClient.close);
+    final onlineApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: onlineClient,
+    );
+    await onlineApi.call('settings.get');
+
+    final unavailableClient = MockClient((request) async {
+      return http.Response('service unavailable', 503);
+    });
+    addTearDown(unavailableClient.close);
+    final unavailableApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: unavailableClient,
+    );
+    expect(
+      (await unavailableApi.call('settings.get'))['departmentName'],
+      'قسم محفوظ',
+    );
+
+    final unauthorizedClient = MockClient((request) async {
+      return http.Response('unauthorized', 401);
+    });
+    addTearDown(unauthorizedClient.close);
+    final unauthorizedApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: unauthorizedClient,
+    );
+    await expectLater(
+      unauthorizedApi.call('settings.get'),
+      throwsA(isA<ApiException>()),
+    );
+  });
+
   test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
       'police-telegrams-logo-test-',

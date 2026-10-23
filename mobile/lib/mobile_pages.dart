@@ -1317,10 +1317,15 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       _error = null;
     });
     try {
+      final organizationId = _text(_settings['organizationId']).trim();
+      if (organizationId.isEmpty) {
+        throw Exception('تعذر تحديد الجهة الحالية؛ أعد تحميل الإعدادات ثم حاول مجددًا.');
+      }
       final result = await widget.api.call(
         'settings.uploadLogo',
         mutation: true,
         input: {
+          'organizationId': organizationId,
           'fileName': file.name,
           'contentType': contentType,
           'base64': base64Encode(bytes),

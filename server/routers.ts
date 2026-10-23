@@ -1111,6 +1111,19 @@ export const appRouter = router({
             message: "الجهة غير موجودة",
           });
         }
+        if (!isPlatformOwner(ctx.user)) {
+          const membership = await getUserOrganizationMembership(ctx.user.id);
+          if (
+            !membership ||
+            !membership.isActive ||
+            membership.organizationId !== organization.id
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية رفع شعار هذه الجهة",
+            });
+          }
+        }
 
         return storagePutDepartmentLogo(
           organization.id,

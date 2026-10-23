@@ -4707,7 +4707,11 @@ function DepartmentSettingsModal({
     setUploading(true);
     try {
       const base64 = await readFileAsBase64(file);
+      if (!selectedWorkplaceId) {
+        throw new Error("اختر الجهة قبل رفع شعارها.");
+      }
       const result = await upload.mutateAsync({
+        organizationId: selectedWorkplaceId,
         fileName: file.name,
         contentType: file.type === "image/jpeg" ? "image/jpeg" : "image/png",
         base64,

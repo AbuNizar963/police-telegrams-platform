@@ -1475,7 +1475,11 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         ),
                                       ),
                                     )
-                                  : const SizedBox.shrink(),
+                                  : const Icon(
+                                      Icons.image_not_supported_outlined,
+                                      color: Colors.blueGrey,
+                                      size: 30,
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(

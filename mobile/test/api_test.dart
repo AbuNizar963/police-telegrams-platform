@@ -75,10 +75,7 @@ void main() {
       offline = true;
       expect(await api.call('platformDocumentSettings.get'), isA<Map>());
       await expectLater(
-        api.call(
-          'platformDocumentSettings.get',
-          allowOfflineCache: false,
-        ),
+        api.call('platformDocumentSettings.get', allowOfflineCache: false),
         throwsA(isA<NetworkException>()),
       );
     },
@@ -157,10 +154,7 @@ void main() {
       expect(await api.call('notifications.inbox'), hasLength(1));
       expect((await api.call('profile.get'))['name'], 'مشغل محفوظ');
       await expectLater(
-        api.call(
-          'telegrams.list',
-          input: {'status': 'urgent', 'page': 1},
-        ),
+        api.call('telegrams.list', input: {'status': 'urgent', 'page': 1}),
         throwsA(isA<NetworkException>()),
       );
     },

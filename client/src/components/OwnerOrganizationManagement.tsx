@@ -129,6 +129,9 @@ export default function OwnerOrganizationManagement() {
   const [organizationStatusFilter, setOrganizationStatusFilter] = useState<
     "all" | "active" | "inactive"
   >("all");
+  const [online, setOnline] = useState(
+    () => typeof navigator === "undefined" || navigator.onLine
+  );
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -180,6 +183,7 @@ export default function OwnerOrganizationManagement() {
   });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
+  const uploadLogo = trpc.settings.uploadLogo.useMutation();
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
       setCreatedAccount(result);
@@ -194,6 +198,15 @@ export default function OwnerOrganizationManagement() {
     window.addEventListener("open-owner-organization-management", show);
     return () =>
       window.removeEventListener("open-owner-organization-management", show);
+  }, []);
+  useEffect(() => {
+    const updateOnlineState = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
   }, []);
   useEffect(() => {
     if (!editingId || !selectedOrganizationId || !accounts.data?.length) return;
@@ -448,6 +461,52 @@ export default function OwnerOrganizationManagement() {
           ? `تم حفظ بيانات الجهة، لكن تعذر حفظ إعداداتها: ${message}`
           : message
       );
+    }
+  };
+
+  const handleLogoFile = async (file?: File) => {
+    if (!file) return;
+    if (!online) {
+      toast.error("لا يوجد اتصال؛ لا يمكن رفع الشعار الآن.");
+      return;
+    }
+    if (!editingId) {
+      toast.error("احفظ الجهة أولًا، ثم ارفع شعارها من شاشة التعديل");
+      return;
+    }
+    if (file.type !== "image/png" && file.type !== "image/jpeg") {
+      toast.error("صيغة الشعار يجب أن تكون PNG أو JPG");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("حجم الشعار يجب ألا يتجاوز 5 ميغابايت");
+      return;
+    }
+
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("تعذر قراءة ملف الشعار"));
+        reader.onload = () => {
+          const value = String(reader.result ?? "");
+          if (!value) {
+            reject(new Error("ملف الشعار فارغ"));
+            return;
+          }
+          resolve(value.includes(",") ? value.slice(value.indexOf(",") + 1) : value);
+        };
+        reader.readAsDataURL(file);
+      });
+      const result = await uploadLogo.mutateAsync({
+        organizationId: editingId,
+        fileName: file.name,
+        contentType: file.type as "image/png" | "image/jpeg",
+        base64,
+      });
+      setSettingsDraft(current => ({ ...current, logoUrl: result.url }));
+      toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر رفع الشعار");
     }
   };
 
@@ -1221,8 +1280,42 @@ export default function OwnerOrganizationManagement() {
                       <option value="arabic">عربية: ٠١٢٣٤٥٦٧٨٩</option>
                     </select>
                   </label>
-                  <label className="grid gap-1 text-xs font-semibold">
-                    رابط شعار الجهة
+                  <label className="grid gap-2 text-xs font-semibold">
+                    شعار الجهة
+                    <div className="flex items-center gap-3 rounded-lg border bg-muted/20 p-2">
+                      {settingsDraft.logoUrl ? (
+                        <img
+                          src={settingsDraft.logoUrl}
+                          alt="معاينة شعار الجهة"
+                          className="h-14 w-14 rounded-md border bg-white object-contain p-1"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-md border bg-white text-[10px] text-muted-foreground">
+                          بلا شعار
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          className="block w-full text-xs"
+                          disabled={!editingId || !online || uploadLogo.isPending}
+                          onChange={event => {
+                            void handleLogoFile(event.target.files?.[0]);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                        <p className="mt-1 font-normal leading-5 text-muted-foreground">
+                          {uploadLogo.isPending
+                            ? "جارٍ رفع الشعار..."
+                            : !editingId
+                              ? "احفظ الجهة أولًا ثم اختر ملف الشعار"
+                              : !online
+                                ? "الرفع متاح عند عودة الاتصال"
+                                : "PNG أو JPG — الحد الأقصى 5 ميغابايت"}
+                        </p>
+                      </div>
+                    </div>
                     <Input
                       dir="ltr"
                       type="url"
@@ -1234,11 +1327,21 @@ export default function OwnerOrganizationManagement() {
                         }))
                       }
                       maxLength={2000}
-                      placeholder="https://..."
+                      placeholder="أو أدخل رابط HTTPS آمن"
                     />
+                    {settingsDraft.logoUrl.trim() && (
+                      <button
+                        type="button"
+                        className="w-fit rounded-md border px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/5"
+                        onClick={() =>
+                          setSettingsDraft(current => ({ ...current, logoUrl: "" }))
+                        }
+                      >
+                        حذف شعار هذه الجهة
+                      </button>
+                    )}
                     <span className="font-normal leading-5 text-muted-foreground">
-                      اتركه فارغًا عند عدم وجود شعار، أو استخدم رابط HTTPS آمن
-                      (مثل رابط التخزين أو CDN الرسمي للجهة).
+                      حذف الشعار أو استبداله يُعتمد عند الضغط على حفظ الجهة، ولا يؤثر في شعارات الجهات الأخرى.
                     </span>
                   </label>
                 </div>

@@ -1,0 +1,26 @@
+export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
+export const TELEGRAM_WATERMARK_COLUMNS = 5;
+export const TELEGRAM_WATERMARK_ROWS = 30;
+export const TELEGRAM_WATERMARK_REPEAT_COUNT =
+  TELEGRAM_WATERMARK_COLUMNS * TELEGRAM_WATERMARK_ROWS;
+
+function escapeAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/'/g, "&#39;");
+}
+
+export function buildTelegramWatermarkHtml(logoUrl?: string | null): string {
+  const labels = Array.from(
+    { length: TELEGRAM_WATERMARK_REPEAT_COUNT },
+    () => `<span>${OFFICIAL_MINISTRY_NAME}</span>`
+  ).join("");
+  const logo = logoUrl?.trim()
+    ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" />`
+    : "";
+
+  return `<div class="page-watermark" aria-hidden="true"><div class="watermark-text-pattern">${labels}</div>${logo}</div>`;
+}

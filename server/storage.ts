@@ -126,7 +126,10 @@ export async function storagePut(
     cacheControl: "3600",
   });
 
-  return { key, url: storageStableUrl(key) };
+  return {
+    key,
+    url: await storageCreateSignedUrl(key, 60 * 60),
+  };
 }
 
 export async function storageDelete(key: string): Promise<void> {

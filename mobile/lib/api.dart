@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -82,7 +83,15 @@ class PoliceApi {
                       : 8,
                 ),
               );
-    } catch (_) {
+    } catch (error) {
+      // Only transport failures should trigger offline fallback. Unexpected
+      // programming errors must remain visible instead of masquerading as
+      // connectivity problems.
+      if (error is! IOException &&
+          error is! http.ClientException &&
+          error is! TimeoutException) {
+        rethrow;
+      }
       if (!mutation && allowOfflineCache) {
         final cached = await _readOfflineResponse(procedure, input);
         if (cached != null) return cached;

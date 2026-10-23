@@ -29,11 +29,10 @@ describe("stable storage URLs", () => {
 
     expect(result.key).toMatch(/^telegrams\/7\/report_[a-f0-9]{8}\.pdf$/);
     expect(result.url).toBe(`/api/storage/${result.key}`);
-    expect(upload).toHaveBeenCalledWith(
-      result.key,
-      Buffer.from("attachment"),
-      { contentType: "application/pdf", cacheControl: "3600" }
-    );
+    expect(upload).toHaveBeenCalledWith(result.key, Buffer.from("attachment"), {
+      contentType: "application/pdf",
+      cacheControl: "3600",
+    });
     expect(createSignedUrl).not.toHaveBeenCalled();
   });
 
@@ -51,11 +50,10 @@ describe("stable storage URLs", () => {
     );
     expect(result.key.endsWith("-badge.png")).toBe(true);
     expect(result.url).toBe(`/api/storage/${result.key}`);
-    expect(upload).toHaveBeenCalledWith(
-      result.key,
-      Buffer.from("image"),
-      { contentType: "image/png", cacheControl: "3600" }
-    );
+    expect(upload).toHaveBeenCalledWith(result.key, Buffer.from("image"), {
+      contentType: "image/png",
+      cacheControl: "3600",
+    });
     expect(createSignedUrl).not.toHaveBeenCalled();
   });
 

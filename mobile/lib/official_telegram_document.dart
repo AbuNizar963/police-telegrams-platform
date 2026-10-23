@@ -103,6 +103,18 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
       renderer != oldWidget.renderer;
 }
 
+bool _hasValidPlatformDocumentSettingsContract(Map result) {
+  final opacity = result['watermarkOpacityPercent'];
+  final color = result['headerDividerColor'];
+  return result['showMinistryWatermarkText'] is bool &&
+      result['showVerificationQr'] is bool &&
+      opacity is int &&
+      opacity >= 0 &&
+      opacity <= 60 &&
+      color is String &&
+      RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color);
+}
+
 class OfficialTelegramDocumentPage extends StatefulWidget {
   const OfficialTelegramDocumentPage({
     super.key,
@@ -167,11 +179,22 @@ class _OfficialTelegramDocumentPageState
         widget.api.call('telegrams.get', input: {'id': widget.telegramId}),
         widget.api.call('settings.get'),
         widget.api.call('organizations.routingDirectory'),
+        widget.api.call(
+          'platformDocumentSettings.get',
+          allowOfflineCache: false,
+        ),
       ]);
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
+      if (results[3] is! Map ||
+          !_hasValidPlatformDocumentSettingsContract(results[3] as Map)) {
+        throw Exception('تعذر قراءة إعدادات وثيقة النظام.');
+      }
+      final platformDocumentSettings = Map<String, dynamic>.from(
+        results[3] as Map,
+      );
 
       // Resolve the logo against the telegram's organization, not merely
       // whichever account settings happen to be cached on this device.
@@ -238,6 +261,7 @@ class _OfficialTelegramDocumentPageState
       final html = buildOfficialTelegramHtml(
         telegram: telegramData,
         settings: settingsData,
+        platformDocumentSettings: platformDocumentSettings,
         routingDirectory: routingDirectory,
         verificationUrl: verificationUrl,
         fontDataUrls: fontDataUrls,
@@ -770,13 +794,27 @@ class _OfficialTelegramDocumentPageState
 String buildOfficialTelegramHtml({
   required Map<String, dynamic> telegram,
   required Map<String, dynamic> settings,
+  Map<String, dynamic> platformDocumentSettings = const {},
   required List<Map<String, dynamic>> routingDirectory,
   required String verificationUrl,
   required Map<int, String> fontDataUrls,
   String? logoDataUrl,
 }) {
   final numberSystem = settings['numberSystem'];
-  final showVerificationQr = settings['showVerificationQr'] != false;
+  final showVerificationQr =
+      platformDocumentSettings['showVerificationQr'] != false;
+  final showMinistryWatermarkText =
+      platformDocumentSettings['showMinistryWatermarkText'] != false;
+  final opacityValue =
+      int.tryParse('${platformDocumentSettings['watermarkOpacityPercent']}') ??
+      16;
+  final watermarkOpacity = (opacityValue.clamp(0, 60) / 100).toStringAsFixed(2);
+  final requestedDividerColor =
+      platformDocumentSettings['headerDividerColor']?.toString() ?? '';
+  final headerDividerColor =
+      RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(requestedDividerColor)
+      ? requestedDividerColor
+      : '#b49a55';
   final departmentName = _localizeDigits(
     _value(settings['departmentName'], fallback: 'قسم العمليات'),
     numberSystem,
@@ -892,12 +930,15 @@ String buildOfficialTelegramHtml({
   final watermarkLogo = logoDataUrl == null
       ? ''
       : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" />';
-  final watermarkItems = List<String>.filled(
-    _ministryWatermarkColumns * _ministryWatermarkRows,
-    '<span>وزارة الداخلية</span>',
-  ).join();
-  final watermarkText =
-      '<div class="watermark-text-pattern" aria-hidden="true">$watermarkItems</div>';
+  final watermarkItems = showMinistryWatermarkText
+      ? List<String>.filled(
+          _ministryWatermarkColumns * _ministryWatermarkRows,
+          '<span>وزارة الداخلية</span>',
+        ).join()
+      : '';
+  final watermarkText = showMinistryWatermarkText
+      ? '<div class="watermark-text-pattern" aria-hidden="true">$watermarkItems</div>'
+      : '';
   final watermark =
       '<div class="page-watermark" aria-hidden="true">$watermarkText$watermarkLogo</div>';
   final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
@@ -918,11 +959,11 @@ $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:.24}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:1%;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,max-content);grid-template-rows:repeat($_ministryWatermarkRows,max-content);column-gap:$_ministryWatermarkGapCss;row-gap:$_ministryWatermarkGapCss;justify-content:center;align-content:start;align-items:center;justify-items:center;overflow:hidden;opacity:.16}
+.telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:1%;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,max-content);grid-template-rows:repeat($_ministryWatermarkRows,max-content);column-gap:$_ministryWatermarkGapCss;row-gap:$_ministryWatermarkGapCss;justify-content:center;align-content:start;align-items:center;justify-items:center;overflow:hidden;opacity:$watermarkOpacity}
 .telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:11px;font-weight:400;line-height:1.2;white-space:nowrap}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:1}
-.telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid #b49a55;font-weight:700}
+.telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid $headerDividerColor;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}
 .telegram-export-page .header-government p,.telegram-export-page .header-metadata p{margin:0;font-size:15pt;font-weight:700;line-height:1.25;white-space:nowrap;letter-spacing:-.12px;transform:scaleX(.86);transform-origin:left center}
 .telegram-export-page .header-government p{transform-origin:right center}.telegram-export-page .header-date-row{transform:translateX(1ch) scaleX(.86)}

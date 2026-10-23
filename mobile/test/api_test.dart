@@ -7,16 +7,86 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:police_telegrams/api.dart';
 
+final _secureStorageForTest = <String, String>{};
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
+    _secureStorageForTest.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-          (call) async => null,
+          (call) async {
+            final arguments = call.arguments;
+            final key = arguments is Map ? arguments['key'] as String? : null;
+            switch (call.method) {
+              case 'read':
+                return key == null ? null : _secureStorageForTest[key];
+              case 'write':
+                if (key != null && arguments is Map) {
+                  _secureStorageForTest[key] = arguments['value'] as String;
+                }
+                return null;
+              case 'delete':
+                if (key != null) _secureStorageForTest.remove(key);
+                return null;
+              case 'deleteAll':
+                _secureStorageForTest.clear();
+                return null;
+              default:
+                return null;
+            }
+          },
         );
   });
+
+  test(
+    'critical platform document reads ignore stale cached settings',
+    () async {
+      final onlineClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'result': {
+              'data': {
+                'json': {
+                  'showMinistryWatermarkText': false,
+                  'watermarkOpacityPercent': 35,
+                  'headerDividerColor': '#2457A6',
+                  'showVerificationQr': false,
+                },
+              },
+            },
+          }),
+          200,
+        );
+      });
+      addTearDown(onlineClient.close);
+      final onlineApi = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: onlineClient,
+      );
+      await onlineApi.call('platformDocumentSettings.get');
+
+      final offlineClient = MockClient((request) async {
+        throw const SocketException('offline');
+      });
+      addTearDown(offlineClient.close);
+      final offlineApi = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: offlineClient,
+      );
+
+      expect(await offlineApi.call('platformDocumentSettings.get'), isA<Map>());
+      await expectLater(
+        offlineApi.call(
+          'platformDocumentSettings.get',
+          allowOfflineCache: false,
+        ),
+        throwsA(isA<NetworkException>()),
+      );
+    },
+  );
 
   test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(

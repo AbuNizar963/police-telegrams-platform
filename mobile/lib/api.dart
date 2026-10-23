@@ -52,6 +52,7 @@ class PoliceApi {
     String procedure, {
     Map<String, dynamic>? input,
     bool mutation = false,
+    bool allowOfflineCache = true,
   }) async {
     final cookie = await _storage.read(key: 'session_cookie');
     final uri = mutation
@@ -68,12 +69,12 @@ class PoliceApi {
     try {
       response =
           await (mutation
-                  ? http.post(
+                  ? _httpClient.post(
                       uri,
                       headers: headers,
                       body: jsonEncode({'json': input}),
                     )
-                  : http.get(uri, headers: headers))
+                  : _httpClient.get(uri, headers: headers))
               .timeout(
                 Duration(
                   seconds: procedure == 'telegrams.importWorkbookPreview'
@@ -82,7 +83,7 @@ class PoliceApi {
                 ),
               );
     } catch (_) {
-      if (!mutation) {
+      if (!mutation && allowOfflineCache) {
         final cached = await _readOfflineResponse(procedure, input);
         if (cached != null) return cached;
       }
@@ -97,6 +98,8 @@ class PoliceApi {
     final value = data is Map && data.containsKey('json') ? data['json'] : data;
     if (!mutation) {
       await _writeOfflineResponse(procedure, input, value);
+    } else if (procedure == 'platformDocumentSettings.update') {
+      await _writeOfflineResponse('platformDocumentSettings.get', null, value);
     }
     return value;
   }
@@ -111,6 +114,8 @@ class PoliceApi {
         return 'offline_telegram_$id';
       case 'settings.get':
         return 'offline_settings';
+      case 'platformDocumentSettings.get':
+        return 'offline_platform_document_settings';
       case 'organizations.routingDirectory':
         return 'offline_routing_directory';
       case 'organizations.context':

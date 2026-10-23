@@ -18,6 +18,7 @@ class _ScreenTestApi extends PoliceApi {
     String procedure, {
     Map<String, dynamic>? input,
     bool mutation = false,
+    bool allowOfflineCache = true,
   }) async {
     calls.add(procedure);
     if (procedure == 'telegrams.create' ||

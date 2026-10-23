@@ -6,6 +6,7 @@ import {
   Menu,
   Moon,
   Settings,
+  SlidersHorizontal,
   Sun,
   UserRound,
   Users,
@@ -76,6 +77,9 @@ export default function HeaderActions() {
       "regional_admin",
       "organization_supervisor",
     ].includes(organizationContext.data?.role ?? "");
+  const isPlatformOwner =
+    user?.isPlatformOwner === true ||
+    organizationContext.data?.isOwner === true;
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
   });
@@ -332,6 +336,19 @@ export default function HeaderActions() {
               <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
                 إعدادات المالك
               </DropdownMenuLabel>
+              {isPlatformOwner && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("open-platform-document-settings")
+                    )
+                  }
+                  className="cursor-pointer justify-end gap-2"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>إعدادات النظام والوثائق</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() =>
                   window.dispatchEvent(

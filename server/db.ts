@@ -7,6 +7,12 @@ import type {
   Telegram,
   User,
 } from "../drizzle/schema";
+import {
+  DEFAULT_PLATFORM_DOCUMENT_SETTINGS,
+  HEX_COLOR_PATTERN,
+  MAX_WATERMARK_OPACITY_PERCENT,
+  type PlatformDocumentSettings,
+} from "../shared/platformDocumentSettings";
 import { ENV } from "./_core/env";
 import { storageCreateSignedUrl, storageKeyFromStoredUrl } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
@@ -159,6 +165,81 @@ function throwIfError(
   context: string
 ): void {
   if (error) throw new Error(`${context}: ${error.message}`);
+}
+
+function mapPlatformDocumentSettings(
+  row: Record<string, unknown>
+): PlatformDocumentSettings {
+  const storedOpacity = Number(row.watermarkOpacityPercent);
+  const storedColor = row.headerDividerColor;
+  return {
+    showMinistryWatermarkText:
+      typeof row.showMinistryWatermarkText === "boolean"
+        ? row.showMinistryWatermarkText
+        : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.showMinistryWatermarkText,
+    watermarkOpacityPercent:
+      Number.isInteger(storedOpacity) &&
+      storedOpacity >= 0 &&
+      storedOpacity <= MAX_WATERMARK_OPACITY_PERCENT
+        ? storedOpacity
+        : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent,
+    headerDividerColor:
+      typeof storedColor === "string" && HEX_COLOR_PATTERN.test(storedColor)
+        ? storedColor
+        : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.headerDividerColor,
+    showVerificationQr:
+      typeof row.showVerificationQr === "boolean"
+        ? row.showVerificationQr
+        : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.showVerificationQr,
+    updatedAt: row.updatedAt ? asDate(row.updatedAt).toISOString() : null,
+  };
+}
+
+export async function getPlatformDocumentSettings(): Promise<PlatformDocumentSettings> {
+  const client = getSupabaseAdmin();
+  const { data, error } = await client
+    .from("platform_document_settings")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+  throwIfError(error, "Failed to load platform document settings");
+
+  if (data) return mapPlatformDocumentSettings(data as Record<string, unknown>);
+
+  const { data: initialized, error: initializeError } = await client
+    .from("platform_document_settings")
+    .upsert(
+      { id: 1, ...DEFAULT_PLATFORM_DOCUMENT_SETTINGS },
+      { onConflict: "id" }
+    )
+    .select("*")
+    .single();
+  throwIfError(
+    initializeError,
+    "Failed to initialize platform document settings"
+  );
+  return mapPlatformDocumentSettings(initialized as Record<string, unknown>);
+}
+
+export async function updatePlatformDocumentSettings(
+  values: Omit<PlatformDocumentSettings, "updatedAt">,
+  updatedByUserId: number
+): Promise<PlatformDocumentSettings> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("platform_document_settings")
+    .upsert(
+      {
+        id: 1,
+        ...values,
+        updatedByUserId,
+        updatedAt: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    )
+    .select("*")
+    .single();
+  throwIfError(error, "Failed to save platform document settings");
+  return mapPlatformDocumentSettings(data as Record<string, unknown>);
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

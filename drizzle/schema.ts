@@ -7,6 +7,7 @@ import {
   pgEnum,
   pgTable,
   serial,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -215,6 +216,26 @@ export const departmentSettings = pgTable(
     ),
   ]
 );
+
+export const platformDocumentSettings = pgTable("platform_document_settings", {
+  id: smallint("id").primaryKey().default(1),
+  showMinistryWatermarkText: boolean("showMinistryWatermarkText")
+    .default(true)
+    .notNull(),
+  watermarkOpacityPercent: integer("watermarkOpacityPercent")
+    .default(16)
+    .notNull(),
+  headerDividerColor: varchar("headerDividerColor", { length: 7 })
+    .default("#b49a55")
+    .notNull(),
+  showVerificationQr: boolean("showVerificationQr").default(true).notNull(),
+  updatedByUserId: integer("updatedByUserId").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
 export const organizationMemberships = pgTable(
   "organization_memberships",

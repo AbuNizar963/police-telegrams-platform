@@ -103,12 +103,11 @@ describe("department telegram serial prefixes", () => {
         incomingSerialStart: 900,
         nextOutgoingSerial: 50,
         nextIncomingSerial: 900,
-        showVerificationQr: false,
       })
     );
   });
 
-  it("preserves QR visibility when an older client omits the new field", async () => {
+  it("ignores the legacy organization-scoped QR option", async () => {
     const caller = appRouter.createCaller(adminContext());
 
     await caller.settings.update({
@@ -124,13 +123,12 @@ describe("department telegram serial prefixes", () => {
       timezone: "Asia/Riyadh",
       dateFormat: "dd/MM/yyyy HH:mm:ss",
       numberSystem: "latin",
+      showVerificationQr: false,
       logoUrl: null,
     });
 
-    expect(mocked.updateDepartmentSettings).toHaveBeenCalledWith(
-      3,
-      expect.objectContaining({ showVerificationQr: false })
-    );
+    const savedValues = mocked.updateDepartmentSettings.mock.calls[0]?.[1];
+    expect(savedValues).not.toHaveProperty("showVerificationQr");
   });
 
   it("uses a numeric outgoing prefix as its start without changing incoming numbering", async () => {

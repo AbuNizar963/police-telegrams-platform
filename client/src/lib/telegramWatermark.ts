@@ -14,14 +14,23 @@ function escapeAttribute(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function buildTelegramWatermarkHtml(logoUrl?: string | null): string {
-  const labels = Array.from(
-    { length: TELEGRAM_WATERMARK_REPEAT_COUNT },
-    () => `<span>${OFFICIAL_MINISTRY_NAME}</span>`
-  ).join("");
+export function buildTelegramWatermarkHtml(
+  logoUrl?: string | null,
+  options: { showMinistryText?: boolean } = {}
+): string {
+  const labels =
+    options.showMinistryText === false
+      ? ""
+      : Array.from(
+          { length: TELEGRAM_WATERMARK_REPEAT_COUNT },
+          () => `<span>${OFFICIAL_MINISTRY_NAME}</span>`
+        ).join("");
+  const watermarkText = labels
+    ? `<div class="watermark-text-pattern">${labels}</div>`
+    : "";
   const logo = logoUrl?.trim()
     ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" />`
     : "";
 
-  return `<div class="page-watermark" aria-hidden="true"><div class="watermark-text-pattern">${labels}</div>${logo}</div>`;
+  return `<div class="page-watermark" aria-hidden="true">${watermarkText}${logo}</div>`;
 }

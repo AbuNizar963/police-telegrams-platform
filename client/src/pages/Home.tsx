@@ -585,6 +585,7 @@ export default function Home() {
     setPage(1);
   }, [search, severity, priority, status, category, dateFrom, dateTo]);
   const settings = trpc.settings.get.useQuery();
+  const platformDocumentSettings = trpc.platformDocumentSettings.get.useQuery();
   const me = trpc.auth.me.useQuery();
   const organizationContext = trpc.organizations.context.useQuery();
   useEffect(() => {
@@ -1461,6 +1462,7 @@ export default function Home() {
         <TelegramDetail
           telegram={detail.data}
           settings={settings.data}
+          platformDocumentSettings={platformDocumentSettings.data}
           isOutgoing={isOutgoingTelegram(detail.data)}
           isAdmin={me.data?.role === "admin"}
           canManageContent={Boolean(me.data)}
@@ -2687,6 +2689,7 @@ function TelegramComposer({
 function TelegramDetail({
   telegram,
   settings,
+  platformDocumentSettings,
   isOutgoing,
   isAdmin,
   canManageContent,
@@ -2724,8 +2727,13 @@ function TelegramDetail({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
-    showVerificationQr?: boolean;
     logoUrl: string | null;
+  };
+  platformDocumentSettings?: {
+    showMinistryWatermarkText: boolean;
+    watermarkOpacityPercent: number;
+    headerDividerColor: string;
+    showVerificationQr: boolean;
   };
   isOutgoing: boolean;
   isAdmin: boolean;
@@ -2949,7 +2957,23 @@ function TelegramDetail({
         .replace(/'/g, "&#39;");
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
-    const showVerificationQr = settings?.showVerificationQr !== false;
+    const showVerificationQr =
+      platformDocumentSettings?.showVerificationQr !== false;
+    const watermarkOpacityPercent = Math.max(
+      0,
+      Math.min(
+        60,
+        Number(platformDocumentSettings?.watermarkOpacityPercent ?? 16)
+      )
+    );
+    const watermarkOpacity = (watermarkOpacityPercent / 100).toFixed(2);
+    const requestedHeaderDividerColor =
+      platformDocumentSettings?.headerDividerColor ?? "";
+    const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
+      requestedHeaderDividerColor
+    )
+      ? requestedHeaderDividerColor
+      : "#b49a55";
     const departmentName = localizeDigits(
       settings?.departmentName ?? "قسم العمليات",
       numberSystem
@@ -3052,7 +3076,10 @@ function TelegramDetail({
         })()
       : "";
 
-    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl);
+    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl, {
+      showMinistryText:
+        platformDocumentSettings?.showMinistryWatermarkText !== false,
+    });
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
@@ -3092,7 +3119,7 @@ function TelegramDetail({
           height: 93.75%;
           transform: translate(-50%, -50%);
           object-fit: contain;
-          opacity: 0.24;
+          opacity: ${watermarkOpacity};
         }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
@@ -3108,7 +3135,7 @@ function TelegramDetail({
           align-items: center;
           justify-items: center;
           overflow: hidden;
-          opacity: 0.16;
+          opacity: ${watermarkOpacity};
         }
         .telegram-export-page .watermark-text-pattern span {
           color: #73777d;
@@ -3130,7 +3157,7 @@ function TelegramDetail({
           align-items: start;
           gap: 2px;
           padding: 0 0 22px;
-          border-bottom: 3px solid #b49a55;
+          border-bottom: 3px solid ${headerDividerColor};
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
@@ -4509,7 +4536,6 @@ function DepartmentSettingsModal({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
-    showVerificationQr?: boolean;
     logoUrl: string | null;
   };
   organizationName?: string;
@@ -4552,9 +4578,6 @@ function DepartmentSettingsModal({
   const [timeFormat, setTimeFormat] = useState<"12" | "24">("24");
   const [numberSystem, setNumberSystem] =
     useState<SupportedNumberSystem>("latin");
-  const [showVerificationQr, setShowVerificationQr] = useState(
-    settings?.showVerificationQr !== false
-  );
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
@@ -4583,7 +4606,6 @@ function DepartmentSettingsModal({
       setUnitChiefRank(result.unitChiefRank);
       setUnitChiefName(result.unitChiefName);
       setNumberSystem(normalizeNumberSystem(result.numberSystem));
-      setShowVerificationQr(result.showVerificationQr !== false);
       setLogoUrl(result?.logoUrl ?? null);
       await utils.settings.get.invalidate();
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
@@ -4612,7 +4634,6 @@ function DepartmentSettingsModal({
     setDateFormat(settings?.dateFormat ?? "yyyy/MM/dd HH:mm:ss");
     setTimeFormat(settings?.timeFormat === "12" ? "12" : "24");
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
-    setShowVerificationQr(settings?.showVerificationQr !== false);
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
     settings?.id,
@@ -4627,7 +4648,6 @@ function DepartmentSettingsModal({
     settings?.dateFormat,
     settings?.timeFormat,
     settings?.numberSystem,
-    settings?.showVerificationQr,
   ]);
   useEffect(() => {
     setSelectedWorkplaceId(activeOrganizationId ?? "");
@@ -4936,21 +4956,6 @@ function DepartmentSettingsModal({
               المحدد.
             </span>
           </label>
-          <label className="mt-3 flex items-start gap-3 rounded-lg border p-3 text-xs font-semibold">
-            <input
-              type="checkbox"
-              checked={showVerificationQr}
-              onChange={event => setShowVerificationQr(event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#10233f]"
-            />
-            <span>
-              إظهار رمز QR للتحقق في البرقية
-              <span className="mt-1 block font-normal leading-5 text-muted-foreground">
-                إخفاء الرمز من النسخ المطبوعة لا يعطّل رابط التحقق الإلكتروني أو
-                رمز البرقية.
-              </span>
-            </span>
-          </label>
         </div>
         <div className="grid gap-2">
           <span className="text-xs font-bold">شعار القسم أو المخفر</span>
@@ -5030,7 +5035,6 @@ function DepartmentSettingsModal({
               dateFormat,
               timeFormat,
               numberSystem,
-              showVerificationQr,
               logoUrl: logoUrl?.trim() || null,
             })
           }

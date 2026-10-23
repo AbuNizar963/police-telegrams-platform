@@ -1616,6 +1616,7 @@ class _PlatformDocumentSettingsPageState
 
   bool _loading = true;
   bool _saving = false;
+  bool _settingsConfirmed = false;
   bool _showMinistryWatermarkText = true;
   bool _showVerificationQr = true;
   double _watermarkOpacityPercent = 16;
@@ -1643,31 +1644,50 @@ class _PlatformDocumentSettingsPageState
     return Color(0xFF000000 | (parsed ?? 0xB49A55));
   }
 
+  bool _hasValidSettingsContract(Map result) {
+    final opacity = result['watermarkOpacityPercent'];
+    final color = result['headerDividerColor'];
+    return result['showMinistryWatermarkText'] is bool &&
+        result['showVerificationQr'] is bool &&
+        opacity is int &&
+        opacity >= 0 &&
+        opacity <= 60 &&
+        color is String &&
+        RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color);
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
+      _settingsConfirmed = false;
     });
     try {
-      final result = await widget.api.call('platformDocumentSettings.get');
-      if (result is! Map) throw Exception('تعذر قراءة إعدادات النظام.');
-      final opacity = int.tryParse('${result['watermarkOpacityPercent']}') ?? 16;
-      final color = '${result['headerDividerColor'] ?? _defaultColor}';
-      final safeColor = RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)
-          ? color.toLowerCase()
-          : _defaultColor;
+      final result = await widget.api.call(
+        'platformDocumentSettings.get',
+        allowOfflineCache: false,
+      );
+      if (result is! Map || !_hasValidSettingsContract(result)) {
+        throw Exception('تعذر قراءة إعدادات النظام.');
+      }
+      final opacity = result['watermarkOpacityPercent'] as int;
+      final color = result['headerDividerColor'] as String;
       if (!mounted) return;
       setState(() {
         _showMinistryWatermarkText =
-            result['showMinistryWatermarkText'] != false;
-        _showVerificationQr = result['showVerificationQr'] != false;
-        _watermarkOpacityPercent = opacity.clamp(0, 60).toDouble();
-        _headerDividerColor = safeColor;
-        _colorController.text = safeColor;
+            result['showMinistryWatermarkText'] as bool;
+        _showVerificationQr = result['showVerificationQr'] as bool;
+        _watermarkOpacityPercent = opacity.toDouble();
+        _headerDividerColor = color.toLowerCase();
+        _colorController.text = _headerDividerColor;
+        _settingsConfirmed = true;
       });
     } catch (exception) {
       if (mounted) {
-        setState(() => _error = _errorMessage(exception));
+        setState(() {
+          _settingsConfirmed = false;
+          _error = _errorMessage(exception);
+        });
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1675,6 +1695,10 @@ class _PlatformDocumentSettingsPageState
   }
 
   Future<void> _save() async {
+    if (!_settingsConfirmed) {
+      setState(() => _error = 'حمّل إعدادات النظام من الخادم أولاً.');
+      return;
+    }
     final color = _colorController.text.trim();
     if (!RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)) {
       setState(() => _error = 'أدخل لونًا صحيحًا بصيغة #RRGGBB.');
@@ -1696,13 +1720,18 @@ class _PlatformDocumentSettingsPageState
         },
       );
       if (!mounted) return;
-      if (result is Map) {
-        setState(() {
-          _headerDividerColor =
-              '${result['headerDividerColor'] ?? color}'.toLowerCase();
-          _colorController.text = _headerDividerColor;
-        });
+      if (result is! Map || !_hasValidSettingsContract(result)) {
+        throw Exception('تعذر تأكيد حفظ إعدادات النظام.');
       }
+      setState(() {
+        _showMinistryWatermarkText = result['showMinistryWatermarkText'] as bool;
+        _showVerificationQr = result['showVerificationQr'] as bool;
+        _watermarkOpacityPercent =
+            (result['watermarkOpacityPercent'] as int).toDouble();
+        _headerDividerColor =
+            (result['headerDividerColor'] as String).toLowerCase();
+        _colorController.text = _headerDividerColor;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ إعدادات وثائق النظام.')),
       );
@@ -1725,6 +1754,27 @@ class _PlatformDocumentSettingsPageState
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : !_settingsConfirmed
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ErrorCard(
+                      message: _error ?? 'تعذر قراءة إعدادات النظام.',
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [

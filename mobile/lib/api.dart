@@ -52,6 +52,7 @@ class PoliceApi {
     String procedure, {
     Map<String, dynamic>? input,
     bool mutation = false,
+    bool allowOfflineCache = true,
   }) async {
     final cookie = await _storage.read(key: 'session_cookie');
     final uri = mutation
@@ -82,7 +83,7 @@ class PoliceApi {
                 ),
               );
     } catch (_) {
-      if (!mutation) {
+      if (!mutation && allowOfflineCache) {
         final cached = await _readOfflineResponse(procedure, input);
         if (cached != null) return cached;
       }

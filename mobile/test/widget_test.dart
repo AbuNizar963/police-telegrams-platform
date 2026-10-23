@@ -9,7 +9,8 @@ import 'package:police_telegrams/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
-import 'package:police_telegrams/mobile_pages.dart' show DepartmentSettingsPage;
+import 'package:police_telegrams/mobile_pages.dart'
+    show DepartmentSettingsPage, PlatformDocumentSettingsPage;
 import 'package:police_telegrams/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';
 
@@ -152,6 +153,7 @@ class _TestPoliceApi extends PoliceApi {
     String procedure, {
     Map<String, dynamic>? input,
     bool mutation = false,
+    bool allowOfflineCache = true,
   }) async {
     calls[procedure] = input;
     return switch (procedure) {
@@ -198,6 +200,12 @@ class _TestPoliceApi extends PoliceApi {
         'headerDividerColor': '#b49a55',
         'showVerificationQr': true,
       },
+      'platformDocumentSettings.update' => {
+        'showMinistryWatermarkText': true,
+        'watermarkOpacityPercent': 16,
+        'headerDividerColor': '#b49a55',
+        'showVerificationQr': true,
+      },
       'notifications.inbox' => <dynamic>[],
       _ => <String, dynamic>{},
     };
@@ -224,8 +232,53 @@ class _UnavailablePoliceApi extends _TestPoliceApi {
     String procedure, {
     Map<String, dynamic>? input,
     bool mutation = false,
+    bool allowOfflineCache = true,
   }) async {
     throw const NetworkException();
+  }
+}
+
+class _PlatformDocumentSettingsUnavailableApi extends _TestPoliceApi {
+  _PlatformDocumentSettingsUnavailableApi() : super(signedIn: true);
+
+  @override
+  Future<dynamic> call(
+    String procedure, {
+    Map<String, dynamic>? input,
+    bool mutation = false,
+    bool allowOfflineCache = true,
+  }) async {
+    if (procedure == 'platformDocumentSettings.get') {
+      throw const NetworkException();
+    }
+    return super.call(
+      procedure,
+      input: input,
+      mutation: mutation,
+      allowOfflineCache: allowOfflineCache,
+    );
+  }
+}
+
+class _MalformedPlatformDocumentSettingsApi extends _TestPoliceApi {
+  _MalformedPlatformDocumentSettingsApi() : super(signedIn: true);
+
+  @override
+  Future<dynamic> call(
+    String procedure, {
+    Map<String, dynamic>? input,
+    bool mutation = false,
+    bool allowOfflineCache = true,
+  }) async {
+    if (procedure == 'platformDocumentSettings.get') {
+      return <String, dynamic>{};
+    }
+    return super.call(
+      procedure,
+      input: input,
+      mutation: mutation,
+      allowOfflineCache: allowOfflineCache,
+    );
   }
 }
 
@@ -402,6 +455,116 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('does not render a document with unconfirmed platform settings', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final renderer = _TestOfficialTelegramDocumentRenderer();
+
+    await tester.pumpWidget(
+      OfficialTelegramDocumentRendererScope(
+        renderer: renderer,
+        child: MaterialApp(
+          home: OfficialTelegramDocumentPage(
+            api: _PlatformDocumentSettingsUnavailableApi(),
+            telegramId: 7,
+          ),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+
+    expect(renderer.renderedHtml, isNull);
+    expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
+    expect(find.text('طباعة'), findsNothing);
+  });
+
+  testWidgets('does not render a document with malformed platform settings', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final renderer = _TestOfficialTelegramDocumentRenderer();
+
+    await tester.pumpWidget(
+      OfficialTelegramDocumentRendererScope(
+        renderer: renderer,
+        child: MaterialApp(
+          home: OfficialTelegramDocumentPage(
+            api: _MalformedPlatformDocumentSettingsApi(),
+            telegramId: 7,
+          ),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+
+    expect(renderer.renderedHtml, isNull);
+    expect(find.text('تعذر قراءة إعدادات وثيقة النظام.'), findsOneWidget);
+    expect(find.text('طباعة'), findsNothing);
+  });
+
+  testWidgets('does not allow saving document settings before loading them', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PlatformDocumentSettingsPage(
+          api: _PlatformDocumentSettingsUnavailableApi(),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+
+    expect(find.text('تعذر الاتصال بالخادم'), findsOneWidget);
+    expect(find.text('إعادة المحاولة'), findsOneWidget);
+    expect(find.text('حفظ إعدادات النظام'), findsNothing);
+  });
+
+  testWidgets('saves the confirmed platform document settings contract', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final api = _TestPoliceApi(signedIn: true);
+    await tester.pumpWidget(
+      MaterialApp(home: PlatformDocumentSettingsPage(api: api)),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+
+    await _scrollIntoView(tester, find.text('حفظ إعدادات النظام'));
+    await tester.tap(find.text('حفظ إعدادات النظام'));
+    await _pumpDashboardFrames(tester, frameCount: 4);
+
+    expect(api.calls['platformDocumentSettings.update'], {
+      'showMinistryWatermarkText': true,
+      'watermarkOpacityPercent': 16,
+      'headerDividerColor': '#b49a55',
+      'showVerificationQr': true,
+    });
+    expect(find.text('تم حفظ إعدادات وثائق النظام.'), findsOneWidget);
+  });
+
+  testWidgets('hides owner document settings from non-owner administrators', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardPage(
+          api: _TestPoliceApi(signedIn: true),
+          account: const {'id': 1, 'name': 'مدير جهة', 'role': 'admin'},
+          outbox: _EmptyTelegramOutbox(),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 8);
+    await tester.tap(find.byTooltip('إعدادات الحساب'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('إعدادات المالك'), findsNothing);
+    expect(find.text('إعدادات النظام والوثائق'), findsNothing);
   });
 
   test('mandatory app lock requires an exact four-digit PIN', () async {

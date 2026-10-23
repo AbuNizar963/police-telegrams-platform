@@ -1170,7 +1170,7 @@ class _DashboardPageState extends State<DashboardPage>
         _pushPage(DepartmentSettingsPage(api: widget.api));
         break;
       case 'platform_document_settings':
-        if (activeOrganizationIsOwner || _account['isPlatformOwner'] == true) {
+        if (_isPlatformOwner) {
           _pushPage(PlatformDocumentSettingsPage(api: widget.api));
         }
         break;
@@ -1797,6 +1797,9 @@ class _DashboardPageState extends State<DashboardPage>
         'auditor',
       }.contains(activeOrganizationRole);
 
+  bool get _isPlatformOwner =>
+      activeOrganizationIsOwner || _account['isPlatformOwner'] == true;
+
   Widget _dashboardActionButton({
     required IconData icon,
     required String label,
@@ -2274,7 +2277,7 @@ class _DashboardPageState extends State<DashboardPage>
                   enabled: false,
                   height: 34,
                   child: Text(
-                    'إعدادات المالك',
+                    'إدارة النظام',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -2289,20 +2292,33 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إدارة المستخدمين وإضافة الحسابات',
                   ),
                 ),
-                if (activeOrganizationIsOwner ||
-                    _account['isPlatformOwner'] == true)
-                  const PopupMenuItem(
-                    value: 'platform_document_settings',
-                    child: _AccountMenuItem(
-                      icon: Icons.tune_rounded,
-                      title: 'إعدادات النظام والوثائق',
-                    ),
-                  ),
                 const PopupMenuItem(
                   value: 'regions',
                   child: _AccountMenuItem(
                     icon: Icons.account_tree_outlined,
                     title: 'إدارة المناطق والأقسام والمخافر',
+                  ),
+                ),
+              ],
+              if (_isPlatformOwner) ...[
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  enabled: false,
+                  height: 34,
+                  child: Text(
+                    'إعدادات المالك',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF7A8493),
+                    ),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'platform_document_settings',
+                  child: _AccountMenuItem(
+                    icon: Icons.tune_rounded,
+                    title: 'إعدادات النظام والوثائق',
                   ),
                 ),
               ],

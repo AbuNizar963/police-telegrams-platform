@@ -103,6 +103,18 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
       renderer != oldWidget.renderer;
 }
 
+bool _hasValidPlatformDocumentSettingsContract(Map result) {
+  final opacity = result['watermarkOpacityPercent'];
+  final color = result['headerDividerColor'];
+  return result['showMinistryWatermarkText'] is bool &&
+      result['showVerificationQr'] is bool &&
+      opacity is int &&
+      opacity >= 0 &&
+      opacity <= 60 &&
+      color is String &&
+      RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color);
+}
+
 class OfficialTelegramDocumentPage extends StatefulWidget {
   const OfficialTelegramDocumentPage({
     super.key,
@@ -167,17 +179,22 @@ class _OfficialTelegramDocumentPageState
         widget.api.call('telegrams.get', input: {'id': widget.telegramId}),
         widget.api.call('settings.get'),
         widget.api.call('organizations.routingDirectory'),
-        widget.api
-            .call('platformDocumentSettings.get')
-            .catchError((_) => <String, dynamic>{}),
+        widget.api.call(
+          'platformDocumentSettings.get',
+          allowOfflineCache: false,
+        ),
       ]);
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
-      final platformDocumentSettings = results[3] is Map
-          ? Map<String, dynamic>.from(results[3] as Map)
-          : <String, dynamic>{};
+      if (results[3] is! Map ||
+          !_hasValidPlatformDocumentSettingsContract(results[3] as Map)) {
+        throw Exception('تعذر قراءة إعدادات وثيقة النظام.');
+      }
+      final platformDocumentSettings = Map<String, dynamic>.from(
+        results[3] as Map,
+      );
 
       // Resolve the logo against the telegram's organization, not merely
       // whichever account settings happen to be cached on this device.

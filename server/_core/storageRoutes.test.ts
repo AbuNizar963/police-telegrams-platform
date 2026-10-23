@@ -115,9 +115,7 @@ describe("storage route", () => {
     );
   });
 
-  it(
-    "supports organization-scoped logo keys without weakening key validation",
-    async () => {
+  it("supports organization-scoped logo keys", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
     const { handler, res } = createRouteHarness();
@@ -131,8 +129,7 @@ describe("storage route", () => {
       307,
       "https://storage.example/logo"
     );
-    },
-  );
+  });
 
   it("rejects malformed department-logo keys before touching storage", async () => {
     const key = "department/logos/not-a-uuid-badge.png";

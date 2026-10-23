@@ -199,5 +199,8 @@ export async function storagePutDepartmentLogo(
     cacheControl: "3600",
   });
 
-  return { key, url: storageStableUrl(key) };
+  // Return a signed URL for immediate preview. The stable /api/storage route
+  // intentionally authorizes telegram attachments only, not organization logos.
+  const url = await storageCreateSignedUrl(key, 60 * 60);
+  return { key, url };
 }

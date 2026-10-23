@@ -384,8 +384,8 @@ void main() {
     expect(renderedHtml, contains('class="watermark-logo"'));
     expect(renderedHtml, contains('class="watermark-text-pattern"'));
     expect(
-      renderedHtml.indexOf('class="watermark-text-pattern"'),
-      lessThan(renderedHtml.indexOf('class="watermark-logo"')),
+      renderedHtml.indexOf('class="watermark-logo"'),
+      lessThan(renderedHtml.indexOf('class="watermark-text-pattern"')),
     );
     expect(renderedHtml, contains('<span>وزارة الداخلية</span>'));
     expect(

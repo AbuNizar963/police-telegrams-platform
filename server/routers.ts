@@ -227,7 +227,7 @@ const safeLogoUrlSchema = z
   }, "رابط الشعار يجب أن يكون مسار تخزين داخليًا أو رابط HTTPS موثوقًا");
 
 const DEPARTMENT_LOGO_KEY_PATTERN =
-  /^department\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
+  /^department\\/logos\\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\/)?[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\\.(?:png|jpg)$/i;
 
 function departmentLogoKeyFromStoredValue(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;

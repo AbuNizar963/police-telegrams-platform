@@ -66,7 +66,7 @@ jobs:
         run: flutter analyze
 
       - name: Run Flutter tests
-        run: flutter test
+        run: flutter test --reporter expanded
 
       - name: Enforce clean formatting and whitespace
         if: always()

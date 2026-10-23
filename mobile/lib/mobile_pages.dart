@@ -1081,25 +1081,46 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         ?.toString()
         .trim();
     final settingsLogo = resolved['logoUrl']?.toString().trim();
-    // Read the logo through the authorized, organization-scoped endpoint.
-    // Full organization settings remain restricted to platform owners.
+    // Keep the saved URL only as a fallback until the scoped endpoint resolves
+    // the current organization's authorized logo URL.
     resolved['logoUrl'] = settingsLogo == null || settingsLogo.isEmpty
         ? null
         : settingsLogo;
+
+    String? contextOrganizationId;
     try {
       final context = await widget.api.call('organizations.context');
-      final organizationId = context is Map
+      final candidate = context is Map
           ? context['organizationId']?.toString().trim()
           : null;
-      if (organizationId == null || organizationId.isEmpty) return resolved;
-      resolved['organizationId'] = organizationId;
-
-      if (settingsOrganizationId != null &&
-          settingsOrganizationId.isNotEmpty &&
-          settingsOrganizationId != organizationId) {
-        resolved['logoUrl'] = null;
+      if (candidate != null && candidate.isNotEmpty) {
+        contextOrganizationId = candidate;
       }
+    } catch (_) {
+      // Platform owners may not have a membership-backed context. In that
+      // case, fall back to the organization ID returned by settings.get.
+    }
 
+    // A null organizations.context is valid for a platform owner. Do not
+    // return early: settings.get can still identify the selected workplace,
+    // and organizations.logo authorizes access to that exact organization.
+    final organizationId =
+        contextOrganizationId ??
+        (settingsOrganizationId != null && settingsOrganizationId.isNotEmpty
+            ? settingsOrganizationId
+            : null);
+    if (organizationId == null) return resolved;
+
+    resolved['organizationId'] = organizationId;
+    if (contextOrganizationId != null &&
+        settingsOrganizationId != null &&
+        settingsOrganizationId.isNotEmpty &&
+        settingsOrganizationId != contextOrganizationId) {
+      // Never reuse a saved URL from a different organization.
+      resolved['logoUrl'] = null;
+    }
+
+    try {
       final organization = await widget.api.call(
         'organizations.logo',
         input: {'organizationId': organizationId},
@@ -1110,8 +1131,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         resolved['logoUrl'] = logo == null || logo.isEmpty ? null : logo;
       }
     } catch (_) {
-      // Keep the verified saved-logo fallback if lookup is unavailable; never
-      // replace it with data from a different organization.
+      // Keep only the same-organization saved URL as a fallback; the endpoint
+      // enforces membership/owner authorization before returning a logo URL.
     }
     return resolved;
   }
@@ -1432,8 +1453,12 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) =>
-                                            const SizedBox.shrink(),
+                                        errorBuilder: (_, _, _) => const
+                                            Icon(
+                                              Icons.broken_image_outlined,
+                                              color: Colors.blueGrey,
+                                              size: 30,
+                                            ),
                                       ),
                                     )
                                   : _savedLogoPreviewBytes != null
@@ -1444,8 +1469,12 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) =>
-                                            const SizedBox.shrink(),
+                                        errorBuilder: (_, _, _) => const
+                                            Icon(
+                                              Icons.broken_image_outlined,
+                                              color: Colors.blueGrey,
+                                              size: 30,
+                                            ),
                                       ),
                                     )
                                   : const SizedBox.shrink(),

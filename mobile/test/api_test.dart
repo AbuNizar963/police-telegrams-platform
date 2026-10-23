@@ -34,6 +34,8 @@ void main() {
               case 'deleteAll':
                 _secureStorageForTest.clear();
                 return null;
+              case 'readAll':
+                return Map<String, String>.from(_secureStorageForTest);
               default:
                 return null;
             }
@@ -212,6 +214,41 @@ void main() {
       );
     },
   );
+
+  test('logout clears cached account data but preserves queued telegrams', () async {
+    _secureStorageForTest['session_cookie'] = 'session=value';
+    _secureStorageForTest['offline_settings'] = '{"departmentName":"old"}';
+    _secureStorageForTest['offline_telegrams_list_e30'] = '{"items":[]}';
+    _secureStorageForTest['cached_dashboard'] = '{"stats":{},"telegrams":[]}';
+    _secureStorageForTest['telegram_outbox_v1'] = '[{"id":"queued"}]';
+
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {'json': null},
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+
+    await api.logout();
+
+    expect(_secureStorageForTest.containsKey('session_cookie'), isFalse);
+    expect(_secureStorageForTest.containsKey('offline_settings'), isFalse);
+    expect(
+      _secureStorageForTest.containsKey('offline_telegrams_list_e30'),
+      isFalse,
+    );
+    expect(_secureStorageForTest.containsKey('cached_dashboard'), isFalse);
+    expect(_secureStorageForTest.containsKey('telegram_outbox_v1'), isTrue);
+  });
 
   test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(

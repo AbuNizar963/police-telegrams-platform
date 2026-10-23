@@ -108,9 +108,10 @@ Future<void> _unlockAppIfLocked(WidgetTester tester) async {
 }
 
 class _TestPoliceApi extends PoliceApi {
-  _TestPoliceApi({this.signedIn = false});
+  _TestPoliceApi({this.signedIn = false, this.organizationLogoUrl});
 
   final bool signedIn;
+  final String? organizationLogoUrl;
   final calls = <String, Map<String, dynamic>?>{};
   bool logoutCalled = false;
 
@@ -158,21 +159,30 @@ class _TestPoliceApi extends PoliceApi {
         'organizationName': 'إدارة الاختبار',
         'role': 'organization_admin',
       },
+      'organizations.logo' => {
+        'organizationId': input?['organizationId'],
+        'logoUrl': organizationLogoUrl,
+      },
       'telegrams.list' => {
         'items': [_sampleTelegram()],
       },
       'telegrams.get' => _sampleTelegram(),
       'settings.get' => {
+        'organizationId': 'org-1',
         'departmentName': 'قسم شرطة الشهباء',
         'unitName': 'قيادة الأمن الداخلي في محافظة حلب',
         'numberSystem': 'latin',
-        'logoUrl': null,
+        'logoUrl': organizationLogoUrl,
       },
       'organizations.routingDirectory' => <dynamic>[],
       'notifications.inbox' => <dynamic>[],
       _ => <String, dynamic>{},
     };
   }
+
+  @override
+  Future<Uint8List?> fetchImageAsset(String source) async =>
+      source == organizationLogoUrl ? _testPng : null;
 }
 
 class _UnavailablePoliceApi extends _TestPoliceApi {
@@ -201,8 +211,11 @@ class _EmptyTelegramOutbox extends TelegramOutbox {
 
 class _TestOfficialTelegramDocumentRenderer
     implements OfficialTelegramDocumentRenderer {
+  String? renderedHtml;
+
   @override
   Future<Uint8List> renderPdf(String html) async {
+    renderedHtml = html;
     expect(html, contains(_telegramSubject));
     expect(html, contains('routing-qr'));
     return Uint8List.fromList([37, 80, 68, 70]);
@@ -279,6 +292,77 @@ void main() {
     await _pumpDashboardFrames(tester, frameCount: 4);
 
     expect(api.calls['settings.update']?['showVerificationQr'], isFalse);
+  });
+
+  testWidgets('department logo preview uses a light background', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final api = _TestPoliceApi(
+      signedIn: true,
+      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: DepartmentSettingsPage(api: api)),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 5);
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Image && widget.image is MemoryImage,
+      ),
+      findsOneWidget,
+    );
+    final logoTile = tester.widget<Container>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.constraints?.maxWidth == 64 &&
+            widget.constraints?.maxHeight == 64 &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).color == Colors.white,
+      ),
+    );
+    expect((logoTile.decoration! as BoxDecoration).color, Colors.white);
+    expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+  });
+
+  testWidgets('official telegram document renders the authorized logo', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    final api = _TestPoliceApi(
+      signedIn: true,
+      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+    );
+    final renderer = _TestOfficialTelegramDocumentRenderer();
+
+    await tester.pumpWidget(
+      OfficialTelegramDocumentRendererScope(
+        renderer: renderer,
+        child: MaterialApp(
+          home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
+        ),
+      ),
+    );
+    await _pumpDashboardFrames(tester, frameCount: 12);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
+
+    expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+    expect(renderer.renderedHtml, contains('class="official-logo"'));
+    expect(renderer.renderedHtml, contains('class="watermark-logo"'));
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.semanticLabel == 'معاينة الوثيقة الرسمية للبرقية',
+      ),
+      findsOneWidget,
+    );
   });
 
   test('mandatory app lock requires an exact four-digit PIN', () async {
@@ -520,7 +604,10 @@ void main() {
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
-      final api = _TestPoliceApi(signedIn: true);
+      final api = _TestPoliceApi(
+        signedIn: true,
+        organizationLogoUrl: 'https://images.example.test/department-logo.png',
+      );
       await tester.pumpWidget(PoliceTelegramsApp(api: api));
       await _pumpDashboardFrames(tester);
       await _unlockAppIfLocked(tester);
@@ -531,6 +618,12 @@ void main() {
       expect(find.text('الفلاتر'), findsOneWidget);
       expect(find.text('الواردة اليوم'), findsOneWidget);
       expect(find.text('مرحبًا مشغل النظام'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
+        ),
+        findsOneWidget,
+      );
 
       await _scrollIntoView(tester, find.text('برقية رقم: 72'));
       expect(find.text('برقية رقم: 72'), findsOneWidget);
@@ -652,7 +745,7 @@ void main() {
     final serial = find.text('برقية رقم: 72');
     await _scrollIntoView(tester, serial);
     await tester.tap(serial);
-    await _pumpDashboardFrames(tester, frameCount: 5);
+    await _pumpDashboardFrames(tester, frameCount: 12);
 
     expect(find.byTooltip('إغلاق تفاصيل البرقية'), findsOneWidget);
     expect(find.text('72'), findsOneWidget);

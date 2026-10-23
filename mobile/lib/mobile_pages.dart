@@ -1410,9 +1410,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                               width: 64,
                               height: 64,
                               alignment: Alignment.center,
+                              padding: const EdgeInsets.all(3),
                               decoration: BoxDecoration(
-                                color: _navy,
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFD0D5DD),
+                                ),
                               ),
                               child: _pendingLogoPreviewBytes != null
                                   ? ClipRRect(

@@ -9,6 +9,17 @@ import 'package:police_telegrams/api.dart';
 
 final _secureStorageForTest = <String, String>{};
 
+Future<T> _withOfflineCacheContext<T>(
+  String operation,
+  Future<T> Function() action,
+) async {
+  try {
+    return await action();
+  } on NetworkException catch (error) {
+    throw StateError('$operation could not read its cached response: $error');
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -143,16 +154,31 @@ void main() {
 
       offline = true;
       expect(
-        (await api.call('telegrams.list', input: listInput))['items'],
+        (await _withOfflineCacheContext(
+          'telegrams.list offline read',
+          () => api.call('telegrams.list', input: listInput),
+        ))['items'],
         hasLength(1),
       );
-      final reportResult = await api.call(
-        'reports.telegrams',
-        input: reportInput,
+      final reportResult = await _withOfflineCacheContext(
+        'reports.telegrams offline read',
+        () => api.call('reports.telegrams', input: reportInput),
       );
       expect(reportResult['total'], 4);
-      expect(await api.call('notifications.inbox'), hasLength(1));
-      expect((await api.call('profile.get'))['name'], 'مشغل محفوظ');
+      expect(
+        await _withOfflineCacheContext(
+          'notifications.inbox offline read',
+          () => api.call('notifications.inbox'),
+        ),
+        hasLength(1),
+      );
+      expect(
+        (await _withOfflineCacheContext(
+          'profile.get offline read',
+          () => api.call('profile.get'),
+        ))['name'],
+        'مشغل محفوظ',
+      );
       await expectLater(
         api.call('telegrams.list', input: {'status': 'urgent', 'page': 1}),
         throwsA(isA<NetworkException>()),
@@ -190,7 +216,13 @@ void main() {
       await api.call('settings.get');
 
       statusCode = 503;
-      expect((await api.call('settings.get'))['departmentName'], 'قسم محفوظ');
+      expect(
+        (await _withOfflineCacheContext(
+          'settings.get fallback after HTTP 503',
+          () => api.call('settings.get'),
+        ))['departmentName'],
+        'قسم محفوظ',
+      );
 
       statusCode = 401;
       await expectLater(api.call('settings.get'), throwsA(isA<ApiException>()));

@@ -1319,7 +1319,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
     try {
       final organizationId = _text(_settings['organizationId']).trim();
       if (organizationId.isEmpty) {
-        throw Exception('تعذر تحديد الجهة الحالية؛ أعد تحميل الإعدادات ثم حاول مجددًا.');
+        throw Exception(
+          'تعذر تحديد الجهة الحالية؛ أعد تحميل الإعدادات ثم حاول مجددًا.',
+        );
       }
       final result = await widget.api.call(
         'settings.uploadLogo',

@@ -70,14 +70,8 @@ void main() {
       );
       await onlineApi.call('platformDocumentSettings.get');
 
-      final offlineClient = MockClient((request) async {
-        throw const SocketException('offline');
-      });
-      addTearDown(offlineClient.close);
-      final offlineApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: offlineClient,
-      );
+      offline = true;
+      final offlineApi = onlineApi;
 
       expect(await offlineApi.call('platformDocumentSettings.get'), isA<Map>());
       await expectLater(
@@ -187,27 +181,15 @@ void main() {
       );
       await onlineApi.call('settings.get');
 
-      final unavailableClient = MockClient((request) async {
-        return http.Response('service unavailable', 503);
-      });
-      addTearDown(unavailableClient.close);
-      final unavailableApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: unavailableClient,
-      );
+      statusCode = 503;
+      final unavailableApi = onlineApi;
       expect(
         (await unavailableApi.call('settings.get'))['departmentName'],
         'قسم محفوظ',
       );
 
-      final unauthorizedClient = MockClient((request) async {
-        return http.Response('unauthorized', 401);
-      });
-      addTearDown(unauthorizedClient.close);
-      final unauthorizedApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: unauthorizedClient,
-      );
+      statusCode = 401;
+      final unauthorizedApi = onlineApi;
       await expectLater(
         unauthorizedApi.call('settings.get'),
         throwsA(isA<ApiException>()),

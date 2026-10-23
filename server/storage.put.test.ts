@@ -22,9 +22,7 @@ describe("stable storage URLs", () => {
     remove.mockResolvedValue(undefined);
   });
 
-  it(
-    "keeps telegram attachment URLs stable instead of persisting expiring links",
-    async () => {
+  it("keeps attachment URLs stable", async () => {
     const result = await storagePut(
       "telegrams/7/report.pdf",
       Buffer.from("attachment"),
@@ -39,8 +37,7 @@ describe("stable storage URLs", () => {
       { contentType: "application/pdf", cacheControl: "3600" }
     );
     expect(createSignedUrl).not.toHaveBeenCalled();
-    },
-  );
+  });
 
   it("returns a stable organization-scoped URL for uploaded logos", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";

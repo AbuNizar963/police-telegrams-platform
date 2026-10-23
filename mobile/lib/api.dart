@@ -90,6 +90,14 @@ class PoliceApi {
       throw const NetworkException();
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final isTransientFailure =
+          response.statusCode == 408 ||
+          response.statusCode == 429 ||
+          response.statusCode >= 500;
+      if (!mutation && allowOfflineCache && isTransientFailure) {
+        final cached = await _readOfflineResponse(procedure, input);
+        if (cached != null) return cached;
+      }
       throw ApiException(response.statusCode, _message(response.body));
     }
     final decoded = jsonDecode(response.body);
@@ -112,6 +120,14 @@ class PoliceApi {
         final id = input?['id'];
         if (id == null || '$id'.trim().isEmpty) return null;
         return 'offline_telegram_$id';
+      case 'telegrams.list':
+        return _offlineInputResponseKey('offline_telegrams_list', input);
+      case 'reports.telegrams':
+        return _offlineInputResponseKey('offline_telegram_report', input);
+      case 'notifications.inbox':
+        return 'offline_notifications_inbox';
+      case 'profile.get':
+        return 'offline_profile';
       case 'settings.get':
         return 'offline_settings';
       case 'platformDocumentSettings.get':
@@ -125,6 +141,19 @@ class PoliceApi {
       default:
         return null;
     }
+  }
+
+  String? _offlineInputResponseKey(
+    String prefix,
+    Map<String, dynamic>? input,
+  ) {
+    // Keep cache keys bounded. The same query input maps to the same key,
+    // while different filters/searches can never reuse each other's results.
+    final encoded = base64Url
+        .encode(utf8.encode(jsonEncode(input ?? <String, dynamic>{})))
+        .replaceAll('=', '');
+    if (encoded.length > 180) return null;
+    return '${prefix}_$encoded';
   }
 
   Future<dynamic> _readOfflineResponse(

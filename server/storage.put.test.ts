@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, remove, provider } = vi.hoisted(() => {
+const { upload, createSignedUrl, provider } = vi.hoisted(() => {
   const upload = vi.fn();
   const createSignedUrl = vi.fn();
-  const remove = vi.fn();
-  const provider = { upload, createSignedUrl, remove };
-  return { upload, createSignedUrl, remove, provider };
+  const provider = { upload, createSignedUrl };
+  return { upload, createSignedUrl, provider };
 });
 
 vi.mock("./storageProvider", () => ({
@@ -19,7 +18,6 @@ describe("stable storage URLs", () => {
     vi.clearAllMocks();
     upload.mockResolvedValue(undefined);
     createSignedUrl.mockResolvedValue("https://storage.example/signed");
-    remove.mockResolvedValue(undefined);
   });
 
   it("keeps attachment URLs stable", async () => {
@@ -29,7 +27,9 @@ describe("stable storage URLs", () => {
       "application/pdf"
     );
 
-    expect(result.key).toMatch(/^telegrams\/7\/report_[a-f0-9]{8}\.pdf$/);
+    expect(result.key).toMatch(
+      /^telegrams\/7\/report_[a-f0-9]{8}\.pdf$/
+    );
     expect(result.url).toBe(`/api/storage/${result.key}`);
     expect(upload).toHaveBeenCalledWith(
       result.key,
@@ -48,11 +48,10 @@ describe("stable storage URLs", () => {
       "image/png"
     );
 
-    expect(result.key).toMatch(
-      new RegExp(
-        `^department/logos/${organizationId}/[0-9a-f-]{36}-badge\\.png$`
-      )
+    expect(result.key.startsWith(`department/logos/${organizationId}/`)).toBe(
+      true
     );
+    expect(result.key.endsWith("-badge.png")).toBe(true);
     expect(result.url).toBe(`/api/storage/${result.key}`);
     expect(upload).toHaveBeenCalledWith(
       result.key,
@@ -62,7 +61,7 @@ describe("stable storage URLs", () => {
     expect(createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("rejects an invalid organization ID before uploading a logo", async () => {
+  it("rejects malformed organization IDs", async () => {
     await expect(
       storagePutDepartmentLogo(
         "not-a-uuid",

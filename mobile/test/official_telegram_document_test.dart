@@ -112,7 +112,9 @@ void main() {
       );
       expect(
         html,
-        contains('<img class="watermark-logo" src="data:image/png;base64,AA=="'),
+        contains(
+          '<img class="watermark-logo" src="data:image/png;base64,AA=="',
+        ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(

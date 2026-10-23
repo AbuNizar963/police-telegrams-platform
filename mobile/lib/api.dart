@@ -69,12 +69,12 @@ class PoliceApi {
     try {
       response =
           await (mutation
-                  ? http.post(
+                  ? _httpClient.post(
                       uri,
                       headers: headers,
                       body: jsonEncode({'json': input}),
                     )
-                  : http.get(uri, headers: headers))
+                  : _httpClient.get(uri, headers: headers))
               .timeout(
                 Duration(
                   seconds: procedure == 'telegrams.importWorkbookPreview'

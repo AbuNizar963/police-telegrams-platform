@@ -1585,7 +1585,6 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   );
 }
 
-
 class PlatformDocumentSettingsPage extends StatefulWidget {
   const PlatformDocumentSettingsPage({super.key, required this.api});
 
@@ -1724,12 +1723,13 @@ class _PlatformDocumentSettingsPageState
         throw Exception('تعذر تأكيد حفظ إعدادات النظام.');
       }
       setState(() {
-        _showMinistryWatermarkText = result['showMinistryWatermarkText'] as bool;
+        _showMinistryWatermarkText =
+            result['showMinistryWatermarkText'] as bool;
         _showVerificationQr = result['showVerificationQr'] as bool;
-        _watermarkOpacityPercent =
-            (result['watermarkOpacityPercent'] as int).toDouble();
-        _headerDividerColor =
-            (result['headerDividerColor'] as String).toLowerCase();
+        _watermarkOpacityPercent = (result['watermarkOpacityPercent'] as int)
+            .toDouble();
+        _headerDividerColor = (result['headerDividerColor'] as String)
+            .toLowerCase();
         _colorController.text = _headerDividerColor;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1762,9 +1762,7 @@ class _PlatformDocumentSettingsPageState
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _ErrorCard(
-                      message: _error ?? 'تعذر قراءة إعدادات النظام.',
-                    ),
+                    _ErrorCard(message: _error ?? 'تعذر قراءة إعدادات النظام.'),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _load,

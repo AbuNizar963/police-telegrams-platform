@@ -808,13 +808,11 @@ String buildOfficialTelegramHtml({
   final opacityValue =
       int.tryParse('${platformDocumentSettings['watermarkOpacityPercent']}') ??
       16;
-  final watermarkOpacity =
-      (opacityValue.clamp(0, 60) / 100).toStringAsFixed(2);
+  final watermarkOpacity = (opacityValue.clamp(0, 60) / 100).toStringAsFixed(2);
   final requestedDividerColor =
       platformDocumentSettings['headerDividerColor']?.toString() ?? '';
-  final headerDividerColor = RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(
-    requestedDividerColor,
-  )
+  final headerDividerColor =
+      RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(requestedDividerColor)
       ? requestedDividerColor
       : '#b49a55';
   final departmentName = _localizeDigits(

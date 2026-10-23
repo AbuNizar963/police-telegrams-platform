@@ -41,52 +41,52 @@ void main() {
         );
   });
 
-  test('critical platform document reads ignore stale cached settings', () async {
-    final onlineClient = MockClient((request) async {
-      return http.Response(
-        jsonEncode({
-          'result': {
-            'data': {
-              'json': {
-                'showMinistryWatermarkText': false,
-                'watermarkOpacityPercent': 35,
-                'headerDividerColor': '#2457A6',
-                'showVerificationQr': false,
+  test(
+    'critical platform document reads ignore stale cached settings',
+    () async {
+      final onlineClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'result': {
+              'data': {
+                'json': {
+                  'showMinistryWatermarkText': false,
+                  'watermarkOpacityPercent': 35,
+                  'headerDividerColor': '#2457A6',
+                  'showVerificationQr': false,
+                },
               },
             },
-          },
-        }),
-        200,
+          }),
+          200,
+        );
+      });
+      addTearDown(onlineClient.close);
+      final onlineApi = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: onlineClient,
       );
-    });
-    addTearDown(onlineClient.close);
-    final onlineApi = PoliceApi(
-      baseUrl: 'https://police.example.test',
-      httpClient: onlineClient,
-    );
-    await onlineApi.call('platformDocumentSettings.get');
+      await onlineApi.call('platformDocumentSettings.get');
 
-    final offlineClient = MockClient((request) async {
-      throw const SocketException('offline');
-    });
-    addTearDown(offlineClient.close);
-    final offlineApi = PoliceApi(
-      baseUrl: 'https://police.example.test',
-      httpClient: offlineClient,
-    );
+      final offlineClient = MockClient((request) async {
+        throw const SocketException('offline');
+      });
+      addTearDown(offlineClient.close);
+      final offlineApi = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: offlineClient,
+      );
 
-    expect(
-      await offlineApi.call('platformDocumentSettings.get'),
-      isA<Map>(),
-    );
-    await expectLater(
-      offlineApi.call(
-        'platformDocumentSettings.get',
-        allowOfflineCache: false,
-      ),
-      throwsA(isA<NetworkException>()),
-    );
-  });
+      expect(await offlineApi.call('platformDocumentSettings.get'), isA<Map>());
+      await expectLater(
+        offlineApi.call(
+          'platformDocumentSettings.get',
+          allowOfflineCache: false,
+        ),
+        throwsA(isA<NetworkException>()),
+      );
+    },
+  );
 
   test('organization logo is reused when a signed URL token rotates', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(

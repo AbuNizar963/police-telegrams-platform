@@ -351,7 +351,7 @@ void main() {
     expect(PushNotificationService.new, returnsNormally);
   });
 
-  testWidgets('department settings save the QR visibility choice', (
+  testWidgets('department settings cannot change the platform QR choice', (
     tester,
   ) async {
     _setMobileViewport(tester);
@@ -363,19 +363,18 @@ void main() {
     await _pumpDashboardFrames(tester, frameCount: 4);
 
     final qrSetting = find.text('إظهار رمز QR للتحقق في البرقية');
-    await _scrollIntoView(tester, qrSetting);
-    final qrSwitch = find.byType(SwitchListTile);
-    expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
-    await tester.tap(qrSwitch);
-    await tester.pump();
-    expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
+    expect(qrSetting, findsNothing);
 
     final saveButton = find.text('حفظ إعدادات الجهة');
     await _scrollIntoView(tester, saveButton);
     await tester.tap(saveButton);
     await _pumpDashboardFrames(tester, frameCount: 4);
 
-    expect(api.calls['settings.update']?['showVerificationQr'], isFalse);
+    expect(api.calls['settings.update'], isNotNull);
+    expect(
+      api.calls['settings.update']!.containsKey('showVerificationQr'),
+      isFalse,
+    );
   });
 
   testWidgets('department logo preview uses a light background', (

@@ -35,4 +35,18 @@ describe("official telegram watermark", () => {
       html.indexOf('class="watermark-logo"')
     );
   });
+
+  it("can hide only the repeated ministry text while retaining the logo", () => {
+    const html = buildTelegramWatermarkHtml(
+      "https://assets.example.test/logo.png",
+      {
+        showMinistryText: false,
+      }
+    );
+
+    expect(html).toContain('class="page-watermark"');
+    expect(html).toContain('class="watermark-logo"');
+    expect(html).not.toContain('class="watermark-text-pattern"');
+    expect(html).not.toContain(OFFICIAL_MINISTRY_NAME);
+  });
 });

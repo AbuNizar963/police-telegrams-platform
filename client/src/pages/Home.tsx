@@ -57,6 +57,11 @@ import {
   TELEGRAM_WATERMARK_GAP_MM,
   TELEGRAM_WATERMARK_ROWS,
 } from "@/lib/telegramWatermark";
+import {
+  DOCUMENT_SETTINGS_LOAD_ERROR,
+  loadDocumentSettingsForExport,
+} from "@/lib/platformDocumentSettings";
+import type { PlatformDocumentSettings } from "@shared/platformDocumentSettings";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
   downloadTelegramWorkbook,
@@ -2724,7 +2729,6 @@ function TelegramDetail({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
-    showVerificationQr?: boolean;
     logoUrl: string | null;
   };
   isOutgoing: boolean;
@@ -2746,6 +2750,17 @@ function TelegramDetail({
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
+    undefined,
+    { retry: false }
+  );
+  const platformDocumentSettings = documentSettingsQuery.data;
+  const documentSettingsUnavailable =
+    !platformDocumentSettings || documentSettingsQuery.isError;
+  const loadExportSettings = () =>
+    loadDocumentSettingsForExport(() =>
+      utils.platformDocumentSettings.get.fetch(undefined, { staleTime: 0 })
+    );
   const updateTelegram = trpc.telegrams.update.useMutation({
     onSuccess: async () => {
       toast.success("تم حفظ تعديلات البرقية");
@@ -2939,7 +2954,7 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
-  const createExportPaper = () => {
+  const createExportPaper = (documentSettings: PlatformDocumentSettings) => {
     const escapeHtml = (value: unknown) =>
       String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -2949,7 +2964,18 @@ function TelegramDetail({
         .replace(/'/g, "&#39;");
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
-    const showVerificationQr = settings?.showVerificationQr !== false;
+    const showVerificationQr = documentSettings.showVerificationQr !== false;
+    const watermarkOpacityPercent = Math.max(
+      0,
+      Math.min(60, Number(documentSettings.watermarkOpacityPercent))
+    );
+    const watermarkOpacity = (watermarkOpacityPercent / 100).toFixed(2);
+    const requestedHeaderDividerColor = documentSettings.headerDividerColor;
+    const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
+      requestedHeaderDividerColor
+    )
+      ? requestedHeaderDividerColor
+      : "#b49a55";
     const departmentName = localizeDigits(
       settings?.departmentName ?? "قسم العمليات",
       numberSystem
@@ -3052,7 +3078,9 @@ function TelegramDetail({
         })()
       : "";
 
-    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl);
+    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl, {
+      showMinistryText: documentSettings.showMinistryWatermarkText !== false,
+    });
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
@@ -3092,7 +3120,7 @@ function TelegramDetail({
           height: 93.75%;
           transform: translate(-50%, -50%);
           object-fit: contain;
-          opacity: 0.24;
+          opacity: ${watermarkOpacity};
         }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
@@ -3108,7 +3136,7 @@ function TelegramDetail({
           align-items: center;
           justify-items: center;
           overflow: hidden;
-          opacity: 0.16;
+          opacity: ${watermarkOpacity};
         }
         .telegram-export-page .watermark-text-pattern span {
           color: #73777d;
@@ -3130,7 +3158,7 @@ function TelegramDetail({
           align-items: start;
           gap: 2px;
           padding: 0 0 22px;
-          border-bottom: 3px solid #b49a55;
+          border-bottom: 3px solid ${headerDividerColor};
         }
         .telegram-export-page .header-government,
         .telegram-export-page .header-metadata { min-width: 0; }
@@ -3330,8 +3358,13 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
+    if (documentSettingsUnavailable || !platformDocumentSettings) {
+      host.replaceChildren();
+      host.style.height = "";
+      return;
+    }
 
-    const exportWrapper = createExportPaper();
+    const exportWrapper = createExportPaper(platformDocumentSettings);
     const paper = exportWrapper.querySelector<HTMLElement>(
       ".telegram-export-page"
     );
@@ -3365,11 +3398,18 @@ function TelegramDetail({
       host.replaceChildren();
       host.style.height = "";
     };
-  }, [telegram, settings]);
+  }, [
+    telegram,
+    settings,
+    platformDocumentSettings,
+    documentSettingsUnavailable,
+    isOutgoing,
+    routingDirectory,
+  ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
     await document.fonts.ready;
-    const wrapper = createExportPaper();
+    const wrapper = createExportPaper(await loadExportSettings());
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
@@ -3570,7 +3610,15 @@ function TelegramDetail({
 `;
 
   const printTelegram = async () => {
-    const exportWrapper = createExportPaper();
+    let exportWrapper: HTMLDivElement;
+    try {
+      exportWrapper = createExportPaper(await loadExportSettings());
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR
+      );
+      return;
+    }
     const printRoot = document.createElement("div");
     const printStyle = document.createElement("style");
 
@@ -3752,6 +3800,29 @@ function TelegramDetail({
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
       />
+      {documentSettingsUnavailable && (
+        <div
+          role="status"
+          className="mt-3 rounded-xl border bg-muted/30 p-4 text-sm"
+        >
+          <p>
+            {documentSettingsQuery.isError
+              ? DOCUMENT_SETTINGS_LOAD_ERROR
+              : "جارٍ تحميل إعدادات وثائق النظام…"}
+          </p>
+          {documentSettingsQuery.isError && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={documentSettingsQuery.isFetching}
+              onClick={() => void documentSettingsQuery.refetch()}
+            >
+              إعادة المحاولة
+            </Button>
+          )}
+        </div>
+      )}
       {incomingRoutes.data && incomingRoutes.data.length > 0 && (
         <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 print:hidden">
           <p className="text-xs font-bold">سجل استلام الإحالات</p>
@@ -3896,6 +3967,7 @@ function TelegramDetail({
           </label>
           <Button
             onClick={printTelegram}
+            disabled={!!exporting || documentSettingsUnavailable}
             className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
           >
             <Printer className="ml-2 h-4 w-4" />
@@ -3903,7 +3975,7 @@ function TelegramDetail({
           </Button>
           <Button
             onClick={() => exportPdf(false)}
-            disabled={!!exporting}
+            disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
@@ -3912,7 +3984,7 @@ function TelegramDetail({
           </Button>
           <Button
             onClick={downloadImage}
-            disabled={!!exporting}
+            disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
@@ -3921,7 +3993,7 @@ function TelegramDetail({
           </Button>
           <Button
             onClick={() => exportPdf(true)}
-            disabled={!!exporting}
+            disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
@@ -3930,7 +4002,7 @@ function TelegramDetail({
           </Button>
           <Button
             onClick={shareImage}
-            disabled={!!exporting}
+            disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
@@ -4509,7 +4581,6 @@ function DepartmentSettingsModal({
     dateFormat?: string;
     timeFormat?: string;
     numberSystem?: NumberSystem;
-    showVerificationQr?: boolean;
     logoUrl: string | null;
   };
   organizationName?: string;
@@ -4552,9 +4623,6 @@ function DepartmentSettingsModal({
   const [timeFormat, setTimeFormat] = useState<"12" | "24">("24");
   const [numberSystem, setNumberSystem] =
     useState<SupportedNumberSystem>("latin");
-  const [showVerificationQr, setShowVerificationQr] = useState(
-    settings?.showVerificationQr !== false
-  );
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const utils = trpc.useUtils();
@@ -4583,7 +4651,6 @@ function DepartmentSettingsModal({
       setUnitChiefRank(result.unitChiefRank);
       setUnitChiefName(result.unitChiefName);
       setNumberSystem(normalizeNumberSystem(result.numberSystem));
-      setShowVerificationQr(result.showVerificationQr !== false);
       setLogoUrl(result?.logoUrl ?? null);
       await utils.settings.get.invalidate();
       toast.success("تم تحديث هوية القسم وستظهر في البرقيات الجديدة");
@@ -4612,7 +4679,6 @@ function DepartmentSettingsModal({
     setDateFormat(settings?.dateFormat ?? "yyyy/MM/dd HH:mm:ss");
     setTimeFormat(settings?.timeFormat === "12" ? "12" : "24");
     setNumberSystem(normalizeNumberSystem(settings?.numberSystem));
-    setShowVerificationQr(settings?.showVerificationQr !== false);
     setLogoUrl(settings?.logoUrl ?? null);
   }, [
     settings?.id,
@@ -4627,7 +4693,6 @@ function DepartmentSettingsModal({
     settings?.dateFormat,
     settings?.timeFormat,
     settings?.numberSystem,
-    settings?.showVerificationQr,
   ]);
   useEffect(() => {
     setSelectedWorkplaceId(activeOrganizationId ?? "");
@@ -4936,21 +5001,6 @@ function DepartmentSettingsModal({
               المحدد.
             </span>
           </label>
-          <label className="mt-3 flex items-start gap-3 rounded-lg border p-3 text-xs font-semibold">
-            <input
-              type="checkbox"
-              checked={showVerificationQr}
-              onChange={event => setShowVerificationQr(event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#10233f]"
-            />
-            <span>
-              إظهار رمز QR للتحقق في البرقية
-              <span className="mt-1 block font-normal leading-5 text-muted-foreground">
-                إخفاء الرمز من النسخ المطبوعة لا يعطّل رابط التحقق الإلكتروني أو
-                رمز البرقية.
-              </span>
-            </span>
-          </label>
         </div>
         <div className="grid gap-2">
           <span className="text-xs font-bold">شعار القسم أو المخفر</span>
@@ -5030,7 +5080,6 @@ function DepartmentSettingsModal({
               dateFormat,
               timeFormat,
               numberSystem,
-              showVerificationQr,
               logoUrl: logoUrl?.trim() || null,
             })
           }

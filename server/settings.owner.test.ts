@@ -93,7 +93,6 @@ function settingsInput(organizationId: string) {
     timezone: "Asia/Damascus",
     dateFormat: "dd/MM/yyyy HH:mm:ss",
     numberSystem: "arabic" as const,
-    showVerificationQr: false,
     logoUrl: null,
   };
 }
@@ -132,7 +131,6 @@ describe("platform owner organization settings", () => {
       organizationId: organizationA.id,
       departmentName: organizationA.name,
       serialPrefix: "POL",
-      showVerificationQr: true,
       settingsExists: false,
     });
 
@@ -157,7 +155,6 @@ describe("platform owner organization settings", () => {
         incomingSerialStart: 900,
         nextIncomingSerial: 900,
         departmentName: "قسم ٧١٨",
-        showVerificationQr: false,
       })
     );
     expect(

@@ -208,6 +208,9 @@ class PoliceApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(response.statusCode, _message(response.body));
     }
+    // Do not let a newly authenticated account inherit the previous
+    // account's offline responses on a shared device.
+    await _clearOfflineCache();
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
       await _storage.write(
@@ -257,8 +260,41 @@ class PoliceApi {
     try {
       await call('auth.logout', mutation: true);
     } finally {
+      await _clearOfflineCache();
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
+    }
+  }
+
+  Future<void> _clearOfflineCache() async {
+    try {
+      final storedValues = await _storage.readAll();
+      final keys = storedValues.keys
+          .where(
+            (key) => key.startsWith('offline_') || key == 'cached_dashboard',
+          )
+          .toList(growable: false);
+      for (final key in keys) {
+        await _storage.delete(key: key);
+      }
+    } catch (_) {
+      // Keep logout/login resilient even if secure-storage enumeration fails.
+      for (final key in const [
+        'offline_settings',
+        'offline_platform_document_settings',
+        'offline_routing_directory',
+        'offline_organization_context',
+        'offline_dashboard_stats',
+        'offline_notifications_inbox',
+        'offline_profile',
+        'cached_dashboard',
+      ]) {
+        try {
+          await _storage.delete(key: key);
+        } catch (_) {
+          // Best-effort cleanup; authentication state is cleared separately.
+        }
+      }
     }
   }
 

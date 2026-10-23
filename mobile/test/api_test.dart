@@ -135,7 +135,10 @@ void main() {
       );
       final listInput = {'status': 'all', 'page': 1};
       final reportInput = {'from': '2026-10-01', 'to': '2026-10-23'};
-      await api.call('telegrams.list', input: listInput);
+      await _withOfflineCacheContext(
+        'telegrams.list online seed',
+        () => api.call('telegrams.list', input: listInput),
+      );
       expect(
         _secureStorageForTest.keys.any(
           (key) => key.startsWith('offline_telegrams_list_'),
@@ -143,7 +146,10 @@ void main() {
         isTrue,
         reason: 'The successful telegram list response should be cached.',
       );
-      await api.call('reports.telegrams', input: reportInput);
+      await _withOfflineCacheContext(
+        'reports.telegrams online seed',
+        () => api.call('reports.telegrams', input: reportInput),
+      );
       expect(
         _secureStorageForTest.keys.any(
           (key) => key.startsWith('offline_telegram_report_'),
@@ -151,12 +157,18 @@ void main() {
         isTrue,
         reason: 'The successful report response should be cached.',
       );
-      await api.call('notifications.inbox');
+      await _withOfflineCacheContext(
+        'notifications.inbox online seed',
+        () => api.call('notifications.inbox'),
+      );
       expect(
         _secureStorageForTest.containsKey('offline_notifications_inbox'),
         isTrue,
       );
-      await api.call('profile.get');
+      await _withOfflineCacheContext(
+        'profile.get online seed',
+        () => api.call('profile.get'),
+      );
       expect(_secureStorageForTest.containsKey('offline_profile'), isTrue);
 
       offline = true;
@@ -220,7 +232,10 @@ void main() {
         baseUrl: 'https://police.example.test',
         httpClient: client,
       );
-      await api.call('settings.get');
+      await _withOfflineCacheContext(
+        'settings.get online seed',
+        () => api.call('settings.get'),
+      );
 
       statusCode = 503;
       expect(

@@ -88,7 +88,9 @@ void main() {
     },
   );
 
-  test('read-only lists, reports, notifications, and profile work offline', () async {
+  test(
+    'read-only lists, reports, notifications, and profile work offline',
+    () async {
     final onlineClient = MockClient((request) async {
       final path = request.url.path;
       final value = path.endsWith('/notifications.inbox')
@@ -156,7 +158,9 @@ void main() {
     );
   });
 
-  test('transient server errors use cached reads but auth errors do not', () async {
+  test(
+    'transient server errors use cached reads but auth errors do not',
+    () async {
     final onlineClient = MockClient((request) async {
       return http.Response(
         jsonEncode({

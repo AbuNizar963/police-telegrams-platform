@@ -126,10 +126,9 @@ export async function storagePut(
     cacheControl: "3600",
   });
 
-  return {
-    key,
-    url: await storageCreateSignedUrl(key, 60 * 60),
-  };
+  // Keep attachment URLs stable. The authorized storage route creates a
+  // fresh short-lived signed URL when the attachment is requested.
+  return { key, url: storageStableUrl(key) };
 }
 
 export async function storageDelete(key: string): Promise<void> {

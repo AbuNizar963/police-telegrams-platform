@@ -184,7 +184,11 @@ export async function storagePutDepartmentLogo(
   contentType: "image/png" | "image/jpeg"
 ): Promise<{ key: string; url: string }> {
   const safeOrganizationId = organizationId.trim();
-  if (!/^[0-9a-f-]{36}$/i.test(safeOrganizationId)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      safeOrganizationId
+    )
+  ) {
     throw new StorageAccessDeniedError();
   }
   const safeFileName = sanitizeFileName(fileName);

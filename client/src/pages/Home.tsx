@@ -3092,7 +3092,7 @@ function TelegramDetail({
           height: 93.75%;
           transform: translate(-50%, -50%);
           object-fit: contain;
-          opacity: 0.12;
+          opacity: 0.28;
         }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
@@ -3108,7 +3108,7 @@ function TelegramDetail({
           align-items: center;
           justify-items: center;
           overflow: hidden;
-          opacity: 0.2;
+          opacity: 0.08;
         }
         .telegram-export-page .watermark-text-pattern span {
           color: #73777d;

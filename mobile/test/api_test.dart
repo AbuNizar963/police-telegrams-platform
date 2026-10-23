@@ -121,9 +121,28 @@ void main() {
       final listInput = {'status': 'all', 'page': 1};
       final reportInput = {'from': '2026-10-01', 'to': '2026-10-23'};
       await api.call('telegrams.list', input: listInput);
+      expect(
+        _secureStorageForTest.keys.any(
+          (key) => key.startsWith('offline_telegrams_list_'),
+        ),
+        isTrue,
+        reason: 'The successful telegram list response should be cached.',
+      );
       await api.call('reports.telegrams', input: reportInput);
+      expect(
+        _secureStorageForTest.keys.any(
+          (key) => key.startsWith('offline_telegram_report_'),
+        ),
+        isTrue,
+        reason: 'The successful report response should be cached.',
+      );
       await api.call('notifications.inbox');
+      expect(
+        _secureStorageForTest.containsKey('offline_notifications_inbox'),
+        isTrue,
+      );
       await api.call('profile.get');
+      expect(_secureStorageForTest.containsKey('offline_profile'), isTrue);
 
       offline = true;
       expect(
@@ -180,10 +199,7 @@ void main() {
       expect((await api.call('settings.get'))['departmentName'], 'قسم محفوظ');
 
       statusCode = 401;
-      await expectLater(
-        api.call('settings.get'),
-        throwsA(isA<ApiException>()),
-      );
+      await expectLater(api.call('settings.get'), throwsA(isA<ApiException>()));
     },
   );
 

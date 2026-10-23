@@ -143,10 +143,7 @@ class PoliceApi {
     }
   }
 
-  String? _offlineInputResponseKey(
-    String prefix,
-    Map<String, dynamic>? input,
-  ) {
+  String? _offlineInputResponseKey(String prefix, Map<String, dynamic>? input) {
     // Keep cache keys bounded. The same query input maps to the same key,
     // while different filters/searches can never reuse each other's results.
     final encoded = base64Url

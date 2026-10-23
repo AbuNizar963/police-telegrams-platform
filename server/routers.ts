@@ -1081,6 +1081,7 @@ export const appRouter = router({
     uploadLogo: organizationAdminProcedure
       .input(
         z.object({
+          organizationId: z.string().uuid(),
           fileName: z.string().trim().min(1).max(180),
           contentType: z.enum(["image/jpeg", "image/png"]),
           base64: z.string().min(1).max(7_000_000),
@@ -1101,7 +1102,18 @@ export const appRouter = router({
           maxBytes: 5 * 1024 * 1024,
         });
 
+        const organization = await getOrganizationByIdIncludingInactive(
+          input.organizationId
+        );
+        if (!organization) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "الجهة غير موجودة",
+          });
+        }
+
         return storagePutDepartmentLogo(
+          organization.id,
           input.fileName,
           bytes,
           input.contentType

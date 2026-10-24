@@ -117,7 +117,7 @@ export default function VerifyTelegram() {
               <h2 className="text-xl font-bold text-slate-900">
                 {result.status === "archived"
                   ? "الوثيقة صحيحة لكنها مؤرشفة"
-                  : "تم التحقق من صحة البرقية"}
+                  : "تم التحقق من صحة الوثيقة"}
               </h2>
               <p className="text-sm leading-7 text-slate-600">
                 الرمز مرتبط بسجل موجود في منظومة البرقيات. هذه الصفحة تؤكد صحة

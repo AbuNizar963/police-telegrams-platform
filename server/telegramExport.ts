@@ -15,7 +15,7 @@ export function isSafeExportHtml(html: string): boolean {
     /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']?\s*(?:javascript|vbscript):/i;
   const unsafeDataUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)\s*=\s*["']?\s*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)/i;
-  const eventHandler = /\bon[a-z][\w:-]*\s*=\s*["']/i;
+  const eventHandler = /\bon[a-z][\w:-]*\s*=\s*(?:["']|[^\s>]+)/i;
   return (
     html.length > 0 &&
     Buffer.byteLength(html, "utf8") <= MAX_HTML_BYTES &&

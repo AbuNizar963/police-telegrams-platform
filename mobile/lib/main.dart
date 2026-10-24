@@ -2249,7 +2249,16 @@ class _DashboardPageState extends State<DashboardPage>
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _organizationLogoWidget(size: 36, borderRadius: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/police-telegrams-icon.png',
+                width: 36,
+                height: 36,
+                fit: BoxFit.contain,
+                semanticLabel: 'أيقونة نظام برقيات الشرطة',
+              ),
+            ),
             const SizedBox(width: 8),
             const Flexible(
               child: Text(

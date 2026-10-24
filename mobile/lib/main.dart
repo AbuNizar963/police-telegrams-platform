@@ -4368,6 +4368,8 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
   final body = TextEditingController();
   bool busy = false;
   String priority = 'normal';
+  String classification = 'normal';
+  String category = 'administrative';
   String? error;
 
   Future<void> submit() async {
@@ -4389,9 +4391,9 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
           'subject': subject.text.trim(),
           'recipient': recipient.text.trim(),
           'body': body.text.trim(),
-          'classification': 'normal',
+          'classification': classification,
           'priority': priority,
-          'category': 'administrative',
+          'category': category,
         },
       );
       if (mounted) Navigator.pop(context, true);
@@ -4459,11 +4461,55 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
                 border: OutlineInputBorder(),
               ),
               items: const [
-                DropdownMenuItem(value: 'normal', child: Text('عادية')),
                 DropdownMenuItem(value: 'urgent', child: Text('عاجلة')),
+                DropdownMenuItem(value: 'normal', child: Text('عادية')),
                 DropdownMenuItem(value: 'slow', child: Text('بطيئة')),
               ],
-              onChanged: (v) => setState(() => priority = v!),
+              onChanged: (value) {
+                if (value != null) setState(() => priority = value);
+              },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: classification,
+              decoration: const InputDecoration(
+                labelText: 'درجة السرية',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'normal', child: Text('عادي')),
+                DropdownMenuItem(value: 'secret', child: Text('سري')),
+                DropdownMenuItem(value: 'top_secret', child: Text('سري للغاية')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => classification = value);
+              },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: category,
+              decoration: const InputDecoration(
+                labelText: 'تصنيف البرقية',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'administrative', child: Text('إداري')),
+                DropdownMenuItem(value: 'criminal', child: Text('جنائي')),
+                DropdownMenuItem(value: 'traffic', child: Text('مروري')),
+                DropdownMenuItem(value: 'security', child: Text('أمني')),
+                DropdownMenuItem(value: 'tactical', child: Text('عملياتي')),
+                DropdownMenuItem(value: 'intelligence', child: Text('استخباراتي')),
+                DropdownMenuItem(value: 'emergency', child: Text('طوارئ')),
+                DropdownMenuItem(value: 'public_order', child: Text('حفظ النظام')),
+                DropdownMenuItem(value: 'personnel', child: Text('شؤون الأفراد')),
+                DropdownMenuItem(value: 'logistics', child: Text('إمداد ودعم')),
+                DropdownMenuItem(value: 'training', child: Text('تدريب وتأهيل')),
+                DropdownMenuItem(value: 'community', child: Text('مجتمعي وشكاوى')),
+                DropdownMenuItem(value: 'other', child: Text('أخرى')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => category = value);
+              },
             ),
             const SizedBox(height: 10),
             TextField(

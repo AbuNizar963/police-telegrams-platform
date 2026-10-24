@@ -83,7 +83,7 @@ void main() {
   );
 
   test(
-    'preserves the imported serial and links incoming references in notes',
+    'preserves the imported serial while hiding incomplete original-record notes',
     () {
       final source = telegram()
         ..['originalSerial'] = 'ب ص ٠٠٦'
@@ -110,13 +110,9 @@ void main() {
       );
 
       expect(html, contains('ب ص ٠٠٦'));
-      expect(html, contains('ملاحظات السجل الأصلي'));
-      expect(
-        html,
-        contains(
-          '<a href="https://example.test/verify/related-token" target="_blank" rel="noopener noreferrer">ب و ٦</a>',
-        ),
-      );
+      expect(html, isNot(contains('ملاحظات السجل الأصلي')));
+      expect(html, isNot(contains('class="import-notes"')));
+      expect(html, isNot(contains('border-top:1px dotted #7b8493')));
       expect(
         html,
         matches(

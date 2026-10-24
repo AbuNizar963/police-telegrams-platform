@@ -946,7 +946,9 @@ String buildOfficialTelegramHtml({
       cursor = match.end;
     }
     buffer.write(_escapeHtml(importNotes.substring(cursor)));
-    return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
+    // Original-record notes are retained in the data model for the pending
+    // feature, but are intentionally hidden from official documents for now.
+    return '';
   })();
   final outgoing =
       _value(telegram['organizationId'], fallback: '') ==
@@ -1045,7 +1047,7 @@ $fontFaces
 .telegram-export-page .signature{display:flex;flex-direction:column;align-items:stretch;align-self:flex-end;width:min(48%,320px);margin-top:auto;margin-right:auto;margin-left:0;padding-top:26px;text-align:center;line-height:1.9}
 .telegram-export-page .signature p{width:100%;margin:0;font-size:16px;font-weight:700;text-align:center}.telegram-export-page .signature-label{margin-top:14px!important;color:#667085;font-size:12px}
 .telegram-export-page .document-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px;margin-top:16px;color:#667085;font-size:11px;direction:rtl}
-.telegram-export-page .document-footer p{margin:0}.telegram-export-page .import-notes{margin-top:8px;padding-top:6px;border-top:1px dotted #7b8493;font-size:12px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.telegram-export-page .footer-creator{text-align:right}.telegram-export-page .footer-location{text-align:center}.telegram-export-page .footer-date{text-align:left}
+.telegram-export-page .document-footer p{margin:0}.telegram-export-page .footer-creator{text-align:right}.telegram-export-page .footer-location{text-align:center}.telegram-export-page .footer-date{text-align:left}
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">

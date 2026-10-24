@@ -4365,9 +4365,9 @@ function TelegramEditModal({
               onChange={event => setPriority(event.target.value as Priority)}
               className="h-10 rounded-lg border bg-background px-3"
             >
-              <option value="slow">بطيء</option>
-              <option value="normal">عادي</option>
-              <option value="urgent">عاجل</option>
+              <option value="urgent">عاجلة</option>
+              <option value="normal">عادية</option>
+              <option value="slow">بطيئة</option>
             </select>
           </label>
           <label className="grid gap-1.5 text-sm font-semibold">

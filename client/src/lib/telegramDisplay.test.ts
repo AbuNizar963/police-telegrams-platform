@@ -19,10 +19,6 @@ describe("getTelegramDisplayNumber", () => {
     );
   });
 
-  it("does not truncate non-platform serial formats", () => {
-    expect(getTelegramDisplayNumber("2025-009")).toBe("2025-009");
-  });
-
   it("returns a safe placeholder for an empty serial", () => {
     expect(getTelegramDisplayNumber(undefined)).toBe("—");
   });

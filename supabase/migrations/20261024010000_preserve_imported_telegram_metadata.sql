@@ -2,7 +2,8 @@
 ALTER TABLE public.telegrams
   ADD COLUMN IF NOT EXISTS "originalSerial" varchar(120),
   ADD COLUMN IF NOT EXISTS "telegramDate" timestamptz,
-  ADD COLUMN IF NOT EXISTS "importNotes" text;
+  ADD COLUMN IF NOT EXISTS "importNotes" text,
+  ADD COLUMN IF NOT EXISTS "importDirection" varchar(8);
 
 CREATE INDEX IF NOT EXISTS "telegrams_organization_original_serial_idx"
   ON public.telegrams ("organizationId", "originalSerial")

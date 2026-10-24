@@ -556,7 +556,7 @@ class _AdvancedCreateTelegramSheetState
                               setState(() => _classification = v);
                             }, columns: 2),
                             const SizedBox(height: 14),
-                            _fieldLabel('درجة الأولوية'),
+                            _fieldLabel('درجة الأسبقية'),
                             _choiceGrid(_priorities, _priority, (v) {
                               setState(() => _priority = v);
                             }, columns: 3),

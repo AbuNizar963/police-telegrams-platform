@@ -2721,12 +2721,8 @@ export const appRouter = router({
 
         const normalizeDigits = (value: string) =>
           value
-            .replace(/[٠-٩]/g, digit =>
-              String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))
-            )
-            .replace(/[۰-۹]/g, digit =>
-              String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
-            );
+            .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+            .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
 
         return (
           await Promise.all(
@@ -2750,8 +2746,9 @@ export const appRouter = router({
               };
             })
           )
-        ).filter((reference): reference is NonNullable<typeof reference> =>
-          reference !== null
+        ).filter(
+          (reference): reference is NonNullable<typeof reference> =>
+            reference !== null
         );
       }),
 
@@ -2855,8 +2852,7 @@ export const appRouter = router({
             ) {
               errors.push({
                 row: index + 2,
-                message:
-                  `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
+                message: `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
               });
               continue;
             }

@@ -2752,7 +2752,10 @@ function TelegramDetail({
   const queryClient = useQueryClient();
   const importReferencesQuery = trpc.telegrams.resolveImportReferences.useQuery(
     { notes: telegram.importNotes ?? "" },
-    { enabled: Boolean(telegram.importNotes?.trim()), staleTime: 60_000 }
+    {
+      enabled: Boolean(telegram.importNotes?.trim()),
+      staleTime: 60_000,
+    }
   );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,

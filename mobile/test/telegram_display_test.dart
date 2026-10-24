@@ -13,6 +13,17 @@ void main() {
       );
     });
 
+    test('prefers the exact original serial imported from Excel', () {
+      expect(
+        getTelegramSerialCode({
+          'originalSerial': 'ب و ٠٠٦',
+          'organizationSerialCode': 'UNIT-00072',
+          'serialCode': 'GLOBAL-00419',
+        }),
+        'ب و ٠٠٦',
+      );
+    });
+
     test('falls back to legacy serial fields', () {
       expect(getTelegramSerialCode({'serialNumber': 'POL-00108'}), 'POL-00108');
       expect(getTelegramSerialCode({}), isEmpty);
@@ -25,7 +36,35 @@ void main() {
       expect(getTelegramDisplayNumber('UNIT-00072'), '72');
     });
 
-    test('preserves nonnumeric serials and handles missing values', () {
+    test(
+      'preserves imported serials exactly in every configured number system',
+      () {
+        expect(
+          getTelegramDisplaySerial({'originalSerial': 'ب و ٠٠٦'}, 'latin'),
+          'ب و ٠٠٦',
+        );
+        expect(
+          getTelegramDisplaySerial({'originalSerial': '2025-009'}, 'arabic'),
+          '2025-009',
+        );
+      },
+    );
+
+    test('preserves exact imported serials and handles missing values', () {
+      expect(
+        getTelegramDisplayNumber(
+          'POL-2026-09-30-00690',
+          originalSerial: '2025-009',
+        ),
+        '2025-009',
+      );
+      expect(
+        getTelegramDisplayNumber(
+          'POL-2026-09-30-00690',
+          originalSerial: 'ب و ٠٠٦',
+        ),
+        'ب و ٠٠٦',
+      );
       expect(getTelegramDisplayNumber('UNIT-ALPHA'), 'UNIT-ALPHA');
       expect(getTelegramDisplayNumber(null), '—');
       expect(getTelegramDisplayNumber('  '), '—');

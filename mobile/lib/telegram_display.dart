@@ -2,6 +2,7 @@
 /// Legacy fields are retained as a fallback for older API records.
 String getTelegramSerialCode(Map<String, dynamic> telegram) {
   for (final key in const [
+    'originalSerial',
     'organizationSerialCode',
     'serialCode',
     'serialNumber',
@@ -15,7 +16,12 @@ String getTelegramSerialCode(Map<String, dynamic> telegram) {
 
 /// Returns the short serial shown in web lists and document headings.
 /// For example, `POL-2026-09-30-00690` becomes `690`.
-String getTelegramDisplayNumber(Object? serialCode) {
+String getTelegramDisplayNumber(Object? serialCode, {Object? originalSerial}) {
+  final officialSerial = originalSerial?.toString().trim() ?? '';
+  if (officialSerial.isNotEmpty && officialSerial != 'null') {
+    return officialSerial;
+  }
+
   final value = serialCode?.toString().trim() ?? '';
   if (value.isEmpty || value == 'null') return '—';
 
@@ -23,6 +29,21 @@ String getTelegramDisplayNumber(Object? serialCode) {
   final parsedSerial = RegExp(r'^\d+').firstMatch(serialDigits)?.group(0);
   if (parsedSerial == null) return value;
   return int.tryParse(parsedSerial)?.toString() ?? parsedSerial;
+}
+
+/// Displays imported official serials exactly; generated serials retain compact localized display.
+String getTelegramDisplaySerial(
+  Map<String, dynamic> telegram,
+  Object? numberSystem,
+) {
+  final originalSerial = telegram['originalSerial']?.toString().trim() ?? '';
+  if (originalSerial.isNotEmpty && originalSerial != 'null') {
+    return originalSerial;
+  }
+  return localizeTelegramDigits(
+    getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
+    numberSystem,
+  );
 }
 
 /// Mirrors the web's `localizeDigits` helper for the supported number systems.

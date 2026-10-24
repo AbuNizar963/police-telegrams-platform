@@ -3530,10 +3530,7 @@ class _DashboardPageState extends State<DashboardPage>
   ) {
     final incoming = _isIncoming(row);
     final telegramId = int.tryParse('${row['id']}');
-    final serial = localizeTelegramDigits(
-      getTelegramDisplayNumber(getTelegramSerialCode(row)),
-      numberSystem,
-    );
+    final serial = getTelegramDisplaySerial(row, numberSystem);
     final sender =
         row['fromOrganizationName'] ??
         row['senderOrganizationName'] ??
@@ -4155,9 +4152,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
             : null,
       );
     }
-    final displaySerial = getTelegramDisplayNumber(
-      getTelegramSerialCode(data ?? const {}),
-    );
+    final displaySerial = getTelegramDisplaySerial(data ?? const {}, null);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(

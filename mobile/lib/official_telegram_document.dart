@@ -258,12 +258,31 @@ class _OfficialTelegramDocumentPageState
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')
           .toString();
+      var referenceLinks = <Map<String, dynamic>>[];
+      final importNotes = _value(telegramData['importNotes']).trim();
+      if (importNotes.isNotEmpty) {
+        try {
+          final resolved = await widget.api.call(
+            'telegrams.resolveImportReferences',
+            input: {'notes': importNotes},
+          );
+          if (resolved is List) {
+            referenceLinks = resolved
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+          }
+        } catch (_) {
+          // Older deployments still show the original note text without links.
+        }
+      }
       final html = buildOfficialTelegramHtml(
         telegram: telegramData,
         settings: settingsData,
         platformDocumentSettings: platformDocumentSettings,
         routingDirectory: routingDirectory,
         verificationUrl: verificationUrl,
+        referenceLinks: referenceLinks,
         fontDataUrls: fontDataUrls,
         logoDataUrl: logoDataUrl,
       );
@@ -365,10 +384,8 @@ class _OfficialTelegramDocumentPageState
     return 'telegram-$safe';
   }
 
-  String get _displaySerial => localizeTelegramDigits(
-    getTelegramDisplayNumber(getTelegramSerialCode(telegram ?? const {})),
-    settings?['numberSystem'],
-  );
+  String get _displaySerial =>
+      getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
   Future<void> _perform(Future<void> Function() action) async {
     if (busy) return;
@@ -797,6 +814,7 @@ String buildOfficialTelegramHtml({
   Map<String, dynamic> platformDocumentSettings = const {},
   required List<Map<String, dynamic>> routingDirectory,
   required String verificationUrl,
+  List<Map<String, dynamic>> referenceLinks = const [],
   required Map<int, String> fontDataUrls,
   String? logoDataUrl,
 }) {
@@ -865,9 +883,10 @@ String buildOfficialTelegramHtml({
       )
       .join();
 
-  final createdAt = _formatConfiguredDate(telegram['createdAt'], settings);
+  final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
+  final createdAt = _formatConfiguredDate(DateTime.now(), settings);
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
-    telegram['createdAt'],
+    telegramDate,
     settings,
   );
   final latitude = telegram['gpsLatitude'];
@@ -878,10 +897,57 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = localizeTelegramDigits(
-    getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
-    numberSystem,
-  );
+  final displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+  final importNotes = _value(telegram['importNotes']).trim();
+  final referenceByKey = <String, Map<String, dynamic>>{};
+  for (final reference in referenceLinks) {
+    final serial = _value(reference['serial'])
+        .replaceAllMapped(RegExp(r'[٠-٩۰-۹]'), (match) {
+          const digits = '٠١٢٣٤٥٦٧٨٩';
+          const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+          final character = match.group(0)!;
+          final index = digits.indexOf(character);
+          return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
+        });
+    referenceByKey['${_value(reference['direction'])}|$serial'] = reference;
+  }
+  final importNotesMarkup = (() {
+    if (importNotes.isEmpty) return '';
+    final pattern = RegExp(r'ب\s*([وص])\s*([0-9٠-٩۰-۹]+)');
+    final buffer = StringBuffer();
+    var cursor = 0;
+    for (final match in pattern.allMatches(importNotes)) {
+      buffer.write(_escapeHtml(importNotes.substring(cursor, match.start)));
+      final marker = match.group(1) ?? '';
+      final serial = (match.group(2) ?? '').replaceAllMapped(
+        RegExp(r'[٠-٩۰-۹]'),
+        (digitMatch) {
+          const digits = '٠١٢٣٤٥٦٧٨٩';
+          const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+          final character = digitMatch.group(0)!;
+          final index = digits.indexOf(character);
+          return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
+        },
+      );
+      final direction = marker == 'و' ? 'incoming' : 'outgoing';
+      final reference = referenceByKey['$direction|$serial'];
+      final label = _escapeHtml(match.group(0) ?? '');
+      final token = _value(reference?['verificationToken']);
+      if (reference != null && token.isNotEmpty) {
+        final href = Uri.parse(verificationUrl)
+            .resolve('/verify/${Uri.encodeComponent(token)}')
+            .toString();
+        buffer.write(
+          '<a href="${_escapeHtml(href)}" target="_blank" rel="noopener noreferrer">$label</a>',
+        );
+      } else {
+        buffer.write(label);
+      }
+      cursor = match.end;
+    }
+    buffer.write(_escapeHtml(importNotes.substring(cursor)));
+    return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
+  })();
   final outgoing =
       _value(telegram['organizationId'], fallback: '') ==
       _value(telegram['currentOrganizationId'], fallback: '');
@@ -979,7 +1045,7 @@ $fontFaces
 .telegram-export-page .signature{display:flex;flex-direction:column;align-items:stretch;align-self:flex-end;width:min(48%,320px);margin-top:auto;margin-right:auto;margin-left:0;padding-top:26px;text-align:center;line-height:1.9}
 .telegram-export-page .signature p{width:100%;margin:0;font-size:16px;font-weight:700;text-align:center}.telegram-export-page .signature-label{margin-top:14px!important;color:#667085;font-size:12px}
 .telegram-export-page .document-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px;margin-top:16px;color:#667085;font-size:11px;direction:rtl}
-.telegram-export-page .document-footer p{margin:0}.telegram-export-page .footer-creator{text-align:right}.telegram-export-page .footer-location{text-align:center}.telegram-export-page .footer-date{text-align:left}
+.telegram-export-page .document-footer p{margin:0}.telegram-export-page .import-notes{margin-top:8px;padding-top:6px;border-top:1px dotted #7b8493;font-size:12px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.telegram-export-page .footer-creator{text-align:right}.telegram-export-page .footer-location{text-align:center}.telegram-export-page .footer-date{text-align:left}
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
@@ -1013,8 +1079,9 @@ $watermark
 <footer class="document-footer">
 <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">تاريخ إنشاء البرقية: ${_escapeHtml(createdAt)}</p>
+<p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${_escapeHtml(createdAt)}</p>
 </footer>
+$importNotesMarkup
 </article></body></html>''';
 }
 

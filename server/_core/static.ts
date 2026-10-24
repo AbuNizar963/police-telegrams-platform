@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { createRateLimit } from "./rateLimit";
 
 /**
  * Serves the prebuilt client bundle in production without importing Vite or
@@ -21,7 +22,15 @@ export function serveStatic(app: Express): void {
   app.use(express.static(distPath));
 
   // Fall through to index.html if the requested asset does not exist.
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+  app.use(
+    "*",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 240,
+      message: "طلبات كثيرة لصفحة التطبيق؛ أعد المحاولة لاحقًا",
+    }),
+    (_req, res) => {
+      res.sendFile(path.resolve(distPath, "index.html"));
+    }
+  );
 }

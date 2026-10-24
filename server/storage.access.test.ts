@@ -50,4 +50,27 @@ describe("storage access control", () => {
       )
     ).toBe("telegrams/1/logo.png");
   });
+
+  it("normalizes signed and public Supabase logo URLs to the same storage key", () => {
+    const signedUrl =
+      "https://example.supabase.co/storage/v1/object/sign/attachments/department/logos/org/logo.png?token=temporary";
+    const publicUrl =
+      "https://example.supabase.co/storage/v1/object/public/attachments/department/logos/org/logo.png";
+
+    expect(storageKeyFromStoredUrl(signedUrl, "attachments")).toBe(
+      "department/logos/org/logo.png"
+    );
+    expect(storageKeyFromStoredUrl(publicUrl, "attachments")).toBe(
+      "department/logos/org/logo.png"
+    );
+  });
+
+  it("does not normalize a Supabase URL from a different bucket", () => {
+    expect(
+      storageKeyFromStoredUrl(
+        "https://example.supabase.co/storage/v1/object/public/other-bucket/department/logos/org/logo.png",
+        "attachments"
+      )
+    ).toBeNull();
+  });
 });

@@ -30,7 +30,7 @@ export function getTelegramDisplaySerial(
   if (originalSerial) return originalSerial;
   return localizeDigits(
     getTelegramDisplayNumber(getTelegramSerialCode(source)),
-    numberSystem
+    numberSystem,
   );
 }
 

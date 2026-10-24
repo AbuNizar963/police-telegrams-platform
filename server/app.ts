@@ -12,6 +12,7 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { ENV } from "./_core/env";
 import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
+import { createRateLimit } from "./_core/rateLimit";
 
 const verificationAttempts = new Map<
   string,
@@ -110,7 +111,7 @@ export function createApp(
     next();
   });
 
-  // Authenticate large-payload routes before parsing attacker-controlled bodies.
+  // Bound API request volume before authentication and body parsing. This is a\n  // per-instance safeguard; production edge limits should remain enabled too.\n  app.use(\n    "/api",\n    createRateLimit({\n      windowMs: 60_000,\n      maxRequests: 300,\n      message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",\n    })\n  );\n\n  // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.
   app.use((req, res, next) => {
     const path = req.path;

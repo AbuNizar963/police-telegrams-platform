@@ -2755,7 +2755,7 @@ function TelegramDetail({
     {
       enabled: Boolean(telegram.importNotes?.trim()),
       staleTime: 60_000,
-    }
+    },
   );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,
@@ -3060,14 +3060,18 @@ function TelegramDetail({
         renderedNotes += escapeHtml(
           localizeDigits(
             importNotesText.slice(cursor, matchIndex),
-            numberSystem
-          )
+            numberSystem,
+          ),
         );
         const marker = match[1] ?? "";
         const rawSerial = match[2] ?? "";
         const serial = rawSerial
-          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+          .replace(/[٠-٩]/g, digit =>
+            String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))
+          )
+          .replace(/[۰-۹]/g, digit =>
+            String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
+          );
         const direction = marker === "و" ? "incoming" : "outgoing";
         const reference = references.find(
           item => item.serial === serial && item.direction === direction

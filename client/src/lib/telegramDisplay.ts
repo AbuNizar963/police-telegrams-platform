@@ -6,7 +6,7 @@ import {
 
 export function getTelegramDisplayNumber(
   serialCode: string | null | undefined,
-  originalSerial?: string | null
+  originalSerial?: string | null,
 ): string {
   const officialSerial = String(originalSerial ?? "").trim();
   if (officialSerial) return officialSerial;
@@ -24,7 +24,7 @@ export function getTelegramDisplayNumber(
 /** Preserves imported official serials byte-for-byte; only generated serials are localized. */
 export function getTelegramDisplaySerial(
   source: TelegramSerialSource,
-  numberSystem: unknown
+  numberSystem: unknown,
 ): string {
   const originalSerial = source.originalSerial?.trim();
   if (originalSerial) return originalSerial;

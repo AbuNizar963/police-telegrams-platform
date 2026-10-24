@@ -126,6 +126,8 @@ export async function storagePut(
     cacheControl: "3600",
   });
 
+  // Keep attachment URLs stable. The authorized storage route creates a
+  // fresh short-lived signed URL when the attachment is requested.
   return { key, url: storageStableUrl(key) };
 }
 
@@ -176,14 +178,23 @@ export async function storageGetSignedUrl(
 }
 
 export async function storagePutDepartmentLogo(
+  organizationId: string,
   fileName: string,
   data: Buffer | Uint8Array | string,
   contentType: "image/png" | "image/jpeg"
 ): Promise<{ key: string; url: string }> {
+  const safeOrganizationId = organizationId.trim();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      safeOrganizationId
+    )
+  ) {
+    throw new StorageAccessDeniedError();
+  }
   const safeFileName = sanitizeFileName(fileName);
   const extension = contentType === "image/jpeg" ? ".jpg" : ".png";
   const baseName = safeFileName.replace(/\.[^.]*$/, "");
-  const key = `department/logos/${crypto.randomUUID()}-${baseName}${extension}`;
+  const key = `department/logos/${safeOrganizationId}/${crypto.randomUUID()}-${baseName}${extension}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
   await getStorageProvider().upload(key, body, {
@@ -191,5 +202,7 @@ export async function storagePutDepartmentLogo(
     cacheControl: "3600",
   });
 
+  // Persist a stable application URL. The storage route creates a fresh,
+  // short-lived signed URL for each request so saved logos do not expire.
   return { key, url: storageStableUrl(key) };
 }

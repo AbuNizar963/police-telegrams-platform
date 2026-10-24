@@ -4,10 +4,12 @@ const {
   getAuthenticatedUserFromRequest,
   storageCreateSignedUrl,
   storageGetSignedUrl,
+  fetchMock,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageCreateSignedUrl: vi.fn(),
   storageGetSignedUrl: vi.fn(),
+  fetchMock: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
@@ -76,6 +78,8 @@ describe("storage key authorization", () => {
 describe("storage route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockRejectedValue(new Error("network unavailable"));
     getAuthenticatedUserFromRequest.mockResolvedValue({
       id: 7,
       role: "user",
@@ -98,6 +102,47 @@ describe("storage route", () => {
   it("serves a valid department logo only through a short-lived signed URL", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
+    expect(storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+    expect(res.redirect).toHaveBeenCalledWith(
+      307,
+      "https://storage.example/logo"
+    );
+  });
+
+  it("proxies logo bytes with the upstream content type when storage is reachable", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
+    const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      headers: { get: vi.fn().mockReturnValue("image/jpeg") },
+      arrayBuffer: async () =>
+        imageBytes.buffer.slice(
+          imageBytes.byteOffset,
+          imageBytes.byteOffset + imageBytes.byteLength
+        ),
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+    expect(res.set).toHaveBeenCalledWith("Vary", "Cookie");
+    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/jpeg");
+    expect(res.send).toHaveBeenCalledWith(imageBytes);
+    expect(res.redirect).not.toHaveBeenCalled();
+  });
+
+  it("supports organization-scoped logo keys", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

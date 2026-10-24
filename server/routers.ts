@@ -227,7 +227,7 @@ const safeLogoUrlSchema = z
   }, "رابط الشعار يجب أن يكون مسار تخزين داخليًا أو رابط HTTPS موثوقًا");
 
 const DEPARTMENT_LOGO_KEY_PATTERN =
-  /^department\/logos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
+  /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
 
 function departmentLogoKeyFromStoredValue(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -1081,12 +1081,13 @@ export const appRouter = router({
     uploadLogo: organizationAdminProcedure
       .input(
         z.object({
+          organizationId: z.string().uuid(),
           fileName: z.string().trim().min(1).max(180),
           contentType: z.enum(["image/jpeg", "image/png"]),
           base64: z.string().min(1).max(7_000_000),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const bytes = Buffer.from(input.base64, "base64");
         if (bytes.byteLength > 5 * 1024 * 1024) {
           throw new TRPCError({
@@ -1101,7 +1102,31 @@ export const appRouter = router({
           maxBytes: 5 * 1024 * 1024,
         });
 
+        const organization = await getOrganizationByIdIncludingInactive(
+          input.organizationId
+        );
+        if (!organization) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "الجهة غير موجودة",
+          });
+        }
+        if (!isPlatformOwner(ctx.user)) {
+          const membership = await getUserOrganizationMembership(ctx.user.id);
+          if (
+            !membership ||
+            !membership.isActive ||
+            membership.organizationId !== organization.id
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية رفع شعار هذه الجهة",
+            });
+          }
+        }
+
         return storagePutDepartmentLogo(
+          organization.id,
           input.fileName,
           bytes,
           input.contentType

@@ -2819,7 +2819,9 @@ export const appRouter = router({
           localizeDigits(value, "latin").trim().toLowerCase();
         const existingSerialKeys = new Set(
           existingTelegrams.flatMap(row => [
-            ...(row.originalSerial ? [normalizeSerial(row.originalSerial)] : []),
+            ...(row.originalSerial
+              ? [normalizeSerial(row.originalSerial)]
+              : []),
             ...(row.organizationSerialCode
               ? [normalizeSerial(row.organizationSerialCode)]
               : []),

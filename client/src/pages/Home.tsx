@@ -3057,9 +3057,7 @@ function TelegramDetail({
       let renderedNotes = "";
       for (const match of importNotesText.matchAll(referencePattern)) {
         const matchIndex = match.index ?? cursor;
-        renderedNotes += escapeHtml(
-          importNotesText.slice(cursor, matchIndex)
-        );
+        renderedNotes += escapeHtml(importNotesText.slice(cursor, matchIndex));
         const marker = match[1] ?? "";
         const rawSerial = match[2] ?? "";
         const serial = rawSerial

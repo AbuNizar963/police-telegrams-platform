@@ -391,7 +391,7 @@ class _DashboardPageState extends State<DashboardPage> {
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
-            label: 'الرئيسية',
+            label: 'لوحة التحكم',
           ),
           NavigationDestination(
             icon: Icon(Icons.call_made_outlined),

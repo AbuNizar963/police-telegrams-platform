@@ -1096,7 +1096,7 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="أولوية عاجل اليوم"
+          label="أولوية عاجلة اليوم"
           value={data.todayUrgent}
           detail="من بداية اليوم"
           icon={Siren}
@@ -1155,7 +1155,7 @@ export default function Home() {
                     {activeKpi === "today"
                       ? "الصادرة اليوم"
                       : activeKpi === "urgent"
-                        ? "أولوية عاجل اليوم"
+                        ? "أولوية عاجلة اليوم"
                         : activeKpi === "incoming"
                           ? "الواردة اليوم"
                           : activeKpi === "in-progress"
@@ -4551,9 +4551,9 @@ function TelegramEditModal({
               onChange={event => setPriority(event.target.value as Priority)}
               className="h-10 rounded-lg border bg-background px-3"
             >
-              <option value="slow">بطيء</option>
-              <option value="normal">عادي</option>
-              <option value="urgent">عاجل</option>
+              <option value="urgent">عاجلة</option>
+              <option value="normal">عادية</option>
+              <option value="slow">بطيئة</option>
             </select>
           </label>
           <label className="grid gap-1.5 text-sm font-semibold">

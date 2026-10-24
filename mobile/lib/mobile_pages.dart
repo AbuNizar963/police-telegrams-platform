@@ -146,6 +146,21 @@ class _ReportsPageState extends State<ReportsPage> {
   String? error;
   Map<String, dynamic>? report;
 
+  static const statusLabels = <String, String>{
+    'draft': 'مسودة',
+    'submitted': 'مرسلة للمراجعة',
+    'in_review': 'قيد المراجعة',
+    'approved': 'معتمدة',
+    'returned': 'معادة للتصحيح',
+    'rejected': 'مرفوضة',
+    'forwarded': 'محالة',
+    'pending': 'قيد الانتظار',
+    'in_progress': 'قيد الإجراء',
+    'resolved': 'منجزة',
+    'completed': 'مكتملة',
+    'archived': 'مؤرشفة',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -288,7 +303,7 @@ class _ReportRows extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              '${_stringValue(row['serialCode'] ?? row['serialNumber'])} · ${_stringValue(row['status'])}',
+              '${_stringValue(row['serialCode'] ?? row['serialNumber'])} · ${statusLabels['${row['status']}'] ?? _stringValue(row['status'])}',
             ),
           );
         }).toList(),

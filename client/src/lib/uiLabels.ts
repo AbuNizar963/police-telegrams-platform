@@ -4,14 +4,14 @@ export const classificationLabels = {
 } as const;
 
 export const priorityLabels = {
-  slow: "بطيء",
-  normal: "عادي",
-  urgent: "عاجل",
+  urgent: "عاجلة",
+  normal: "عادية",
+  slow: "بطيئة",
 } as const;
 
 export const categoryLabels = {
-  criminal: "جنائي",
   administrative: "إداري",
+  criminal: "جنائي",
   traffic: "مروري",
   security: "أمني",
   tactical: "عملياتي",

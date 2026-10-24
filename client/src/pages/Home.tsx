@@ -823,7 +823,7 @@ export default function Home() {
           body: row.body,
           recipient: row.recipient,
           signature: row.creatorName,
-          notes: row.workflowReason ?? "",
+          notes: row.importNotes ?? "",
           direction: isOutgoingTelegram(row) ? "صادر" : "وارد",
         }))
       );
@@ -2703,6 +2703,9 @@ function TelegramDetail({
   telegram: {
     id: number;
     serialCode: string;
+    originalSerial?: string | null;
+    importNotes?: string | null;
+    telegramDate?: Date | null;
     organizationSerialCode?: string | null;
     senderOrganizationName?: string | null;
     organizationId?: string | null;
@@ -3028,9 +3031,10 @@ function TelegramDetail({
     const organizationHierarchy = hierarchyCandidates.filter(
       name => !fixedHeaderNames.has(name.trim())
     );
-    const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const telegramDate = telegram.telegramDate ?? telegram.createdAt;
+    const createdAt = formatConfiguredDate(new Date(), settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
-      telegram.createdAt,
+      telegramDate,
       settings
     );
     const location = localizeDigits(
@@ -3297,6 +3301,15 @@ function TelegramDetail({
           direction: rtl;
         }
         .telegram-export-page .document-footer p { margin: 0; }
+        .telegram-export-page .import-notes {
+          margin-top: 8px;
+          padding-top: 6px;
+          border-top: 1px dotted #7b8493;
+          font-size: 12px;
+          line-height: 1.8;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
         .telegram-export-page .footer-creator { text-align: right; }
         .telegram-export-page .footer-location { text-align: center; }
         .telegram-export-page .footer-date { text-align: left; }
@@ -3348,8 +3361,9 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+          <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
         </footer>
+        ${telegram.importNotes?.trim() ? `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${escapeHtml(localizeDigits(telegram.importNotes, numberSystem))}</section>` : ""}
       </article>`;
 
     return wrapper;

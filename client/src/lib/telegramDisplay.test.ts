@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTelegramDisplayNumber } from "./telegramDisplay";
+import { getTelegramDisplayNumber, getTelegramDisplaySerial } from "./telegramDisplay";
 
 describe("getTelegramDisplayNumber", () => {
   it("extracts and removes padding from a full telegram number", () => {
@@ -17,6 +17,28 @@ describe("getTelegramDisplayNumber", () => {
     expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "2025-009")).toBe(
       "2025-009"
     );
+  });
+
+  it("returns the imported serial exactly without digit localization", () => {
+    expect(
+      getTelegramDisplaySerial(
+        {
+          originalSerial: "ب و ٠٠٦",
+          organizationSerialCode: "UNIT-00072",
+          serialCode: "GLOBAL-00419",
+        },
+        "latin"
+      )
+    ).toBe("ب و ٠٠٦");
+    expect(
+      getTelegramDisplaySerial(
+        {
+          originalSerial: "2025-009",
+          serialCode: "SYS-2026-09-30-00009",
+        },
+        "arabic"
+      )
+    ).toBe("2025-009");
   });
 
   it("returns a safe placeholder for an empty serial", () => {

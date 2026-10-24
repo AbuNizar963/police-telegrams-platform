@@ -148,6 +148,20 @@ export async function storageDelete(key: string): Promise<void> {
   await provider.remove(normalizedKey);
 }
 
+export async function storageDownload(
+  relKey: string
+): Promise<{ body: Buffer; contentType: string | null }> {
+  const key = normalizeKey(relKey);
+  if (
+    !key ||
+    key.split("/").some(segment => !segment || segment === "." || segment === ".." || segment.includes("\\"))
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+
+  return getStorageProvider().download(key);
+}
+
 export async function storageCreateSignedUrl(
   relKey: string,
   expiresInSeconds = 60 * 60

@@ -87,8 +87,15 @@ export function storageKeyFromStoredUrl(
     if (path.startsWith(applicationStoragePrefix)) {
       return path.slice(applicationStoragePrefix.length);
     }
-    const prefix = `/storage/v1/object/sign/${bucket}/`;
-    return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+    // Older department settings may store either signed or public Supabase
+    // object URLs. Normalize both forms to an internal storage key so callers
+    // can serve the asset through the authenticated same-origin proxy.
+    const prefixes = [
+      `/storage/v1/object/sign/${bucket}/`,
+      `/storage/v1/object/public/${bucket}/`,
+    ];
+    const prefix = prefixes.find(candidate => path.startsWith(candidate));
+    return prefix ? path.slice(prefix.length) : null;
   } catch {
     return null;
   }

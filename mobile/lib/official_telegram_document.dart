@@ -884,7 +884,11 @@ String buildOfficialTelegramHtml({
       .join();
 
   final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
-  final createdAt = _formatConfiguredHeaderDateTime(DateTime.now(), settings);
+  final createdAt = _formatConfiguredHeaderDateTime(
+    DateTime.now(),
+    settings,
+    use24HourTime: true,
+  );
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
     telegramDate,
     settings,
@@ -1147,12 +1151,13 @@ String _formatConfiguredDate(Object? value, Map<String, dynamic> settings) {
 
 String _formatConfiguredHeaderDateTime(
   Object? value,
-  Map<String, dynamic> settings,
-) {
+  Map<String, dynamic> settings, {
+  bool use24HourTime = false,
+}) {
   final date = _configuredDate(value, settings);
   final yearMonthDay = '${date.year}/${_pad(date.month)}/${_pad(date.day)}';
   return _localizeDigits(
-    '$yearMonthDay - ${_timeText(date, settings['timeFormat'] == '12')}',
+    '$yearMonthDay - ${_timeText(date, !use24HourTime && settings['timeFormat'] == '12')}',
     settings['numberSystem'],
   );
 }

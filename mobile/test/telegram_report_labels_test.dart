@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/telegram_status_labels.dart';
+import 'package:police_telegrams/telegram_report_labels.dart';
 
 void main() {
-  test('Arabic status labels match the web canonical labels', () {
+  test('Arabic report labels match the web canonical labels', () {
     expect(telegramStatusLabels, <String, String>{
       'draft': 'مسودة',
       'submitted': 'مرسلة للمراجعة',
@@ -16,6 +16,15 @@ void main() {
       'resolved': 'منجزة',
       'completed': 'مكتملة',
       'archived': 'مؤرشفة',
+    });
+    expect(telegramClassificationLabels, <String, String>{
+      'secret': 'سري',
+      'normal': 'عادي',
+    });
+    expect(telegramPriorityLabels, <String, String>{
+      'urgent': 'عاجلة',
+      'normal': 'عادية',
+      'slow': 'بطيئة',
     });
   });
 }

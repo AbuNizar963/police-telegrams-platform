@@ -12,3 +12,14 @@ const Map<String, String> telegramStatusLabels = <String, String>{
   'completed': 'مكتملة',
   'archived': 'مؤرشفة',
 };
+
+const Map<String, String> telegramClassificationLabels = <String, String>{
+  'secret': 'سري',
+  'normal': 'عادي',
+};
+
+const Map<String, String> telegramPriorityLabels = <String, String>{
+  'urgent': 'عاجلة',
+  'normal': 'عادية',
+  'slow': 'بطيئة',
+};

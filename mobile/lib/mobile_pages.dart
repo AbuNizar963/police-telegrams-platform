@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'app_lock.dart';
 
 import 'api.dart';
-import 'telegram_status_labels.dart';
+import 'telegram_report_labels.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -305,8 +305,10 @@ class _ReportsPageState extends State<ReportsPage> {
           '${row['subject'] ?? ''}',
           '${row['recipient'] ?? row['organizationName'] ?? ''}',
           telegramStatusLabels['${row['status']}'] ?? '${row['status'] ?? ''}',
-          '${row['classification'] ?? ''}',
-          '${row['priority'] ?? ''}',
+          telegramClassificationLabels['${row['classification']}'] ??
+              '${row['classification'] ?? ''}',
+          telegramPriorityLabels['${row['priority']}'] ??
+              '${row['priority'] ?? ''}',
           '${row['createdAt'] ?? ''}',
         ];
       }),

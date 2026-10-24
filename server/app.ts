@@ -12,6 +12,7 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { assertProductionEnvironment, ENV } from "./_core/env";
 import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
+import { createRateLimit } from "./_core/rateLimit";
 
 const verificationAttempts = new Map<
   string,
@@ -110,6 +111,16 @@ export function createApp(
     }
     next();
   });
+
+  // Defense-in-depth per-instance request limit; retain shared edge limits in production.
+  app.use(
+    "/api",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 300,
+      message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",
+    })
+  );
 
   // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.

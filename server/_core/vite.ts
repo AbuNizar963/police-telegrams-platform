@@ -3,6 +3,7 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import { createRateLimit } from "./rateLimit";
 
 export async function setupVite(app: Express, server: Server) {
   // Keep Vite and its native Rollup dependencies out of production API startup.
@@ -25,28 +26,36 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
+  app.use(
+    "*",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 240,
+      message: "طلبات كثيرة لصفحة التطوير؛ أعد المحاولة لاحقًا",
+    }),
+    async (req, res, next) => {
+      const url = req.originalUrl;
 
-    try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "../..",
-        "client",
-        "index.html"
-      );
+      try {
+        const clientTemplate = path.resolve(
+          import.meta.dirname,
+          "../..",
+          "client",
+          "index.html"
+        );
 
-      // Always reload index.html so development changes are reflected.
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (error) {
-      vite.ssrFixStacktrace(error as Error);
-      next(error);
+        // Always reload index.html so development changes are reflected.
+        let template = await fs.promises.readFile(clientTemplate, "utf-8");
+        template = template.replace(
+          `src="/src/main.tsx"`,
+          `src="/src/main.tsx?v=${nanoid()}"`
+        );
+        const page = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      } catch (error) {
+        vite.ssrFixStacktrace(error as Error);
+        next(error);
+      }
     }
-  });
+  );
 }

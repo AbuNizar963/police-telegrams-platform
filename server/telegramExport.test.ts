@@ -36,6 +36,11 @@ describe("telegram export HTML validation", () => {
         safeDocument.replace("<article", '<article onclick="alert(1)"')
       )
     ).toBe(false);
+    expect(
+      isSafeExportHtml(
+        safeDocument.replace("<article", "<article onclick=alert(1)")
+      )
+    ).toBe(false);
   });
 
   it("rejects executable and unsupported data URLs in attributes", () => {
@@ -63,6 +68,20 @@ describe("telegram export HTML validation", () => {
         )
       )
     ).toBe(false);
+  });
+
+  it("rejects unsafe URLs with mixed whitespace and quoted attributes", () => {
+    for (const attribute of [
+      'src = " javascript:alert(1)"',
+      "href='\n vbscript:alert(1)'",
+      "src=data:text/html;base64,AAAA",
+    ]) {
+      expect(
+        isSafeExportHtml(
+          safeDocument.replace('src="data:image/png;base64,AAAA"', attribute)
+        )
+      ).toBe(false);
+    }
   });
 
   it("rejects empty HTML", () => {

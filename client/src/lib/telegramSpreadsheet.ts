@@ -200,7 +200,6 @@ export async function parseTelegramWorkbook(
   const rows: TelegramSpreadsheetRow[] = [];
   const issues: TelegramSpreadsheetIssue[] = [];
   const fingerprints = new Set<string>();
-  const serialFingerprints = new Set<string>();
   let skippedRows = 0;
   let duplicateRows = 0;
 
@@ -209,23 +208,24 @@ export async function parseTelegramWorkbook(
       sheetName.trim() === "وارد" ? "وارد" : "صادر";
     if (matrix.length === 0) continue;
 
-    const headerIndex = Math.min(
-      10,
-      Math.max(
-        0,
-        matrix.findIndex(row =>
-          row.some(value => normalized(value).includes("الرقمالمتسلسل"))
-        )
-      )
-    );
-    const indexes = findHeaderIndexes(matrix[headerIndex] ?? []);
+    const headerIndex = matrix.slice(0, 11).findIndex(row => {
+      const indexes = findHeaderIndexes(row);
+      return indexes.serial >= 0 && indexes.body >= 0;
+    });
+    if (headerIndex < 0) {
+      throw new Error(
+        `تعذر العثور على صف العناوين الصحيح في ورقة "${sheetName}". تأكد من وجود عمودي رقم البرقية ونص البرقية.`
+      );
+    }
+
+    const indexes = findHeaderIndexes(matrix[headerIndex]);
     const hasDateColumn = indexes.date >= 0;
     const fallback = {
-      serial: indexes.serial >= 0 ? indexes.serial : 0,
+      serial: indexes.serial,
       time: indexes.time >= 0 ? indexes.time : 1,
       sender: indexes.sender >= 0 ? indexes.sender : 2,
       date: indexes.date >= 0 ? indexes.date : -1,
-      body: indexes.body >= 0 ? indexes.body : hasDateColumn ? 4 : 3,
+      body: indexes.body,
       recipient:
         indexes.recipient >= 0 ? indexes.recipient : hasDateColumn ? 5 : 4,
       signature:
@@ -245,7 +245,7 @@ export async function parseTelegramWorkbook(
       if (body.length < 3) {
         skippedRows += 1;
         issues.push({
-          rowNumber: headerIndex + 2 + rows.length,
+          rowNumber: headerIndex + 2 + offset,
           sheetName,
           reason: "نص البرقية فارغ أو أقصر من الحد الأدنى.",
           value: body,
@@ -254,29 +254,28 @@ export async function parseTelegramWorkbook(
       }
       const date = cell(row, fallback.date);
       const originalSerial = cell(row, fallback.serial);
-      const serialFingerprint = `${direction}|${normalized(originalSerial)}`;
       const fingerprint = [
         direction,
         normalized(originalSerial),
-        normalized(date),
         normalized(cell(row, fallback.time)),
+        normalized(date),
+        normalized(sender),
         normalized(body),
+        normalized(recipient),
+        normalized(cell(row, fallback.signature)),
+        normalized(notes),
       ].join("|");
-      if (
-        fingerprints.has(fingerprint) ||
-        (originalSerial && serialFingerprints.has(serialFingerprint))
-      ) {
+      if (fingerprints.has(fingerprint)) {
         duplicateRows += 1;
         issues.push({
-          rowNumber: headerIndex + 2 + rows.length,
+          rowNumber: headerIndex + 2 + offset,
           sheetName,
-          reason: "صف مكرر داخل الملف وتم استبعاده تلقائيًا.",
+          reason: "صف مطابق تمامًا لصف سابق داخل الملف وتم استبعاده.",
           value: originalSerial || body.slice(0, 80),
         });
         continue;
       }
       fingerprints.add(fingerprint);
-      if (originalSerial) serialFingerprints.add(serialFingerprint);
       rows.push({
         originalSerial,
         time: normalizedTime(row[fallback.time]),

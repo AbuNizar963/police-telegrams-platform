@@ -955,7 +955,7 @@ String buildOfficialTelegramHtml({
   final outgoing =
       _value(telegram['organizationId'], fallback: '') ==
       _value(telegram['currentOrganizationId'], fallback: '');
-  final documentType = outgoing ? 'وثيقة صادرة' : 'وثيقة واردة';
+  final documentType = outgoing ? 'برقية صادرة' : 'برقية واردة';
   final classification = _label({
     'secret': 'سري',
     'normal': 'عادي',
@@ -1083,7 +1083,7 @@ $watermark
 <footer class="document-footer">
 <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">الوقت والتاريخ: ${_escapeHtml(createdAt)}</p>
+<p class="footer-date">تاريخ إنشاء الوثيقة: ${_escapeHtml(createdAt)}</p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

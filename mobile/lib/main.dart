@@ -1980,7 +1980,7 @@ class _DashboardPageState extends State<DashboardPage>
             children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('الأولوية ودرجة السرية'),
+                title: const Text('الأسبقية ودرجة السرية'),
                 value: priority,
                 onChanged: (value) => setDialogState(() => priority = value),
               ),
@@ -3294,7 +3294,7 @@ class _DashboardPageState extends State<DashboardPage>
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _filterDropdown('الأولوية', priorityFilter, const [
+                child: _filterDropdown('الأسبقية', priorityFilter, const [
                   ('all', 'كل الأولويات'),
                   ('urgent', 'عاجل'),
                   ('normal', 'عادي'),
@@ -4255,7 +4255,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                     ),
                     _infoRow('الجهة المستلمة', data?['recipient'] ?? '—'),
                     _infoRow(
-                      'الأولوية',
+                      'الأسبقية',
                       _priorityLabel(data?['priority'] ?? 'normal'),
                     ),
                     _infoRow(
@@ -4439,7 +4439,7 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
             DropdownButtonFormField<String>(
               initialValue: priority,
               decoration: const InputDecoration(
-                labelText: 'الأولوية',
+                labelText: 'الأسبقية',
                 border: OutlineInputBorder(),
               ),
               items: const [

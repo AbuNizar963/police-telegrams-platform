@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, from, getSupabaseAdmin } = vi.hoisted(() => {
+const { upload, createSignedUrl, download, from, getSupabaseAdmin } = vi.hoisted(() => {
   const upload = vi.fn();
   const createSignedUrl = vi.fn();
-  const from = vi.fn(() => ({ upload, createSignedUrl }));
+  const download = vi.fn();
+  const from = vi.fn(() => ({ upload, createSignedUrl, download }));
   const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-  return { upload, createSignedUrl, from, getSupabaseAdmin };
+  return { upload, createSignedUrl, download, from, getSupabaseAdmin };
 });
 
 vi.mock("./_core/supabase", () => ({ getSupabaseAdmin }));
@@ -21,6 +22,7 @@ describe("Supabase storage provider", () => {
     resetStorageProviderForTests();
     vi.clearAllMocks();
     upload.mockResolvedValue({ error: null });
+    download.mockResolvedValue({ data: new Blob(["logo"], { type: "image/png" }), error: null });
     createSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://storage.example/signed-object" },
       error: null,
@@ -58,6 +60,31 @@ describe("Supabase storage provider", () => {
         cacheControl: "3600",
       })
     ).rejects.toThrow("Storage upload failed: bucket unavailable");
+  });
+
+  it("downloads object bytes and returns the stored content type", async () => {
+    const data = new Blob(["logo-bytes"], { type: "image/png" });
+    download.mockResolvedValueOnce({ data, error: null });
+
+    await expect(
+      getStorageProvider().download("department/logos/org/logo.png")
+    ).resolves.toEqual({
+      body: Buffer.from("logo-bytes"),
+      contentType: "image/png",
+    });
+
+    expect(download).toHaveBeenCalledWith("department/logos/org/logo.png");
+  });
+
+  it("surfaces object download failures with provider context", async () => {
+    download.mockResolvedValueOnce({
+      data: null,
+      error: { message: "object missing" },
+    });
+
+    await expect(
+      getStorageProvider().download("department/logos/org/missing.png")
+    ).rejects.toThrow("Storage download failed: object missing");
   });
 
   it("returns the signed URL for the requested key and expiration", async () => {

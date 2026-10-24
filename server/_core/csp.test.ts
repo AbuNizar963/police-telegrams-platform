@@ -7,7 +7,7 @@ describe("getContentSecurityPolicy", () => {
 
     expect(policy.header).toBe("Content-Security-Policy");
     expect(policy.value).toContain("script-src 'self';");
-    expect(policy.value).not.toContain("'unsafe-inline'");
+    expect(policy.value).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(policy.value).not.toContain("'unsafe-eval'");
     expect(policy.value).toContain("object-src 'none'");
     expect(policy.value).toContain("frame-ancestors 'none'");

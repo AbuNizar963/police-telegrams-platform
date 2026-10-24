@@ -67,7 +67,7 @@ describe("Supabase storage provider", () => {
       getStorageProvider().upload("telegrams/7/file.pdf", Buffer.from("x"), {
         contentType: "application/pdf",
         cacheControl: "3600",
-      })
+      }),
     ).rejects.toThrow("Storage upload failed: bucket unavailable");
   });
 

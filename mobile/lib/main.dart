@@ -4479,6 +4479,7 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
               items: const [
                 DropdownMenuItem(value: 'normal', child: Text('عادي')),
                 DropdownMenuItem(value: 'secret', child: Text('سري')),
+                DropdownMenuItem(value: 'confidential', child: Text('سري - تصنيف بديل')),
                 DropdownMenuItem(value: 'top_secret', child: Text('سري للغاية')),
               ],
               onChanged: (value) {

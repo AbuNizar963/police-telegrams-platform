@@ -36,16 +36,19 @@ void main() {
       expect(getTelegramDisplayNumber('UNIT-00072'), '72');
     });
 
-    test('preserves imported serials exactly in every configured number system', () {
-      expect(
-        getTelegramDisplaySerial({'originalSerial': 'ب و ٠٠٦'}, 'latin'),
-        'ب و ٠٠٦',
-      );
-      expect(
-        getTelegramDisplaySerial({'originalSerial': '2025-009'}, 'arabic'),
-        '2025-009',
-      );
-    });
+    test(
+      'preserves imported serials exactly in every configured number system',
+      () {
+        expect(
+          getTelegramDisplaySerial({'originalSerial': 'ب و ٠٠٦'}, 'latin'),
+          'ب و ٠٠٦',
+        );
+        expect(
+          getTelegramDisplaySerial({'originalSerial': '2025-009'}, 'arabic'),
+          '2025-009',
+        );
+      },
+    );
 
     test('preserves exact imported serials and handles missing values', () {
       expect(

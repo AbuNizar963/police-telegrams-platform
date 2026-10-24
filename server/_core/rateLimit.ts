@@ -13,7 +13,7 @@ interface RateLimitOptions {
 }
 
 const MAX_TRACKED_KEYS = 10_000;
-const buckets = new Map<string, RateLimitEntry>();
+const stores = new Set<Map<string, RateLimitEntry>>();
 
 /**
  * Process-local fixed-window limiter. Keep the store bounded so attacker-
@@ -24,6 +24,8 @@ const buckets = new Map<string, RateLimitEntry>();
  * guard for each application instance.
  */
 export function createRateLimit(options: RateLimitOptions): RequestHandler {
+  const buckets = new Map<string, RateLimitEntry>();
+  stores.add(buckets);
   const {
     windowMs,
     maxRequests,
@@ -86,5 +88,6 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
 
 /** Test-only reset hook; not used by application code. */
 export function resetRateLimitStoreForTests(): void {
-  buckets.clear();
+  for (const buckets of stores) buckets.clear();
+  stores.clear();
 }

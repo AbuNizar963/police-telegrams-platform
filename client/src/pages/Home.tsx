@@ -2961,7 +2961,10 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
-  const createExportPaper = (documentSettings: PlatformDocumentSettings) => {
+  const createExportPaper = (
+    documentSettings: PlatformDocumentSettings,
+    logoUrl: string | null = settings?.logoUrl ?? null
+  ) => {
     const escapeHtml = (value: unknown) =>
       String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -3082,9 +3085,13 @@ function TelegramDetail({
       renderedNotes += escapeHtml(importNotesText.slice(cursor));
       return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
     })();
-    const logo = settings?.logoUrl
-      ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
-      : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+    const resolvedLogoUrl = logoUrl?.trim();
+    if (!resolvedLogoUrl) {
+      throw new Error(
+        "الشعار الرسمي غير مضبوط في إعدادات الجهة. احفظ الشعار الرسمي ثم أعد التصدير."
+      );
+    }
+    const logo = `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`;
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
       window.location.origin
@@ -3117,7 +3124,7 @@ function TelegramDetail({
         })()
       : "";
 
-    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl, {
+    const watermark = buildTelegramWatermarkHtml(resolvedLogoUrl, {
       showMinistryText: documentSettings.showMinistryWatermarkText !== false,
     });
 
@@ -3457,7 +3464,14 @@ function TelegramDetail({
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
     await document.fonts.ready;
-    const wrapper = createExportPaper(await loadExportSettings());
+    const [documentSettings, exportSettings] = await Promise.all([
+      loadExportSettings(),
+      utils.settings.get.fetch(undefined, { staleTime: 0 }),
+    ]);
+    const wrapper = createExportPaper(
+      documentSettings,
+      exportSettings.logoUrl ?? null
+    );
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
@@ -3533,19 +3547,17 @@ function TelegramDetail({
             image.src = dataUrl;
             await image.decode();
           } catch (error) {
-            // Keep export failures diagnosable without logging signed image URLs.
-            console.error("تعذر تضمين صورة في تصدير البرقية:", {
+            // Never export a document with a missing or substituted official logo.
+            // Avoid logging signed URLs because they may grant temporary access.
+            console.error("تعذر تجهيز صورة الشعار الرسمي للتصدير:", {
               imageRole: image.classList.contains("watermark-logo")
                 ? "watermark-logo"
                 : "official-logo",
               error: error instanceof Error ? error.message : String(error),
             });
-            // Never send a broken image to Chromium. Preserve the existing
-            // official seal fallback for the header; the text watermark remains
-            // independently rendered when ministry watermark text is enabled.
-            image.outerHTML = image.classList.contains("watermark-logo")
-              ? ""
-              : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+            throw new Error(
+              "تعذر تحميل الشعار الرسمي للتصدير. تم إيقاف التصدير بدلًا من استخدام شعار بديل؛ حدّث إعدادات الشعار ثم أعد المحاولة."
+            );
           }
         }
       )
@@ -3682,7 +3694,14 @@ function TelegramDetail({
   const printTelegram = async () => {
     let exportWrapper: HTMLDivElement;
     try {
-      exportWrapper = createExportPaper(await loadExportSettings());
+      const [documentSettings, exportSettings] = await Promise.all([
+        loadExportSettings(),
+        utils.settings.get.fetch(undefined, { staleTime: 0 }),
+      ]);
+      exportWrapper = createExportPaper(
+        documentSettings,
+        exportSettings.logoUrl ?? null
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR
@@ -3731,7 +3750,9 @@ function TelegramDetail({
             }
             await image.decode?.();
           } catch {
-            // Keep printing even when an optional image cannot be decoded.
+            throw new Error(
+              "تعذر تحميل الشعار الرسمي للطباعة. لم تتم الطباعة لتجنب إخراج وثيقة بلا الشعار؛ أعد المحاولة."
+            );
           }
         })
       );

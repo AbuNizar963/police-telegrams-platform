@@ -5,9 +5,9 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
 const MAX_HTML_BYTES = 8_000_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
-const PNG_LONG_EDGE_PIXELS = 4096;
+const PNG_LONG_EDGE_PIXELS = 14031;
 const A4_HEIGHT_CSS_PIXELS = (297 / 25.4) * 96;
-const PNG_DPI = (PNG_LONG_EDGE_PIXELS / 297) * 25.4;
+const PNG_DPI = (PNG_LONG_EDGE_PIXELS / 297) * 25.4; // Approximately 1200 DPI on A4.
 const PNG_DEVICE_SCALE_FACTOR = PNG_LONG_EDGE_PIXELS / A4_HEIGHT_CSS_PIXELS;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 

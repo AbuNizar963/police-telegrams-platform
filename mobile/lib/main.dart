@@ -214,6 +214,23 @@ class PoliceTelegramsApp extends StatelessWidget {
           width: 280,
           elevation: 8,
         ),
+        listTileTheme: ListTileThemeData(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          minTileHeight: 48,
+          iconColor: const Color(0xFFCBD4E1),
+          textColor: const Color(0xFFF5F6F8),
+          selectedColor: gold,
+          selectedTileColor: const Color(0xFF263A55),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          titleTextStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFF5F6F8),
+          ),
+        ),
         navigationBarTheme: const NavigationBarThemeData(
           backgroundColor: Color(0xFFFFFEFC),
           indicatorColor: Color(0xFFF1E8D5),
@@ -2511,7 +2528,6 @@ class _DashboardPageState extends State<DashboardPage>
                 ListTile(
                   leading: const Icon(LucideIcons.layoutDashboard),
                   title: const Text('لوحة التحكم'),
-                  selected: true,
                   onTap: () {
                     Navigator.pop(context);
                     setState(() {
@@ -2531,7 +2547,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.fileSpreadsheet),
-                  title: const Text('استيراد وتصدير سجل البرقيات'),
+                  title: const Text('استيراد وتصدير السجل'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(

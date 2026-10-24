@@ -2773,7 +2773,9 @@ export const appRouter = router({
           localizeDigits(value, "latin").trim().toLowerCase();
         const keys = new Set(
           existing.flatMap(row => [
-            ...(row.originalSerial ? [normalizeSerial(row.originalSerial)] : []),
+            ...(row.originalSerial
+              ? [normalizeSerial(row.originalSerial)]
+              : []),
             ...(row.organizationSerialCode
               ? [normalizeSerial(row.organizationSerialCode)]
               : []),

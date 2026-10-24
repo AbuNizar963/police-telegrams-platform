@@ -1128,7 +1128,11 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       if (organization is Map &&
           organization['organizationId']?.toString() == organizationId) {
         final logo = organization['logoUrl']?.toString().trim();
-        resolved['logoUrl'] = logo == null || logo.isEmpty ? null : logo;
+        // An empty response should not discard a valid saved URL for this
+        // same organization. A mismatched organization is cleared above.
+        if (logo != null && logo.isNotEmpty) {
+          resolved['logoUrl'] = logo;
+        }
       }
     } catch (_) {
       // Keep only the same-organization saved URL as a fallback; the endpoint

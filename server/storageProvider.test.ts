@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, from, getSupabaseAdmin } = vi.hoisted(() => {
+const {
+  upload,
+  createSignedUrl,
+  download,
+  from,
+  getSupabaseAdmin,
+} = vi.hoisted(() => {
   const upload = vi.fn();
   const createSignedUrl = vi.fn();
-  const from = vi.fn(() => ({ upload, createSignedUrl }));
+  const download = vi.fn();
+  const from = vi.fn(() => ({ upload, createSignedUrl, download }));
   const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-  return { upload, createSignedUrl, from, getSupabaseAdmin };
+  return { upload, createSignedUrl, download, from, getSupabaseAdmin };
 });
 
 vi.mock("./_core/supabase", () => ({ getSupabaseAdmin }));
@@ -23,6 +30,10 @@ describe("Supabase storage provider", () => {
     upload.mockResolvedValue({ error: null });
     createSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://storage.example/signed-object" },
+      error: null,
+    });
+    download.mockResolvedValue({
+      data: new Blob(["logo-bytes"], { type: "image/png" }),
       error: null,
     });
   });
@@ -66,6 +77,27 @@ describe("Supabase storage provider", () => {
     ).resolves.toBe("https://storage.example/signed-object");
 
     expect(createSignedUrl).toHaveBeenCalledWith("telegrams/7/file.pdf", 600);
+  });
+
+  it("downloads object bytes and preserves the stored content type", async () => {
+    const result = await getStorageProvider().download(
+      "department/logos/logo.png"
+    );
+
+    expect(download).toHaveBeenCalledWith("department/logos/logo.png");
+    expect(result.body).toEqual(Buffer.from("logo-bytes"));
+    expect(result.contentType).toBe("image/png");
+  });
+
+  it("surfaces download failures with provider context", async () => {
+    download.mockResolvedValueOnce({
+      data: null,
+      error: { message: "object not found" },
+    });
+
+    await expect(
+      getStorageProvider().download("department/logos/missing.png")
+    ).rejects.toThrow("Storage download failed: object not found");
   });
 
   it("surfaces signed URL errors and empty provider responses", async () => {

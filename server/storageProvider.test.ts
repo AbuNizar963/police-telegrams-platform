@@ -1,20 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  upload,
-  createSignedUrl,
-  download,
-  from,
-  getSupabaseAdmin,
-} = vi.hoisted(() => {
-  const upload = vi.fn();
-  const createSignedUrl = vi.fn();
-  const download = vi.fn();
-  const from = vi.fn(() => ({ upload, createSignedUrl, download }));
-  const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
+const { upload, createSignedUrl, download, from, getSupabaseAdmin } =
+  vi.hoisted(() => {
+    const upload = vi.fn();
+    const createSignedUrl = vi.fn();
+    const download = vi.fn();
+    const from = vi.fn(() => ({ upload, createSignedUrl, download }));
+    const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-  return { upload, createSignedUrl, download, from, getSupabaseAdmin };
-});
+    return { upload, createSignedUrl, download, from, getSupabaseAdmin };
+  });
 
 vi.mock("./_core/supabase", () => ({ getSupabaseAdmin }));
 
@@ -28,12 +23,12 @@ describe("Supabase storage provider", () => {
     resetStorageProviderForTests();
     vi.clearAllMocks();
     upload.mockResolvedValue({ error: null });
-    createSignedUrl.mockResolvedValue({
-      data: { signedUrl: "https://storage.example/signed-object" },
+    download.mockResolvedValue({
+      data: new Blob(["logo"], { type: "image/png" }),
       error: null,
     });
-    download.mockResolvedValue({
-      data: new Blob(["logo-bytes"], { type: "image/png" }),
+    createSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed-object" },
       error: null,
     });
   });
@@ -71,33 +66,37 @@ describe("Supabase storage provider", () => {
     ).rejects.toThrow("Storage upload failed: bucket unavailable");
   });
 
+  it("downloads object bytes and returns the stored content type", async () => {
+    const data = new Blob(["logo-bytes"], { type: "image/png" });
+    download.mockResolvedValueOnce({ data, error: null });
+
+    await expect(
+      getStorageProvider().download("department/logos/org/logo.png")
+    ).resolves.toEqual({
+      body: Buffer.from("logo-bytes"),
+      contentType: "image/png",
+    });
+
+    expect(download).toHaveBeenCalledWith("department/logos/org/logo.png");
+  });
+
+  it("surfaces object download failures with provider context", async () => {
+    download.mockResolvedValueOnce({
+      data: null,
+      error: { message: "object missing" },
+    });
+
+    await expect(
+      getStorageProvider().download("department/logos/org/missing.png")
+    ).rejects.toThrow("Storage download failed: object missing");
+  });
+
   it("returns the signed URL for the requested key and expiration", async () => {
     await expect(
       getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
     ).resolves.toBe("https://storage.example/signed-object");
 
     expect(createSignedUrl).toHaveBeenCalledWith("telegrams/7/file.pdf", 600);
-  });
-
-  it("downloads object bytes and preserves the stored content type", async () => {
-    const result = await getStorageProvider().download(
-      "department/logos/logo.png"
-    );
-
-    expect(download).toHaveBeenCalledWith("department/logos/logo.png");
-    expect(result.body).toEqual(Buffer.from("logo-bytes"));
-    expect(result.contentType).toBe("image/png");
-  });
-
-  it("surfaces download failures with provider context", async () => {
-    download.mockResolvedValueOnce({
-      data: null,
-      error: { message: "object not found" },
-    });
-
-    await expect(
-      getStorageProvider().download("department/logos/missing.png")
-    ).rejects.toThrow("Storage download failed: object not found");
   });
 
   it("surfaces signed URL errors and empty provider responses", async () => {

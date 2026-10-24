@@ -71,10 +71,11 @@ async function mapSettingsView(
     };
   }
 
-  const resolvedKey = storageKeyFromStoredUrl(
-    logoKey,
-    ENV.supabaseStorageBucket
-  );
+  // Legacy rows may contain the private storage key directly rather than
+  // a stable application URL or a Supabase signed URL.
+  const resolvedKey = logoKey.startsWith("department/logos/")
+    ? logoKey
+    : storageKeyFromStoredUrl(logoKey, ENV.supabaseStorageBucket);
   // Use the authenticated same-origin proxy for stored logos instead of
   // exposing a short-lived cross-origin signed URL. This keeps logos stable
   // across sessions and lets the export flow inline the image without CORS

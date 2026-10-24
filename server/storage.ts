@@ -78,17 +78,36 @@ export function storageKeyFromStoredUrl(
     }
   }
 
-  if (!/^https?:\/\//i.test(trimmed)) return null;
+  // Current and legacy settings may store a stable application URL,
+  // a Supabase signed URL, or a Supabase public URL. Normalize supported
+  // storage URL forms to the same object key for same-origin export fetching.
+  if (trimmed.startsWith("department/logos/")) {
+    return trimmed;
+  }
+
+  if (!/^https?:\\/\\//i.test(trimmed)) return null;
 
   try {
     const url = new URL(trimmed);
-    const path = decodeURIComponent(url.pathname);
+    let path = url.pathname;
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      return null;
+    }
+
     const applicationStoragePrefix = "/api/storage/";
     if (path.startsWith(applicationStoragePrefix)) {
       return path.slice(applicationStoragePrefix.length);
     }
-    const prefix = `/storage/v1/object/sign/${bucket}/`;
-    return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+
+    const prefixes = [
+      `/storage/v1/object/sign/${bucket}/`,
+      `/storage/v1/object/public/${bucket}/`,
+      `/storage/v1/object/authenticated/${bucket}/`,
+    ];
+    const prefix = prefixes.find(candidate => path.startsWith(candidate));
+    return prefix ? path.slice(prefix.length) : null;
   } catch {
     return null;
   }

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, download, from, getSupabaseAdmin } = vi.hoisted(() => {
+const {
+  upload,
+  createSignedUrl,
+  download,
+  from,
+  getSupabaseAdmin,
+} = vi.hoisted(() => {
   const upload = vi.fn();
   const createSignedUrl = vi.fn();
   const download = vi.fn();
@@ -74,7 +80,9 @@ describe("Supabase storage provider", () => {
   });
 
   it("downloads object bytes and preserves the stored content type", async () => {
-    const result = await getStorageProvider().download("department/logos/logo.png");
+    const result = await getStorageProvider().download(
+      "department/logos/logo.png"
+    );
 
     expect(download).toHaveBeenCalledWith("department/logos/logo.png");
     expect(result.body).toEqual(Buffer.from("logo-bytes"));

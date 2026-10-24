@@ -3487,7 +3487,9 @@ function TelegramDetail({
                 preview.decoding = "async";
                 preview.src = imageUrl;
                 await preview.decode();
-                const maxDimension = 800;
+                // Keep enough source detail for the 1200-DPI A4 export.
+                // Never upscale a small source logo; preserve its native pixels.
+                const maxDimension = 2400;
                 const scale = Math.min(
                   1,
                   maxDimension /
@@ -3505,7 +3507,7 @@ function TelegramDetail({
                 const context = canvas.getContext("2d");
                 if (!context) throw new Error("تعذر تجهيز صورة الشعار");
                 context.drawImage(preview, 0, 0, canvas.width, canvas.height);
-                dataUrl = canvas.toDataURL("image/webp", 0.86);
+                dataUrl = canvas.toDataURL("image/webp", 0.96);
                 if (!dataUrl.startsWith("data:image/webp")) {
                   dataUrl = canvas.toDataURL("image/png");
                 }

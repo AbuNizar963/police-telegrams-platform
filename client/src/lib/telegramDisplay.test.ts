@@ -45,7 +45,6 @@ describe("getTelegramDisplayNumber", () => {
     ).toBe("2025-009");
   });
 
-
   it("uses the official serial in export filenames safely", () => {
     expect(
       getTelegramExportFileBaseName({

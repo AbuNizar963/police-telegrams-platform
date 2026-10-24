@@ -109,7 +109,9 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
     expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
     expect(res.set).toHaveBeenCalledWith("Content-Type", "image/png");
-    expect(res.send).toHaveBeenCalledWith(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    expect(res.send).toHaveBeenCalledWith(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    );
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
@@ -140,13 +142,11 @@ describe("storage route", () => {
 
     await handler({ params: { key: key.split("/") } }, res);
 
-    expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
+    expect(storageDownload).toHaveBeenCalledWith(key);
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
     expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
-    expect(res.redirect).toHaveBeenCalledWith(
-      307,
-      "https://storage.example/logo"
-    );
+    expect(res.send).toHaveBeenCalled();
+    expect(res.redirect).not.toHaveBeenCalled();
   });
 
   it("rejects malformed department-logo keys before touching storage", async () => {
@@ -169,7 +169,7 @@ describe("storage route", () => {
     await handler({ params: { key: key.split("/") } }, res);
 
     expect(storageGetSignedUrl).toHaveBeenCalledWith(key, user);
-    expect(storageCreateSignedUrl).not.toHaveBeenCalled();
+    expect(storageDownload).not.toHaveBeenCalled();
     expect(res.redirect).toHaveBeenCalledWith(
       307,
       "https://storage.example/file"

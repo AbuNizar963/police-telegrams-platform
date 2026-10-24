@@ -16,10 +16,7 @@ String getTelegramSerialCode(Map<String, dynamic> telegram) {
 
 /// Returns the short serial shown in web lists and document headings.
 /// For example, `POL-2026-09-30-00690` becomes `690`.
-String getTelegramDisplayNumber(
-  Object? serialCode, {
-  Object? originalSerial,
-}) {
+String getTelegramDisplayNumber(Object? serialCode, {Object? originalSerial}) {
   final officialSerial = originalSerial?.toString().trim() ?? '';
   if (officialSerial.isNotEmpty && officialSerial != 'null') {
     return officialSerial;

@@ -14,6 +14,7 @@ export interface StorageProvider {
     options: { contentType: string; cacheControl: string }
   ): Promise<void>;
   createSignedUrl(key: string, expiresInSeconds: number): Promise<string>;
+  download(key: string): Promise<{ body: Buffer; contentType: string | null }>;
   remove?(key: string): Promise<void>;
 }
 
@@ -51,6 +52,23 @@ class SupabaseStorageProvider implements StorageProvider {
     }
 
     return data.signedUrl;
+  }
+
+  async download(key: string): Promise<{ body: Buffer; contentType: string | null }> {
+    const { data, error } = await getSupabaseAdmin()
+      .storage.from(ENV.supabaseStorageBucket)
+      .download(key);
+
+    if (error || !data) {
+      throw new Error(
+        `Storage download failed: ${error?.message ?? "empty response"}`
+      );
+    }
+
+    return {
+      body: Buffer.from(await data.arrayBuffer()),
+      contentType: data.type || null,
+    };
   }
 
   async remove(key: string): Promise<void> {

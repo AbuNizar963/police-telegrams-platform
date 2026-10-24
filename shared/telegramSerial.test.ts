@@ -24,9 +24,9 @@ describe("getTelegramSerialCode", () => {
   it(
     "falls back to the legacy global serial when organization numbering is absent",
     () => {
-
-    expect(
-      getTelegramSerialCode({ serialCode: "SYS-00012" })
-    ).toBe("SYS-00012");
-  });
+      expect(
+        getTelegramSerialCode({ serialCode: "SYS-00012" })
+      ).toBe("SYS-00012");
+    }
+  );
 });

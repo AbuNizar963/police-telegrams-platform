@@ -4479,8 +4479,14 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
               items: const [
                 DropdownMenuItem(value: 'normal', child: Text('عادي')),
                 DropdownMenuItem(value: 'secret', child: Text('سري')),
-                DropdownMenuItem(value: 'confidential', child: Text('سري - تصنيف بديل')),
-                DropdownMenuItem(value: 'top_secret', child: Text('سري للغاية')),
+                DropdownMenuItem(
+                  value: 'confidential',
+                  child: Text('سري - تصنيف بديل'),
+                ),
+                DropdownMenuItem(
+                  value: 'top_secret',
+                  child: Text('سري للغاية'),
+                ),
               ],
               onChanged: (value) {
                 if (value != null) setState(() => classification = value);
@@ -4499,7 +4505,10 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
                 DropdownMenuItem(value: 'traffic', child: Text('مروري')),
                 DropdownMenuItem(value: 'security', child: Text('أمني')),
                 DropdownMenuItem(value: 'tactical', child: Text('عملياتي')),
-                DropdownMenuItem(value: 'intelligence', child: Text('استخباراتي')),
+                DropdownMenuItem(
+                  value: 'intelligence',
+                  child: Text('استخباراتي'),
+                ),
                 DropdownMenuItem(value: 'emergency', child: Text('طوارئ')),
                 DropdownMenuItem(value: 'public_order', child: Text('حفظ النظام')),
                 DropdownMenuItem(value: 'personnel', child: Text('شؤون الأفراد')),

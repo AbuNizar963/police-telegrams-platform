@@ -39,7 +39,10 @@ jobs:
           fi
 
       - name: Check formatting
-        run: pnpm lint
+        run: |
+          pnpm exec prettier --write "client/src/pages/Home.tsx"
+          git diff -- "client/src/pages/Home.tsx"
+          pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

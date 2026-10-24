@@ -1156,8 +1156,9 @@ String _formatConfiguredHeaderDateTime(
 }) {
   final date = _configuredDate(value, settings);
   final yearMonthDay = '${date.year}/${_pad(date.month)}/${_pad(date.day)}';
+  final hour12 = !use24HourTime && settings['timeFormat'] == '12';
   return _localizeDigits(
-    '$yearMonthDay - ${_timeText(date, !use24HourTime && settings['timeFormat'] == '12')}',
+    '$yearMonthDay - ${_timeText(date, hour12)}',
     settings['numberSystem'],
   );
 }

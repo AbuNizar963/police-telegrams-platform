@@ -13,7 +13,7 @@ describe("getContentSecurityPolicy", () => {
     expect(policy.value).toContain("frame-ancestors 'none'");
   });
 
-  it("keeps report-only mode and development compatibility directives outside production", () => {
+  it("uses report-only mode outside production", () => {
     const policy = getContentSecurityPolicy(false);
 
     expect(policy.header).toBe("Content-Security-Policy-Report-Only");

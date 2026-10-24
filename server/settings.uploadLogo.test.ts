@@ -133,7 +133,7 @@ describe("organization-scoped logo upload authorization", () => {
   });
 
   it("rejects inactive memberships before writing to storage", async () => {
-    mocks.getUserOrganizationMembership.mockResolvedValueOnce({
+    mocks.getUserOrganizationMembership.mockResolvedValue({
       userId: 27,
       organizationId: organizationA.id,
       role: "organization_admin",

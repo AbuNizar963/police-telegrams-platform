@@ -53,7 +53,7 @@ describe("request body limits", () => {
   });
 
   it("allows the HTML export limit plus JSON overhead without applying it globally", () => {
-    expect(getJsonBodyLimit("/api/telegram-render")).toBe("3mb");
+    expect(getJsonBodyLimit("/api/telegram-render")).toBe("10mb");
   });
 
   it("rejects unauthenticated uploads before parsing JSON", async () => {

@@ -39,10 +39,7 @@ jobs:
           fi
 
       - name: Check formatting
-        run: |
-          pnpm exec prettier --write "client/src/lib/telegramDisplay.ts"
-          git diff -- "client/src/lib/telegramDisplay.ts"
-          pnpm lint
+        run: pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

@@ -3492,7 +3492,10 @@ class _DashboardPageState extends State<DashboardPage>
     final incoming = _isIncoming(row);
     final telegramId = int.tryParse('${row['id']}');
     final serial = localizeTelegramDigits(
-      getTelegramDisplayNumber(getTelegramSerialCode(row)),
+      getTelegramDisplayNumber(
+        getTelegramSerialCode(row),
+        originalSerial: row['originalSerial'],
+      ),
       numberSystem,
     );
     final sender =
@@ -4118,6 +4121,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     }
     final displaySerial = getTelegramDisplayNumber(
       getTelegramSerialCode(data ?? const {}),
+      originalSerial: (data ?? const {})['originalSerial'],
     );
     return Directionality(
       textDirection: TextDirection.rtl,

@@ -164,6 +164,18 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
   });
 
+  it("returns a storage error instead of redirecting when logo bytes cannot be read", async () => {
+    storageDownload.mockRejectedValueOnce(new Error("object missing"));
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(502);
+    expect(res.redirect).not.toHaveBeenCalled();
+  });
+
   it("keeps telegram attachments behind their existing user authorization", async () => {
     const key = "telegrams/7/report.pdf";
     const user = { id: 7, role: "user" as const };

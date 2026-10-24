@@ -1,9 +1,6 @@
 import type { Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createRateLimit,
-  resetRateLimitStoreForTests,
-} from "./rateLimit";
+import { createRateLimit, resetRateLimitStoreForTests } from "./rateLimit";
 
 function createResponse() {
   const headers = new Map<string, string>();

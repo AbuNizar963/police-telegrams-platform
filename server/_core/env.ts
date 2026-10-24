@@ -27,3 +27,36 @@ export const ENV = {
   releaseNotificationSecret: process.env.RELEASE_NOTIFICATION_SECRET ?? "",
   isProduction: process.env.NODE_ENV === "production",
 };
+
+export function assertProductionEnvironment(
+  env: typeof ENV = ENV
+): void {
+  if (!env.isProduction) return;
+
+  const missing: string[] = [];
+  let parsedSupabaseUrl: URL | undefined;
+
+  if (!env.supabaseUrl.trim()) {
+    missing.push("SUPABASE_URL");
+  } else {
+    try {
+      parsedSupabaseUrl = new URL(env.supabaseUrl);
+    } catch {
+      throw new Error("SUPABASE_URL must be a valid absolute URL in production");
+    }
+    if (parsedSupabaseUrl.protocol !== "https:") {
+      throw new Error("SUPABASE_URL must use HTTPS in production");
+    }
+  }
+
+  if (!env.supabaseSecretKey.trim()) missing.push("SUPABASE_SECRET_KEY");
+  if (env.authSessionSecret.length < 32) {
+    missing.push("AUTH_SESSION_SECRET (at least 32 characters)");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing or invalid production environment configuration: ${missing.join(", ")}`
+    );
+  }
+}

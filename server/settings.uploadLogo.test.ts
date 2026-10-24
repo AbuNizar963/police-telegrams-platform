@@ -151,18 +151,19 @@ describe("organization-scoped logo upload authorization", () => {
   it(
     "rejects bytes that do not match the declared image type before organization lookup",
     async () => {
-    const caller = appRouter.createCaller(context());
+      const caller = appRouter.createCaller(context());
 
-    await expect(
-      caller.settings.uploadLogo(
-        uploadInput(
-          organizationA.id,
-          Buffer.from("not an image").toString("base64"),
+      await expect(
+        caller.settings.uploadLogo(
+          uploadInput(
+            organizationA.id,
+            Buffer.from("not an image").toString("base64"),
+          ),
         ),
-      ),
-    ).rejects.toThrow("نوع الملف لا يطابق محتواه الحقيقي");
+      ).rejects.toThrow("نوع الملف لا يطابق محتواه الحقيقي");
 
-    expect(mocks.getOrganizationByIdIncludingInactive).not.toHaveBeenCalled();
-    expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
-  });
+      expect(mocks.getOrganizationByIdIncludingInactive).not.toHaveBeenCalled();
+      expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,4 +1,4 @@
-import { localizeDigits, type NumberSystem } from "@shared/numberSystem";
+import { localizeDigits } from "@shared/numberSystem";
 import {
   getTelegramSerialCode,
   type TelegramSerialSource,
@@ -32,4 +32,16 @@ export function getTelegramDisplaySerial(
     getTelegramDisplayNumber(getTelegramSerialCode(source)),
     numberSystem
   );
+}
+
+export function getTelegramExportFileBaseName(
+  source: TelegramSerialSource
+): string {
+  const serial =
+    source.originalSerial?.trim() ||
+    source.serialCode?.trim() ||
+    getTelegramSerialCode(source) ||
+    "telegram";
+  const safeSerial = serial.replace(/[\\\\\\/:*?"<>|\\u0000-\\u001F]/g, "-").trim();
+  return safeSerial || "telegram";
 }

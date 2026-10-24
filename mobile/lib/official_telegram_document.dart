@@ -957,9 +957,9 @@ String buildOfficialTelegramHtml({
     'normal': 'عادي',
   }, telegram['classification']);
   final priority = _label({
-    'slow': 'بطيء',
-    'normal': 'عادي',
-    'urgent': 'عاجل',
+    'urgent': 'عاجلة',
+    'normal': 'عادية',
+    'slow': 'بطيئة',
   }, telegram['priority']);
   final category = _label({
     'criminal': 'جنائي',

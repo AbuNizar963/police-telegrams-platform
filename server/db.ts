@@ -914,16 +914,26 @@ export async function findTelegramByOfficialSerial(input: {
       .or(filters.join(","))
       .limit(60),
   ]);
-  throwIfError(ownedResult.error, "Failed to resolve imported telegram reference");
-  throwIfError(routedResult.error, "Failed to resolve imported telegram reference");
+  throwIfError(
+    ownedResult.error,
+    "Failed to resolve imported telegram reference"
+  );
+  throwIfError(
+    routedResult.error,
+    "Failed to resolve imported telegram reference"
+  );
 
   const candidates = new Map<number, Telegram>();
-  for (const row of [...(ownedResult.data ?? []), ...(routedResult.data ?? [])]) {
+  const candidateRows = [
+    ...(ownedResult.data ?? []),
+    ...(routedResult.data ?? []),
+  ];
+  for (const row of candidateRows) {
     const telegram = mapTelegram(row as Record<string, unknown>);
     candidates.set(telegram.id, telegram);
   }
 
-  return [...candidates.values()].find(telegram => {
+  const matches = [...candidates.values()].filter(telegram => {
     const direction =
       telegram.importDirection ??
       (telegram.organizationId === telegram.currentOrganizationId
@@ -931,6 +941,7 @@ export async function findTelegramByOfficialSerial(input: {
         : "incoming");
     return direction === input.direction;
   });
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 export async function getTelegramByIdempotencyKey(

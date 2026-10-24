@@ -171,7 +171,7 @@ export function createApp(
       const { data: telegram, error } = await supabase
         .from("telegrams")
         .select(
-          "serialNumber, serialCode, organizationSerialCode, createdAt, organizationId, archivedAt, status"
+          "serialNumber, serialCode, organizationSerialCode, originalSerial, telegramDate, createdAt, organizationId, archivedAt, status"
         )
         .eq("verificationToken", token)
         .maybeSingle();
@@ -198,7 +198,7 @@ export function createApp(
           getTelegramSerialCode(telegram) ||
           String(telegram.serialNumber ?? ""),
         serialNumber: telegram.serialNumber,
-        createdAt: telegram.createdAt,
+        createdAt: telegram.telegramDate ?? telegram.createdAt,
         unitName: organization?.name ?? "الوحدة الشرطية",
       });
     } catch (error) {

@@ -2759,6 +2759,10 @@ function TelegramDetail({
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const importReferencesQuery = trpc.telegrams.resolveImportReferences.useQuery(
+    { notes: telegram.importNotes ?? "" },
+    { enabled: Boolean(telegram.importNotes?.trim()), staleTime: 60_000 }
+  );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,
     { retry: false }
@@ -3056,6 +3060,42 @@ function TelegramDetail({
       ),
       numberSystem
     );
+    const importNotesText = telegram.importNotes?.trim() ?? "";
+    const importNotesMarkup = (() => {
+      if (!importNotesText) return "";
+      const references = importReferencesQuery.data ?? [];
+      const referencePattern = /ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g;
+      let cursor = 0;
+      let renderedNotes = "";
+      for (const match of importNotesText.matchAll(referencePattern)) {
+        const matchIndex = match.index ?? cursor;
+        renderedNotes += escapeHtml(
+          localizeDigits(importNotesText.slice(cursor, matchIndex), numberSystem)
+        );
+        const serial = match[2]
+          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+        const direction = match[1] === "و" ? "incoming" : "outgoing";
+        const reference = references.find(
+          item => item.serial === serial && item.direction === direction
+        );
+        const label = escapeHtml(localizeDigits(match[0], numberSystem));
+        if (reference) {
+          const href = new URL(
+            `/verify/${encodeURIComponent(reference.verificationToken)}`,
+            window.location.origin
+          ).toString();
+          renderedNotes += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        } else {
+          renderedNotes += label;
+        }
+        cursor = matchIndex + match[0].length;
+      }
+      renderedNotes += escapeHtml(
+        localizeDigits(importNotesText.slice(cursor), numberSystem)
+      );
+      return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
+    })();
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
@@ -3372,7 +3412,7 @@ function TelegramDetail({
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
           <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
         </footer>
-        ${telegram.importNotes?.trim() ? `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${escapeHtml(localizeDigits(telegram.importNotes, numberSystem))}</section>` : ""}
+        ${importNotesMarkup}
       </article>`;
 
     return wrapper;
@@ -3428,6 +3468,7 @@ function TelegramDetail({
     documentSettingsUnavailable,
     isOutgoing,
     routingDirectory,
+    importReferencesQuery.data,
   ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {

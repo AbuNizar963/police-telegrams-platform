@@ -271,6 +271,8 @@ export const telegrams = pgTable(
     id: serial("id").primaryKey(),
     serialNumber: integer("serialNumber").notNull().unique(),
     serialCode: varchar("serialCode", { length: 48 }).notNull().unique(),
+    originalSerial: varchar("originalSerial", { length: 120 }),
+    telegramDate: timestamp("telegramDate", { withTimezone: true }),
     idempotencyKey: varchar("idempotencyKey", { length: 120 }),
     verificationToken: uuid("verificationToken").notNull().unique(),
     createdAt: timestamp("createdAt", { withTimezone: true })
@@ -304,6 +306,7 @@ export const telegrams = pgTable(
     category: category("category").default("administrative").notNull(),
     status: telegramStatus("status").default("pending").notNull(),
     workflowReason: text("workflowReason"),
+    importNotes: text("importNotes"),
     attachmentManifest: text("attachmentManifest"),
     gpsLatitude: varchar("gpsLatitude", { length: 40 }),
     gpsLongitude: varchar("gpsLongitude", { length: 40 }),

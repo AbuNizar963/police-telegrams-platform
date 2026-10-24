@@ -34,8 +34,7 @@ assert(
 );
 
 assert(
-  dashboardLayout.split('<FileText className="h-5 w-5" />').length - 1 ===
-    2 &&
+  dashboardLayout.split('<FileText className="h-5 w-5" />').length - 1 === 2 &&
     dashboardLayout.includes("bg-[#10233f]") &&
     !dashboardLayout.includes('<BrandMark size="sm" />'),
   "The desktop and mobile dashboard headers must use the application icon instead of the organization mark."

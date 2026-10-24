@@ -21,8 +21,6 @@ const _categories = <MapEntry<String, String>>[
 const _classifications = <MapEntry<String, String>>[
   MapEntry('normal', 'عادي'),
   MapEntry('secret', 'سري'),
-  MapEntry('confidential', 'سري - تصنيف بديل'),
-  MapEntry('top_secret', 'سري للغاية'),
 ];
 
 const _priorities = <MapEntry<String, String>>[

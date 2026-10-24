@@ -258,12 +258,31 @@ class _OfficialTelegramDocumentPageState
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')
           .toString();
+      var referenceLinks = <Map<String, dynamic>>[];
+      final importNotes = _value(telegramData['importNotes']).trim();
+      if (importNotes.isNotEmpty) {
+        try {
+          final resolved = await widget.api.call(
+            'telegrams.resolveImportReferences',
+            input: {'notes': importNotes},
+          );
+          if (resolved is List) {
+            referenceLinks = resolved
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+          }
+        } catch (_) {
+          // Older deployments still show the original note text without links.
+        }
+      }
       final html = buildOfficialTelegramHtml(
         telegram: telegramData,
         settings: settingsData,
         platformDocumentSettings: platformDocumentSettings,
         routingDirectory: routingDirectory,
         verificationUrl: verificationUrl,
+        referenceLinks: referenceLinks,
         fontDataUrls: fontDataUrls,
         logoDataUrl: logoDataUrl,
       );
@@ -800,6 +819,7 @@ String buildOfficialTelegramHtml({
   Map<String, dynamic> platformDocumentSettings = const {},
   required List<Map<String, dynamic>> routingDirectory,
   required String verificationUrl,
+  List<Map<String, dynamic>> referenceLinks = const [],
   required Map<int, String> fontDataUrls,
   String? logoDataUrl,
 }) {
@@ -890,9 +910,61 @@ String buildOfficialTelegramHtml({
     numberSystem,
   );
   final importNotes = _value(telegram['importNotes']).trim();
-  final importNotesMarkup = importNotes.isEmpty
-      ? ''
-      : '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${_escapeHtml(_localizeDigits(importNotes, numberSystem))}</section>';
+  final referenceByKey = <String, Map<String, dynamic>>{};
+  for (final reference in referenceLinks) {
+    final serial = _value(reference['serial'])
+        .replaceAllMapped(RegExp(r'[٠-٩۰-۹]'), (match) {
+          const digits = '٠١٢٣٤٥٦٧٨٩';
+          const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+          final character = match.group(0)!;
+          final index = digits.indexOf(character);
+          return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
+        });
+    referenceByKey['${_value(reference['direction'])}|$serial'] = reference;
+  }
+  final importNotesMarkup = (() {
+    if (importNotes.isEmpty) return '';
+    final pattern = RegExp(r'ب\s*([وص])\s*([0-9٠-٩۰-۹]+)');
+    final buffer = StringBuffer();
+    var cursor = 0;
+    for (final match in pattern.allMatches(importNotes)) {
+      buffer.write(
+        _escapeHtml(
+          _localizeDigits(importNotes.substring(cursor, match.start), numberSystem),
+        ),
+      );
+      final marker = match.group(1) ?? '';
+      final serial = (match.group(2) ?? '')
+          .replaceAllMapped(RegExp(r'[٠-٩۰-۹]'), (digitMatch) {
+            const digits = '٠١٢٣٤٥٦٧٨٩';
+            const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+            final character = digitMatch.group(0)!;
+            final index = digits.indexOf(character);
+            return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
+          });
+      final direction = marker == 'و' ? 'incoming' : 'outgoing';
+      final reference = referenceByKey['$direction|$serial'];
+      final label = _escapeHtml(_localizeDigits(match.group(0), numberSystem));
+      final token = _value(reference?['verificationToken']);
+      if (reference != null && token.isNotEmpty) {
+        final href = Uri.parse(verificationUrl)
+            .resolve('/verify/${Uri.encodeComponent(token)}')
+            .toString();
+        buffer.write(
+          '<a href="${_escapeHtml(href)}" target="_blank" rel="noopener noreferrer">$label</a>',
+        );
+      } else {
+        buffer.write(label);
+      }
+      cursor = match.end;
+    }
+    buffer.write(
+      _escapeHtml(
+        _localizeDigits(importNotes.substring(cursor), numberSystem),
+      ),
+    );
+    return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
+  })();
   final outgoing =
       _value(telegram['organizationId'], fallback: '') ==
       _value(telegram['currentOrganizationId'], fallback: '');

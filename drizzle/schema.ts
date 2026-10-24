@@ -307,6 +307,7 @@ export const telegrams = pgTable(
     status: telegramStatus("status").default("pending").notNull(),
     workflowReason: text("workflowReason"),
     importNotes: text("importNotes"),
+    importDirection: varchar("importDirection", { length: 8 }),
     attachmentManifest: text("attachmentManifest"),
     gpsLatitude: varchar("gpsLatitude", { length: 40 }),
     gpsLongitude: varchar("gpsLongitude", { length: 40 }),

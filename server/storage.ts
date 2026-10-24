@@ -164,6 +164,21 @@ export async function storageCreateSignedUrl(
   return getStorageProvider().createSignedUrl(key, expiresInSeconds);
 }
 
+export async function storageDownload(
+  relKey: string
+): Promise<{ body: Buffer; contentType: string }> {
+  const key = normalizeKey(relKey);
+
+  if (
+    !key ||
+    key.split("/").some(segment => segment === "." || segment === "..")
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+
+  return getStorageProvider().download(key);
+}
+
 export async function storageGetSignedUrl(
   relKey: string,
   user: Pick<User, "id" | "role">

@@ -56,7 +56,7 @@ void main() {
       expect(html, contains('class="telegram-export-page"'));
       expect(html, contains('size:A4 portrait'));
       expect(html, contains('font-family:"Cairo"'));
-      expect(html, contains('برقية صادرة'));
+      expect(html, contains('نوع الوثيقة:</strong> <span class="classification-value">وثيقة صادرة</span>'));
       expect(html, contains('درجة الأسبقية:</strong> عاجل'));
       expect(html, isNot(contains('درجة الأولوية:')));
       expect(html, contains('class="page-watermark"'));

@@ -149,7 +149,7 @@ describe("official PNG resolution metadata", () => {
       Math.round(((14031 / 297) * 25.4) / 0.0254)
     );
     expect(result.readUInt32BE(physicalChunk + 8)).toBe(
-      Math.round(((4096 / 297) * 25.4) / 0.0254)
+      Math.round(((14031 / 297) * 25.4) / 0.0254)
     );
     expect(result[physicalChunk + 12]).toBe(1);
     expect(result.readUInt32BE(16)).toBe(1);

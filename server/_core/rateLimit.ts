@@ -79,10 +79,7 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
     entry.count += 1;
     res.setHeader("RateLimit-Limit", String(maxRequests));
     res.setHeader("RateLimit-Remaining", String(maxRequests - entry.count));
-    res.setHeader(
-      "RateLimit-Reset",
-      String(Math.ceil(entry.resetAt / 1000))
-    );
+    res.setHeader("RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
     next();
   };
 }

@@ -85,7 +85,7 @@ export function storageKeyFromStoredUrl(
     return trimmed;
   }
 
-  if (!/^https?:\\/\\//i.test(trimmed)) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
 
   try {
     const url = new URL(trimmed);

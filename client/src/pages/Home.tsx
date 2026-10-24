@@ -3805,7 +3805,7 @@ function TelegramDetail({
 
       if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
+          title: `برقية ${getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}`,
           text: telegram.subject,
           files: [file],
         });

@@ -1072,7 +1072,7 @@ export default function Home() {
         />
         <Kpi
           numberSystem={numberSystem}
-          label="أولوية عاجل اليوم"
+          label="أولوية عاجلة اليوم"
           value={data.todayUrgent}
           detail="من بداية اليوم"
           icon={Siren}
@@ -1131,7 +1131,7 @@ export default function Home() {
                     {activeKpi === "today"
                       ? "الصادرة اليوم"
                       : activeKpi === "urgent"
-                        ? "أولوية عاجل اليوم"
+                        ? "أولوية عاجلة اليوم"
                         : activeKpi === "incoming"
                           ? "الواردة اليوم"
                           : activeKpi === "in-progress"

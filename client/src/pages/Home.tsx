@@ -50,7 +50,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { showLocalTelegramNotification } from "@/lib/notifications";
-import { getTelegramDisplayNumber, getTelegramDisplaySerial } from "@/lib/telegramDisplay";
+import {
+  getTelegramDisplayNumber,
+  getTelegramDisplaySerial,
+} from "@/lib/telegramDisplay";
 import {
   buildTelegramWatermarkHtml,
   TELEGRAM_WATERMARK_COLUMNS,
@@ -2200,7 +2203,10 @@ function TelegramReportModal({
               {rows.map(row => (
                 <tr key={row.id} className="border-t">
                   <td className="p-3 font-mono">
-                    {getTelegramDisplaySerial(row, settings?.numberSystem ?? "latin")}
+                    {getTelegramDisplaySerial(
+                      row,
+                      settings?.numberSystem ?? "latin"
+                    )}
                   </td>
                   <td className="p-3 font-semibold">{row.subject}</td>
                   <td className="p-3">{row.recipient}</td>
@@ -3049,7 +3055,10 @@ function TelegramDetail({
       for (const match of importNotesText.matchAll(referencePattern)) {
         const matchIndex = match.index ?? cursor;
         renderedNotes += escapeHtml(
-          localizeDigits(importNotesText.slice(cursor, matchIndex), numberSystem)
+          localizeDigits(
+            importNotesText.slice(cursor, matchIndex),
+            numberSystem
+          )
         );
         const marker = match[1] ?? "";
         const rawSerial = match[2] ?? "";
@@ -3832,7 +3841,10 @@ function TelegramDetail({
   return (
     <Modal
       title={telegram.subject}
-      subtitle={getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}
+      subtitle={getTelegramDisplaySerial(
+        telegram,
+        settings?.numberSystem ?? "latin"
+      )}
       close={close}
     >
       <div

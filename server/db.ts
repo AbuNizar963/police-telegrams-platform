@@ -14,7 +14,7 @@ import {
   type PlatformDocumentSettings,
 } from "../shared/platformDocumentSettings";
 import { ENV } from "./_core/env";
-import { storageCreateSignedUrl, storageKeyFromStoredUrl } from "./storage";
+import { storageKeyFromStoredUrl, storageStableUrl } from "./storage";
 import { getSupabaseAdmin } from "./_core/supabase";
 import {
   addOrganizationMembership,
@@ -75,14 +75,12 @@ async function mapSettingsView(
     logoKey,
     ENV.supabaseStorageBucket
   );
-  // Organization logo keys are not authorized by the generic /api/storage
-  // route, which is intentionally scoped to telegram attachments. Return a
-  // short-lived signed URL so web and mobile clients can load the logo without
-  // weakening attachment access controls or exposing the storage key publicly.
-  const logoUrl =
-    /^https?:\/\//i.test(logoKey) && !resolvedKey
-      ? logoKey
-      : await storageCreateSignedUrl(resolvedKey ?? logoKey, 60 * 60);
+  // Use the authenticated same-origin proxy for stored logos instead of
+  // exposing a short-lived cross-origin signed URL. This keeps logos stable
+  // across sessions and lets the export flow inline the image without CORS
+  // failures. Legacy external URLs that cannot be mapped to a storage key
+  // remain untouched.
+  const logoUrl = resolvedKey ? storageStableUrl(resolvedKey) : logoKey;
 
   return {
     ...settings,

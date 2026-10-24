@@ -37,29 +37,29 @@ describe("createRateLimit", () => {
   });
 
   it("enforces the request window", () => {
-      const middleware = createRateLimit({
-        windowMs: 60_000,
-        maxRequests: 2,
-        keyGenerator: () => "test-client",
-      });
-      const next = vi.fn();
-
-      const first = createResponse();
-      middleware({} as Request, first.response, next);
-      const second = createResponse();
-      middleware({} as Request, second.response, next);
-      const third = createResponse();
-      middleware({} as Request, third.response, next);
-
-      expect(next).toHaveBeenCalledTimes(2);
-      expect(first.statusCode).toBe(200);
-      expect(second.headers.get("ratelimit-remaining")).toBe("0");
-      expect(third.statusCode).toBe(429);
-      expect(third.headers.get("retry-after")).toBeDefined();
-      expect(third.response.json).toHaveBeenCalledWith({
-        error: "طلبات كثيرة؛ أعد المحاولة لاحقًا",
-      });
+    const middleware = createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 2,
+      keyGenerator: () => "test-client",
     });
+    const next = vi.fn();
+
+    const first = createResponse();
+    middleware({} as Request, first.response, next);
+    const second = createResponse();
+    middleware({} as Request, second.response, next);
+    const third = createResponse();
+    middleware({} as Request, third.response, next);
+
+    expect(next).toHaveBeenCalledTimes(2);
+    expect(first.statusCode).toBe(200);
+    expect(second.headers.get("ratelimit-remaining")).toBe("0");
+    expect(third.statusCode).toBe(429);
+    expect(third.headers.get("retry-after")).toBeDefined();
+    expect(third.response.json).toHaveBeenCalledWith({
+      error: "طلبات كثيرة؛ أعد المحاولة لاحقًا",
+    });
+  });
 
   it("starts a fresh window after the current window expires", () => {
     vi.useFakeTimers();

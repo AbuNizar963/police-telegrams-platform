@@ -57,7 +57,8 @@ void main() {
       expect(html, contains('size:A4 portrait'));
       expect(html, contains('font-family:"Cairo"'));
       expect(html, contains('برقية صادرة'));
-      expect(html, contains('درجة الأولوية:</strong> عاجل'));
+      expect(html, contains('درجة الأسبقية:</strong> عاجل'));
+      expect(html, isNot(contains('درجة الأولوية:')));
       expect(html, contains('class="page-watermark"'));
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, contains('<span>وزارة الداخلية</span>'));
@@ -110,8 +111,16 @@ void main() {
           '<a href="https://example.test/verify/related-token" target="_blank" rel="noopener noreferrer">ب و ٦</a>',
         ),
       );
-      expect(html, contains('الوقت والتاريخ'));
-      expect(html, contains('تاريخ ووقت إعداد الوثيقة'));
+      expect(
+        html,
+        matches(
+          RegExp(
+            r'<p class="footer-date">الوقت والتاريخ: \\d{4}/\\d{2}/\\d{2} - \\d{2}:\\d{2}:\\d{2}</p>',
+          ),
+        ),
+      );
+      expect(html, contains('الوقت والتاريخ:</strong>'));
+      expect(html, isNot(contains('تاريخ ووقت إعداد الوثيقة')));
     },
   );
 

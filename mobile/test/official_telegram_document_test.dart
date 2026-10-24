@@ -76,41 +76,44 @@ void main() {
     },
   );
 
-  test('preserves the imported serial and links incoming references in notes', () {
-    final source = telegram()
-      ..['originalSerial'] = 'ب ص ٠٠٦'
-      ..['importNotes'] = 'رد على ب و ٦'
-      ..['telegramDate'] = '2024-03-04T05:06:00.000Z';
-    final html = buildOfficialTelegramHtml(
-      telegram: source,
-      settings: const {
-        'numberSystem': 'latin',
-        'timezone': 'UTC',
-        'dateFormat': 'yyyy/MM/dd HH:mm:ss',
-      },
-      routingDirectory: const [],
-      verificationUrl: 'https://example.test/verify/current-token',
-      referenceLinks: const [
-        {
-          'serial': '6',
-          'direction': 'incoming',
-          'verificationToken': 'related-token',
+  test(
+    'preserves the imported serial and links incoming references in notes',
+    () {
+      final source = telegram()
+        ..['originalSerial'] = 'ب ص ٠٠٦'
+        ..['importNotes'] = 'رد على ب و ٦'
+        ..['telegramDate'] = '2024-03-04T05:06:00.000Z';
+      final html = buildOfficialTelegramHtml(
+        telegram: source,
+        settings: const {
+          'numberSystem': 'latin',
+          'timezone': 'UTC',
+          'dateFormat': 'yyyy/MM/dd HH:mm:ss',
         },
-      ],
-      fontDataUrls: fonts,
-    );
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/current-token',
+        referenceLinks: const [
+          {
+            'serial': '6',
+            'direction': 'incoming',
+            'verificationToken': 'related-token',
+          },
+        ],
+        fontDataUrls: fonts,
+      );
 
-    expect(html, contains('ب ص ٠٠٦'));
-    expect(html, contains('ملاحظات السجل الأصلي'));
-    expect(
-      html,
-      contains(
-        '<a href="https://example.test/verify/related-token" target="_blank" rel="noopener noreferrer">ب و ٦</a>',
-      ),
-    );
-    expect(html, contains('الوقت والتاريخ'));
-    expect(html, contains('تاريخ ووقت إعداد الوثيقة'));
-  });
+      expect(html, contains('ب ص ٠٠٦'));
+      expect(html, contains('ملاحظات السجل الأصلي'));
+      expect(
+        html,
+        contains(
+          '<a href="https://example.test/verify/related-token" target="_blank" rel="noopener noreferrer">ب و ٦</a>',
+        ),
+      );
+      expect(html, contains('الوقت والتاريخ'));
+      expect(html, contains('تاريخ ووقت إعداد الوثيقة'));
+    },
+  );
 
   test('omits the QR from the document when platform settings disable it', () {
     final html = buildOfficialTelegramHtml(

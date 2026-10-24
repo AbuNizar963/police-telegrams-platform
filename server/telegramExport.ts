@@ -218,7 +218,12 @@ export async function renderTelegramDocument(
         await page.screenshot({
           type: "png",
           animations: "disabled",
-          clip: { x: 0, y: 0, width: 794, height: 1123 },
+          clip: {
+            x: 0,
+            y: 0,
+            width: (210 / 25.4) * 96,
+            height: (297 / 25.4) * 96,
+          },
         })
       ),
       contentType: "image/png",

@@ -16,6 +16,7 @@ import {
   Archive,
   Activity,
   FileSpreadsheet,
+  FileText,
   LayoutDashboard,
   LockKeyhole,
   MapPinned,
@@ -515,7 +516,9 @@ function DashboardLayoutContent({
                 }
                 title={isCollapsed ? "فتح القائمة" : "إغلاق القائمة"}
               />
-              <BrandMark size="sm" />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-[#10233f] text-white shadow-sm" aria-hidden="true">
+                <FileText className="h-5 w-5" />
+              </span>
               <h1 className="text-lg font-bold tracking-tight text-foreground">
                 مركز البرقيات
               </h1>
@@ -531,7 +534,9 @@ function DashboardLayoutContent({
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-10 w-10 rounded-xl border bg-background shadow-sm" />
-              <BrandMark size="sm" />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-[#10233f] text-white shadow-sm" aria-hidden="true">
+                <FileText className="h-5 w-5" />
+              </span>
               <span className="text-sm font-bold">مركز البرقيات</span>
               <span className="sr-only">
                 {activeMenuItem?.label ?? "القائمة"}

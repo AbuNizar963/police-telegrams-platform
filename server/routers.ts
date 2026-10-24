@@ -195,13 +195,13 @@ function normalizeImportedSerial(value: string | number): string {
 
 function makeImportSerialKey(
   direction: TelegramImportDirection,
-  value: string | number
+  value: string | number,
 ): string {
   return JSON.stringify([direction, normalizeImportedSerial(value)]);
 }
 
 function getExistingTelegramSerialKeys(
-  telegrams: Awaited<ReturnType<typeof listTelegrams>>
+  telegrams: Awaited<ReturnType<typeof listTelegrams>>,
 ): Set<string> {
   return new Set(
     telegrams.flatMap(telegram => {
@@ -225,7 +225,7 @@ function getExistingTelegramSerialKeys(
 
 async function listAllTelegramsForImport(
   userId: number,
-  organizationId: string
+  organizationId: string,
 ): Promise<Awaited<ReturnType<typeof listTelegrams>>> {
   const allTelegrams: Awaited<ReturnType<typeof listTelegrams>> = [];
   for (let page = 1; ; page += 1) {

@@ -9,7 +9,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
 import { registerTelegramExportRoutes } from "./telegramExport";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
-import { ENV } from "./_core/env";
+import { assertProductionEnvironment, ENV } from "./_core/env";
 import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
 
@@ -89,6 +89,7 @@ function requiresOrganizationAdminLargeBody(path: string): boolean {
 export function createApp(
   options: { productionStatic?: boolean } = {}
 ): Express {
+  assertProductionEnvironment();
   const app = express();
   // Vercel supplies the client address through one trusted proxy hop in production.
   // Do not trust forwarded headers in local development or test environments.

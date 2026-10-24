@@ -34,28 +34,28 @@ export async function setupVite(app: Express, server: Server) {
       message: "طلبات كثيرة لصفحة التطوير؛ أعد المحاولة لاحقًا",
     }),
     async (req, res, next) => {
-    const url = req.originalUrl;
+      const url = req.originalUrl;
 
-    try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "../..",
-        "client",
-        "index.html"
-      );
+      try {
+        const clientTemplate = path.resolve(
+          import.meta.dirname,
+          "../..",
+          "client",
+          "index.html"
+        );
 
-      // Always reload index.html so development changes are reflected.
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (error) {
-      vite.ssrFixStacktrace(error as Error);
-      next(error);
-    }
+        // Always reload index.html so development changes are reflected.
+        let template = await fs.promises.readFile(clientTemplate, "utf-8");
+        template = template.replace(
+          `src="/src/main.tsx"`,
+          `src="/src/main.tsx?v=${nanoid()}"`
+        );
+        const page = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      } catch (error) {
+        vite.ssrFixStacktrace(error as Error);
+        next(error);
+      }
     }
   );
 }

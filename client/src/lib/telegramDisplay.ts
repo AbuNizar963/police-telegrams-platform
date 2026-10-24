@@ -35,7 +35,7 @@ export function getTelegramDisplaySerial(
 }
 
 export function getTelegramExportFileBaseName(
-  source: TelegramSerialSource
+  source: TelegramSerialSource,
 ): string {
   const serial =
     source.originalSerial?.trim() ||

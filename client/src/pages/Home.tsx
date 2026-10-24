@@ -3478,8 +3478,20 @@ function TelegramDetail({
               });
               if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
               const blob = await response.blob();
-              if (!blob.type.startsWith("image/")) {
+              // Some authenticated storage/CDN routes return valid image bytes
+              // with application/octet-stream or no MIME type. Validate the
+              // actual payload by decoding it below instead of rejecting it
+              // solely because the response header is imprecise.
+              const contentType = blob.type.split(";")[0].trim().toLowerCase();
+              if (
+                contentType &&
+                !contentType.startsWith("image/") &&
+                contentType !== "application/octet-stream"
+              ) {
                 throw new Error("مصدر الشعار ليس صورة صالحة");
+              }
+              if (blob.size === 0) {
+                throw new Error("ملف الشعار فارغ");
               }
               const imageUrl = URL.createObjectURL(blob);
               try {
@@ -3520,9 +3532,17 @@ function TelegramDetail({
             image.removeAttribute("srcset");
             image.src = dataUrl;
             await image.decode();
-          } catch {
-            // Never send a broken image to Chromium. Replace it with the same
-            // vector fallback used when no logo is configured.
+          } catch (error) {
+            // Keep export failures diagnosable without logging signed image URLs.
+            console.error("تعذر تضمين صورة في تصدير البرقية:", {
+              imageRole: image.classList.contains("watermark-logo")
+                ? "watermark-logo"
+                : "official-logo",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            // Never send a broken image to Chromium. Preserve the existing
+            // official seal fallback for the header; the text watermark remains
+            // independently rendered when ministry watermark text is enabled.
             image.outerHTML = image.classList.contains("watermark-logo")
               ? ""
               : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;

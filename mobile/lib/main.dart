@@ -1013,7 +1013,7 @@ class _DashboardPageState extends State<DashboardPage>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(
-          borderRadius > 3 ? borderRadius - 3 : 0,
+          borderRadius > 3.0 ? borderRadius - 3.0 : 0.0,
         ),
         child: bytes == null
             ? fallback

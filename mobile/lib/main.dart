@@ -4510,11 +4510,23 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
                   child: Text('استخباراتي'),
                 ),
                 DropdownMenuItem(value: 'emergency', child: Text('طوارئ')),
-                DropdownMenuItem(value: 'public_order', child: Text('حفظ النظام')),
-                DropdownMenuItem(value: 'personnel', child: Text('شؤون الأفراد')),
+                DropdownMenuItem(
+                  value: 'public_order',
+                  child: Text('حفظ النظام'),
+                ),
+                DropdownMenuItem(
+                  value: 'personnel',
+                  child: Text('شؤون الأفراد'),
+                ),
                 DropdownMenuItem(value: 'logistics', child: Text('إمداد ودعم')),
-                DropdownMenuItem(value: 'training', child: Text('تدريب وتأهيل')),
-                DropdownMenuItem(value: 'community', child: Text('مجتمعي وشكاوى')),
+                DropdownMenuItem(
+                  value: 'training',
+                  child: Text('تدريب وتأهيل'),
+                ),
+                DropdownMenuItem(
+                  value: 'community',
+                  child: Text('مجتمعي وشكاوى'),
+                ),
                 DropdownMenuItem(value: 'other', child: Text('أخرى')),
               ],
               onChanged: (value) {

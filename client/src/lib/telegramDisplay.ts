@@ -1,3 +1,9 @@
+import { localizeDigits, type NumberSystem } from "@shared/numberSystem";
+import {
+  getTelegramSerialCode,
+  type TelegramSerialSource,
+} from "@shared/telegramSerial";
+
 export function getTelegramDisplayNumber(
   serialCode: string | null | undefined,
   originalSerial?: string | null
@@ -13,4 +19,17 @@ export function getTelegramDisplayNumber(
   const serialDigits = value.split("-").at(-1) ?? value;
   const parsedSerial = Number.parseInt(serialDigits, 10);
   return Number.isFinite(parsedSerial) ? String(parsedSerial) : value;
+}
+
+/** Preserves imported official serials byte-for-byte; only generated serials are localized. */
+export function getTelegramDisplaySerial(
+  source: TelegramSerialSource,
+  numberSystem: NumberSystem
+): string {
+  const originalSerial = source.originalSerial?.trim();
+  if (originalSerial) return originalSerial;
+  return localizeDigits(
+    getTelegramDisplayNumber(getTelegramSerialCode(source)),
+    numberSystem
+  );
 }

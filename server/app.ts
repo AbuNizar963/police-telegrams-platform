@@ -62,7 +62,7 @@ function allowVerificationAttempt(ip: string): boolean {
  * dependencies into the production API function.
  */
 export function getJsonBodyLimit(path: string): string {
-  if (path === "/api/telegram-render") return "9mb";
+  if (path === "/api/telegram-render") return "10mb";
   if (path.includes("/api/trpc/telegrams.importRows")) return "50mb";
   if (path.includes("/api/trpc/telegrams.importWorkbookPreview")) return "22mb";
   if (path.includes("/api/trpc/telegrams.uploadAttachment")) return "16mb";

@@ -3494,14 +3494,14 @@ class _DashboardPageState extends State<DashboardPage>
       'administrative' => 'إداري',
       'traffic' => 'مروري',
       'security' => 'أمني',
-      'tactical' => 'تكتيكي',
+      'tactical' => 'عملياتي',
       'intelligence' => 'استخباراتي',
       'emergency' => 'طوارئ',
       'public_order' => 'حفظ النظام',
       'personnel' => 'شؤون الأفراد',
       'logistics' => 'إمداد ودعم',
-      'training' => 'تدريب',
-      'community' => 'مجتمعي',
+      'training' => 'تدريب وتأهيل',
+      'community' => 'مجتمعي وشكاوى',
       'other' => 'أخرى',
       _ => '$raw',
     };
@@ -3642,13 +3642,13 @@ class _DashboardPageState extends State<DashboardPage>
                 if (_showPriority && priority != null && priority.isNotEmpty)
                   _telegramChip(
                     priority,
-                    priority == 'عاجل'
+                    priority == 'عاجلة'
                         ? const Color(0xFFFFE9E9)
                         : const Color(0xFFEAF0FF),
-                    priority == 'عاجل'
+                    priority == 'عاجلة'
                         ? const Color(0xFFB42332)
                         : const Color(0xFF356AC3),
-                    icon: priority == 'عاجل'
+                    icon: priority == 'عاجلة'
                         ? Icons.priority_high_rounded
                         : Icons.shield_outlined,
                   ),

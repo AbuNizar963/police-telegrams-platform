@@ -50,7 +50,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { showLocalTelegramNotification } from "@/lib/notifications";
-import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import { getTelegramDisplayNumber, getTelegramDisplaySerial } from "@/lib/telegramDisplay";
 import {
   buildTelegramWatermarkHtml,
   TELEGRAM_WATERMARK_COLUMNS,
@@ -816,10 +816,7 @@ export default function Home() {
       }
       setExcelExportRows(
         exportRows.map(row => ({
-          serial: localizeDigits(
-            getTelegramDisplayNumber(getTelegramSerialCode(row), row.originalSerial),
-            numberSystem
-          ),
+          serial: getTelegramDisplaySerial(row, numberSystem),
           time: row.time,
           sender: row.creatorName,
           date: row.date,
@@ -1340,13 +1337,7 @@ export default function Home() {
                   )}
                   <span className="text-base font-bold text-foreground sm:text-lg">
                     برقية رقم:{" "}
-                    {localizeDigits(
-                      getTelegramDisplayNumber(
-                        getTelegramSerialCode(row),
-                        row.originalSerial
-                      ),
-                      numberSystem
-                    )}
+                    {getTelegramDisplaySerial(row, numberSystem)}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1 text-sm font-medium leading-6 text-muted-foreground">
@@ -2102,10 +2093,7 @@ function TelegramReportModal({
     const lines = [
       header,
       ...rows.map(row => [
-        localizeDigits(
-          getTelegramDisplayNumber(getTelegramSerialCode(row), row.originalSerial),
-          settings?.numberSystem ?? "latin"
-        ),
+        getTelegramDisplaySerial(row, settings?.numberSystem ?? "latin"),
         row.subject,
         row.recipient,
         statusLabels[row.status],
@@ -2212,10 +2200,7 @@ function TelegramReportModal({
               {rows.map(row => (
                 <tr key={row.id} className="border-t">
                   <td className="p-3 font-mono">
-                    {localizeDigits(
-                      getTelegramDisplayNumber(getTelegramSerialCode(row), row.originalSerial),
-                      settings?.numberSystem ?? "latin"
-                    )}
+                    {getTelegramDisplaySerial(row, settings?.numberSystem ?? "latin")}
                   </td>
                   <td className="p-3 font-semibold">{row.subject}</td>
                   <td className="p-3">{row.recipient}</td>
@@ -3053,13 +3038,7 @@ function TelegramDetail({
         : "غير محدد",
       numberSystem
     );
-    const displaySerial = localizeDigits(
-      getTelegramDisplayNumber(
-        getTelegramSerialCode(telegram),
-        telegram.originalSerial
-      ),
-      numberSystem
-    );
+    const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
     const importNotesText = telegram.importNotes?.trim() ?? "";
     const importNotesMarkup = (() => {
       if (!importNotesText) return "";
@@ -3853,13 +3832,7 @@ function TelegramDetail({
   return (
     <Modal
       title={telegram.subject}
-      subtitle={localizeDigits(
-        getTelegramDisplayNumber(
-          getTelegramSerialCode(telegram),
-          telegram.originalSerial
-        ),
-        settings?.numberSystem ?? "latin"
-      )}
+      subtitle={getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}
       close={close}
     >
       <div

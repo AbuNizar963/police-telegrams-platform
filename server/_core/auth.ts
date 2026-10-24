@@ -113,22 +113,49 @@ export async function verifyPassword(
   password: string,
   encodedHash: string
 ): Promise<boolean> {
-  const [algorithm, n, r, p, saltText, hashText] = encodedHash.split("$");
-  if (algorithm !== "scrypt" || !n || !r || !p || !saltText || !hashText) {
+  // Password hashes are persisted data. Never let their parameters control
+  // scrypt's CPU/memory cost or the derived-key allocation.
+  if (typeof encodedHash !== "string" || encodedHash.length > 256) return false;
+
+  const parts = encodedHash.split("$");
+  if (parts.length !== 6) return false;
+
+  const [algorithm, n, r, p, saltText, hashText] = parts;
+  if (
+    algorithm !== "scrypt" ||
+    n !== String(SCRYPT_N) ||
+    r !== String(SCRYPT_R) ||
+    p !== String(SCRYPT_P) ||
+    !saltText ||
+    !hashText
+  ) {
     return false;
   }
 
+  // Enforce the exact encoding and lengths emitted by hashPassword().
   const salt = Buffer.from(saltText, "base64url");
   const expected = Buffer.from(hashText, "base64url");
-  const derived = (await deriveKey(password, salt, expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-  })) as Buffer;
+  if (
+    salt.length !== 16 ||
+    expected.length !== 64 ||
+    salt.toString("base64url") !== saltText ||
+    expected.toString("base64url") !== hashText
+  ) {
+    return false;
+  }
 
-  return (
-    derived.length === expected.length && timingSafeEqual(derived, expected)
-  );
+  try {
+    const derived = await deriveKey(password, salt, expected.length, {
+      N: SCRYPT_N,
+      r: SCRYPT_R,
+      p: SCRYPT_P,
+    });
+    return derived.length === expected.length && timingSafeEqual(derived, expected);
+  } catch {
+    // Malformed or unsupported persisted hashes must fail closed, not crash
+    // the authentication request.
+    return false;
+  }
 }
 
 export async function getAuthenticatedUserFromRequest(

@@ -731,7 +731,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                           '—',
                     ),
                     _infoRow('الجهة المستلمة', data?['recipient'] ?? '—'),
-                    _infoRow('الأولوية', data?['priority'] ?? 'normal'),
+                    _infoRow('الأسبقية', data?['priority'] ?? 'normal'),
                     _infoRow('التصنيف', data?['classification'] ?? 'normal'),
                     _infoRow('الفئة', data?['category'] ?? 'administrative'),
                     _infoRow('تاريخ الإنشاء', data?['createdAt'] ?? '—'),
@@ -902,7 +902,7 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
             DropdownButtonFormField<String>(
               initialValue: priority,
               decoration: const InputDecoration(
-                labelText: 'الأولوية',
+                labelText: 'الأسبقية',
                 border: OutlineInputBorder(),
               ),
               items: const [

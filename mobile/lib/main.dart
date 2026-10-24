@@ -802,6 +802,7 @@ class _DashboardPageState extends State<DashboardPage>
   bool _logoLookupResolved = false;
   bool _lastLogoLookupSucceeded = false;
   DateTime? _lastLogoLoadAttemptAt;
+  DateTime? _organizationLogoBytesLoadedAt;
   Uint8List? _organizationLogoBytes;
   String numberSystem = 'latin';
   int unreadNotificationCount = 0;
@@ -912,30 +913,60 @@ class _DashboardPageState extends State<DashboardPage>
     String? organizationIdValue,
     String? source,
   ) async {
+    final organizationId = organizationIdValue?.trim() ?? '';
     final value = source?.trim();
-    if (value == null || value.isEmpty) {
+
+    if (organizationId.isEmpty || value == null || value.isEmpty) {
       _loadedOrganizationLogoIdentity = null;
       _lastLogoLoadAttemptAt = null;
-      if (mounted) setState(() => _organizationLogoBytes = null);
+      _organizationLogoBytesLoadedAt = null;
+      if (mounted && _organizationLogoBytes != null) {
+        setState(() => _organizationLogoBytes = null);
+      }
       return;
     }
-    final organizationId = organizationIdValue?.trim() ?? '';
+
     final sourceIdentity = widget.api.organizationLogoCacheIdentity(value);
-    if (organizationId.isEmpty || sourceIdentity.isEmpty) return;
+    if (sourceIdentity.isEmpty) {
+      _loadedOrganizationLogoIdentity = null;
+      _lastLogoLoadAttemptAt = null;
+      _organizationLogoBytesLoadedAt = null;
+      if (mounted && _organizationLogoBytes != null) {
+        setState(() => _organizationLogoBytes = null);
+      }
+      return;
+    }
+
     final identity = '$organizationId\n$sourceIdentity';
     final now = DateTime.now();
-    if (_loadedOrganizationLogoIdentity == identity &&
-        _organizationLogoBytes != null) {
+    final isSameIdentity = _loadedOrganizationLogoIdentity == identity;
+    final bytesLoadedAt = _organizationLogoBytesLoadedAt;
+
+    // Revalidate periodically: an organization can replace its logo at the
+    // same storage path, so a stable URL alone must not cache it forever.
+    if (isSameIdentity &&
+        _organizationLogoBytes != null &&
+        bytesLoadedAt != null &&
+        now.difference(bytesLoadedAt) < const Duration(minutes: 10)) {
       return;
     }
+
     final lastAttempt = _lastLogoLoadAttemptAt;
-    if (_loadedOrganizationLogoIdentity == identity &&
+    if (isSameIdentity &&
         lastAttempt != null &&
         now.difference(lastAttempt) < const Duration(minutes: 5)) {
       return;
     }
+
     _loadedOrganizationLogoIdentity = identity;
     _lastLogoLoadAttemptAt = now;
+    if (!isSameIdentity && mounted && _organizationLogoBytes != null) {
+      setState(() {
+        _organizationLogoBytes = null;
+        _organizationLogoBytesLoadedAt = null;
+      });
+    }
+
     Uint8List? imageBytes;
     try {
       imageBytes = await widget.api.fetchOrganizationLogo(
@@ -945,8 +976,55 @@ class _DashboardPageState extends State<DashboardPage>
     } catch (_) {
       imageBytes = null;
     }
+
     if (!mounted || _loadedOrganizationLogoIdentity != identity) return;
-    setState(() => _organizationLogoBytes = imageBytes);
+    setState(() {
+      if (imageBytes != null) {
+        _organizationLogoBytes = imageBytes;
+        _organizationLogoBytesLoadedAt = DateTime.now();
+      } else if (!isSameIdentity) {
+        _organizationLogoBytes = null;
+        _organizationLogoBytesLoadedAt = null;
+      }
+      // If revalidation fails for the same logo, retain the last known-good
+      // bytes and retry later rather than replacing a valid logo with a blank.
+    });
+  }
+
+  Widget _organizationLogoWidget({
+    required double size,
+    required double borderRadius,
+  }) {
+    final bytes = _organizationLogoBytes;
+    final fallback = Image.asset(
+      'assets/police-telegrams-icon.png',
+      fit: BoxFit.contain,
+      semanticLabel: 'الصورة الافتراضية لنظام برقيات الشرطة',
+    );
+
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: const Color(0xFFE1E5EB)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(
+          borderRadius > 3 ? borderRadius - 3 : 0,
+        ),
+        child: bytes == null
+            ? fallback
+            : Image.memory(
+                bytes,
+                fit: BoxFit.contain,
+                semanticLabel: 'شعار الجهة',
+                errorBuilder: (context, error, stackTrace) => fallback,
+              ),
+      ),
+    );
   }
 
   Future<void> _checkForAppUpdate() async {
@@ -2154,14 +2232,7 @@ class _DashboardPageState extends State<DashboardPage>
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipOval(
-              child: Image.asset(
-                'assets/police-telegrams-icon.png',
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-              ),
-            ),
+            _organizationLogoWidget(size: 36, borderRadius: 10),
             const SizedBox(width: 8),
             const Flexible(
               child: Text(
@@ -2658,7 +2729,6 @@ class _DashboardPageState extends State<DashboardPage>
   );
 
   Widget _welcomePanel() {
-    final logoBytes = _organizationLogoBytes;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
@@ -2679,38 +2749,7 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE1E5EB)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: logoBytes == null
-                      ? Image.asset(
-                          'assets/police-telegrams-icon.png',
-                          fit: BoxFit.contain,
-                          semanticLabel:
-                              'الصورة الافتراضية لنظام برقيات الشرطة',
-                        )
-                      : Image.memory(
-                          logoBytes,
-                          fit: BoxFit.contain,
-                          semanticLabel: 'شعار الجهة',
-                          errorBuilder: (context, error, stackTrace) =>
-                              Image.asset(
-                                'assets/police-telegrams-icon.png',
-                                fit: BoxFit.contain,
-                                semanticLabel:
-                                    'الصورة الافتراضية لنظام برقيات الشرطة',
-                              ),
-                        ),
-                ),
-              ),
+              _organizationLogoWidget(size: 52, borderRadius: 16),
               const SizedBox(width: 10),
               Expanded(child: _AnimatedWelcomeGreeting(name: _greetingName)),
               const SizedBox(width: 8),

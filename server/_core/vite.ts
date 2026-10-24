@@ -3,6 +3,7 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import { createRateLimit } from "./rateLimit";
 
 export async function setupVite(app: Express, server: Server) {
   // Keep Vite and its native Rollup dependencies out of production API startup.
@@ -25,7 +26,14 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(
+    "*",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 240,
+      message: "طلبات كثيرة لصفحة التطوير؛ أعد المحاولة لاحقًا",
+    }),
+    async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -48,5 +56,6 @@ export async function setupVite(app: Express, server: Server) {
       vite.ssrFixStacktrace(error as Error);
       next(error);
     }
-  });
+    }
+  );
 }

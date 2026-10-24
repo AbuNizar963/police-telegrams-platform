@@ -1567,7 +1567,7 @@ export const appRouter = router({
         const settings = await getOrCreateSettings(ctx.user.id);
         return rows.map(row => ({
           ...row,
-          ...formatTelegramWorkbookDateTime(row.createdAt, settings.timezone),
+          ...formatTelegramWorkbookDateTime(row.telegramDate ?? row.createdAt, settings.timezone),
         }));
       }),
 
@@ -2768,6 +2768,7 @@ export const appRouter = router({
           existingTelegrams.flatMap(row => [
             normalizeSerial(row.serialNumber),
             normalizeSerial(row.serialCode),
+            ...(row.originalSerial ? [normalizeSerial(row.originalSerial)] : []),
           ])
         );
         let created = 0;
@@ -2783,6 +2784,8 @@ export const appRouter = router({
             time: row.time ?? "",
             date: row.date ?? "",
             body: row.body,
+            signature: row.signature ?? "",
+            notes: row.notes ?? "",
           });
           const idempotencyKey = `excel-import:${createHash("sha256")
             .update(sourceKey)
@@ -2793,7 +2796,10 @@ export const appRouter = router({
               originalSerial &&
               existingSerialKeys.has(normalizeSerial(originalSerial))
             ) {
-              skipped += 1;
+              errors.push({
+                row: index + 2,
+                message: `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
+              });
               continue;
             }
             const existing = await getTelegramByIdempotencyKey(idempotencyKey);
@@ -2827,7 +2833,6 @@ export const appRouter = router({
             const importedBody = [
               row.body,
               row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",
-              row.notes ? `\nملاحظات السجل الأصلي: ${row.notes}` : "",
             ]
               .filter(Boolean)
               .join("\n");
@@ -2841,7 +2846,9 @@ export const appRouter = router({
               serialCode,
               idempotencyKey,
               verificationToken: randomUUID(),
-              createdAt: importedCreatedAt,
+              originalSerial: originalSerial || null,
+              importNotes: row.notes?.trim() || null,
+              telegramDate: importedCreatedAt ?? null,
               createdByUserId: ctx.user.id,
               organizationId,
               currentOrganizationId: organizationId,

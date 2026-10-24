@@ -899,25 +899,38 @@ export async function findTelegramByOfficialSerial(input: {
   const filters = columns.flatMap(column =>
     variants.map(serial => `${column}.eq.${serial}`)
   );
-  const { data, error } = await getSupabaseAdmin()
-    .from("telegrams")
-    .select("*")
-    .or(
-      `and(or(organizationId.eq.${input.organizationId},currentOrganizationId.eq.${input.organizationId}),or(${filters.join(",")}))`
-    )
-    .limit(60);
-  throwIfError(error, "Failed to resolve imported telegram reference");
+  const client = getSupabaseAdmin();
+  const [ownedResult, routedResult] = await Promise.all([
+    client
+      .from("telegrams")
+      .select("*")
+      .eq("organizationId", input.organizationId)
+      .or(filters.join(","))
+      .limit(60),
+    client
+      .from("telegrams")
+      .select("*")
+      .eq("currentOrganizationId", input.organizationId)
+      .or(filters.join(","))
+      .limit(60),
+  ]);
+  throwIfError(ownedResult.error, "Failed to resolve imported telegram reference");
+  throwIfError(routedResult.error, "Failed to resolve imported telegram reference");
 
-  return (data ?? [])
-    .map(row => mapTelegram(row as Record<string, unknown>))
-    .find(telegram => {
-      const direction =
-        telegram.importDirection ??
-        (telegram.organizationId === telegram.currentOrganizationId
-          ? "outgoing"
-          : "incoming");
-      return direction === input.direction;
-    });
+  const candidates = new Map<number, Telegram>();
+  for (const row of [...(ownedResult.data ?? []), ...(routedResult.data ?? [])]) {
+    const telegram = mapTelegram(row as Record<string, unknown>);
+    candidates.set(telegram.id, telegram);
+  }
+
+  return [...candidates.values()].find(telegram => {
+    const direction =
+      telegram.importDirection ??
+      (telegram.organizationId === telegram.currentOrganizationId
+        ? "outgoing"
+        : "incoming");
+    return direction === input.direction;
+  });
 }
 
 export async function getTelegramByIdempotencyKey(

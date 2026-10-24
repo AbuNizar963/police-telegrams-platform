@@ -79,7 +79,10 @@ describe("storage key authorization", () => {
 describe("storage route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    storageDownload.mockResolvedValue({ body: Buffer.from([1, 2, 3]), contentType: "image/png" });
+    storageDownload.mockResolvedValue({
+      body: Buffer.from([1, 2, 3]),
+      contentType: "image/png",
+    });
     getAuthenticatedUserFromRequest.mockResolvedValue({
       id: 7,
       role: "user",
@@ -108,7 +111,6 @@ describe("storage route", () => {
 
     expect(storageDownload).toHaveBeenCalledWith(key);
     expect(storageCreateSignedUrl).not.toHaveBeenCalled();
-    expect(storageDownload).not.toHaveBeenCalled();
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
     expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
     expect(res.set).toHaveBeenCalledWith("Content-Type", "image/png");

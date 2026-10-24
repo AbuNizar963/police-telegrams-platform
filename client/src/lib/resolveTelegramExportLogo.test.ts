@@ -12,7 +12,7 @@ describe("resolveTelegramExportLogo", () => {
         },
         settingsOrganizationId: "org-a",
         settingsLogoUrl: "/api/storage/department/logos/org-a/logo.png",
-      }),
+      })
     ).toBe("/api/storage/department/logos/org-b/logo.png");
   });
 
@@ -26,7 +26,7 @@ describe("resolveTelegramExportLogo", () => {
         },
         settingsOrganizationId: "org-a",
         settingsLogoUrl: " /api/storage/department/logos/org-a/legacy.png ",
-      }),
+      })
     ).toBe("/api/storage/department/logos/org-a/legacy.png");
   });
 
@@ -40,7 +40,7 @@ describe("resolveTelegramExportLogo", () => {
         },
         settingsOrganizationId: "org-a",
         settingsLogoUrl: "/api/storage/department/logos/org-a/logo.png",
-      }),
+      })
     ).toBeNull();
   });
 
@@ -50,7 +50,7 @@ describe("resolveTelegramExportLogo", () => {
         telegramOrganizationId: null,
         settingsOrganizationId: "org-a",
         settingsLogoUrl: "/api/storage/department/logos/org-a/logo.png",
-      }),
+      })
     ).toBeNull();
   });
 });

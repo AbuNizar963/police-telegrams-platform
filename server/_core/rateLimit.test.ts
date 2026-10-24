@@ -8,7 +8,12 @@ import {
 function createResponse() {
   const headers = new Map<string, string>();
   let statusCode = 200;
-  const response = {
+  type FakeResponse = {
+    setHeader: (name: string, value: string) => FakeResponse;
+    status: (status: number) => FakeResponse;
+    json: ReturnType<typeof vi.fn>;
+  };
+  const response: FakeResponse = {
     setHeader: (name: string, value: string) => {
       headers.set(name.toLowerCase(), value);
       return response;

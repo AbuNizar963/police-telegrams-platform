@@ -3,30 +3,32 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 
 const _categories = <MapEntry<String, String>>[
-  MapEntry('criminal', 'جنائي'),
   MapEntry('administrative', 'إداري'),
+  MapEntry('criminal', 'جنائي'),
   MapEntry('traffic', 'مروري'),
   MapEntry('security', 'أمني'),
-  MapEntry('tactical', 'تكتيكي'),
-  MapEntry('intelligence', 'استخبارات'),
+  MapEntry('tactical', 'عملياتي'),
+  MapEntry('intelligence', 'استخباراتي'),
   MapEntry('emergency', 'طوارئ'),
   MapEntry('public_order', 'حفظ النظام'),
-  MapEntry('personnel', 'أفراد'),
-  MapEntry('logistics', 'لوجستي'),
-  MapEntry('training', 'تدريب'),
-  MapEntry('community', 'مجتمعي'),
+  MapEntry('personnel', 'شؤون الأفراد'),
+  MapEntry('logistics', 'إمداد ودعم'),
+  MapEntry('training', 'تدريب وتأهيل'),
+  MapEntry('community', 'مجتمعي وشكاوى'),
   MapEntry('other', 'أخرى'),
 ];
 
 const _classifications = <MapEntry<String, String>>[
   MapEntry('normal', 'عادي'),
   MapEntry('secret', 'سري'),
+  MapEntry('confidential', 'سري - تصنيف بديل'),
+  MapEntry('top_secret', 'سري للغاية'),
 ];
 
 const _priorities = <MapEntry<String, String>>[
-  MapEntry('slow', 'غير عاجل'),
-  MapEntry('normal', 'عادي'),
-  MapEntry('urgent', 'عاجل'),
+  MapEntry('urgent', 'عاجلة'),
+  MapEntry('normal', 'عادية'),
+  MapEntry('slow', 'بطيئة'),
 ];
 
 class TelegramEditDialog extends StatefulWidget {

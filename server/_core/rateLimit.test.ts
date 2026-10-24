@@ -89,6 +89,27 @@ describe("createRateLimit", () => {
     }
   });
 
+  it("keeps separate limiter policies independent", () => {
+    const strictLimiter = createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 1,
+      keyGenerator: () => "shared-client",
+    });
+    const relaxedLimiter = createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 3,
+      keyGenerator: () => "shared-client",
+    });
+    const next = vi.fn();
+
+    strictLimiter({} as Request, createResponse().response, next);
+    const relaxedResponse = createResponse();
+    relaxedLimiter({} as Request, relaxedResponse.response, next);
+
+    expect(relaxedResponse.statusCode).toBe(200);
+    expect(next).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects invalid limiter configuration", () => {
     expect(() => createRateLimit({ windowMs: 0, maxRequests: 1 })).toThrow(
       "Rate limit windowMs and maxRequests must be positive integers"

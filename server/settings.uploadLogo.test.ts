@@ -77,7 +77,7 @@ describe("organization-scoped logo upload authorization", () => {
       async (organizationId: string) =>
         [organizationA, organizationB].find(
           organization => organization.id === organizationId
-        ),
+        )
     );
     mocks.getUserOrganizationMembership.mockResolvedValue({
       userId: 27,
@@ -89,50 +89,44 @@ describe("organization-scoped logo upload authorization", () => {
       async (organizationId: string, fileName: string) => ({
         key: `department/logos/${organizationId}/generated-${fileName}`,
         url: "/api/storage/department/logos/generated-logo.png",
-      }),
+      })
     );
   });
 
-  it(
-    "allows an active organization administrator to upload to their own organization",
-    async () => {
-      const caller = appRouter.createCaller(context());
+  it("allows an active organization administrator to upload to their own organization", async () => {
+    const caller = appRouter.createCaller(context());
 
-      await expect(
-        caller.settings.uploadLogo(uploadInput(organizationA.id)),
-      ).resolves.toMatchObject({
-        key: `department/logos/${organizationA.id}/generated-badge.png`,
-        url: "/api/storage/department/logos/generated-logo.png",
-      });
+    await expect(
+      caller.settings.uploadLogo(uploadInput(organizationA.id))
+    ).resolves.toMatchObject({
+      key: `department/logos/${organizationA.id}/generated-badge.png`,
+      url: "/api/storage/department/logos/generated-logo.png",
+    });
 
-      expect(mocks.storagePutDepartmentLogo).toHaveBeenCalledWith(
-        organizationA.id,
-        "badge.png",
-        expect.any(Buffer),
-        "image/png",
-      );
-    },
-  );
+    expect(mocks.storagePutDepartmentLogo).toHaveBeenCalledWith(
+      organizationA.id,
+      "badge.png",
+      expect.any(Buffer),
+      "image/png"
+    );
+  });
 
-  it(
-    "rejects cross-organization uploads before writing to storage",
-    async () => {
-      const caller = appRouter.createCaller(context());
+  it("rejects cross-organization uploads before writing to storage", async () => {
+    const caller = appRouter.createCaller(context());
 
-      await expect(
-        caller.settings.uploadLogo(uploadInput(organizationB.id)),
-      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.settings.uploadLogo(uploadInput(organizationB.id))
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
-      expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
-    },
-  );
+    expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
 
   it("rejects unknown organizations before writing to storage", async () => {
     const caller = appRouter.createCaller(context());
     const unknownOrganizationId = "00000000-0000-4000-8000-000000000199";
 
     await expect(
-      caller.settings.uploadLogo(uploadInput(unknownOrganizationId)),
+      caller.settings.uploadLogo(uploadInput(unknownOrganizationId))
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
@@ -148,28 +142,25 @@ describe("organization-scoped logo upload authorization", () => {
     const caller = appRouter.createCaller(context());
 
     await expect(
-      caller.settings.uploadLogo(uploadInput(organizationA.id)),
+      caller.settings.uploadLogo(uploadInput(organizationA.id))
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
   });
 
-  it(
-    "rejects bytes that do not match the declared image type before organization lookup",
-    async () => {
-      const caller = appRouter.createCaller(context());
+  it("rejects bytes that do not match the declared image type before organization lookup", async () => {
+    const caller = appRouter.createCaller(context());
 
-      await expect(
-        caller.settings.uploadLogo(
-          uploadInput(
-            organizationA.id,
-            Buffer.from("not an image").toString("base64"),
-          ),
-        ),
-      ).rejects.toThrow("نوع الملف لا يطابق محتواه الحقيقي");
+    await expect(
+      caller.settings.uploadLogo(
+        uploadInput(
+          organizationA.id,
+          Buffer.from("not an image").toString("base64")
+        )
+      )
+    ).rejects.toThrow("نوع الملف لا يطابق محتواه الحقيقي");
 
-      expect(mocks.getOrganizationByIdIncludingInactive).not.toHaveBeenCalled();
-      expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
-    },
-  );
+    expect(mocks.getOrganizationByIdIncludingInactive).not.toHaveBeenCalled();
+    expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
 });

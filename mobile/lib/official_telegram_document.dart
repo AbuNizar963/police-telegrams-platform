@@ -884,7 +884,7 @@ String buildOfficialTelegramHtml({
       .join();
 
   final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
-  final createdAt = _formatConfiguredDate(DateTime.now(), settings);
+  final createdAt = _formatConfiguredHeaderDateTime(DateTime.now(), settings);
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
     telegramDate,
     settings,
@@ -951,7 +951,7 @@ String buildOfficialTelegramHtml({
   final outgoing =
       _value(telegram['organizationId'], fallback: '') ==
       _value(telegram['currentOrganizationId'], fallback: '');
-  final documentType = outgoing ? 'برقية صادرة' : 'برقية واردة';
+  final documentType = outgoing ? 'وثيقة صادرة' : 'وثيقة واردة';
   final classification = _label({
     'secret': 'سري',
     'normal': 'عادي',
@@ -1057,7 +1057,7 @@ $watermark
 <p><strong>رقم البرقية:</strong> ${_escapeHtml(displaySerial)}</p>
 <p class="header-date-row"><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${_escapeHtml(headerCreatedAt)}</span></p>
 <p><strong>درجة السرية:</strong> ${_escapeHtml(classification)}</p>
-<p><strong>درجة الأولوية:</strong> ${_escapeHtml(priority)}</p>
+<p><strong>درجة الأسبقية:</strong> ${_escapeHtml(priority)}</p>
 </div></header>
 <section class="classification">
 <span><strong>نوع الوثيقة:</strong> <span class="classification-value">${_escapeHtml(documentType)}</span></span>
@@ -1070,7 +1070,7 @@ $watermark
 <p><strong>إلى:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['recipient']), numberSystem))}</p>
 <p><strong>الموضوع:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['subject']), numberSystem))}</p>
 </div>${showVerificationQr ? '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">$qrSvg</div>' : ''}</div></section>
-<h2 class="body-heading">نص البرقية</h2>
+<h2 class="body-heading">نص الوثيقة</h2>
 <div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
 <section class="signature">
 <p><strong>${_escapeHtml(_localizeDigits(_value(settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
@@ -1150,7 +1150,7 @@ String _formatConfiguredHeaderDateTime(
   Map<String, dynamic> settings,
 ) {
   final date = _configuredDate(value, settings);
-  final yearMonthDay = '${date.year}/${date.month}/${date.day}';
+  final yearMonthDay = '${date.year}/${_pad(date.month)}/${_pad(date.day)}';
   return _localizeDigits(
     '$yearMonthDay - ${_timeText(date, settings['timeFormat'] == '12')}',
     settings['numberSystem'],

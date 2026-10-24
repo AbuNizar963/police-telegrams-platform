@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { getAuthenticatedUserFromRequest } from "./auth";
 import {
   StorageAccessDeniedError,
-  storageCreateSignedUrl,
+  storageDownload,
   storageGetSignedUrl,
 } from "../storage";
 
@@ -23,43 +23,31 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
-      const departmentLogoKeyPattern = new RegExp(
-        "^department/logos/" +
-          "(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/)?" +
-          "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\\.(?:png|jpg)$",
-        "i"
-      );
+      const departmentLogoKeyPattern =
+        /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
       const isDepartmentLogo = departmentLogoKeyPattern.test(key);
       if (key.startsWith("department/logos/") && !isDepartmentLogo) {
         throw new StorageAccessDeniedError();
       }
 
-      const url = isDepartmentLogo
-        ? await storageCreateSignedUrl(key, 10 * 60)
-        : await storageGetSignedUrl(key, user);
       if (isDepartmentLogo) {
-        try {
-          const assetResponse = await fetch(url);
-          if (!assetResponse.ok) {
-            throw new Error("Logo storage backend error");
-          }
-          res.set("Cache-Control", "private, no-store");
-          res.set("Vary", "Cookie");
-          res.set(
-            "Content-Type",
-            assetResponse.headers.get("content-type") ?? "image/png"
-          );
-          res.send(Buffer.from(await assetResponse.arrayBuffer()));
-          return;
-        } catch (error) {
-          // Keep a redirect fallback for storage providers that do not allow
-          // server-side fetching; the browser can still follow the signed URL.
-          console.warn(
-            "[Storage] Logo proxy unavailable, using signed URL",
-            error
-          );
+        // Download through the storage SDK instead of fetching a signed URL
+        // over HTTP. A redirect fallback would send the browser cross-origin,
+        // where export canvas conversion can fail because of CORS.
+        const asset = await storageDownload(key);
+        if (asset.body.length === 0) {
+          throw new Error("Logo storage returned an empty object");
         }
+
+        res.set("Cache-Control", "private, no-store");
+        res.set("Vary", "Cookie");
+        res.set("Content-Type", asset.contentType || "image/png");
+        res.set("X-Content-Type-Options", "nosniff");
+        res.send(asset.body);
+        return;
       }
+
+      const url = await storageGetSignedUrl(key, user);
       res.set("Cache-Control", "private, no-store");
       res.set("Vary", "Cookie");
       res.redirect(307, url);

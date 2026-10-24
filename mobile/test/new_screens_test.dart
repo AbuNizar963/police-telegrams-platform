@@ -98,11 +98,11 @@ void main() {
     expect(find.text('قيادة الأمن الداخلي'), findsOneWidget);
     expect(find.text('درجة السرية'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('درجة الأولوية'),
+      find.text('درجة الأسبقية'),
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('درجة الأولوية'), findsOneWidget);
+    expect(find.text('درجة الأسبقية'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('تصنيف البلاغ'),
       240,

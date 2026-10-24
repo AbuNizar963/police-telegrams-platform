@@ -43,6 +43,7 @@ import {
   getPlatformDocumentSettings,
   getOrganizationSettings,
   getTelegramById,
+  findTelegramByOfficialSerial,
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
@@ -2710,6 +2711,43 @@ export const appRouter = router({
       .mutation(async ({ input }) =>
         parseTelegramWorkbookBase64(input.base64, input.password)
       ),
+    resolveImportReferences: protectedProcedure
+      .input(z.object({ notes: z.string().max(4000) }))
+      .query(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const references = Array.from(
+          input.notes.matchAll(/ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g)
+        ).slice(0, 50);
+
+        const normalizeDigits = (value: string) =>
+          value
+            .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+            .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+
+        return (
+          await Promise.all(
+            references.map(async match => {
+              const direction = match[1] === "و" ? "incoming" : "outgoing";
+              const serial = normalizeDigits(match[2]);
+              const telegram = await findTelegramByOfficialSerial({
+                organizationId,
+                serial,
+                direction,
+              });
+              if (!telegram) return null;
+              return {
+                referenceText: match[0],
+                serial,
+                direction,
+                verificationToken: telegram.verificationToken,
+              };
+            })
+          )
+        ).filter((reference): reference is NonNullable<typeof reference> =>
+          reference !== null
+        );
+      }),
+
     importPreview: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
@@ -2857,6 +2895,7 @@ export const appRouter = router({
               verificationToken: randomUUID(),
               originalSerial: originalSerial || null,
               importNotes: row.notes?.trim() || null,
+              importDirection: row.sheetName === "وارد" ? "incoming" : "outgoing",
               telegramDate: importedCreatedAt ?? null,
               createdByUserId: ctx.user.id,
               organizationId,

@@ -918,12 +918,7 @@ String buildOfficialTelegramHtml({
     var cursor = 0;
     for (final match in pattern.allMatches(importNotes)) {
       buffer.write(
-        _escapeHtml(
-          _localizeDigits(
-            importNotes.substring(cursor, match.start),
-            numberSystem,
-          ),
-        ),
+        _escapeHtml(importNotes.substring(cursor, match.start)),
       );
       final marker = match.group(1) ?? '';
       final serial = (match.group(2) ?? '').replaceAllMapped(
@@ -938,9 +933,7 @@ String buildOfficialTelegramHtml({
       );
       final direction = marker == 'و' ? 'incoming' : 'outgoing';
       final reference = referenceByKey['$direction|$serial'];
-      final label = _escapeHtml(
-        _localizeDigits(match.group(0) ?? '', numberSystem),
-      );
+      final label = _escapeHtml(match.group(0) ?? '');
       final token = _value(reference?['verificationToken']);
       if (reference != null && token.isNotEmpty) {
         final href = Uri.parse(verificationUrl)
@@ -955,7 +948,7 @@ String buildOfficialTelegramHtml({
       cursor = match.end;
     }
     buffer.write(
-      _escapeHtml(_localizeDigits(importNotes.substring(cursor), numberSystem)),
+      _escapeHtml(importNotes.substring(cursor)),
     );
     return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
   })();

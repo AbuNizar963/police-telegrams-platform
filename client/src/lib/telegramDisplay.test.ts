@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getTelegramDisplayNumber,
   getTelegramDisplaySerial,
+  getTelegramExportFileBaseName,
 } from "./telegramDisplay";
 
 describe("getTelegramDisplayNumber", () => {
@@ -42,6 +43,19 @@ describe("getTelegramDisplayNumber", () => {
         "arabic"
       )
     ).toBe("2025-009");
+  });
+
+
+  it("uses the official serial in export filenames safely", () => {
+    expect(
+      getTelegramExportFileBaseName({
+        originalSerial: "ب و ٠٠٦/أ",
+        serialCode: "SYS-2026-09-30-00009",
+      })
+    ).toBe("ب و ٠٠٦-أ");
+    expect(
+      getTelegramExportFileBaseName({ serialCode: "SYS-2026-09-30-00009" })
+    ).toBe("SYS-2026-09-30-00009");
   });
 
   it("returns a safe placeholder for an empty serial", () => {

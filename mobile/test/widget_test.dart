@@ -828,7 +828,7 @@ void main() {
   });
 
   testWidgets(
-    'dashboard matches the mobile reference and short serial format',
+    'dashboard matches the mobile reference, app icon, and short serial format',
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
@@ -850,7 +850,7 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsNWidgets(2),
+        findsOneWidget,
       );
 
       await _scrollIntoView(tester, find.text('برقية رقم: 72'));
@@ -872,7 +872,7 @@ void main() {
   );
 
   testWidgets(
-    'shows the organization logo in the header and welcome panel when context is unavailable',
+    'shows the organization logo in the welcome panel when context is unavailable',
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
@@ -891,13 +891,13 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsNWidgets(2),
+        findsOneWidget,
       );
     },
   );
 
   testWidgets(
-    'shows the organization logo in the header and welcome panel using settings fallback',
+    'shows the organization logo in the welcome panel using settings fallback',
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
@@ -917,7 +917,7 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsNWidgets(2),
+        findsOneWidget,
       );
     },
   );

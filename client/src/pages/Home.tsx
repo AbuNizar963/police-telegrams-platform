@@ -1339,8 +1339,7 @@ export default function Home() {
                     </span>
                   )}
                   <span className="text-base font-bold text-foreground sm:text-lg">
-                    برقية رقم:{" "}
-                    {getTelegramDisplaySerial(row, numberSystem)}
+                    برقية رقم: {getTelegramDisplaySerial(row, numberSystem)}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1 text-sm font-medium leading-6 text-muted-foreground">
@@ -2755,7 +2754,7 @@ function TelegramDetail({
     {
       enabled: Boolean(telegram.importNotes?.trim()),
       staleTime: 60_000,
-    },
+    }
   );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,
@@ -3061,12 +3060,8 @@ function TelegramDetail({
         const marker = match[1] ?? "";
         const rawSerial = match[2] ?? "";
         const serial = rawSerial
-          .replace(/[٠-٩]/g, digit =>
-            String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))
-          )
-          .replace(/[۰-۹]/g, digit =>
-            String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
-          );
+          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
         const direction = marker === "و" ? "incoming" : "outgoing";
         const reference = references.find(
           item => item.serial === serial && item.direction === direction

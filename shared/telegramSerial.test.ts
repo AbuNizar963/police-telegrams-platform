@@ -21,7 +21,10 @@ describe("getTelegramSerialCode", () => {
     ).toBe("ORG-2026-00012");
   });
 
-  it("falls back to the legacy global serial when organization numbering is absent", () => {
+  it(
+    "falls back to the legacy global serial when organization numbering is absent",
+    () => {
+
     expect(
       getTelegramSerialCode({ serialCode: "SYS-00012" })
     ).toBe("SYS-00012");

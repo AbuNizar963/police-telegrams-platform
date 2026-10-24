@@ -3036,7 +3036,7 @@ function TelegramDetail({
       name => !fixedHeaderNames.has(name.trim())
     );
     const telegramDate = telegram.telegramDate ?? telegram.createdAt;
-    const createdAt = formatConfiguredDate(new Date(), settings);
+    const createdAt = formatConfiguredHeaderDateTime(new Date(), settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegramDate,
       settings
@@ -3394,7 +3394,7 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
+          <p class="footer-date">الوقت والتاريخ: ${escapeHtml(createdAt)}</p>
         </footer>
         ${importNotesMarkup}
       </article>`;

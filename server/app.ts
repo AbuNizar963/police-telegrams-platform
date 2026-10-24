@@ -111,7 +111,17 @@ export function createApp(
     next();
   });
 
-  // Bound API request volume before authentication and body parsing. This is a\n  // per-instance safeguard; production edge limits should remain enabled too.\n  app.use(\n    "/api",\n    createRateLimit({\n      windowMs: 60_000,\n      maxRequests: 300,\n      message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",\n    })\n  );\n\n  // Authenticate large-payload routes before parsing attacker-controlled bodies.
+  // Bound API request volume before authentication and body parsing. This is a
+  // per-instance safeguard; production edge limits should remain enabled too.
+  app.use(
+    "/api",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 300,
+      message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",
+    })
+  );
+\n  // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.
   app.use((req, res, next) => {
     const path = req.path;

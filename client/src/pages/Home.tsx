@@ -706,7 +706,10 @@ export default function Home() {
     onSuccess: async telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: getTelegramDisplayNumber(getTelegramSerialCode(telegram), telegram.originalSerial),
+        serialCode: getTelegramDisplayNumber(
+          getTelegramSerialCode(telegram),
+          telegram.originalSerial
+        ),
         subject: telegram.subject,
         telegramId: telegram.id,
         direction: "outgoing",
@@ -1338,7 +1341,10 @@ export default function Home() {
                   <span className="text-base font-bold text-foreground sm:text-lg">
                     برقية رقم:{" "}
                     {localizeDigits(
-                      getTelegramDisplayNumber(getTelegramSerialCode(row), row.originalSerial),
+                      getTelegramDisplayNumber(
+                        getTelegramSerialCode(row),
+                        row.originalSerial
+                      ),
                       numberSystem
                     )}
                   </span>
@@ -3044,7 +3050,10 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = localizeDigits(
-      getTelegramDisplayNumber(getTelegramSerialCode(telegram), telegram.originalSerial),
+      getTelegramDisplayNumber(
+        getTelegramSerialCode(telegram),
+        telegram.originalSerial
+      ),
       numberSystem
     );
     const logo = settings?.logoUrl
@@ -3802,7 +3811,10 @@ function TelegramDetail({
     <Modal
       title={telegram.subject}
       subtitle={localizeDigits(
-        getTelegramDisplayNumber(getTelegramSerialCode(telegram), telegram.originalSerial),
+        getTelegramDisplayNumber(
+          getTelegramSerialCode(telegram),
+          telegram.originalSerial
+        ),
         settings?.numberSystem ?? "latin"
       )}
       close={close}

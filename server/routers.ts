@@ -205,11 +205,13 @@ function getExistingTelegramSerialKeys(
 ): Set<string> {
   return new Set(
     telegrams.flatMap(telegram => {
-      const direction =
-        telegram.importDirection ??
-        (telegram.organizationId === telegram.currentOrganizationId
-          ? "outgoing"
-          : "incoming");
+      const direction: TelegramImportDirection =
+        telegram.importDirection === "incoming" ||
+        telegram.importDirection === "outgoing"
+          ? telegram.importDirection
+          : telegram.organizationId === telegram.currentOrganizationId
+            ? "outgoing"
+            : "incoming";
       return [
         ...(telegram.originalSerial
           ? [makeImportSerialKey(direction, telegram.originalSerial)]

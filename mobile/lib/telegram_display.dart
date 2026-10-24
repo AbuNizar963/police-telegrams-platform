@@ -2,6 +2,7 @@
 /// Legacy fields are retained as a fallback for older API records.
 String getTelegramSerialCode(Map<String, dynamic> telegram) {
   for (final key in const [
+    'originalSerial',
     'organizationSerialCode',
     'serialCode',
     'serialNumber',
@@ -15,7 +16,15 @@ String getTelegramSerialCode(Map<String, dynamic> telegram) {
 
 /// Returns the short serial shown in web lists and document headings.
 /// For example, `POL-2026-09-30-00690` becomes `690`.
-String getTelegramDisplayNumber(Object? serialCode) {
+String getTelegramDisplayNumber(
+  Object? serialCode, {
+  Object? originalSerial,
+}) {
+  final officialSerial = originalSerial?.toString().trim() ?? '';
+  if (officialSerial.isNotEmpty && officialSerial != 'null') {
+    return officialSerial;
+  }
+
   final value = serialCode?.toString().trim() ?? '';
   if (value.isEmpty || value == 'null') return '—';
 

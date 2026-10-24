@@ -205,11 +205,14 @@ class _DashboardPageState extends State<DashboardPage> {
   StreamSubscription<List<ConnectivityResult>>? connectivitySubscription;
   bool? serverReachable;
   DateTime? lastSyncedAt;
+  String? organizationLogoUrl;
+  String? organizationName;
 
   @override
   void initState() {
     super.initState();
     offline = OfflineFirstService(api: widget.api);
+    unawaited(_loadOrganizationBranding());
     connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       results,
     ) {
@@ -230,6 +233,68 @@ class _DashboardPageState extends State<DashboardPage> {
     push.initialize(
       onToken: _registerPushToken,
       onTelegramOpened: _openIncomingTelegram,
+    );
+  }
+
+  Future<void> _loadOrganizationBranding() async {
+    try {
+      final contextResult = await widget.api.call('organizations.context');
+      if (contextResult is! Map) return;
+
+      final organization = Map<String, dynamic>.from(contextResult);
+      final organizationId = organization['organizationId']?.toString();
+      final name = organization['organizationName']?.toString();
+
+      if (mounted && name != null && name.trim().isNotEmpty) {
+        setState(() => organizationName = name.trim());
+      }
+      if (organizationId == null || organizationId.trim().isEmpty) return;
+
+      final logoResult = await widget.api.call(
+        'organizations.logo',
+        input: {'organizationId': organizationId},
+      );
+      final logo = logoResult is Map
+          ? logoResult['logoUrl']?.toString().trim()
+          : null;
+      if (mounted) {
+        setState(() => organizationLogoUrl =
+            logo == null || logo.isEmpty || logo == 'null' ? null : logo);
+      }
+    } catch (_) {
+      // Branding is optional; a network or permission failure must not block
+      // the dashboard, and the shield remains the safe visual fallback.
+    }
+  }
+
+  Widget _organizationLogo() {
+    final url = organizationLogoUrl;
+    final fallback = Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: gold.withValues(alpha: 0.75)),
+      ),
+      child: const Icon(Icons.shield_outlined, color: gold, size: 23),
+    );
+    if (url == null) return fallback;
+
+    return Tooltip(
+      message: organizationName ?? 'شعار الجهة',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          url,
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+          headers: const {'Accept': 'image/*'},
+          errorBuilder: (context, error, stackTrace) => fallback,
+        ),
+      ),
     );
   }
 
@@ -268,6 +333,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> refresh() async {
+    unawaited(_loadOrganizationBranding());
     if (mounted && stats.isEmpty && telegrams.isEmpty) {
       setState(() => loading = true);
     }
@@ -344,9 +410,18 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         backgroundColor: navy,
         foregroundColor: Colors.white,
-        title: const Text(
-          'لوحة البرقيات',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        title: Row(
+          children: [
+            _organizationLogo(),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                'لوحة البرقيات',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(onPressed: refresh, icon: const Icon(Icons.refresh)),

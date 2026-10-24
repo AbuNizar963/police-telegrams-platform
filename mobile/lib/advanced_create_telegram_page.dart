@@ -50,23 +50,23 @@ class _AdvancedCreateTelegramSheetState
     'confidential': 'سري',
   };
   static const _priorities = <String, String>{
-    'normal': 'عادي',
-    'urgent': 'عاجل',
-    'slow': 'بطيء',
+    'urgent': 'عاجلة',
+    'normal': 'عادية',
+    'slow': 'بطيئة',
   };
   static const _categories = <String, String>{
-    'criminal': 'جنائي',
     'administrative': 'إداري',
+    'criminal': 'جنائي',
     'traffic': 'مروري',
     'security': 'أمني',
-    'tactical': 'تكتيكي',
+    'tactical': 'عملياتي',
     'intelligence': 'استخباراتي',
     'emergency': 'طوارئ',
     'public_order': 'حفظ النظام',
     'personnel': 'شؤون الأفراد',
     'logistics': 'إمداد ودعم',
-    'training': 'تدريب',
-    'community': 'مجتمعي',
+    'training': 'تدريب وتأهيل',
+    'community': 'مجتمعي وشكاوى',
     'other': 'أخرى',
   };
 

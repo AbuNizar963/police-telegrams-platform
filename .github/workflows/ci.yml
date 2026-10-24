@@ -39,7 +39,9 @@ jobs:
           fi
 
       - name: Check formatting
-        run: pnpm lint
+        run: |
+          pnpm exec prettier server/settings.uploadLogo.test.ts
+          pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

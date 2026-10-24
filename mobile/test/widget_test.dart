@@ -112,12 +112,14 @@ class _TestPoliceApi extends PoliceApi {
   _TestPoliceApi({
     this.signedIn = false,
     this.organizationLogoUrl,
+    this.resolvedOrganizationLogoUrl,
     this.contextUnavailable = false,
     this.accountOrganizationId = 'org-1',
   });
 
   final bool signedIn;
   final String? organizationLogoUrl;
+  final String? resolvedOrganizationLogoUrl;
   final bool contextUnavailable;
   final String? accountOrganizationId;
   final calls = <String, Map<String, dynamic>?>{};
@@ -180,7 +182,7 @@ class _TestPoliceApi extends PoliceApi {
               },
       'organizations.logo' => {
         'organizationId': input?['organizationId'],
-        'logoUrl': organizationLogoUrl,
+        'logoUrl': resolvedOrganizationLogoUrl ?? organizationLogoUrl,
       },
       'telegrams.list' => {
         'items': [_sampleTelegram()],
@@ -410,6 +412,31 @@ void main() {
     expect((logoTile.decoration! as BoxDecoration).color, Colors.white);
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
   });
+
+  testWidgets(
+    'department settings keeps the saved logo when organization logo response is empty',
+    (tester) async {
+      _setMobileViewport(tester);
+      final api = _TestPoliceApi(
+        signedIn: true,
+        organizationLogoUrl: 'https://images.example.test/saved-logo.png',
+        resolvedOrganizationLogoUrl: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: DepartmentSettingsPage(api: api)),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 5);
+
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image is MemoryImage,
+        ),
+        findsOneWidget,
+      );
+      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+    },
+  );
 
   testWidgets('official telegram document keeps logo separate from watermark', (
     tester,

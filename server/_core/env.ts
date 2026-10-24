@@ -1,7 +1,7 @@
 const splitCsv = (value: string | undefined): string[] =>
   (value ?? "")
     .split(",")
-    .map(item => item.trim().toLowerCase())
+    .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
 export const ENV = {

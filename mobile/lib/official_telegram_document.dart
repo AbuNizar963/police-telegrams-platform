@@ -384,13 +384,8 @@ class _OfficialTelegramDocumentPageState
     return 'telegram-$safe';
   }
 
-  String get _displaySerial => localizeTelegramDigits(
-    getTelegramDisplayNumber(
-      getTelegramSerialCode(telegram ?? const {}),
-      originalSerial: telegram?['originalSerial'],
-    ),
-    settings?['numberSystem'],
-  );
+  String get _displaySerial =>
+      getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
   Future<void> _perform(Future<void> Function() action) async {
     if (busy) return;
@@ -902,13 +897,7 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = localizeTelegramDigits(
-    getTelegramDisplayNumber(
-      getTelegramSerialCode(telegram),
-      originalSerial: telegram['originalSerial'],
-    ),
-    numberSystem,
-  );
+  final displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
   final importNotes = _value(telegram['importNotes']).trim();
   final referenceByKey = <String, Map<String, dynamic>>{};
   for (final reference in referenceLinks) {

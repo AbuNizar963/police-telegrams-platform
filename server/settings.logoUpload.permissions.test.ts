@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   uploadLogoMock: vi.fn(),
 }));
 
-vi.mock("./organization", async (importOriginal) => {
+vi.mock("./organization", async importOriginal => {
   const actual = await importOriginal<typeof import("./organization")>();
   return {
     ...actual,
@@ -15,7 +15,7 @@ vi.mock("./organization", async (importOriginal) => {
   };
 });
 
-vi.mock("./storage", async (importOriginal) => {
+vi.mock("./storage", async importOriginal => {
   const actual = await importOriginal<typeof import("./storage")>();
   return {
     ...actual,
@@ -23,7 +23,7 @@ vi.mock("./storage", async (importOriginal) => {
   };
 });
 
-vi.mock("./fileSecurity", async (importOriginal) => {
+vi.mock("./fileSecurity", async importOriginal => {
   const actual = await importOriginal<typeof import("./fileSecurity")>();
   return {
     ...actual,

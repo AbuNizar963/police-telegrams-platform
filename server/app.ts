@@ -9,7 +9,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
 import { registerTelegramExportRoutes } from "./telegramExport";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
-import { ENV } from "./_core/env";
+import { assertProductionEnvironment, ENV } from "./_core/env";
 import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
 import { createRateLimit } from "./_core/rateLimit";
@@ -20,7 +20,6 @@ const verificationAttempts = new Map<
 >();
 const VERIFY_WINDOW_MS = 60_000;
 const VERIFY_MAX_ATTEMPTS = 60;
-const VERIFY_MAX_TRACKED_IPS = 10_000;
 
 function isSameOriginRequest(req: express.Request): boolean {
   const origin = req.get("origin");
@@ -45,25 +44,10 @@ function isSameOriginRequest(req: express.Request): boolean {
 function allowVerificationAttempt(ip: string): boolean {
   const now = Date.now();
   const current = verificationAttempts.get(ip);
-
   if (!current || current.resetAt <= now) {
-    if (verificationAttempts.size >= VERIFY_MAX_TRACKED_IPS) {
-      for (const [trackedIp, entry] of verificationAttempts) {
-        if (entry.resetAt <= now) verificationAttempts.delete(trackedIp);
-      }
-    }
-
-    if (
-      verificationAttempts.size >= VERIFY_MAX_TRACKED_IPS &&
-      !verificationAttempts.has(ip)
-    ) {
-      return false;
-    }
-
     verificationAttempts.set(ip, { count: 1, resetAt: now + VERIFY_WINDOW_MS });
     return true;
   }
-
   if (current.count >= VERIFY_MAX_ATTEMPTS) return false;
   current.count += 1;
   return true;
@@ -106,6 +90,7 @@ function requiresOrganizationAdminLargeBody(path: string): boolean {
 export function createApp(
   options: { productionStatic?: boolean } = {}
 ): Express {
+  assertProductionEnvironment();
   const app = express();
   // Vercel supplies the client address through one trusted proxy hop in production.
   // Do not trust forwarded headers in local development or test environments.
@@ -127,8 +112,7 @@ export function createApp(
     next();
   });
 
-  // Bound API request volume before authentication and body parsing. This is a
-  // per-instance safeguard; production edge limits should remain enabled too.
+  // Defense-in-depth per-instance request limit; retain shared edge limits in production.
   app.use(
     "/api",
     createRateLimit({

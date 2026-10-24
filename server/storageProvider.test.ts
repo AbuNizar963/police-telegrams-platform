@@ -73,7 +73,7 @@ describe("Supabase storage provider", () => {
 
   it("returns the signed URL for the requested key and expiration", async () => {
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
     ).resolves.toBe("https://storage.example/signed-object");
 
     expect(createSignedUrl).toHaveBeenCalledWith("telegrams/7/file.pdf", 600);

@@ -37,7 +37,9 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
     !Number.isSafeInteger(maxRequests) ||
     maxRequests <= 0
   ) {
-    throw new Error("Rate limit windowMs and maxRequests must be positive integers");
+    throw new Error(
+      "Rate limit windowMs and maxRequests must be positive integers"
+    );
   }
 
   return (req, res, next) => {
@@ -53,7 +55,10 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
       }
 
       if (buckets.size >= MAX_TRACKED_KEYS && !buckets.has(key)) {
-        res.setHeader("Retry-After", String(Math.max(1, Math.ceil(windowMs / 1000))));
+        res.setHeader(
+          "Retry-After",
+          String(Math.max(1, Math.ceil(windowMs / 1000)))
+        );
         res.status(429).json({ error: message });
         return;
       }

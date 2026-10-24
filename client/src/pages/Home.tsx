@@ -3340,8 +3340,6 @@ function TelegramDetail({
           margin-top: 8px;
           padding-top: 6px;
           border-top: 1px dotted #7b8493;
-          font-size: 12px;
-          line-height: 1.8;
           white-space: pre-wrap;
           overflow-wrap: anywhere;
         }

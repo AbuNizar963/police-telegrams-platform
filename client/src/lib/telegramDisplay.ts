@@ -42,6 +42,6 @@ export function getTelegramExportFileBaseName(
     source.serialCode?.trim() ||
     getTelegramSerialCode(source) ||
     "telegram";
-  const safeSerial = serial.replace(/[\\\/:*?"<>|\u0000-\u001F]/g, "-").trim();
+  const safeSerial = serial.replace(/[\\/:*?"<>|\u0000-\u001F]/g, "-").trim();
   return safeSerial || "telegram";
 }

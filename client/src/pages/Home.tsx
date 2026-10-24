@@ -317,7 +317,7 @@ function formatConfiguredHeaderDateTime(
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
-  const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
+  const formattedDate = `${parts.year}/${parts.month}/${parts.day}`;
   const arabicDayPeriod = getArabicDayPeriod(date, timezone, hour12);
   const timeText = `${parts.hour}:${parts.minute}:${parts.second}${arabicDayPeriod ? ` ${arabicDayPeriod}` : ""}`;
   return localizeDigits(`${formattedDate} - ${timeText}`, numberSystem);
@@ -1990,8 +1990,8 @@ function DisplayCustomizationModal({
     },
     {
       key: "priority",
-      label: "الأولوية والسرية",
-      description: "يعرض مستوى الأولوية ودرجة السرية.",
+      label: "الأسبقية والسرية",
+      description: "يعرض مستوى الأسبقية ودرجة السرية.",
     },
     {
       key: "creator",
@@ -2090,7 +2090,7 @@ function TelegramReportModal({
       "الجهة",
       "الحالة",
       "السرية",
-      "الأولوية",
+      "الأسبقية",
       "تاريخ الإنشاء",
     ];
     const lines = [
@@ -2538,7 +2538,7 @@ function TelegramComposer({
         </div>
 
         <div className="grid gap-1.5 text-xs font-bold">
-          <span>درجة الأولوية</span>
+          <span>درجة الأسبقية</span>
           <div className="grid min-w-0 grid-cols-3 gap-2">
             {(Object.keys(priorityLabels) as Priority[]).map(item => (
               <button
@@ -3039,7 +3039,7 @@ function TelegramDetail({
       name => !fixedHeaderNames.has(name.trim())
     );
     const telegramDate = telegram.telegramDate ?? telegram.createdAt;
-    const createdAt = formatConfiguredDate(new Date(), settings);
+    const createdAt = formatConfiguredHeaderDateTime(new Date(), settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegramDate,
       settings
@@ -3051,40 +3051,7 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    const importNotesText = telegram.importNotes?.trim() ?? "";
-    const importNotesMarkup = (() => {
-      if (!importNotesText) return "";
-      const references = importReferencesQuery.data ?? [];
-      const referencePattern = /ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g;
-      let cursor = 0;
-      let renderedNotes = "";
-      for (const match of importNotesText.matchAll(referencePattern)) {
-        const matchIndex = match.index ?? cursor;
-        renderedNotes += escapeHtml(importNotesText.slice(cursor, matchIndex));
-        const marker = match[1] ?? "";
-        const rawSerial = match[2] ?? "";
-        const serial = rawSerial
-          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
-        const direction = marker === "و" ? "incoming" : "outgoing";
-        const reference = references.find(
-          item => item.serial === serial && item.direction === direction
-        );
-        const label = escapeHtml(match[0]);
-        if (reference) {
-          const href = new URL(
-            `/verify/${encodeURIComponent(reference.verificationToken)}`,
-            window.location.origin
-          ).toString();
-          renderedNotes += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-        } else {
-          renderedNotes += label;
-        }
-        cursor = matchIndex + match[0].length;
-      }
-      renderedNotes += escapeHtml(importNotesText.slice(cursor));
-      return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
-    })();
+    const importNotesMarkup = "";
     const resolvedLogoUrl = logoUrl?.trim();
     if (!resolvedLogoUrl) {
       throw new Error(
@@ -3228,6 +3195,22 @@ function TelegramDetail({
           margin: 0 auto;
           object-fit: contain;
         }
+         .telegram-export-page .official-seal {
+          width: 110px;
+          height: 110px;
+          margin: 0 auto;
+          border: 2px solid #b49a55;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #9a813c;
+          text-align: center;
+          line-height: 1.2;
+        }
+        .telegram-export-page .official-seal span { font-size: 20px; }
+        .telegram-export-page .official-seal strong { font-size: 11px; }
         .telegram-export-page .classification {
           display: flex;
           justify-content: space-between;
@@ -3356,7 +3339,7 @@ function TelegramDetail({
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
             <p class="header-date-row"><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
-            <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
+            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
@@ -3385,7 +3368,7 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
+          <p class="footer-date">الوقت والتاريخ: ${escapeHtml(createdAt)}</p>
         </footer>
         ${importNotesMarkup}
       </article>`;
@@ -3476,10 +3459,7 @@ function TelegramDetail({
               });
               if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
               const blob = await response.blob();
-              // Some authenticated storage/CDN routes return valid image bytes
-              // with application/octet-stream or no MIME type. Validate the
-              // actual payload by decoding it below instead of rejecting it
-              // solely because the response header is imprecise.
+              // Validate decoded bytes rather than relying only on inconsistent MIME headers.
               const contentType = blob.type.split(";")[0].trim().toLowerCase();
               if (
                 contentType &&
@@ -3497,8 +3477,7 @@ function TelegramDetail({
                 preview.decoding = "async";
                 preview.src = imageUrl;
                 await preview.decode();
-                // Keep enough source detail for the 1200-DPI A4 export.
-                // Never upscale a small source logo; preserve its native pixels.
+                // Preserve source detail without artificially upscaling small logos.
                 const maxDimension = 2400;
                 const scale = Math.min(
                   1,
@@ -3531,8 +3510,7 @@ function TelegramDetail({
             image.src = dataUrl;
             await image.decode();
           } catch (error) {
-            // Never export a document with a missing or substituted official logo.
-            // Avoid logging signed URLs because they may grant temporary access.
+            // Do not export a document with a missing or substituted official logo.
             console.error("تعذر تجهيز صورة الشعار الرسمي للتصدير:", {
               imageRole: image.classList.contains("watermark-logo")
                 ? "watermark-logo"
@@ -4532,7 +4510,7 @@ function TelegramEditModal({
             </select>
           </label>
           <label className="grid gap-1.5 text-sm font-semibold">
-            الأولوية
+            الأسبقية
             <select
               value={priority}
               onChange={event => setPriority(event.target.value as Priority)}

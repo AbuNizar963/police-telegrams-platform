@@ -884,11 +884,7 @@ String buildOfficialTelegramHtml({
       .join();
 
   final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
-  final createdAt = _formatConfiguredHeaderDateTime(
-    DateTime.now(),
-    settings,
-    use24HourTime: true,
-  );
+  final createdAt = _formatConfiguredHeaderDateTime(DateTime.now(), settings);
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
     telegramDate,
     settings,

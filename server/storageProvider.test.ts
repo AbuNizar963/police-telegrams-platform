@@ -81,7 +81,7 @@ describe("Supabase storage provider", () => {
 
   it("downloads object bytes and preserves the stored content type", async () => {
     const result = await getStorageProvider().download(
-      "department/logos/logo.png"
+      "department/logos/logo.png",
     );
 
     expect(download).toHaveBeenCalledWith("department/logos/logo.png");
@@ -96,7 +96,7 @@ describe("Supabase storage provider", () => {
     });
 
     await expect(
-      getStorageProvider().download("department/logos/missing.png")
+      getStorageProvider().download("department/logos/missing.png"),
     ).rejects.toThrow("Storage download failed: object not found");
   });
 
@@ -107,7 +107,7 @@ describe("Supabase storage provider", () => {
     });
 
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
     ).rejects.toThrow("Storage signed URL failed: permission denied");
 
     createSignedUrl.mockResolvedValueOnce({
@@ -116,7 +116,7 @@ describe("Supabase storage provider", () => {
     });
 
     await expect(
-      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600)
+      getStorageProvider().createSignedUrl("telegrams/7/file.pdf", 600),
     ).rejects.toThrow("Storage signed URL failed: empty URL");
   });
 });

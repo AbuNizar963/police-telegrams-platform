@@ -3,6 +3,7 @@ import { getAuthenticatedUserFromRequest } from "./auth";
 import {
   StorageAccessDeniedError,
   storageCreateSignedUrl,
+  storageDownload,
   storageGetSignedUrl,
 } from "../storage";
 
@@ -34,32 +35,24 @@ export function registerStorageRoutes(app: Express): void {
         throw new StorageAccessDeniedError();
       }
 
-      const url = isDepartmentLogo
-        ? await storageCreateSignedUrl(key, 10 * 60)
-        : await storageGetSignedUrl(key, user);
       if (isDepartmentLogo) {
-        try {
-          const assetResponse = await fetch(url);
-          if (!assetResponse.ok) {
-            throw new Error("Logo storage backend error");
-          }
-          res.set("Cache-Control", "private, no-store");
-          res.set("Vary", "Cookie");
-          res.set(
-            "Content-Type",
-            assetResponse.headers.get("content-type") ?? "image/png"
-          );
-          res.send(Buffer.from(await assetResponse.arrayBuffer()));
-          return;
-        } catch (error) {
-          // Keep a redirect fallback for storage providers that do not allow
-          // server-side fetching; the browser can still follow the signed URL.
-          console.warn(
-            "[Storage] Logo proxy unavailable, using signed URL",
-            error
-          );
+        // Download through the storage SDK and stream bytes from this origin.
+        // Redirecting to a signed third-party URL breaks fetch() during export
+        // in browsers that enforce CORS, so logo requests must not fall back
+        // to cross-origin redirects.
+        const asset = await storageDownload(key);
+        if (!asset.body.length) {
+          throw new Error("Logo storage returned an empty object");
         }
+        res.set("Cache-Control", "private, no-store");
+        res.set("Vary", "Cookie");
+        res.set("X-Content-Type-Options", "nosniff");
+        res.set("Content-Type", asset.contentType ?? "application/octet-stream");
+        res.send(asset.body);
+        return;
       }
+
+      const url = await storageGetSignedUrl(key, user);
       res.set("Cache-Control", "private, no-store");
       res.set("Vary", "Cookie");
       res.redirect(307, url);

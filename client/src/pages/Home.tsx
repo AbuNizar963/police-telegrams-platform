@@ -1977,8 +1977,8 @@ function DisplayCustomizationModal({
     },
     {
       key: "priority",
-      label: "الأولوية والسرية",
-      description: "يعرض مستوى الأولوية ودرجة السرية.",
+      label: "الأسبقية والسرية",
+      description: "يعرض مستوى الأسبقية ودرجة السرية.",
     },
     {
       key: "creator",
@@ -2077,7 +2077,7 @@ function TelegramReportModal({
       "الجهة",
       "الحالة",
       "السرية",
-      "الأولوية",
+      "الأسبقية",
       "تاريخ الإنشاء",
     ];
     const lines = [
@@ -2528,7 +2528,7 @@ function TelegramComposer({
         </div>
 
         <div className="grid gap-1.5 text-xs font-bold">
-          <span>درجة الأولوية</span>
+          <span>درجة الأسبقية</span>
           <div className="grid min-w-0 grid-cols-3 gap-2">
             {(Object.keys(priorityLabels) as Priority[]).map(item => (
               <button
@@ -2994,7 +2994,7 @@ function TelegramDetail({
     const organizationHierarchy = hierarchyCandidates.filter(
       name => !fixedHeaderNames.has(name.trim())
     );
-    const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const createdAt = formatConfiguredHeaderDateTime(new Date(), settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegram.createdAt,
       settings
@@ -3279,7 +3279,7 @@ function TelegramDetail({
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
             <p class="header-date-row"><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
             <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
-            <p><strong>درجة الأولوية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
+            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
@@ -3298,7 +3298,7 @@ function TelegramDetail({
               ${showVerificationQr ? `<div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>` : ""}
             </div>
           </section>
-          <h2 class="body-heading">نص البرقية</h2>
+          <h2 class="body-heading">نص الوثيقة</h2>
           <div class="telegram-body">${escapeHtml(localizeDigits(telegram.body, numberSystem))}</div>
           <section class="signature">
             <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
@@ -3308,7 +3308,7 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+          <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
         </footer>
       </article>`;
 
@@ -4359,7 +4359,7 @@ function TelegramEditModal({
             </select>
           </label>
           <label className="grid gap-1.5 text-sm font-semibold">
-            الأولوية
+            الأسبقية
             <select
               value={priority}
               onChange={event => setPriority(event.target.value as Priority)}

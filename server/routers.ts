@@ -2898,7 +2898,8 @@ export const appRouter = router({
               verificationToken: randomUUID(),
               originalSerial: originalSerial || null,
               importNotes: row.notes?.trim() || null,
-              importDirection: row.sheetName === "وارد" ? "incoming" : "outgoing",
+              importDirection:
+                row.sheetName === "وارد" ? "incoming" : "outgoing",
               telegramDate: importedCreatedAt ?? null,
               createdByUserId: ctx.user.id,
               organizationId,
@@ -2915,7 +2916,11 @@ export const appRouter = router({
               priority: "normal",
               category: "administrative",
               status: "draft",
-              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
+              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${
+                row.originalSerial || "غير محدد"
+              }${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${
+                row.time ? `، الوقت الأصلي ${row.time}` : ""
+              }`,
             });
             await writeAuditLog({
               ...getRequestAuditContext(ctx.req),

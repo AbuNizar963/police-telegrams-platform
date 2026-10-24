@@ -5,6 +5,74 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
 const MAX_HTML_BYTES = 8_000_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
+const PNG_DPI = 1200;
+const PNG_DEVICE_SCALE_FACTOR = PNG_DPI / 96;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+function crc32(bytes: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createPngChunk(type: string, data: Buffer): Buffer {
+  const typeBytes = Buffer.from(type, "ascii");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
+  return Buffer.concat([length, typeBytes, data, checksum]);
+}
+
+/** Add physical resolution metadata without re-encoding or resampling pixels. */
+export function withPngDpiMetadata(png: Buffer, dpi = PNG_DPI): Buffer {
+  if (
+    !png.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE) ||
+    png.length < 33 ||
+    png.toString("ascii", 12, 16) !== "IHDR"
+  ) {
+    throw new Error("Chromium returned an invalid PNG image");
+  }
+
+  const pixelsPerMeter = Math.round(dpi / 0.0254);
+  const physicalResolution = Buffer.alloc(9);
+  physicalResolution.writeUInt32BE(pixelsPerMeter, 0);
+  physicalResolution.writeUInt32BE(pixelsPerMeter, 4);
+  physicalResolution[8] = 1;
+
+  const ihdrLength = png.readUInt32BE(8);
+  const afterIhdr = 8 + 4 + 4 + ihdrLength + 4;
+  const before = png.subarray(0, afterIhdr);
+  const rest = png.subarray(afterIhdr);
+  // Replace an existing pHYs chunk if the renderer ever starts emitting one.
+  let cleanRest = rest;
+  let offset = 0;
+  while (offset + 12 <= cleanRest.length) {
+    const length = cleanRest.readUInt32BE(offset);
+    const type = cleanRest.toString("ascii", offset + 4, offset + 8);
+    const end = offset + 12 + length;
+    if (end > cleanRest.length) break;
+    if (type === "pHYs") {
+      cleanRest = Buffer.concat([
+        cleanRest.subarray(0, offset),
+        cleanRest.subarray(end),
+      ]);
+      break;
+    }
+    offset = end;
+  }
+
+  return Buffer.concat([
+    before,
+    createPngChunk("pHYs", physicalResolution),
+    cleanRest,
+  ]);
+}
 
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
@@ -65,7 +133,7 @@ export async function renderTelegramDocument(
   try {
     const page = await browser.newPage({
       viewport: { width: 794, height: 1123 },
-      deviceScaleFactor: format === "png" ? 3 : 1,
+      deviceScaleFactor: format === "png" ? PNG_DEVICE_SCALE_FACTOR : 1,
       javaScriptEnabled: false,
     });
 
@@ -146,11 +214,13 @@ export async function renderTelegramDocument(
     }
 
     return {
-      body: await page.screenshot({
-        type: "png",
-        animations: "disabled",
-        clip: { x: 0, y: 0, width: 794, height: 1123 },
-      }),
+      body: withPngDpiMetadata(
+        await page.screenshot({
+          type: "png",
+          animations: "disabled",
+          clip: { x: 0, y: 0, width: 794, height: 1123 },
+        })
+      ),
       contentType: "image/png",
       fileName: "telegram.png",
     };

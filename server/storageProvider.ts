@@ -54,7 +54,9 @@ class SupabaseStorageProvider implements StorageProvider {
     return data.signedUrl;
   }
 
-  async download(key: string): Promise<{ body: Buffer; contentType: string | null }> {
+  async download(
+    key: string
+  ): Promise<{ body: Buffer; contentType: string | null }> {
     const { data, error } = await getSupabaseAdmin()
       .storage.from(ENV.supabaseStorageBucket)
       .download(key);

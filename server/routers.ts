@@ -1567,7 +1567,10 @@ export const appRouter = router({
         const settings = await getOrCreateSettings(ctx.user.id);
         return rows.map(row => ({
           ...row,
-          ...formatTelegramWorkbookDateTime(row.telegramDate ?? row.createdAt, settings.timezone),
+          ...formatTelegramWorkbookDateTime(
+            row.telegramDate ?? row.createdAt,
+            settings.timezone
+          ),
         }));
       }),
 
@@ -2803,7 +2806,8 @@ export const appRouter = router({
             ) {
               errors.push({
                 row: index + 2,
-                message: `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
+                message:
+                  `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
               });
               continue;
             }

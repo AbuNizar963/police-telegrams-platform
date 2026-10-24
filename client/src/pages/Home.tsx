@@ -3620,6 +3620,14 @@ function TelegramDetail({
           display: none !important;
         }
 
+        html,
+        body,
+        #telegram-print-root,
+        #telegram-print-root * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
         #telegram-print-root {
           position: static !important;
           inset: auto !important;
@@ -3696,6 +3704,10 @@ function TelegramDetail({
     };
 
     try {
+      // Wait for the exact font faces used by the official document before
+      // opening the native print dialog; this keeps Arabic shaping and line
+      // wrapping stable instead of printing with a fallback font.
+      await document.fonts.ready;
       const images = Array.from(
         printRoot.querySelectorAll<HTMLImageElement>("img")
       );
@@ -3711,6 +3723,9 @@ function TelegramDetail({
               });
             }
             await image.decode?.();
+            if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+              throw new Error("صورة الطباعة غير صالحة");
+            }
           } catch {
             throw new Error(
               "تعذر تحميل الشعار الرسمي للطباعة. لم تتم الطباعة لتجنب إخراج وثيقة بلا الشعار؛ أعد المحاولة."

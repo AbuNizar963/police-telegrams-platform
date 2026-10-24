@@ -175,11 +175,11 @@ void main() {
       'تفاصيل البلاغ للاختبار',
     );
     await tester.scrollUntilVisible(
-      find.text('عاجل').first,
+      find.text('عاجلة').first,
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('عاجل').first);
+    await tester.tap(find.text('عاجلة').first);
     await tester.scrollUntilVisible(
       find.text('إرسال البرقية'),
       240,
@@ -202,11 +202,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('عاجل').first,
+      find.text('عاجلة').first,
       240,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('عاجل').first);
+    await tester.tap(find.text('عاجلة').first);
     await tester.scrollUntilVisible(
       find.text('كافة الوحدات').first,
       240,

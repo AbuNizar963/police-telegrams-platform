@@ -53,6 +53,7 @@ import { showLocalTelegramNotification } from "@/lib/notifications";
 import {
   getTelegramDisplayNumber,
   getTelegramDisplaySerial,
+  getTelegramExportFileBaseName,
 } from "@/lib/telegramDisplay";
 import {
   buildTelegramWatermarkHtml,
@@ -3743,7 +3744,7 @@ function TelegramDetail({
       const anchor = document.createElement("a");
 
       anchor.href = url;
-      anchor.download = `${telegram.serialCode}.png`;
+      anchor.download = `${getTelegramExportFileBaseName(telegram)}.png`;
       anchor.click();
 
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -3760,13 +3761,13 @@ function TelegramDetail({
 
     try {
       const blob = await imageBlob();
-      const file = new File([blob], `${telegram.serialCode}.png`, {
+      const file = new File([blob], `${getTelegramExportFileBaseName(telegram)}.png`, {
         type: "image/png",
       });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
+          title: `برقية ${getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}`,
           text: telegram.subject,
           files: [file],
         });
@@ -3798,7 +3799,7 @@ function TelegramDetail({
 
     try {
       const blob = await renderOfficialDocument("pdf");
-      const file = new File([blob], `${telegram.serialCode}.pdf`, {
+      const file = new File([blob], `${getTelegramExportFileBaseName(telegram)}.pdf`, {
         type: "application/pdf",
       });
 

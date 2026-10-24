@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getTelegramDisplayNumber, getTelegramDisplaySerial } from "./telegramDisplay";
+import {
+  getTelegramDisplayNumber,
+  getTelegramDisplaySerial,
+} from "./telegramDisplay";
 
 describe("getTelegramDisplayNumber", () => {
   it("extracts and removes padding from a full telegram number", () => {
@@ -10,7 +13,9 @@ describe("getTelegramDisplayNumber", () => {
     expect(getTelegramDisplayNumber("690")).toBe("690");
   });
 
-  it("preserves the exact imported serial, including prefixes and leading zeroes", () => {
+  it(
+    "preserves the exact imported serial, including prefixes and leading zeroes",
+    () => {
     expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")).toBe(
       "ب و ٠٠٦"
     );

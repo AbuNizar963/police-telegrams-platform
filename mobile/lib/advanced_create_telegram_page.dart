@@ -46,8 +46,6 @@ class _AdvancedCreateTelegramSheetState
   static const _classifications = <String, String>{
     'normal': 'عادي',
     'secret': 'سري',
-    'top_secret': 'سري للغاية',
-    'confidential': 'سري',
   };
   static const _priorities = <String, String>{
     'urgent': 'عاجلة',

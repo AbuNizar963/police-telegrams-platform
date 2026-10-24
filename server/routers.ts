@@ -2729,7 +2729,10 @@ export const appRouter = router({
           localizeDigits(value, "latin").trim().toLowerCase();
         const keys = new Set(
           existing.flatMap(row => [
-            normalizeSerial(row.serialNumber),
+            ...(row.originalSerial ? [normalizeSerial(row.originalSerial)] : []),
+            ...(row.organizationSerialCode
+              ? [normalizeSerial(row.organizationSerialCode)]
+              : []),
             normalizeSerial(row.serialCode),
           ])
         );
@@ -2766,9 +2769,11 @@ export const appRouter = router({
           localizeDigits(value, "latin").trim().toLowerCase();
         const existingSerialKeys = new Set(
           existingTelegrams.flatMap(row => [
-            normalizeSerial(row.serialNumber),
-            normalizeSerial(row.serialCode),
             ...(row.originalSerial ? [normalizeSerial(row.originalSerial)] : []),
+            ...(row.organizationSerialCode
+              ? [normalizeSerial(row.organizationSerialCode)]
+              : []),
+            normalizeSerial(row.serialCode),
           ])
         );
         let created = 0;

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'telegram_excel_codec.dart';
+import 'telegram_display.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -96,7 +97,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       for (final item in items) {
         if (item is! Map) continue;
         final row = Map<String, dynamic>.from(item);
-        final date = DateTime.tryParse(value(row['createdAt']))?.toLocal();
+        final date = DateTime.tryParse(value(row['telegramDate'] ?? row['createdAt']))?.toLocal();
         final organization = value(row['organizationId']);
         final current = value(row['currentOrganizationId']);
         final direction = value(row['direction'] ?? row['type']);
@@ -109,7 +110,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
         final sourceTime = value(row['time']);
         final sourceDate = value(row['date']);
         rows.add({
-          'serial': value(row['organizationSerialCode']),
+          'serial': getTelegramSerialCode(row),
           'time': sourceTime.isNotEmpty
               ? sourceTime
               : date == null
@@ -124,7 +125,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
           'body': value(row['body']),
           'recipient': value(row['recipient']),
           'signature': value(row['creatorName'] ?? row['senderName']),
-          'notes': value(row['workflowReason'] ?? row['notes']),
+          'notes': value(row['importNotes']),
           'direction': outgoing ? 'صادر' : 'وارد',
         });
       }

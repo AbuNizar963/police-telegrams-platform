@@ -13,7 +13,7 @@ describe("getTelegramDisplayNumber", () => {
     expect(getTelegramDisplayNumber("690")).toBe("690");
   });
 
-  it("preserves exact imported serials, prefixes, and leading zeroes", () => {
+  it("preserves imported serials exactly", () => {
     expect(
       getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")
     ).toBe("ب و ٠٠٦");
@@ -22,7 +22,7 @@ describe("getTelegramDisplayNumber", () => {
     ).toBe("2025-009");
   });
 
-  it("returns the imported serial exactly without digit localization", () => {
+  it("preserves imported serials without localization", () => {
     expect(
       getTelegramDisplaySerial(
         {

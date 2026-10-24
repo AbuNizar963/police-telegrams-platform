@@ -2741,23 +2741,23 @@ async function loadOfficialDocumentLogoDataUrl(
         throw new Error("صورة الشعار غير صالحة");
       }
 
-      // Preserve source detail without artificially upscaling small logos.
-      const maxDimension = 2400;
-      const scale = Math.min(
-        1,
-        maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
-      );
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("تعذر تجهيز صورة الشعار");
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-      const dataUrl = canvas.toDataURL("image/webp", 0.96);
-      return dataUrl.startsWith("data:image/webp")
-        ? dataUrl
-        : canvas.toDataURL("image/png");
+      // Do not round-trip through canvas: the storage proxy may redirect to a
+      // signed Supabase URL, which can taint a canvas and make toDataURL()
+      // throw. Reading the validated Blob directly preserves transparency and
+      // gives both the header and watermark the exact same embedded bytes.
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            resolve(reader.result);
+          } else {
+            reject(new Error("تعذر تجهيز صورة الشعار"));
+          }
+        };
+        reader.onerror = () =>
+          reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
+        reader.readAsDataURL(blob);
+      });
     } finally {
       URL.revokeObjectURL(objectUrl);
     }

@@ -902,8 +902,9 @@ export async function findTelegramByOfficialSerial(input: {
   const { data, error } = await getSupabaseAdmin()
     .from("telegrams")
     .select("*")
-    .eq("organizationId", input.organizationId)
-    .or(filters.join(","))
+    .or(
+      `and(or(organizationId.eq.${input.organizationId},currentOrganizationId.eq.${input.organizationId}),or(${filters.join(",")}))`
+    )
     .limit(60);
   throwIfError(error, "Failed to resolve imported telegram reference");
 

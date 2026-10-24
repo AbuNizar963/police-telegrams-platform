@@ -823,7 +823,7 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsOneWidget,
+        findsNWidgets(2),
       );
 
       await _scrollIntoView(tester, find.text('برقية رقم: 72'));
@@ -845,7 +845,7 @@ void main() {
   );
 
   testWidgets(
-    'loads the welcome logo from the account organization when context is unavailable',
+    'shows the organization logo in the header and welcome panel when context is unavailable',
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
@@ -864,13 +864,13 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsOneWidget,
+        findsNWidgets(2),
       );
     },
   );
 
   testWidgets(
-    'loads the welcome logo from settings when context and account organization are unavailable',
+    'shows the organization logo in the header and welcome panel using settings fallback',
     (tester) async {
       _setMobileViewport(tester);
       _seedExistingPin();
@@ -890,7 +890,7 @@ void main() {
         find.byWidgetPredicate(
           (widget) => widget is Image && widget.semanticLabel == 'شعار الجهة',
         ),
-        findsOneWidget,
+        findsNWidgets(2),
       );
     },
   );

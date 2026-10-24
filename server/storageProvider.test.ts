@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, download, from, getSupabaseAdmin } = vi.hoisted(() => {
-  const upload = vi.fn();
-  const createSignedUrl = vi.fn();
-  const download = vi.fn();
-  const from = vi.fn(() => ({ upload, createSignedUrl, download }));
-  const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
+const { upload, createSignedUrl, download, from, getSupabaseAdmin } =
+  vi.hoisted(() => {
+    const upload = vi.fn();
+    const createSignedUrl = vi.fn();
+    const download = vi.fn();
+    const from = vi.fn(() => ({ upload, createSignedUrl, download }));
+    const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-  return { upload, createSignedUrl, download, from, getSupabaseAdmin };
-});
+    return { upload, createSignedUrl, download, from, getSupabaseAdmin };
+  });
 
 vi.mock("./_core/supabase", () => ({ getSupabaseAdmin }));
 
@@ -22,7 +23,10 @@ describe("Supabase storage provider", () => {
     resetStorageProviderForTests();
     vi.clearAllMocks();
     upload.mockResolvedValue({ error: null });
-    download.mockResolvedValue({ data: new Blob(["logo"], { type: "image/png" }), error: null });
+    download.mockResolvedValue({
+      data: new Blob(["logo"], { type: "image/png" }),
+      error: null,
+    });
     createSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://storage.example/signed-object" },
       error: null,

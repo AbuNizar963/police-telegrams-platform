@@ -917,9 +917,7 @@ String buildOfficialTelegramHtml({
     final buffer = StringBuffer();
     var cursor = 0;
     for (final match in pattern.allMatches(importNotes)) {
-      buffer.write(
-        _escapeHtml(importNotes.substring(cursor, match.start)),
-      );
+      buffer.write(_escapeHtml(importNotes.substring(cursor, match.start)));
       final marker = match.group(1) ?? '';
       final serial = (match.group(2) ?? '').replaceAllMapped(
         RegExp(r'[٠-٩۰-۹]'),
@@ -947,9 +945,7 @@ String buildOfficialTelegramHtml({
       }
       cursor = match.end;
     }
-    buffer.write(
-      _escapeHtml(importNotes.substring(cursor)),
-    );
+    buffer.write(_escapeHtml(importNotes.substring(cursor)));
     return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
   })();
   final outgoing =

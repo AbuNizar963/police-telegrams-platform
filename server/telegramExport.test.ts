@@ -36,6 +36,11 @@ describe("telegram export HTML validation", () => {
         safeDocument.replace("<article", '<article onclick="alert(1)"')
       )
     ).toBe(false);
+    expect(
+      isSafeExportHtml(
+        safeDocument.replace("<article", "<article onclick=alert(1)")
+      )
+    ).toBe(false);
   });
 
   it("rejects executable and unsupported data URLs in attributes", () => {

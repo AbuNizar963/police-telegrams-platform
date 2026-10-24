@@ -1110,45 +1110,6 @@ String _createQrSvg(String value) {
   return '<svg xmlns="http://www.w3.org/2000/svg" width="$dimension" height="$dimension" viewBox="0 0 $dimension $dimension" role="img" aria-label="QR"><rect width="100%" height="100%" fill="#fff"/><path d="${path.toString()}" fill="#000"/></svg>';
 }
 
-String _formatConfiguredDate(Object? value, Map<String, dynamic> settings) {
-  final date = _configuredDate(value, settings);
-  final hour12 = settings['timeFormat'] == '12';
-  final time = _timeText(date, hour12);
-  final format = _value(
-    settings['dateFormat'],
-    fallback: 'yyyy/MM/dd HH:mm:ss',
-  );
-  if (format == 'dd MMM yyyy HH:mm') {
-    const months = [
-      'يناير',
-      'فبراير',
-      'مارس',
-      'أبريل',
-      'مايو',
-      'يونيو',
-      'يوليو',
-      'أغسطس',
-      'سبتمبر',
-      'أكتوبر',
-      'نوفمبر',
-      'ديسمبر',
-    ];
-    final period = hour12 ? _arabicDayPeriod(date.hour) : '';
-    final shortTime =
-        '${_pad(hour12 ? ((date.hour + 11) % 12) + 1 : date.hour)}:${_pad(date.minute)}${period.isEmpty ? '' : ' $period'}';
-    return _localizeDigits(
-      '${date.day} ${months[date.month - 1]} ${date.year} $shortTime',
-      settings['numberSystem'],
-    );
-  }
-  final datePart = format == 'yyyy-MM-dd HH:mm:ss'
-      ? '${date.year}-${_pad(date.month)}-${_pad(date.day)}'
-      : format == 'yyyy/MM/dd HH:mm:ss'
-      ? '${date.year}/${_pad(date.month)}/${_pad(date.day)}'
-      : '${_pad(date.day)}/${_pad(date.month)}/${date.year}';
-  return _localizeDigits('$datePart $time', settings['numberSystem']);
-}
-
 String _formatConfiguredHeaderDateTime(
   Object? value,
   Map<String, dynamic> settings, {

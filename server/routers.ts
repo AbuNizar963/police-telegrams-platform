@@ -179,7 +179,74 @@ const excelImportRowSchema = z.object({
   sheetName: z.enum(["صادر", "وارد"]),
 });
 
-function isPrivateLogoHostname(hostname: string): boolean {
+const TELEGRAM_IMPORT_PAGE_SIZE = 1000;
+
+type TelegramImportDirection = "incoming" | "outgoing";
+
+function getImportDirection(sheetName: "صادر" | "وارد"): TelegramImportDirection {
+  return sheetName === "وارد" ? "incoming" : "outgoing";
+}
+
+function normalizeImportedSerial(value: string | number): string {
+  return localizeDigits(value, "latin").trim().toLowerCase();
+}
+
+function makeImportSerialKey(
+  direction: TelegramImportDirection,
+  value: string | number
+): string {
+  return JSON.stringify([direction, normalizeImportedSerial(value)]);
+}
+
+function getExistingTelegramSerialKeys(
+  telegrams: Awaited<ReturnType<typeof listTelegrams>>
+): Set<string> {
+  return new Set(
+    telegrams.flatMap(telegram => {
+      const direction =
+        telegram.importDirection ??
+        (telegram.organizationId === telegram.currentOrganizationId
+          ? "outgoing"
+          : "incoming");
+      return [
+        ...(telegram.originalSerial
+          ? [makeImportSerialKey(direction, telegram.originalSerial)]
+          : []),
+        ...(telegram.organizationSerialCode
+          ? [makeImportSerialKey(direction, telegram.organizationSerialCode)]
+          : []),
+        makeImportSerialKey(direction, telegram.serialCode),
+      ];
+    })
+  );
+}
+
+async function listAllTelegramsForImport(
+  userId: number,
+  organizationId: string
+): Promise<Awaited<ReturnType<typeof listTelegrams>>> {
+  const allTelegrams: Awaited<ReturnType<typeof listTelegrams>> = [];
+  for (let page = 1; ; page += 1) {
+    const pageRows = await listTelegrams(
+      userId,
+      false,
+      organizationId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      page,
+      TELEGRAM_IMPORT_PAGE_SIZE
+    );
+    allTelegrams.push(...pageRows);
+    if (pageRows.length < TELEGRAM_IMPORT_PAGE_SIZE) return allTelegrams;
+  }
+}
+
+function isPrivateLogoHostname(hostname: string) {
   const normalized = hostname.toLowerCase().replace(/\.$/, "");
   if (
     normalized === "localhost" ||
@@ -2756,39 +2823,18 @@ export const appRouter = router({
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
-        const existing = await listTelegrams(
+        const existing = await listAllTelegramsForImport(
           ctx.user.id,
-          false,
-          organizationId,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          1,
-          1000
+          organizationId
         );
-        const normalizeSerial = (value: string | number) =>
-          localizeDigits(value, "latin").trim().toLowerCase();
-        const keys = new Set(
-          existing.flatMap(row => [
-            ...(row.originalSerial
-              ? [normalizeSerial(row.originalSerial)]
-              : []),
-            ...(row.organizationSerialCode
-              ? [normalizeSerial(row.organizationSerialCode)]
-              : []),
-            normalizeSerial(row.serialCode),
-          ])
-        );
+        const keys = getExistingTelegramSerialKeys(existing);
         return input.rows.map((row, index) => {
           const value = row.originalSerial?.trim() ?? "";
-          return {
-            index,
-            duplicate: Boolean(value) && keys.has(normalizeSerial(value)),
-          };
+          const direction = getImportDirection(row.sheetName);
+          const key = value ? makeImportSerialKey(direction, value) : "";
+          const duplicate = Boolean(value) && keys.has(key);
+          if (value) keys.add(key);
+          return { index, duplicate };
         });
       }),
 
@@ -2798,32 +2844,12 @@ export const appRouter = router({
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const settings = await getOrCreateSettings(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
-        const existingTelegrams = await listTelegrams(
+        const existingTelegrams = await listAllTelegramsForImport(
           ctx.user.id,
-          false,
-          organizationId,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          1,
-          1000
+          organizationId
         );
-        const normalizeSerial = (value: string | number) =>
-          localizeDigits(value, "latin").trim().toLowerCase();
-        const existingSerialKeys = new Set(
-          existingTelegrams.flatMap(row => [
-            ...(row.originalSerial
-              ? [normalizeSerial(row.originalSerial)]
-              : []),
-            ...(row.organizationSerialCode
-              ? [normalizeSerial(row.organizationSerialCode)]
-              : []),
-            normalizeSerial(row.serialCode),
-          ])
+        const existingSerialKeys = getExistingTelegramSerialKeys(
+          existingTelegrams
         );
         let created = 0;
         let skipped = 0;
@@ -2846,19 +2872,22 @@ export const appRouter = router({
             .digest("hex")}`;
           try {
             const originalSerial = row.originalSerial?.trim() ?? "";
+            const direction = getImportDirection(row.sheetName);
+            const existing = await getTelegramByIdempotencyKey(idempotencyKey);
+            if (existing) {
+              skipped += 1;
+              continue;
+            }
             if (
               originalSerial &&
-              existingSerialKeys.has(normalizeSerial(originalSerial))
+              existingSerialKeys.has(
+                makeImportSerialKey(direction, originalSerial)
+              )
             ) {
               errors.push({
                 row: index + 2,
                 message: `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
               });
-              continue;
-            }
-            const existing = await getTelegramByIdempotencyKey(idempotencyKey);
-            if (existing) {
-              skipped += 1;
               continue;
             }
             const importedCreatedAt = parseImportedDate(
@@ -2902,8 +2931,7 @@ export const appRouter = router({
               verificationToken: randomUUID(),
               originalSerial: originalSerial || null,
               importNotes: row.notes?.trim() || null,
-              importDirection:
-                row.sheetName === "وارد" ? "incoming" : "outgoing",
+              importDirection: direction,
               telegramDate: importedCreatedAt ?? null,
               createdByUserId: ctx.user.id,
               organizationId,
@@ -2966,8 +2994,18 @@ export const appRouter = router({
               },
             });
             created += 1;
+            existingSerialKeys.add(
+              makeImportSerialKey(direction, telegram.serialCode)
+            );
+            if (telegram.organizationSerialCode) {
+              existingSerialKeys.add(
+                makeImportSerialKey(direction, telegram.organizationSerialCode)
+              );
+            }
             if (originalSerial) {
-              existingSerialKeys.add(normalizeSerial(originalSerial));
+              existingSerialKeys.add(
+                makeImportSerialKey(direction, originalSerial)
+              );
             }
           } catch (error) {
             errors.push({

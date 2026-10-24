@@ -154,7 +154,15 @@ export async function storageDownload(
   const key = normalizeKey(relKey);
   if (
     !key ||
-    key.split("/").some(segment => !segment || segment === "." || segment === ".." || segment.includes("\\"))
+    key
+      .split("/")
+      .some(
+        segment =>
+          !segment ||
+          segment === "." ||
+          segment === ".." ||
+          segment.includes("\\")
+      )
   ) {
     throw new StorageAccessDeniedError();
   }

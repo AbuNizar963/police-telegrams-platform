@@ -47,7 +47,10 @@ export function registerStorageRoutes(app: Express): void {
         res.set("Cache-Control", "private, no-store");
         res.set("Vary", "Cookie");
         res.set("X-Content-Type-Options", "nosniff");
-        res.set("Content-Type", asset.contentType ?? "application/octet-stream");
+        res.set(
+          "Content-Type",
+          asset.contentType ?? "application/octet-stream"
+        );
         res.send(asset.body);
         return;
       }
@@ -62,7 +65,7 @@ export function registerStorageRoutes(app: Express): void {
         return;
       }
 
-      console.error("[Storage] Signed URL failed", error);
+      console.error("[Storage] Object retrieval failed", error);
       res.status(502).send("Storage backend error");
     }
   });

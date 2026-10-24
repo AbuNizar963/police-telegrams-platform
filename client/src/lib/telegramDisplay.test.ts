@@ -14,12 +14,12 @@ describe("getTelegramDisplayNumber", () => {
   });
 
   it("preserves imported serials exactly", () => {
-    expect(
-      getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")
-    ).toBe("ب و ٠٠٦");
-    expect(
-      getTelegramDisplayNumber("SYS-2026-09-30-00009", "2025-009")
-    ).toBe("2025-009");
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")).toBe(
+      "ب و ٠٠٦"
+    );
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "2025-009")).toBe(
+      "2025-009"
+    );
   });
 
   it("preserves imported serials without localization", () => {

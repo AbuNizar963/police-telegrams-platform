@@ -201,7 +201,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _priority,
-                decoration: const InputDecoration(labelText: 'الأولوية'),
+                decoration: const InputDecoration(labelText: 'الأسبقية'),
                 items: _priorities
                     .map(
                       (option) => DropdownMenuItem(

@@ -28,9 +28,7 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
 };
 
-export function assertProductionEnvironment(
-  env: typeof ENV = ENV
-): void {
+export function assertProductionEnvironment(env: typeof ENV = ENV): void {
   if (!env.isProduction) return;
 
   const missing: string[] = [];

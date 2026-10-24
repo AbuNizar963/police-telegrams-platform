@@ -877,6 +877,54 @@ export async function getTelegramById(
   return data ? mapTelegram(data as Record<string, unknown>) : undefined;
 }
 
+export async function findTelegramByOfficialSerial(input: {
+  organizationId: string;
+  serial: string;
+  direction: "incoming" | "outgoing";
+}): Promise<Telegram | undefined> {
+  const normalizeDigits = (value: string, digits: string) =>
+    value.replace(/[0-9]/g, digit => digits[Number(digit)]);
+  const variants = Array.from(
+    new Set([
+      input.serial.trim(),
+      normalizeDigits(input.serial.trim(), "٠١٢٣٤٥٦٧٨٩"),
+      normalizeDigits(input.serial.trim(), "۰۱۲۳۴۵۶۷۸۹"),
+    ])
+  );
+  const columns = [
+    "originalSerial",
+    "organizationSerialCode",
+    "serialCode",
+  ] as const;
+  const client = getSupabaseAdmin();
+
+  for (const column of columns) {
+    for (const serial of variants) {
+      const { data, error } = await client
+        .from("telegrams")
+        .select("*")
+        .eq("organizationId", input.organizationId)
+        .eq(column, serial)
+        .limit(20);
+      throwIfError(error, "Failed to resolve imported telegram reference");
+
+      const match = (data ?? [])
+        .map(row => mapTelegram(row as Record<string, unknown>))
+        .find(telegram => {
+          const direction =
+            telegram.importDirection ??
+            (telegram.organizationId === telegram.currentOrganizationId
+              ? "outgoing"
+              : "incoming");
+          return direction === input.direction;
+        });
+      if (match) return match;
+    }
+  }
+
+  return undefined;
+}
+
 export async function getTelegramByIdempotencyKey(
   idempotencyKey: string
 ): Promise<Telegram | undefined> {

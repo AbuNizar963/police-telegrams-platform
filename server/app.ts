@@ -10,6 +10,7 @@ import { registerTelegramExportRoutes } from "./telegramExport";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { assertProductionEnvironment, ENV } from "./_core/env";
+import { getContentSecurityPolicy } from "./_core/csp";
 import { notifyMobileRelease } from "./_core/notification";
 import { getUserOrganizationMembership } from "./organization";
 import { createRateLimit } from "./_core/rateLimit";
@@ -97,10 +98,8 @@ export function createApp(
   app.set("trust proxy", ENV.isProduction ? 1 : false);
   app.disable("x-powered-by");
   app.use((req, res, next) => {
-    res.setHeader(
-      "Content-Security-Policy-Report-Only",
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:;"
-    );
+    const csp = getContentSecurityPolicy(ENV.isProduction);
+    res.setHeader(csp.header, csp.value);
     if (
       ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&
       req.path.startsWith("/api/") &&

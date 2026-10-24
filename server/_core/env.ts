@@ -1,7 +1,7 @@
 const splitCsv = (value: string | undefined): string[] =>
   (value ?? "")
     .split(",")
-    .map((item) => item.trim().toLowerCase())
+    .map(item => item.trim().toLowerCase())
     .filter(Boolean);
 
 export const ENV = {
@@ -40,7 +40,9 @@ export function assertProductionEnvironment(env: typeof ENV = ENV): void {
     try {
       parsedSupabaseUrl = new URL(env.supabaseUrl);
     } catch {
-      throw new Error("SUPABASE_URL must be a valid absolute URL in production");
+      throw new Error(
+        "SUPABASE_URL must be a valid absolute URL in production"
+      );
     }
     if (parsedSupabaseUrl.protocol !== "https:") {
       throw new Error("SUPABASE_URL must use HTTPS in production");

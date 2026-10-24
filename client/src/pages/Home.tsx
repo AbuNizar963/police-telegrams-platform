@@ -2854,13 +2854,6 @@ function TelegramDetail({
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
-  const importReferencesQuery = trpc.telegrams.resolveImportReferences.useQuery(
-    { notes: telegram.importNotes ?? "" },
-    {
-      enabled: Boolean(telegram.importNotes?.trim()),
-      staleTime: 60_000,
-    }
-  );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,
     { retry: false }
@@ -3185,7 +3178,6 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    const importNotesMarkup = "";
     const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
@@ -3441,13 +3433,6 @@ function TelegramDetail({
           direction: rtl;
         }
         .telegram-export-page .document-footer p { margin: 0; }
-        .telegram-export-page .import-notes {
-          margin-top: 8px;
-          padding-top: 6px;
-          border-top: 1px dotted #7b8493;
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-        }
         .telegram-export-page .footer-creator { text-align: right; }
         .telegram-export-page .footer-location { text-align: center; }
         .telegram-export-page .footer-date { text-align: left; }
@@ -3501,7 +3486,6 @@ function TelegramDetail({
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
           <p class="footer-date">تاريخ ووقت إنشاء الوثيقة: ${escapeHtml(documentCreatedAt)}</p>
         </footer>
-        ${importNotesMarkup}
       </article>`;
 
     return wrapper;
@@ -3557,7 +3541,6 @@ function TelegramDetail({
     documentSettingsUnavailable,
     isOutgoing,
     routingDirectory,
-    importReferencesQuery.data,
   ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {

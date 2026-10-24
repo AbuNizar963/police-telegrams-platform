@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "./_core/supabase";
  * Provider boundary for private object storage.
  *
  * Application code should depend on this contract rather than on a vendor SDK.
- * Implementations must keep objects private and return only short-lived download URLs.
+ * Implementations must keep objects private and expose only authorized reads.
  */
 export interface StorageProvider {
   upload(

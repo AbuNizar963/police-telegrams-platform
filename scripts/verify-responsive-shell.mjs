@@ -34,19 +34,18 @@ assert(
 );
 
 assert(
-  dashboardLayout.includes('<BrandMark size="sm" />') &&
-    dashboardLayout.includes(
-      'className="h-10 w-10 rounded-xl border bg-background shadow-sm"'
-    ),
-  "The mobile dashboard header must provide the primary brand mark."
+  dashboardLayout.split('<FileText className="h-5 w-5" />').length - 1 === 2 &&
+    dashboardLayout.includes('bg-[#10233f]') &&
+    !dashboardLayout.includes('<BrandMark size="sm" />'),
+  "The desktop and mobile dashboard headers must use the application icon instead of the organization mark."
 );
 
 assert(
-  dashboardLayout.includes('<BrandMark size="sm" />') &&
+  dashboardLayout.includes('<FileText className="h-5 w-5" />') &&
     dashboardLayout.includes("مركز البرقيات") &&
     dashboardLayout.includes("النظام متصل") &&
     !homePage.includes("TELEGRAM OPERATIONS"),
-  "The top bar must contain the brand, title, and status while the legacy label is removed."
+  "The top bar must contain the application icon, title, and status while the legacy label is removed."
 );
 
 assert(

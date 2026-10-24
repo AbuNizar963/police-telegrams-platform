@@ -95,10 +95,13 @@ export function createApp(
   app.set("trust proxy", ENV.isProduction ? 1 : false);
   app.disable("x-powered-by");
   app.use((req, res, next) => {
-    res.setHeader(
-      "Content-Security-Policy-Report-Only",
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:;"
-    );
+    const cspHeader = ENV.isProduction
+      ? "Content-Security-Policy"
+      : "Content-Security-Policy-Report-Only";
+    const contentSecurityPolicy = ENV.isProduction
+      ? "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:;"
+      : "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:;";
+    res.setHeader(cspHeader, contentSecurityPolicy);
     if (
       ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&
       req.path.startsWith("/api/") &&

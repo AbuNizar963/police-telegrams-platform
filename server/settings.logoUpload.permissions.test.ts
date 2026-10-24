@@ -15,6 +15,8 @@ vi.mock("./organization", async importOriginal => {
   };
 });
 
+vi.mock("./fileSecurity", () => ({ validateUploadedFile: vi.fn() }));
+
 vi.mock("./storage", async importOriginal => {
   const actual = await importOriginal<typeof import("./storage")>();
   return { ...actual, storagePutDepartmentLogo: mocks.putLogo };

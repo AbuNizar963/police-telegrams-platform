@@ -3761,13 +3761,19 @@ function TelegramDetail({
 
     try {
       const blob = await imageBlob();
-      const file = new File([blob], `${getTelegramExportFileBaseName(telegram)}.png`, {
+      const file = new File(
+        [blob],
+        `${getTelegramExportFileBaseName(telegram)}.png`,
+        {
         type: "image/png",
       });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}`,
+          title: `برقية ${getTelegramDisplaySerial(
+            telegram,
+            settings?.numberSystem ?? "latin"
+          )}`,
           text: telegram.subject,
           files: [file],
         });
@@ -3799,7 +3805,10 @@ function TelegramDetail({
 
     try {
       const blob = await renderOfficialDocument("pdf");
-      const file = new File([blob], `${getTelegramExportFileBaseName(telegram)}.pdf`, {
+      const file = new File(
+        [blob],
+        `${getTelegramExportFileBaseName(telegram)}.pdf`,
+        {
         type: "application/pdf",
       });
 

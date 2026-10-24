@@ -89,6 +89,7 @@ void main() {
         settings: const {
           'numberSystem': 'latin',
           'timezone': 'UTC',
+          'timeFormat': '12',
           'dateFormat': 'yyyy/MM/dd HH:mm:ss',
         },
         routingDirectory: const [],

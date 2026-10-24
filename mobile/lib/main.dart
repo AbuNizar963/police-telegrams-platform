@@ -2895,7 +2895,7 @@ class _DashboardPageState extends State<DashboardPage>
         const Color(0xFF356AC3),
       ),
       (
-        'أولوية عاجل اليوم',
+        'أولوية عاجلة اليوم',
         'todayUrgent',
         'من بداية اليوم',
         LucideIcons.siren,
@@ -3148,7 +3148,7 @@ class _DashboardPageState extends State<DashboardPage>
   String get _activeKpiLabel => switch (_activeKpi) {
     'total' => 'إجمالي البرقيات',
     'today' => 'الصادرة اليوم',
-    'urgent' => 'أولوية عاجل اليوم',
+    'urgent' => 'أولوية عاجلة اليوم',
     'incoming' => 'الواردة اليوم',
     'in-progress' => 'قيد الإجراء',
     'resolved' => 'مكتملة نهائيًا',

@@ -3072,10 +3072,12 @@ function TelegramDetail({
         renderedNotes += escapeHtml(
           localizeDigits(importNotesText.slice(cursor, matchIndex), numberSystem)
         );
-        const serial = match[2]
+        const marker = match[1] ?? "";
+        const rawSerial = match[2] ?? "";
+        const serial = rawSerial
           .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
           .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
-        const direction = match[1] === "و" ? "incoming" : "outgoing";
+        const direction = marker === "و" ? "incoming" : "outgoing";
         const reference = references.find(
           item => item.serial === serial && item.direction === direction
         );

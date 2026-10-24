@@ -184,7 +184,7 @@ const TELEGRAM_IMPORT_PAGE_SIZE = 1000;
 type TelegramImportDirection = "incoming" | "outgoing";
 
 function getImportDirection(
-  sheetName: "صادر" | "وارد",
+  sheetName: "صادر" | "وارد"
 ): TelegramImportDirection {
   return sheetName === "وارد" ? "incoming" : "outgoing";
 }
@@ -195,13 +195,13 @@ function normalizeImportedSerial(value: string | number): string {
 
 function makeImportSerialKey(
   direction: TelegramImportDirection,
-  value: string | number,
+  value: string | number
 ): string {
   return JSON.stringify([direction, normalizeImportedSerial(value)]);
 }
 
 function getExistingTelegramSerialKeys(
-  telegrams: Awaited<ReturnType<typeof listTelegrams>>,
+  telegrams: Awaited<ReturnType<typeof listTelegrams>>
 ): Set<string> {
   return new Set(
     telegrams.flatMap(telegram => {
@@ -225,7 +225,7 @@ function getExistingTelegramSerialKeys(
 
 async function listAllTelegramsForImport(
   userId: number,
-  organizationId: string,
+  organizationId: string
 ): Promise<Awaited<ReturnType<typeof listTelegrams>>> {
   const allTelegrams: Awaited<ReturnType<typeof listTelegrams>> = [];
   for (let page = 1; ; page += 1) {
@@ -2850,9 +2850,8 @@ export const appRouter = router({
           ctx.user.id,
           organizationId
         );
-        const existingSerialKeys = getExistingTelegramSerialKeys(
-          existingTelegrams
-        );
+        const existingSerialKeys =
+          getExistingTelegramSerialKeys(existingTelegrams);
         let created = 0;
         let skipped = 0;
         const errors: Array<{ row: number; message: string }> = [];

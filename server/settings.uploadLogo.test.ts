@@ -93,33 +93,39 @@ describe("organization-scoped logo upload authorization", () => {
     );
   });
 
-  it("allows an active organization administrator to upload to their own organization", async () => {
-    const caller = appRouter.createCaller(context());
+  it(
+    "allows an active organization administrator to upload to their own organization",
+    async () => {
+      const caller = appRouter.createCaller(context());
 
-    await expect(
-      caller.settings.uploadLogo(uploadInput(organizationA.id)),
-    ).resolves.toMatchObject({
-      key: `department/logos/${organizationA.id}/generated-badge.png`,
-      url: "/api/storage/department/logos/generated-logo.png",
-    });
+      await expect(
+        caller.settings.uploadLogo(uploadInput(organizationA.id)),
+      ).resolves.toMatchObject({
+        key: `department/logos/${organizationA.id}/generated-badge.png`,
+        url: "/api/storage/department/logos/generated-logo.png",
+      });
 
-    expect(mocks.storagePutDepartmentLogo).toHaveBeenCalledWith(
-      organizationA.id,
-      "badge.png",
-      expect.any(Buffer),
-      "image/png",
-    );
-  });
+      expect(mocks.storagePutDepartmentLogo).toHaveBeenCalledWith(
+        organizationA.id,
+        "badge.png",
+        expect.any(Buffer),
+        "image/png",
+      );
+    },
+  );
 
-  it("rejects cross-organization uploads before writing to storage", async () => {
-    const caller = appRouter.createCaller(context());
+  it(
+    "rejects cross-organization uploads before writing to storage",
+    async () => {
+      const caller = appRouter.createCaller(context());
 
-    await expect(
-      caller.settings.uploadLogo(uploadInput(organizationB.id)),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(
+        caller.settings.uploadLogo(uploadInput(organizationB.id)),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
-    expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
-  });
+      expect(mocks.storagePutDepartmentLogo).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects unknown organizations before writing to storage", async () => {
     const caller = appRouter.createCaller(context());

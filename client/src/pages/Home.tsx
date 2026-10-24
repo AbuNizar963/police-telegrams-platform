@@ -289,7 +289,7 @@ function formatConfiguredHeaderDateTime(
       .formatToParts(date)
       .map(part => [part.type, part.value])
   );
-  const formattedDate = `${parts.year}/${Number(parts.month)}/${Number(parts.day)}`;
+  const formattedDate = `${parts.year}/${parts.month}/${parts.day}`;
   const arabicDayPeriod = getArabicDayPeriod(date, timezone, hour12);
   const timeText = `${parts.hour}:${parts.minute}:${parts.second}${arabicDayPeriod ? ` ${arabicDayPeriod}` : ""}`;
   return localizeDigits(`${formattedDate} - ${timeText}`, numberSystem);

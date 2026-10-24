@@ -62,6 +62,10 @@ import {
   TELEGRAM_WATERMARK_ROWS,
 } from "@/lib/telegramWatermark";
 import {
+  resolveTelegramExportLogo,
+  type OrganizationLogoView,
+} from "@/lib/resolveTelegramExportLogo";
+import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
 } from "@/lib/platformDocumentSettings";
@@ -3438,10 +3442,27 @@ function TelegramDetail({
       loadExportSettings(),
       utils.settings.get.fetch(undefined, { staleTime: 0 }),
     ]);
-    const wrapper = createExportPaper(
-      documentSettings,
-      exportSettings.logoUrl ?? null
-    );
+    const logoOrganizationId =
+      telegram.currentOrganizationId ?? telegram.organizationId;
+    let organizationLogo: OrganizationLogoView | null = null;
+    if (logoOrganizationId) {
+      try {
+        organizationLogo = await utils.organizations.logo.fetch(
+          { organizationId: logoOrganizationId },
+          { staleTime: 0 }
+        );
+      } catch (error) {
+        // A legacy settings logo is safe only when it belongs to this telegram's organization.
+        console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
+      }
+    }
+    const logoUrl = resolveTelegramExportLogo({
+      telegramOrganizationId: logoOrganizationId,
+      organizationLogo,
+      settingsOrganizationId: exportSettings.organizationId,
+      settingsLogoUrl: exportSettings.logoUrl,
+    });
+    const wrapper = createExportPaper(documentSettings, logoUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
@@ -3671,10 +3692,27 @@ function TelegramDetail({
         loadExportSettings(),
         utils.settings.get.fetch(undefined, { staleTime: 0 }),
       ]);
-      exportWrapper = createExportPaper(
-        documentSettings,
-        exportSettings.logoUrl ?? null
-      );
+      const logoOrganizationId =
+        telegram.currentOrganizationId ?? telegram.organizationId;
+      let organizationLogo: OrganizationLogoView | null = null;
+      if (logoOrganizationId) {
+        try {
+          organizationLogo = await utils.organizations.logo.fetch(
+            { organizationId: logoOrganizationId },
+            { staleTime: 0 }
+          );
+        } catch (error) {
+          // A legacy settings logo is safe only when it belongs to this telegram's organization.
+          console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
+        }
+      }
+      const logoUrl = resolveTelegramExportLogo({
+        telegramOrganizationId: logoOrganizationId,
+        organizationLogo,
+        settingsOrganizationId: exportSettings.organizationId,
+        settingsLogoUrl: exportSettings.logoUrl,
+      });
+      exportWrapper = createExportPaper(documentSettings, logoUrl);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR

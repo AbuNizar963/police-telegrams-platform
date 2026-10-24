@@ -6,7 +6,9 @@ describe("getContentSecurityPolicy", () => {
     const policy = getContentSecurityPolicy(true);
 
     expect(policy.header).toBe("Content-Security-Policy");
-    expect(policy.value).toContain("script-src 'self' https://maps.googleapis.com https://maps.gstatic.com;");
+    expect(policy.value).toContain(
+      "script-src 'self' https://maps.googleapis.com https://maps.gstatic.com;"
+    );
     expect(policy.value).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(policy.value).not.toContain("'unsafe-eval'");
     expect(policy.value).toContain("object-src 'none'");

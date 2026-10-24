@@ -3312,9 +3312,9 @@ class _DashboardPageState extends State<DashboardPage>
               Expanded(
                 child: _filterDropdown('الأسبقية', priorityFilter, const [
                   ('all', 'كل الأولويات'),
-                  ('urgent', 'عاجل'),
-                  ('normal', 'عادي'),
-                  ('slow', 'بطيء'),
+                  ('urgent', 'عاجلة'),
+                  ('normal', 'عادية'),
+                  ('slow', 'بطيئة'),
                 ], (value) => _setTelegramFilter(priority: value)),
               ),
             ],
@@ -3333,18 +3333,18 @@ class _DashboardPageState extends State<DashboardPage>
               Expanded(
                 child: _filterDropdown('التصنيف', categoryFilter, const [
                   ('all', 'كل التصنيفات'),
-                  ('criminal', 'جنائي'),
                   ('administrative', 'إداري'),
+                  ('criminal', 'جنائي'),
                   ('traffic', 'مروري'),
                   ('security', 'أمني'),
-                  ('tactical', 'تكتيكي'),
+                  ('tactical', 'عملياتي'),
                   ('intelligence', 'استخباراتي'),
                   ('emergency', 'طوارئ'),
                   ('public_order', 'حفظ النظام'),
                   ('personnel', 'شؤون الأفراد'),
                   ('logistics', 'إمداد ودعم'),
-                  ('training', 'تدريب'),
-                  ('community', 'مجتمعي'),
+                  ('training', 'تدريب وتأهيل'),
+                  ('community', 'مجتمعي وشكاوى'),
                   ('other', 'أخرى'),
                 ], (value) => _setTelegramFilter(category: value)),
               ),
@@ -3507,10 +3507,10 @@ class _DashboardPageState extends State<DashboardPage>
     };
 
     String priorityLabel(dynamic raw) => switch ('$raw'.toLowerCase()) {
-      'urgent' || 'critical' || 'high' => 'عاجل',
-      'slow' => 'بطيء',
+      'urgent' || 'critical' || 'high' => 'عاجلة',
+      'slow' => 'بطيئة',
       'low' => 'منخفض',
-      'normal' || 'standard' => 'عادي',
+      'normal' || 'standard' => 'عادية',
       _ => '$raw',
     };
 
@@ -3984,9 +3984,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   };
 
   String _priorityLabel(dynamic value) => switch ('$value'.toLowerCase()) {
-    'urgent' => 'عاجل',
-    'slow' => 'بطيء',
-    'normal' => 'عادي',
+    'urgent' => 'عاجلة',
+    'slow' => 'بطيئة',
+    'normal' => 'عادية',
     _ => '$value',
   };
 
@@ -4479,14 +4479,6 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
               items: const [
                 DropdownMenuItem(value: 'normal', child: Text('عادي')),
                 DropdownMenuItem(value: 'secret', child: Text('سري')),
-                DropdownMenuItem(
-                  value: 'confidential',
-                  child: Text('سري - تصنيف بديل'),
-                ),
-                DropdownMenuItem(
-                  value: 'top_secret',
-                  child: Text('سري للغاية'),
-                ),
               ],
               onChanged: (value) {
                 if (value != null) setState(() => classification = value);

@@ -87,8 +87,24 @@ export function storageKeyFromStoredUrl(
     if (path.startsWith(applicationStoragePrefix)) {
       return path.slice(applicationStoragePrefix.length);
     }
-    const prefix = `/storage/v1/object/sign/${bucket}/`;
-    return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+    // Legacy settings may contain signed, public, or authenticated Supabase
+    // object URLs. Normalize all supported object URL forms to the private
+    // same-origin proxy so export never depends on cross-origin canvas access.
+    const objectPrefixes = [
+      `/storage/v1/object/sign/${bucket}/`,
+      `/storage/v1/object/public/${bucket}/`,
+      `/storage/v1/object/authenticated/${bucket}/`,
+    ];
+    for (const prefix of objectPrefixes) {
+      if (path.startsWith(prefix)) {
+        const key = path.slice(prefix.length);
+        return key &&
+          !key.split("/").some(part => part === "." || part === "..")
+          ? key
+          : null;
+      }
+    }
+    return null;
   } catch {
     return null;
   }

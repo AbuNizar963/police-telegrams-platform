@@ -122,7 +122,7 @@ void main() {
       );
       expect(html, contains('الوقت والتاريخ:</strong>'));
       expect(html, contains('تاريخ إنشاء الوثيقة:'));
-      expect(html, isNot(contains('الوقت والتاريخ: ${')));
+      expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
     },
   );
 

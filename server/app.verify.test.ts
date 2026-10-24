@@ -31,6 +31,8 @@ function mockVerificationRows(input: {
   serialNumber: number;
   serialCode: string;
   organizationSerialCode: string | null;
+  originalSerial?: string | null;
+  telegramDate?: string | null;
 }) {
   const telegramQuery = {
     select: vi.fn(),
@@ -44,6 +46,7 @@ function mockVerificationRows(input: {
       ...input,
       creatorName: "موظف الاختبار",
       createdAt: "2026-10-08T10:00:00.000Z",
+      telegramDate: input.telegramDate ?? null,
       organizationId: "00000000-0000-4000-8000-000000000010",
       archivedAt: null,
       status: "draft",
@@ -122,6 +125,27 @@ describe("GET /api/verify/:token", () => {
         valid: true,
         displaySerialCode: "POL-2026-10-08-00713",
         serialNumber: 714,
+      })
+    );
+  });
+
+  it("prefers the original Excel serial and imported telegram date", async () => {
+    mockVerificationRows({
+      serialNumber: 714,
+      serialCode: "POL-2026-10-08-00714",
+      organizationSerialCode: "POL-2026-10-08-00713",
+      originalSerial: "ب و ٠٠٦",
+      telegramDate: "2024-03-04T05:06:00.000Z",
+    });
+
+    const response = await requestVerification();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        valid: true,
+        displaySerialCode: "ب و ٠٠٦",
+        createdAt: "2024-03-04T05:06:00.000Z",
       })
     );
   });

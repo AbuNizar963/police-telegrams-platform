@@ -50,7 +50,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { showLocalTelegramNotification } from "@/lib/notifications";
-import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
+import {
+  getTelegramDisplayNumber,
+  getTelegramDisplaySerial,
+  getTelegramExportFileBaseName,
+} from "@/lib/telegramDisplay";
 import {
   buildTelegramWatermarkHtml,
   TELEGRAM_WATERMARK_COLUMNS,
@@ -706,7 +710,10 @@ export default function Home() {
     onSuccess: async telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
       void showLocalTelegramNotification({
-        serialCode: getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
+        serialCode: getTelegramDisplayNumber(
+          getTelegramSerialCode(telegram),
+          telegram.originalSerial
+        ),
         subject: telegram.subject,
         telegramId: telegram.id,
         direction: "outgoing",
@@ -813,17 +820,14 @@ export default function Home() {
       }
       setExcelExportRows(
         exportRows.map(row => ({
-          serial: localizeDigits(
-            getTelegramDisplayNumber(getTelegramSerialCode(row)),
-            numberSystem
-          ),
+          serial: getTelegramDisplaySerial(row, numberSystem),
           time: row.time,
           sender: row.creatorName,
           date: row.date,
           body: row.body,
           recipient: row.recipient,
           signature: row.creatorName,
-          notes: row.workflowReason ?? "",
+          notes: row.importNotes ?? "",
           direction: isOutgoingTelegram(row) ? "صادر" : "وارد",
         }))
       );
@@ -1336,11 +1340,7 @@ export default function Home() {
                     </span>
                   )}
                   <span className="text-base font-bold text-foreground sm:text-lg">
-                    برقية رقم:{" "}
-                    {localizeDigits(
-                      getTelegramDisplayNumber(getTelegramSerialCode(row)),
-                      numberSystem
-                    )}
+                    برقية رقم: {getTelegramDisplaySerial(row, numberSystem)}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1 text-sm font-medium leading-6 text-muted-foreground">
@@ -2096,10 +2096,7 @@ function TelegramReportModal({
     const lines = [
       header,
       ...rows.map(row => [
-        localizeDigits(
-          getTelegramDisplayNumber(getTelegramSerialCode(row)),
-          settings?.numberSystem ?? "latin"
-        ),
+        getTelegramDisplaySerial(row, settings?.numberSystem ?? "latin"),
         row.subject,
         row.recipient,
         statusLabels[row.status],
@@ -2206,8 +2203,8 @@ function TelegramReportModal({
               {rows.map(row => (
                 <tr key={row.id} className="border-t">
                   <td className="p-3 font-mono">
-                    {localizeDigits(
-                      getTelegramDisplayNumber(getTelegramSerialCode(row)),
+                    {getTelegramDisplaySerial(
+                      row,
                       settings?.numberSystem ?? "latin"
                     )}
                   </td>
@@ -2703,6 +2700,9 @@ function TelegramDetail({
   telegram: {
     id: number;
     serialCode: string;
+    originalSerial?: string | null;
+    importNotes?: string | null;
+    telegramDate?: Date | null;
     organizationSerialCode?: string | null;
     senderOrganizationName?: string | null;
     organizationId?: string | null;
@@ -2750,6 +2750,13 @@ function TelegramDetail({
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const importReferencesQuery = trpc.telegrams.resolveImportReferences.useQuery(
+    { notes: telegram.importNotes ?? "" },
+    {
+      enabled: Boolean(telegram.importNotes?.trim()),
+      staleTime: 60_000,
+    }
+  );
   const documentSettingsQuery = trpc.platformDocumentSettings.get.useQuery(
     undefined,
     { retry: false }
@@ -3028,9 +3035,10 @@ function TelegramDetail({
     const organizationHierarchy = hierarchyCandidates.filter(
       name => !fixedHeaderNames.has(name.trim())
     );
-    const createdAt = formatConfiguredDate(telegram.createdAt, settings);
+    const telegramDate = telegram.telegramDate ?? telegram.createdAt;
+    const createdAt = formatConfiguredDate(new Date(), settings);
     const headerCreatedAt = formatConfiguredHeaderDateTime(
-      telegram.createdAt,
+      telegramDate,
       settings
     );
     const location = localizeDigits(
@@ -3039,10 +3047,41 @@ function TelegramDetail({
         : "غير محدد",
       numberSystem
     );
-    const displaySerial = localizeDigits(
-      getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
-      numberSystem
-    );
+    const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+    const importNotesText = telegram.importNotes?.trim() ?? "";
+    const importNotesMarkup = (() => {
+      if (!importNotesText) return "";
+      const references = importReferencesQuery.data ?? [];
+      const referencePattern = /ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g;
+      let cursor = 0;
+      let renderedNotes = "";
+      for (const match of importNotesText.matchAll(referencePattern)) {
+        const matchIndex = match.index ?? cursor;
+        renderedNotes += escapeHtml(importNotesText.slice(cursor, matchIndex));
+        const marker = match[1] ?? "";
+        const rawSerial = match[2] ?? "";
+        const serial = rawSerial
+          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+        const direction = marker === "و" ? "incoming" : "outgoing";
+        const reference = references.find(
+          item => item.serial === serial && item.direction === direction
+        );
+        const label = escapeHtml(match[0]);
+        if (reference) {
+          const href = new URL(
+            `/verify/${encodeURIComponent(reference.verificationToken)}`,
+            window.location.origin
+          ).toString();
+          renderedNotes += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        } else {
+          renderedNotes += label;
+        }
+        cursor = matchIndex + match[0].length;
+      }
+      renderedNotes += escapeHtml(importNotesText.slice(cursor));
+      return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
+    })();
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
@@ -3297,6 +3336,13 @@ function TelegramDetail({
           direction: rtl;
         }
         .telegram-export-page .document-footer p { margin: 0; }
+        .telegram-export-page .import-notes {
+          margin-top: 8px;
+          padding-top: 6px;
+          border-top: 1px dotted #7b8493;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
         .telegram-export-page .footer-creator { text-align: right; }
         .telegram-export-page .footer-location { text-align: center; }
         .telegram-export-page .footer-date { text-align: left; }
@@ -3348,8 +3394,9 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ إنشاء البرقية: ${escapeHtml(createdAt)}</p>
+          <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${escapeHtml(createdAt)}</p>
         </footer>
+        ${importNotesMarkup}
       </article>`;
 
     return wrapper;
@@ -3405,6 +3452,7 @@ function TelegramDetail({
     documentSettingsUnavailable,
     isOutgoing,
     routingDirectory,
+    importReferencesQuery.data,
   ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
@@ -3694,7 +3742,7 @@ function TelegramDetail({
       const anchor = document.createElement("a");
 
       anchor.href = url;
-      anchor.download = `${telegram.serialCode}.png`;
+      anchor.download = `${getTelegramExportFileBaseName(telegram)}.png`;
       anchor.click();
 
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -3711,13 +3759,20 @@ function TelegramDetail({
 
     try {
       const blob = await imageBlob();
-      const file = new File([blob], `${telegram.serialCode}.png`, {
-        type: "image/png",
-      });
+      const file = new File(
+        [blob],
+        `${getTelegramExportFileBaseName(telegram)}.png`,
+        {
+          type: "image/png",
+        }
+      );
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
+          title: `برقية ${getTelegramDisplaySerial(
+            telegram,
+            settings?.numberSystem ?? "latin"
+          )}`,
           text: telegram.subject,
           files: [file],
         });
@@ -3749,13 +3804,20 @@ function TelegramDetail({
 
     try {
       const blob = await renderOfficialDocument("pdf");
-      const file = new File([blob], `${telegram.serialCode}.pdf`, {
-        type: "application/pdf",
-      });
+      const file = new File(
+        [blob],
+        `${getTelegramExportFileBaseName(telegram)}.pdf`,
+        {
+          type: "application/pdf",
+        }
+      );
 
       if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplayNumber(telegram.serialCode)}`,
+          title: `برقية ${getTelegramDisplaySerial(
+            telegram,
+            settings?.numberSystem ?? "latin"
+          )}`,
           text: telegram.subject,
           files: [file],
         });
@@ -3787,8 +3849,8 @@ function TelegramDetail({
   return (
     <Modal
       title={telegram.subject}
-      subtitle={localizeDigits(
-        getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
+      subtitle={getTelegramDisplaySerial(
+        telegram,
         settings?.numberSystem ?? "latin"
       )}
       close={close}

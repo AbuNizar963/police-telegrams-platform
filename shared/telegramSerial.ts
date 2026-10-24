@@ -1,4 +1,5 @@
 export interface TelegramSerialSource {
+  originalSerial?: string | null;
   organizationSerialCode?: string | null;
   serialCode?: string | null;
 }
@@ -10,6 +11,9 @@ export interface TelegramSerialSource {
  */
 export function getTelegramSerialCode(source: TelegramSerialSource): string {
   return (
-    source.organizationSerialCode?.trim() || source.serialCode?.trim() || ""
+    source.originalSerial?.trim() ||
+    source.organizationSerialCode?.trim() ||
+    source.serialCode?.trim() ||
+    ""
   );
 }

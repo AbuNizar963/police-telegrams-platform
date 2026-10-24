@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getTelegramDisplayNumber } from "./telegramDisplay";
+import {
+  getTelegramDisplayNumber,
+  getTelegramDisplaySerial,
+  getTelegramExportFileBaseName,
+} from "./telegramDisplay";
 
 describe("getTelegramDisplayNumber", () => {
   it("extracts and removes padding from a full telegram number", () => {
@@ -8,6 +12,49 @@ describe("getTelegramDisplayNumber", () => {
 
   it("keeps a plain numeric serial readable", () => {
     expect(getTelegramDisplayNumber("690")).toBe("690");
+  });
+
+  it("preserves imported serials exactly", () => {
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")).toBe(
+      "ب و ٠٠٦"
+    );
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "2025-009")).toBe(
+      "2025-009"
+    );
+  });
+
+  it("preserves imported serials without localization", () => {
+    expect(
+      getTelegramDisplaySerial(
+        {
+          originalSerial: "ب و ٠٠٦",
+          organizationSerialCode: "UNIT-00072",
+          serialCode: "GLOBAL-00419",
+        },
+        "latin"
+      )
+    ).toBe("ب و ٠٠٦");
+    expect(
+      getTelegramDisplaySerial(
+        {
+          originalSerial: "2025-009",
+          serialCode: "SYS-2026-09-30-00009",
+        },
+        "arabic"
+      )
+    ).toBe("2025-009");
+  });
+
+  it("uses the official serial in export filenames safely", () => {
+    expect(
+      getTelegramExportFileBaseName({
+        originalSerial: "ب و ٠٠٦/أ",
+        serialCode: "SYS-2026-09-30-00009",
+      })
+    ).toBe("ب و ٠٠٦-أ");
+    expect(
+      getTelegramExportFileBaseName({ serialCode: "SYS-2026-09-30-00009" })
+    ).toBe("SYS-2026-09-30-00009");
   });
 
   it("returns a safe placeholder for an empty serial", () => {

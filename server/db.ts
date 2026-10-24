@@ -155,6 +155,7 @@ function mapTelegram(row: Record<string, unknown>): Telegram {
     ...(row as unknown as Telegram),
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
+    telegramDate: row.telegramDate ? asDate(row.telegramDate) : null,
     archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
     closedAt: row.closedAt ? asDate(row.closedAt) : null,
   };
@@ -876,6 +877,73 @@ export async function getTelegramById(
   return data ? mapTelegram(data as Record<string, unknown>) : undefined;
 }
 
+export async function findTelegramByOfficialSerial(input: {
+  organizationId: string;
+  serial: string;
+  direction: "incoming" | "outgoing";
+}): Promise<Telegram | undefined> {
+  const normalizeDigits = (value: string, digits: string) =>
+    value.replace(/[0-9]/g, digit => digits[Number(digit)]);
+  const variants = Array.from(
+    new Set([
+      input.serial.trim(),
+      normalizeDigits(input.serial.trim(), "٠١٢٣٤٥٦٧٨٩"),
+      normalizeDigits(input.serial.trim(), "۰۱۲۳۴۵۶۷۸۹"),
+    ])
+  );
+  const columns = [
+    "originalSerial",
+    "organizationSerialCode",
+    "serialCode",
+  ] as const;
+  const filters = columns.flatMap(column =>
+    variants.map(serial => `${column}.eq.${serial}`)
+  );
+  const client = getSupabaseAdmin();
+  const [ownedResult, routedResult] = await Promise.all([
+    client
+      .from("telegrams")
+      .select("*")
+      .eq("organizationId", input.organizationId)
+      .or(filters.join(","))
+      .limit(60),
+    client
+      .from("telegrams")
+      .select("*")
+      .eq("currentOrganizationId", input.organizationId)
+      .or(filters.join(","))
+      .limit(60),
+  ]);
+  throwIfError(
+    ownedResult.error,
+    "Failed to resolve imported telegram reference"
+  );
+  throwIfError(
+    routedResult.error,
+    "Failed to resolve imported telegram reference"
+  );
+
+  const candidates = new Map<number, Telegram>();
+  const candidateRows = [
+    ...(ownedResult.data ?? []),
+    ...(routedResult.data ?? []),
+  ];
+  for (const row of candidateRows) {
+    const telegram = mapTelegram(row as Record<string, unknown>);
+    candidates.set(telegram.id, telegram);
+  }
+
+  const matches = [...candidates.values()].filter(telegram => {
+    const direction =
+      telegram.importDirection ??
+      (telegram.organizationId === telegram.currentOrganizationId
+        ? "outgoing"
+        : "incoming");
+    return direction === input.direction;
+  });
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 export async function getTelegramByIdempotencyKey(
   idempotencyKey: string
 ): Promise<Telegram | undefined> {
@@ -893,6 +961,7 @@ export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
     ...input,
     createdAt: input.createdAt?.toISOString(),
     updatedAt: input.updatedAt?.toISOString(),
+    telegramDate: input.telegramDate?.toISOString() ?? null,
     archivedAt: input.archivedAt?.toISOString() ?? null,
   };
   const { data, error } = await getSupabaseAdmin()

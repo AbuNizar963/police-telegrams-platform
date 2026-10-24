@@ -43,6 +43,7 @@ import {
   getPlatformDocumentSettings,
   getOrganizationSettings,
   getTelegramById,
+  findTelegramByOfficialSerial,
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
@@ -178,7 +179,83 @@ const excelImportRowSchema = z.object({
   sheetName: z.enum(["صادر", "وارد"]),
 });
 
-function isPrivateLogoHostname(hostname: string): boolean {
+const TELEGRAM_IMPORT_PAGE_SIZE = 1000;
+
+type TelegramImportDirection = "incoming" | "outgoing";
+
+function getImportDirection(
+  sheetName: "صادر" | "وارد"
+): TelegramImportDirection {
+  return sheetName === "وارد" ? "incoming" : "outgoing";
+}
+
+function normalizeImportedSerial(value: string | number): string {
+  return localizeDigits(value, "latin").trim().toLowerCase();
+}
+
+function makeImportSerialKey(
+  direction: TelegramImportDirection,
+  value: string | number
+): string {
+  return JSON.stringify([direction, normalizeImportedSerial(value)]);
+}
+
+function getExistingTelegramSerialKeys(
+  telegrams: Awaited<ReturnType<typeof listTelegrams>>
+): Set<string> {
+  return new Set(
+    telegrams.flatMap(telegram => {
+      let direction: TelegramImportDirection;
+      if (
+        telegram.importDirection === "incoming" ||
+        telegram.importDirection === "outgoing"
+      ) {
+        direction = telegram.importDirection;
+      } else {
+        direction =
+          telegram.organizationId === telegram.currentOrganizationId
+            ? "outgoing"
+            : "incoming";
+      }
+      return [
+        ...(telegram.originalSerial
+          ? [makeImportSerialKey(direction, telegram.originalSerial)]
+          : []),
+        ...(telegram.organizationSerialCode
+          ? [makeImportSerialKey(direction, telegram.organizationSerialCode)]
+          : []),
+        makeImportSerialKey(direction, telegram.serialCode),
+      ];
+    })
+  );
+}
+
+async function listAllTelegramsForImport(
+  userId: number,
+  organizationId: string
+): Promise<Awaited<ReturnType<typeof listTelegrams>>> {
+  const allTelegrams: Awaited<ReturnType<typeof listTelegrams>> = [];
+  for (let page = 1; ; page += 1) {
+    const pageRows = await listTelegrams(
+      userId,
+      false,
+      organizationId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      page,
+      TELEGRAM_IMPORT_PAGE_SIZE
+    );
+    allTelegrams.push(...pageRows);
+    if (pageRows.length < TELEGRAM_IMPORT_PAGE_SIZE) return allTelegrams;
+  }
+}
+
+function isPrivateLogoHostname(hostname: string) {
   const normalized = hostname.toLowerCase().replace(/\.$/, "");
   if (
     normalized === "localhost" ||
@@ -1567,7 +1644,10 @@ export const appRouter = router({
         const settings = await getOrCreateSettings(ctx.user.id);
         return rows.map(row => ({
           ...row,
-          ...formatTelegramWorkbookDateTime(row.createdAt, settings.timezone),
+          ...formatTelegramWorkbookDateTime(
+            row.telegramDate ?? row.createdAt,
+            settings.timezone
+          ),
         }));
       }),
 
@@ -2707,38 +2787,63 @@ export const appRouter = router({
       .mutation(async ({ input }) =>
         parseTelegramWorkbookBase64(input.base64, input.password)
       ),
+    resolveImportReferences: protectedProcedure
+      .input(z.object({ notes: z.string().max(4000) }))
+      .query(async ({ ctx, input }) => {
+        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const references = Array.from(
+          input.notes.matchAll(/ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g)
+        ).slice(0, 20);
+
+        const normalizeDigits = (value: string) =>
+          value
+            .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+            .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+
+        return (
+          await Promise.all(
+            references.map(async match => {
+              const marker = match[1] ?? "";
+              const rawSerial = match[2] ?? "";
+              if (!rawSerial) return null;
+              const direction = marker === "و" ? "incoming" : "outgoing";
+              const serial = normalizeDigits(rawSerial);
+              const telegram = await findTelegramByOfficialSerial({
+                organizationId,
+                serial,
+                direction,
+              });
+              if (!telegram) return null;
+              return {
+                referenceText: match[0],
+                serial,
+                direction,
+                verificationToken: telegram.verificationToken,
+              };
+            })
+          )
+        ).filter(
+          (reference): reference is NonNullable<typeof reference> =>
+            reference !== null
+        );
+      }),
+
     importPreview: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         const organizationId = await getUserOrganizationId(ctx.user.id);
-        const existing = await listTelegrams(
+        const existing = await listAllTelegramsForImport(
           ctx.user.id,
-          false,
-          organizationId,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          1,
-          1000
+          organizationId
         );
-        const normalizeSerial = (value: string | number) =>
-          localizeDigits(value, "latin").trim().toLowerCase();
-        const keys = new Set(
-          existing.flatMap(row => [
-            normalizeSerial(row.serialNumber),
-            normalizeSerial(row.serialCode),
-          ])
-        );
+        const keys = getExistingTelegramSerialKeys(existing);
         return input.rows.map((row, index) => {
           const value = row.originalSerial?.trim() ?? "";
-          return {
-            index,
-            duplicate: Boolean(value) && keys.has(normalizeSerial(value)),
-          };
+          const direction = getImportDirection(row.sheetName);
+          const key = value ? makeImportSerialKey(direction, value) : "";
+          const duplicate = Boolean(value) && keys.has(key);
+          if (value) keys.add(key);
+          return { index, duplicate };
         });
       }),
 
@@ -2748,28 +2853,12 @@ export const appRouter = router({
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const settings = await getOrCreateSettings(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
-        const existingTelegrams = await listTelegrams(
+        const existingTelegrams = await listAllTelegramsForImport(
           ctx.user.id,
-          false,
-          organizationId,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          1,
-          1000
+          organizationId
         );
-        const normalizeSerial = (value: string | number) =>
-          localizeDigits(value, "latin").trim().toLowerCase();
-        const existingSerialKeys = new Set(
-          existingTelegrams.flatMap(row => [
-            normalizeSerial(row.serialNumber),
-            normalizeSerial(row.serialCode),
-          ])
-        );
+        const existingSerialKeys =
+          getExistingTelegramSerialKeys(existingTelegrams);
         let created = 0;
         let skipped = 0;
         const errors: Array<{ row: number; message: string }> = [];
@@ -2783,22 +2872,30 @@ export const appRouter = router({
             time: row.time ?? "",
             date: row.date ?? "",
             body: row.body,
+            signature: row.signature ?? "",
+            notes: row.notes ?? "",
           });
           const idempotencyKey = `excel-import:${createHash("sha256")
             .update(sourceKey)
             .digest("hex")}`;
           try {
             const originalSerial = row.originalSerial?.trim() ?? "";
-            if (
-              originalSerial &&
-              existingSerialKeys.has(normalizeSerial(originalSerial))
-            ) {
-              skipped += 1;
-              continue;
-            }
+            const direction = getImportDirection(row.sheetName);
             const existing = await getTelegramByIdempotencyKey(idempotencyKey);
             if (existing) {
               skipped += 1;
+              continue;
+            }
+            if (
+              originalSerial &&
+              existingSerialKeys.has(
+                makeImportSerialKey(direction, originalSerial)
+              )
+            ) {
+              errors.push({
+                row: index + 2,
+                message: `رقم البرقية الأصلي "${originalSerial}" موجود مسبقًا. لم يُنشأ رقم بديل ولم تُستورد هذه البرقية.`,
+              });
               continue;
             }
             const importedCreatedAt = parseImportedDate(
@@ -2827,7 +2924,6 @@ export const appRouter = router({
             const importedBody = [
               row.body,
               row.signature ? `\nتوقيع السجل الأصلي: ${row.signature}` : "",
-              row.notes ? `\nملاحظات السجل الأصلي: ${row.notes}` : "",
             ]
               .filter(Boolean)
               .join("\n");
@@ -2841,7 +2937,10 @@ export const appRouter = router({
               serialCode,
               idempotencyKey,
               verificationToken: randomUUID(),
-              createdAt: importedCreatedAt,
+              originalSerial: originalSerial || null,
+              importNotes: row.notes?.trim() || null,
+              importDirection: direction,
+              telegramDate: importedCreatedAt ?? null,
               createdByUserId: ctx.user.id,
               organizationId,
               currentOrganizationId: organizationId,
@@ -2857,7 +2956,11 @@ export const appRouter = router({
               priority: "normal",
               category: "administrative",
               status: "draft",
-              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${row.originalSerial || "غير محدد"}${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${row.time ? `، الوقت الأصلي ${row.time}` : ""}`,
+              workflowReason: `استيراد Excel من ورقة ${row.sheetName}، الرقم الأصلي ${
+                row.originalSerial || "غير محدد"
+              }${row.date ? `، التاريخ الأصلي ${row.date}` : ""}${
+                row.time ? `، الوقت الأصلي ${row.time}` : ""
+              }`,
             });
             await writeAuditLog({
               ...getRequestAuditContext(ctx.req),
@@ -2899,8 +3002,18 @@ export const appRouter = router({
               },
             });
             created += 1;
+            existingSerialKeys.add(
+              makeImportSerialKey(direction, telegram.serialCode)
+            );
+            if (telegram.organizationSerialCode) {
+              existingSerialKeys.add(
+                makeImportSerialKey(direction, telegram.organizationSerialCode)
+              );
+            }
             if (originalSerial) {
-              existingSerialKeys.add(normalizeSerial(originalSerial));
+              existingSerialKeys.add(
+                makeImportSerialKey(direction, originalSerial)
+              );
             }
           } catch (error) {
             errors.push({

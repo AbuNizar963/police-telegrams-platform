@@ -896,33 +896,27 @@ export async function findTelegramByOfficialSerial(input: {
     "organizationSerialCode",
     "serialCode",
   ] as const;
-  const client = getSupabaseAdmin();
+  const filters = columns.flatMap(column =>
+    variants.map(serial => `${column}.eq.${serial}`)
+  );
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegrams")
+    .select("*")
+    .eq("organizationId", input.organizationId)
+    .or(filters.join(","))
+    .limit(60);
+  throwIfError(error, "Failed to resolve imported telegram reference");
 
-  for (const column of columns) {
-    for (const serial of variants) {
-      const { data, error } = await client
-        .from("telegrams")
-        .select("*")
-        .eq("organizationId", input.organizationId)
-        .eq(column, serial)
-        .limit(20);
-      throwIfError(error, "Failed to resolve imported telegram reference");
-
-      const match = (data ?? [])
-        .map(row => mapTelegram(row as Record<string, unknown>))
-        .find(telegram => {
-          const direction =
-            telegram.importDirection ??
-            (telegram.organizationId === telegram.currentOrganizationId
-              ? "outgoing"
-              : "incoming");
-          return direction === input.direction;
-        });
-      if (match) return match;
-    }
-  }
-
-  return undefined;
+  return (data ?? [])
+    .map(row => mapTelegram(row as Record<string, unknown>))
+    .find(telegram => {
+      const direction =
+        telegram.importDirection ??
+        (telegram.organizationId === telegram.currentOrganizationId
+          ? "outgoing"
+          : "incoming");
+      return direction === input.direction;
+    });
 }
 
 export async function getTelegramByIdempotencyKey(

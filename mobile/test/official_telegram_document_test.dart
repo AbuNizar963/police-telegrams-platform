@@ -115,7 +115,7 @@ void main() {
         html,
         matches(
           RegExp(
-            r'<p class="footer-date">الوقت والتاريخ: \\d{4}/\\d{2}/\\d{2} - \\d{2}:\\d{2}:\\d{2}</p>',
+            r'<p class="footer-date">الوقت والتاريخ: \d{4}/\d{2}/\d{2} - \d{2}:\d{2}:\d{2}</p>',
           ),
         ),
       );

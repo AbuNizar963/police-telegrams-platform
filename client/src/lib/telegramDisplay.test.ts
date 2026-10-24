@@ -10,6 +10,19 @@ describe("getTelegramDisplayNumber", () => {
     expect(getTelegramDisplayNumber("690")).toBe("690");
   });
 
+  it("preserves the exact imported serial, including prefixes and leading zeroes", () => {
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "ب و ٠٠٦")).toBe(
+      "ب و ٠٠٦"
+    );
+    expect(getTelegramDisplayNumber("SYS-2026-09-30-00009", "2025-009")).toBe(
+      "2025-009"
+    );
+  });
+
+  it("does not truncate non-platform serial formats", () => {
+    expect(getTelegramDisplayNumber("2025-009")).toBe("2025-009");
+  });
+
   it("returns a safe placeholder for an empty serial", () => {
     expect(getTelegramDisplayNumber(undefined)).toBe("—");
   });

@@ -183,7 +183,9 @@ const TELEGRAM_IMPORT_PAGE_SIZE = 1000;
 
 type TelegramImportDirection = "incoming" | "outgoing";
 
-function getImportDirection(sheetName: "صادر" | "وارد"): TelegramImportDirection {
+function getImportDirection(
+  sheetName: "صادر" | "وارد"
+): TelegramImportDirection {
   return sheetName === "وارد" ? "incoming" : "outgoing";
 }
 

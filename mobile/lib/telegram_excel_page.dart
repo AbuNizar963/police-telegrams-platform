@@ -97,7 +97,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       for (final item in items) {
         if (item is! Map) continue;
         final row = Map<String, dynamic>.from(item);
-        final date = DateTime.tryParse(value(row['telegramDate'] ?? row['createdAt']))?.toLocal();
+        final date = DateTime.tryParse(
+          value(row['telegramDate'] ?? row['createdAt']),
+        )?.toLocal();
         final organization = value(row['organizationId']);
         final current = value(row['currentOrganizationId']);
         final direction = value(row['direction'] ?? row['type']);

@@ -40,7 +40,6 @@ class PoliceApi {
        _imageCacheDirectory = imageCacheDirectory ?? Directory.systemTemp;
 
   static final http.Client _sharedHttpClient = http.Client();
-  static const _organizationLogoCacheLifetime = Duration(days: 7);
   static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
 
   final String baseUrl;
@@ -419,14 +418,9 @@ class PoliceApi {
         if (bytes.isNotEmpty &&
             bytes.length <= _maximumCachedOrganizationLogoBytes) {
           staleBytes = Uint8List.fromList(bytes);
-          final cachedAt = DateTime.tryParse(
-            metadata['cachedAt']?.toString() ?? '',
-          );
-          if (cachedAt != null &&
-              DateTime.now().difference(cachedAt) <
-                  _organizationLogoCacheLifetime) {
-            return staleBytes;
-          }
+          // Always revalidate: the logo can be overwritten at the same storage
+          // path, which a URL-only cache identity cannot detect. Keep cached
+          // bytes as an offline fallback if the refresh fails.
         }
       }
     } catch (_) {

@@ -338,7 +338,8 @@ void main() {
       ),
       imageBytes,
     );
-    expect(networkRequests, 1);
+    // Revalidate even when a renewed signed URL points to the same object path.
+    expect(networkRequests, 2);
 
     var secondClientRequests = 0;
     final secondClient = MockClient((request) async {
@@ -357,7 +358,8 @@ void main() {
       ),
       imageBytes,
     );
-    expect(secondClientRequests, 0);
+    // A failed refresh must still return the previously cached valid image.
+    expect(secondClientRequests, 1);
   });
 
   test(

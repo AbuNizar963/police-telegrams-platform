@@ -1079,7 +1079,7 @@ $watermark
 <footer class="document-footer">
 <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${_escapeHtml(createdAt)}</p>
+<p class="footer-date">الوقت والتاريخ: ${_escapeHtml(createdAt)}</p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

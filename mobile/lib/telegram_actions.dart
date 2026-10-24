@@ -105,7 +105,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         'الموضوع: ${value(telegram['subject'], 'بدون موضوع')}',
         'الجهة المستلمة: ${value(telegram['recipient'])}',
         'الحالة: ${value(telegram['status'])}',
-        'الأولوية: ${value(telegram['priority'])}',
+        'الأسبقية: ${value(telegram['priority'])}',
         'التصنيف: ${value(telegram['classification'])}',
         'تاريخ الإنشاء: ${value(telegram['createdAt'])}',
         '',

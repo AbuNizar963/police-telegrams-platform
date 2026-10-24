@@ -28,7 +28,7 @@ export function createRateLimit(options: RateLimitOptions): RequestHandler {
     windowMs,
     maxRequests,
     message = "طلبات كثيرة؛ أعد المحاولة لاحقًا",
-    keyGenerator = (req) => req.ip || "unknown",
+    keyGenerator = req => req.ip || "unknown",
   } = options;
 
   if (

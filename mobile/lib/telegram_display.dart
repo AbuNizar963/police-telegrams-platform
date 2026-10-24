@@ -34,6 +34,21 @@ String getTelegramDisplayNumber(
   return int.tryParse(parsedSerial)?.toString() ?? parsedSerial;
 }
 
+/// Displays imported official serials exactly; generated serials retain compact localized display.
+String getTelegramDisplaySerial(
+  Map<String, dynamic> telegram,
+  Object? numberSystem,
+) {
+  final originalSerial = telegram['originalSerial']?.toString().trim() ?? '';
+  if (originalSerial.isNotEmpty && originalSerial != 'null') {
+    return originalSerial;
+  }
+  return localizeTelegramDigits(
+    getTelegramDisplayNumber(getTelegramSerialCode(telegram)),
+    numberSystem,
+  );
+}
+
 /// Mirrors the web's `localizeDigits` helper for the supported number systems.
 String localizeTelegramDigits(Object? input, Object? numberSystem) {
   final value = input?.toString() ?? '';

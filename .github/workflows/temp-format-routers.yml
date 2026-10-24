@@ -17,9 +17,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --write server/routers.ts
-      - name: Emit formatted source
+      - name: Emit formatting diff
         shell: bash
-        run: |
-          echo FORMAT_OUTPUT_BEGIN
-          base64 -w 0 server/routers.ts | fold -w 3000
-          echo FORMAT_OUTPUT_END
+        run: git diff -- server/routers.ts

@@ -3058,10 +3058,7 @@ function TelegramDetail({
       for (const match of importNotesText.matchAll(referencePattern)) {
         const matchIndex = match.index ?? cursor;
         renderedNotes += escapeHtml(
-          localizeDigits(
-            importNotesText.slice(cursor, matchIndex),
-            numberSystem,
-          ),
+          importNotesText.slice(cursor, matchIndex)
         );
         const marker = match[1] ?? "";
         const rawSerial = match[2] ?? "";
@@ -3076,7 +3073,7 @@ function TelegramDetail({
         const reference = references.find(
           item => item.serial === serial && item.direction === direction
         );
-        const label = escapeHtml(localizeDigits(match[0], numberSystem));
+        const label = escapeHtml(match[0]);
         if (reference) {
           const href = new URL(
             `/verify/${encodeURIComponent(reference.verificationToken)}`,
@@ -3088,9 +3085,7 @@ function TelegramDetail({
         }
         cursor = matchIndex + match[0].length;
       }
-      renderedNotes += escapeHtml(
-        localizeDigits(importNotesText.slice(cursor), numberSystem)
-      );
+      renderedNotes += escapeHtml(importNotesText.slice(cursor));
       return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
     })();
     const logo = settings?.logoUrl

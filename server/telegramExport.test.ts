@@ -122,7 +122,6 @@ describe("telegram export resource isolation", () => {
   });
 });
 
-
 describe("official PNG resolution metadata", () => {
   it("writes 1200-DPI physical resolution without changing image dimensions", () => {
     const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);

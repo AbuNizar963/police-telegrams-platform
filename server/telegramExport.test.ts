@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedExportResourceUrl, isSafeExportHtml } from "./telegramExport";
+import {
+  isAllowedExportResourceUrl,
+  isSafeExportHtml,
+  withPngDpiMetadata,
+} from "./telegramExport";
 
 const safeDocument = `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -115,5 +119,46 @@ describe("telegram export resource isolation", () => {
     ]) {
       expect(isAllowedExportResourceUrl(url)).toBe(false);
     }
+  });
+});
+
+describe("official PNG resolution metadata", () => {
+  it("writes physical resolution matching an 8K A4 PNG without changing image dimensions", () => {
+    const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    const ihdrLength = Buffer.alloc(4);
+    ihdrLength.writeUInt32BE(13, 0);
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(1, 0);
+    ihdr.writeUInt32BE(1, 4);
+    ihdr[8] = 8;
+    ihdr[9] = 6;
+    const placeholderCrc = Buffer.alloc(4);
+    const original = Buffer.concat([
+      signature,
+      ihdrLength,
+      Buffer.from("IHDR", "ascii"),
+      ihdr,
+      placeholderCrc,
+      Buffer.from([0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]),
+    ]);
+
+    const result = withPngDpiMetadata(original);
+    const physicalChunk = result.indexOf(Buffer.from("pHYs", "ascii"));
+    expect(physicalChunk).toBeGreaterThan(0);
+    expect(result.readUInt32BE(physicalChunk + 4)).toBe(
+      Math.round(((7680 / 297) * 25.4) / 0.0254)
+    );
+    expect(result.readUInt32BE(physicalChunk + 8)).toBe(
+      Math.round(((7680 / 297) * 25.4) / 0.0254)
+    );
+    expect(result[physicalChunk + 12]).toBe(1);
+    expect(result.readUInt32BE(16)).toBe(1);
+    expect(result.readUInt32BE(20)).toBe(1);
+  });
+
+  it("rejects data that is not a PNG", () => {
+    expect(() => withPngDpiMetadata(Buffer.from("not a png"))).toThrow(
+      "invalid PNG"
+    );
   });
 });

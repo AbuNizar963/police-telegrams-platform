@@ -121,7 +121,8 @@ export function createApp(
       message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",
     })
   );
-\n  // Authenticate large-payload routes before parsing attacker-controlled bodies.
+
+  // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.
   app.use((req, res, next) => {
     const path = req.path;

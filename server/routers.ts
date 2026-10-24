@@ -2717,7 +2717,7 @@ export const appRouter = router({
         const organizationId = await getUserOrganizationId(ctx.user.id);
         const references = Array.from(
           input.notes.matchAll(/ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g)
-        ).slice(0, 50);
+        ).slice(0, 20);
 
         const normalizeDigits = (value: string) =>
           value
@@ -2727,8 +2727,11 @@ export const appRouter = router({
         return (
           await Promise.all(
             references.map(async match => {
-              const direction = match[1] === "و" ? "incoming" : "outgoing";
-              const serial = normalizeDigits(match[2]);
+              const marker = match[1] ?? "";
+              const rawSerial = match[2] ?? "";
+              if (!rawSerial) return null;
+              const direction = marker === "و" ? "incoming" : "outgoing";
+              const serial = normalizeDigits(rawSerial);
               const telegram = await findTelegramByOfficialSerial({
                 organizationId,
                 serial,

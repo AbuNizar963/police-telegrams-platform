@@ -3048,40 +3048,7 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    const importNotesText = telegram.importNotes?.trim() ?? "";
-    const importNotesMarkup = (() => {
-      if (!importNotesText) return "";
-      const references = importReferencesQuery.data ?? [];
-      const referencePattern = /ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g;
-      let cursor = 0;
-      let renderedNotes = "";
-      for (const match of importNotesText.matchAll(referencePattern)) {
-        const matchIndex = match.index ?? cursor;
-        renderedNotes += escapeHtml(importNotesText.slice(cursor, matchIndex));
-        const marker = match[1] ?? "";
-        const rawSerial = match[2] ?? "";
-        const serial = rawSerial
-          .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-          .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
-        const direction = marker === "و" ? "incoming" : "outgoing";
-        const reference = references.find(
-          item => item.serial === serial && item.direction === direction
-        );
-        const label = escapeHtml(match[0]);
-        if (reference) {
-          const href = new URL(
-            `/verify/${encodeURIComponent(reference.verificationToken)}`,
-            window.location.origin
-          ).toString();
-          renderedNotes += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-        } else {
-          renderedNotes += label;
-        }
-        cursor = matchIndex + match[0].length;
-      }
-      renderedNotes += escapeHtml(importNotesText.slice(cursor));
-      return `<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${renderedNotes}</section>`;
-    })();
+    const importNotesMarkup = "";
     const logo = settings?.logoUrl
       ? `<img class="official-logo" src="${escapeHtml(settings.logoUrl)}" alt="الشعار الرسمي" />`
       : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;

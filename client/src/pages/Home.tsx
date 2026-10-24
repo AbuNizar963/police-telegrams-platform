@@ -3765,8 +3765,9 @@ function TelegramDetail({
         [blob],
         `${getTelegramExportFileBaseName(telegram)}.png`,
         {
-        type: "image/png",
-      });
+          type: "image/png",
+        }
+      );
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
@@ -3809,12 +3810,16 @@ function TelegramDetail({
         [blob],
         `${getTelegramExportFileBaseName(telegram)}.pdf`,
         {
-        type: "application/pdf",
-      });
+          type: "application/pdf",
+        }
+      );
 
       if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: `برقية ${getTelegramDisplaySerial(telegram, settings?.numberSystem ?? "latin")}`,
+          title: `برقية ${getTelegramDisplaySerial(
+            telegram,
+            settings?.numberSystem ?? "latin"
+          )}`,
           text: telegram.subject,
           files: [file],
         });

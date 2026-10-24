@@ -36,8 +36,7 @@ describe("createRateLimit", () => {
     resetRateLimitStoreForTests();
   });
 
-  it("allows requests within the window and rejects requests over the limit",
-    () => {
+  it("enforces the request window", () => {
       const middleware = createRateLimit({
         windowMs: 60_000,
         maxRequests: 2,

@@ -59,8 +59,7 @@ describe("createRateLimit", () => {
       expect(third.response.json).toHaveBeenCalledWith({
         error: "طلبات كثيرة؛ أعد المحاولة لاحقًا",
       });
-    }
-  );
+    });
 
   it("starts a fresh window after the current window expires", () => {
     vi.useFakeTimers();

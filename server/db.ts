@@ -155,6 +155,7 @@ function mapTelegram(row: Record<string, unknown>): Telegram {
     ...(row as unknown as Telegram),
     createdAt: asDate(row.createdAt),
     updatedAt: asDate(row.updatedAt),
+    telegramDate: row.telegramDate ? asDate(row.telegramDate) : null,
     archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
     closedAt: row.closedAt ? asDate(row.closedAt) : null,
   };
@@ -893,6 +894,7 @@ export async function createTelegram(input: InsertTelegram): Promise<Telegram> {
     ...input,
     createdAt: input.createdAt?.toISOString(),
     updatedAt: input.updatedAt?.toISOString(),
+    telegramDate: input.telegramDate?.toISOString() ?? null,
     archivedAt: input.archivedAt?.toISOString() ?? null,
   };
   const { data, error } = await getSupabaseAdmin()

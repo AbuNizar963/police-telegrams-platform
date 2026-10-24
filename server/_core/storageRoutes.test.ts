@@ -149,8 +149,22 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
+  it("supports legacy organization logo file names through the byte proxy", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/official-badge.webp";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(res.send).toHaveBeenCalled();
+    expect(res.redirect).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed department-logo keys before touching storage", async () => {
-    const key = "department/logos/not-a-uuid-badge.png";
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/nested/badge.png";
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

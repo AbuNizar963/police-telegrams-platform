@@ -60,6 +60,38 @@ export function canAccessStorageKey(
   return Number.isInteger(ownerId) && ownerId === user.id;
 }
 
+function decodeSafeStorageKey(value: string): string | null {
+  try {
+    const key = value
+      .split("/")
+      .map(segment => decodeURIComponent(segment))
+      .join("/");
+    if (
+      !key ||
+      key
+        .split("/")
+        .some(
+          segment =>
+            !segment ||
+            segment === "." ||
+            segment === ".." ||
+            segment.includes("\\")
+        )
+    ) {
+      return null;
+    }
+    return key;
+  } catch {
+    return null;
+  }
+}
+
+function rawPathnameFromAbsoluteUrl(value: string): string | null {
+  const authority = value.match(/^[a-z][a-z\d+.-]*:\/\/[^/?#]*/i);
+  if (!authority) return null;
+  return value.slice(authority[0].length).split(/[?#]/, 1)[0] || "/";
+}
+
 export function storageKeyFromStoredUrl(
   value: string,
   bucket: string
@@ -68,24 +100,21 @@ export function storageKeyFromStoredUrl(
 
   if (trimmed.startsWith("/api/storage/")) {
     const encodedKey = trimmed.slice("/api/storage/".length);
-    try {
-      return encodedKey
-        .split("/")
-        .map(segment => decodeURIComponent(segment))
-        .join("/");
-    } catch {
-      return null;
-    }
+    return decodeSafeStorageKey(encodedKey);
   }
 
   if (!/^https?:\/\//i.test(trimmed)) return null;
 
   try {
-    const url = new URL(trimmed);
-    const path = decodeURIComponent(url.pathname);
+    // Validate the absolute URL, but inspect its raw pathname below. The URL
+    // parser resolves dot segments, which would otherwise hide ../ before the
+    // storage-key validation can reject it.
+    new URL(trimmed);
+    const path = rawPathnameFromAbsoluteUrl(trimmed);
+    if (!path) return null;
     const applicationStoragePrefix = "/api/storage/";
     if (path.startsWith(applicationStoragePrefix)) {
-      return path.slice(applicationStoragePrefix.length);
+      return decodeSafeStorageKey(path.slice(applicationStoragePrefix.length));
     }
     // Legacy settings may contain signed, public, or authenticated Supabase
     // object URLs. Normalize all supported object URL forms to the private
@@ -97,11 +126,7 @@ export function storageKeyFromStoredUrl(
     ];
     for (const prefix of objectPrefixes) {
       if (path.startsWith(prefix)) {
-        const key = path.slice(prefix.length);
-        return key &&
-          !key.split("/").some(part => part === "." || part === "..")
-          ? key
-          : null;
+        return decodeSafeStorageKey(path.slice(prefix.length));
       }
     }
     return null;

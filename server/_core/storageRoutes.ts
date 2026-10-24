@@ -23,8 +23,11 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
+      // Department logos have existed in several storage naming formats.
+      // Accept only image files directly under department/logos or one
+      // organization-UUID directory below it; never allow nested paths.
       const departmentLogoKeyPattern =
-        /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[^/]+\.(?:png|jpg)$/i;
+        /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
       const isDepartmentLogo = departmentLogoKeyPattern.test(key);
       if (key.startsWith("department/logos/") && !isDepartmentLogo) {
         throw new StorageAccessDeniedError();

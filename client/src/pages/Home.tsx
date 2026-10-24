@@ -2690,6 +2690,87 @@ function TelegramComposer({
   );
 }
 
+/**
+ * Fetch and normalize the organization logo once before it is used by the
+ * header and watermark. The server renderer has no browser session, so a
+ * data URL keeps both layers independent of authenticated storage at render
+ * time. A missing legacy image is optional, matching the Flutter document
+ * flow: export continues without substituting another organization's logo.
+ */
+async function loadOfficialDocumentLogoDataUrl(
+  logoUrl: string | null | undefined
+): Promise<string | null> {
+  const source = logoUrl?.trim();
+  if (!source) return null;
+  if (/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(source)) {
+    return source;
+  }
+
+  try {
+    const response = await fetch(source, { credentials: "same-origin" });
+    if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
+
+    const blob = await response.blob();
+    const contentType = blob.type.split(";")[0].trim().toLowerCase();
+    if (
+      contentType &&
+      !contentType.startsWith("image/") &&
+      contentType !== "application/octet-stream"
+    ) {
+      throw new Error("مصدر الشعار ليس صورة صالحة");
+    }
+    if (blob.size === 0) throw new Error("ملف الشعار فارغ");
+
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const image = new Image();
+      image.decoding = "async";
+      const imageLoaded = new Promise<void>((resolve, reject) => {
+        image.addEventListener("load", () => resolve(), { once: true });
+        image.addEventListener(
+          "error",
+          () => reject(new Error("تعذر فك ترميز صورة الشعار")),
+          { once: true }
+        );
+      });
+      image.src = objectUrl;
+      await imageLoaded;
+      await image.decode?.();
+
+      if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+        throw new Error("صورة الشعار غير صالحة");
+      }
+
+      // Preserve source detail without artificially upscaling small logos.
+      const maxDimension = 2400;
+      const scale = Math.min(
+        1,
+        maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
+      );
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("تعذر تجهيز صورة الشعار");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL("image/webp", 0.96);
+      return dataUrl.startsWith("data:image/webp")
+        ? dataUrl
+        : canvas.toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (error) {
+    // Avoid logging potentially signed resource URLs. The document continues
+    // with its text watermark and without a substituted logo.
+    console.warn("تعذر تجهيز شعار الجهة للوثيقة:", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 function TelegramDetail({
   telegram,
   settings,
@@ -2965,6 +3046,33 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
+  const resolveTelegramLogoDataUrl = async (exportSettings: {
+    organizationId?: string | null;
+    logoUrl?: string | null;
+  }): Promise<string | null> => {
+    const logoOrganizationId =
+      telegram.currentOrganizationId ?? telegram.organizationId;
+    let organizationLogo: OrganizationLogoView | null = null;
+    if (logoOrganizationId) {
+      try {
+        organizationLogo = await utils.organizations.logo.fetch(
+          { organizationId: logoOrganizationId },
+          { staleTime: 0 }
+        );
+      } catch (error) {
+        // Retain the verified same-organization settings fallback when it is
+        // available, just as the independent Flutter application does.
+        console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
+      }
+    }
+    const logoUrl = resolveTelegramExportLogo({
+      telegramOrganizationId: logoOrganizationId,
+      organizationLogo,
+      settingsOrganizationId: exportSettings.organizationId,
+      settingsLogoUrl: exportSettings.logoUrl,
+    });
+    return loadOfficialDocumentLogoDataUrl(logoUrl);
+  };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
     logoUrl: string | null = settings?.logoUrl ?? null
@@ -3059,13 +3167,10 @@ function TelegramDetail({
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
     const importNotesMarkup = "";
-    const resolvedLogoUrl = logoUrl?.trim();
-    if (!resolvedLogoUrl) {
-      throw new Error(
-        "الشعار الرسمي غير مضبوط في إعدادات الجهة. احفظ الشعار الرسمي ثم أعد التصدير."
-      );
-    }
-    const logo = `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`;
+    const resolvedLogoUrl = logoUrl?.trim() || null;
+    const logo = resolvedLogoUrl
+      ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
+      : "";
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
       window.location.origin
@@ -3442,112 +3547,10 @@ function TelegramDetail({
       loadExportSettings(),
       utils.settings.get.fetch(undefined, { staleTime: 0 }),
     ]);
-    const logoOrganizationId =
-      telegram.currentOrganizationId ?? telegram.organizationId;
-    let organizationLogo: OrganizationLogoView | null = null;
-    if (logoOrganizationId) {
-      try {
-        organizationLogo = await utils.organizations.logo.fetch(
-          { organizationId: logoOrganizationId },
-          { staleTime: 0 }
-        );
-      } catch (error) {
-        // A legacy settings logo is safe only when it belongs to this telegram's organization.
-        console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
-      }
-    }
-    const logoUrl = resolveTelegramExportLogo({
-      telegramOrganizationId: logoOrganizationId,
-      organizationLogo,
-      settingsOrganizationId: exportSettings.organizationId,
-      settingsLogoUrl: exportSettings.logoUrl,
-    });
-    const wrapper = createExportPaper(documentSettings, logoUrl);
+    const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+    const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
-
-    // The saved logo URL is protected by the app's authenticated storage
-    // route. Chromium runs without the browser session, so inline each image
-    // while the authenticated page can still fetch it.
-    const imageCache = new Map<string, string>();
-    await Promise.all(
-      Array.from(wrapper.querySelectorAll<HTMLImageElement>("img")).map(
-        async image => {
-          const source = image.currentSrc || image.src;
-          if (!source || source.startsWith("data:")) return;
-          try {
-            let dataUrl = imageCache.get(source);
-            if (!dataUrl) {
-              const response = await fetch(source, {
-                credentials: "same-origin",
-              });
-              if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
-              const blob = await response.blob();
-              // Validate decoded bytes rather than relying only on inconsistent MIME headers.
-              const contentType = blob.type.split(";")[0].trim().toLowerCase();
-              if (
-                contentType &&
-                !contentType.startsWith("image/") &&
-                contentType !== "application/octet-stream"
-              ) {
-                throw new Error("مصدر الشعار ليس صورة صالحة");
-              }
-              if (blob.size === 0) {
-                throw new Error("ملف الشعار فارغ");
-              }
-              const imageUrl = URL.createObjectURL(blob);
-              try {
-                const preview = new Image();
-                preview.decoding = "async";
-                preview.src = imageUrl;
-                await preview.decode();
-                // Preserve source detail without artificially upscaling small logos.
-                const maxDimension = 2400;
-                const scale = Math.min(
-                  1,
-                  maxDimension /
-                    Math.max(preview.naturalWidth, preview.naturalHeight)
-                );
-                const canvas = document.createElement("canvas");
-                canvas.width = Math.max(
-                  1,
-                  Math.round(preview.naturalWidth * scale)
-                );
-                canvas.height = Math.max(
-                  1,
-                  Math.round(preview.naturalHeight * scale)
-                );
-                const context = canvas.getContext("2d");
-                if (!context) throw new Error("تعذر تجهيز صورة الشعار");
-                context.drawImage(preview, 0, 0, canvas.width, canvas.height);
-                dataUrl = canvas.toDataURL("image/webp", 0.96);
-                if (!dataUrl.startsWith("data:image/webp")) {
-                  dataUrl = canvas.toDataURL("image/png");
-                }
-              } finally {
-                URL.revokeObjectURL(imageUrl);
-              }
-              imageCache.set(source, dataUrl);
-            }
-            image.removeAttribute("crossorigin");
-            image.removeAttribute("srcset");
-            image.src = dataUrl;
-            await image.decode();
-          } catch (error) {
-            // Do not export a document with a missing or substituted official logo.
-            console.error("تعذر تجهيز صورة الشعار الرسمي للتصدير:", {
-              imageRole: image.classList.contains("watermark-logo")
-                ? "watermark-logo"
-                : "official-logo",
-              error: error instanceof Error ? error.message : String(error),
-            });
-            throw new Error(
-              "تعذر تحميل الشعار الرسمي للتصدير. تم إيقاف التصدير بدلًا من استخدام شعار بديل؛ حدّث إعدادات الشعار ثم أعد المحاولة."
-            );
-          }
-        }
-      )
-    );
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the
@@ -3692,27 +3695,8 @@ function TelegramDetail({
         loadExportSettings(),
         utils.settings.get.fetch(undefined, { staleTime: 0 }),
       ]);
-      const logoOrganizationId =
-        telegram.currentOrganizationId ?? telegram.organizationId;
-      let organizationLogo: OrganizationLogoView | null = null;
-      if (logoOrganizationId) {
-        try {
-          organizationLogo = await utils.organizations.logo.fetch(
-            { organizationId: logoOrganizationId },
-            { staleTime: 0 }
-          );
-        } catch (error) {
-          // A legacy settings logo is safe only when it belongs to this telegram's organization.
-          console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
-        }
-      }
-      const logoUrl = resolveTelegramExportLogo({
-        telegramOrganizationId: logoOrganizationId,
-        organizationLogo,
-        settingsOrganizationId: exportSettings.organizationId,
-        settingsLogoUrl: exportSettings.logoUrl,
-      });
-      exportWrapper = createExportPaper(documentSettings, logoUrl);
+      const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+      exportWrapper = createExportPaper(documentSettings, logoDataUrl);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR
@@ -3747,34 +3731,10 @@ function TelegramDetail({
     try {
       // Wait for the exact font faces used by the official document before
       // opening the native print dialog; this keeps Arabic shaping and line
-      // wrapping stable instead of printing with a fallback font.
+      // wrapping stable instead of printing with a fallback font. Logo bytes
+      // were already decoded before the paper was created, so a temporary
+      // storage failure cannot stop the print action at this stage.
       await document.fonts.ready;
-      const images = Array.from(
-        printRoot.querySelectorAll<HTMLImageElement>("img")
-      );
-      await Promise.all(
-        images.map(async image => {
-          try {
-            if (!image.complete) {
-              await new Promise<void>(resolve => {
-                image.addEventListener("load", () => resolve(), { once: true });
-                image.addEventListener("error", () => resolve(), {
-                  once: true,
-                });
-              });
-            }
-            await image.decode?.();
-            if (image.naturalWidth === 0 || image.naturalHeight === 0) {
-              throw new Error("صورة الطباعة غير صالحة");
-            }
-          } catch {
-            throw new Error(
-              "تعذر تحميل الشعار الرسمي للطباعة. لم تتم الطباعة لتجنب إخراج وثيقة بلا الشعار؛ أعد المحاولة."
-            );
-          }
-        })
-      );
-
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });

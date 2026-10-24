@@ -919,21 +919,28 @@ String buildOfficialTelegramHtml({
     for (final match in pattern.allMatches(importNotes)) {
       buffer.write(
         _escapeHtml(
-          _localizeDigits(importNotes.substring(cursor, match.start), numberSystem),
+          _localizeDigits(
+            importNotes.substring(cursor, match.start),
+            numberSystem,
+          ),
         ),
       );
       final marker = match.group(1) ?? '';
-      final serial = (match.group(2) ?? '')
-          .replaceAllMapped(RegExp(r'[٠-٩۰-۹]'), (digitMatch) {
-            const digits = '٠١٢٣٤٥٦٧٨٩';
-            const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
-            final character = digitMatch.group(0)!;
-            final index = digits.indexOf(character);
-            return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
-          });
+      final serial = (match.group(2) ?? '').replaceAllMapped(
+        RegExp(r'[٠-٩۰-۹]'),
+        (digitMatch) {
+          const digits = '٠١٢٣٤٥٦٧٨٩';
+          const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+          final character = digitMatch.group(0)!;
+          final index = digits.indexOf(character);
+          return index >= 0 ? '$index' : '${persianDigits.indexOf(character)}';
+        },
+      );
       final direction = marker == 'و' ? 'incoming' : 'outgoing';
       final reference = referenceByKey['$direction|$serial'];
-      final label = _escapeHtml(_localizeDigits(match.group(0), numberSystem));
+      final label = _escapeHtml(
+        _localizeDigits(match.group(0) ?? '', numberSystem),
+      );
       final token = _value(reference?['verificationToken']);
       if (reference != null && token.isNotEmpty) {
         final href = Uri.parse(verificationUrl)
@@ -948,9 +955,7 @@ String buildOfficialTelegramHtml({
       cursor = match.end;
     }
     buffer.write(
-      _escapeHtml(
-        _localizeDigits(importNotes.substring(cursor), numberSystem),
-      ),
+      _escapeHtml(_localizeDigits(importNotes.substring(cursor), numberSystem)),
     );
     return '<section class="import-notes"><strong>ملاحظات السجل الأصلي:</strong> ${buffer.toString()}</section>';
   })();
@@ -1087,7 +1092,7 @@ $watermark
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
 <p class="footer-date">تاريخ ووقت إعداد الوثيقة: ${_escapeHtml(createdAt)}</p>
 </footer>
-${importNotesMarkup}
+$importNotesMarkup
 </article></body></html>''';
 }
 

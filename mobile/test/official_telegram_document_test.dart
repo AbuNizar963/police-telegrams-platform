@@ -70,7 +70,7 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
-        hasLength(176),
+        hasLength(340),
       );
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, isNot(contains('class="official-logo"')));

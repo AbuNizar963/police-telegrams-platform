@@ -3469,70 +3469,43 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
+    if (documentSettingsUnavailable || !platformDocumentSettings) {
+      host.replaceChildren();
+      host.style.height = "";
+      return;
+    }
 
-    let cancelled = false;
-    let observer: ResizeObserver | null = null;
+    const exportWrapper = createExportPaper(platformDocumentSettings);
+    const paper = exportWrapper.querySelector<HTMLElement>(
+      ".telegram-export-page"
+    );
+    if (!paper) return;
 
-    const renderPreview = async () => {
-      if (documentSettingsUnavailable || !platformDocumentSettings) {
-        host.replaceChildren();
-        host.style.height = "";
-        return;
-      }
+    host.replaceChildren(exportWrapper);
 
-      try {
-        // Resolve the logo from the telegram's owning organization exactly as
-        // the PDF/PNG and print paths do. Do not render an early preview with
-        // a different (or missing) logo while the organization query is pending.
-        const [documentSettings, exportSettings] = await Promise.all([
-          loadExportSettings(),
-          utils.settings.get.fetch(undefined, { staleTime: 0 }),
-        ]);
-        const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
-        if (cancelled) return;
+    const fitPaperToPreview = () => {
+      const availableWidth = host.clientWidth;
+      if (!availableWidth) return;
 
-        const exportWrapper = createExportPaper(documentSettings, logoDataUrl);
-        const paper = exportWrapper.querySelector<HTMLElement>(
-          ".telegram-export-page"
-        );
-        if (!paper) throw new Error("تعذر تجهيز معاينة البرقية");
+      const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+      const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
-        host.replaceChildren(exportWrapper);
-
-        const fitPaperToPreview = () => {
-          const availableWidth = host.clientWidth;
-          if (!availableWidth) return;
-
-          const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
-          const scaledHeight = Math.ceil(paper.offsetHeight * scale);
-
-          exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
-          paper.style.position = "absolute";
-          paper.style.top = "0";
-          paper.style.left = "50%";
-          paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
-          paper.style.transformOrigin = "top center";
-          paper.style.transform = `scale(${scale})`;
-          host.style.height = `${scaledHeight}px`;
-        };
-
-        fitPaperToPreview();
-        observer?.disconnect();
-        observer = new ResizeObserver(fitPaperToPreview);
-        observer.observe(host);
-      } catch (error) {
-        if (cancelled) return;
-        host.replaceChildren();
-        host.style.height = "";
-        console.error("تعذر تجهيز معاينة البرقية الرسمية:", error);
-      }
+      exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+      paper.style.position = "absolute";
+      paper.style.top = "0";
+      paper.style.left = "50%";
+      paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
+      paper.style.transformOrigin = "top center";
+      paper.style.transform = `scale(${scale})`;
+      host.style.height = `${scaledHeight}px`;
     };
 
-    void renderPreview();
+    fitPaperToPreview();
+    const observer = new ResizeObserver(fitPaperToPreview);
+    observer.observe(host);
 
     return () => {
-      cancelled = true;
-      observer?.disconnect();
+      observer.disconnect();
       host.replaceChildren();
       host.style.height = "";
     };

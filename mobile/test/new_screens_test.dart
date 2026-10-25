@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/advanced_create_telegram_page.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/mobile_pages.dart';
+import 'package:police_telegrams/native_organization_management_page.dart';
 import 'package:police_telegrams/public_pages.dart';
 import 'package:police_telegrams/telegram_actions.dart';
 
@@ -58,6 +59,18 @@ class _ScreenTestApi extends PoliceApi {
         return {'name': 'مشغل الاختبار', 'mustChangePassword': true};
       case 'profile.changePassword':
         return {'success': true};
+      case 'organizations.all':
+        return [
+          {
+            'id': 'org-1',
+            'name': 'محافظة اختبار',
+            'code': 'TST',
+            'type': 'governorate',
+            'isActive': true,
+          },
+        ];
+      case 'organizations.context':
+        return {'organizationId': 'org-1', 'isOwner': false};
       default:
         throw StateError('Unexpected test procedure: $procedure');
     }
@@ -366,5 +379,55 @@ void main() {
     await tester.pump();
 
     expect(find.text('أدخل رمز التحقق الموجود في الوثيقة.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'scoped organization managers get a read-only organization list',
+    (tester) async {
+      final api = _ScreenTestApi();
+      await tester.pumpWidget(
+        _host(
+          NativeOrganizationManagementPage(
+            api: api,
+            canEditStructure: false,
+            isPlatformOwner: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('إدارة المناطق والأقسام والمخافر'), findsOneWidget);
+      expect(find.text('محافظة اختبار'), findsOneWidget);
+      expect(
+        find.textContaining('عرض الجهات ضمن نطاق صلاحيتك فقط'),
+        findsOneWidget,
+      );
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byTooltip('تعديل الجهة'), findsNothing);
+      expect(api.calls, contains('organizations.all'));
+    },
+  );
+
+  testWidgets('global admins retain organization create and edit controls', (
+    tester,
+  ) async {
+    final api = _ScreenTestApi();
+    await tester.pumpWidget(
+      _host(
+        NativeOrganizationManagementPage(
+          api: api,
+          canEditStructure: true,
+          isPlatformOwner: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byTooltip('تعديل الجهة'), findsOneWidget);
+    expect(
+      find.textContaining('عرض الجهات ضمن نطاق صلاحيتك فقط'),
+      findsNothing,
+    );
   });
 }

@@ -47,3 +47,16 @@ bool hasMobileOrganizationSettingsAccess({
   return isPlatformOwner ||
       _organizationSettingsRoles.contains(organizationRole);
 }
+
+bool hasMobileOrganizationStructureEditAccess({required String? accountRole}) {
+  return accountRole == 'admin';
+}
+
+String getMobileManagementMenuHeading({
+  required String? accountRole,
+  required bool isPlatformOwner,
+}) {
+  if (accountRole == 'admin') return 'إدارة النظام';
+  if (isPlatformOwner) return 'إعدادات المالك';
+  return 'إدارة الجهة';
+}

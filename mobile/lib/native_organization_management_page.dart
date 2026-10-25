@@ -14,9 +14,16 @@ const _organizationTypes = <String, String>{
 };
 
 class NativeOrganizationManagementPage extends StatefulWidget {
-  const NativeOrganizationManagementPage({super.key, required this.api});
+  const NativeOrganizationManagementPage({
+    super.key,
+    required this.api,
+    required this.canEditStructure,
+    required this.isPlatformOwner,
+  });
 
   final PoliceApi api;
+  final bool canEditStructure;
+  final bool isPlatformOwner;
 
   @override
   State<NativeOrganizationManagementPage> createState() =>
@@ -65,7 +72,9 @@ class _NativeOrganizationManagementPageState
       final contextData = results[1];
       setState(() {
         _organizations = _rows(results[0]);
-        _isOwner = contextData is Map && contextData['isOwner'] == true;
+        _isOwner =
+            widget.isPlatformOwner ||
+            (contextData is Map && contextData['isOwner'] == true);
       });
     } catch (exception) {
       if (mounted) {
@@ -98,6 +107,7 @@ class _NativeOrganizationManagementPageState
   }
 
   Future<void> _editOrganization([Map<String, dynamic>? organization]) async {
+    if (!widget.canEditStructure) return;
     final form = await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
@@ -168,7 +178,7 @@ class _NativeOrganizationManagementPageState
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إدارة الجهات'),
+          title: const Text('إدارة المناطق والأقسام والمخافر'),
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -177,11 +187,15 @@ class _NativeOrganizationManagementPageState
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _loading || _saving ? null : () => _editOrganization(),
-          icon: const Icon(Icons.add_business_outlined),
-          label: const Text('جهة جديدة'),
-        ),
+        floatingActionButton: widget.canEditStructure
+            ? FloatingActionButton.extended(
+                onPressed: _loading || _saving
+                    ? null
+                    : () => _editOrganization(),
+                icon: const Icon(Icons.add_business_outlined),
+                label: const Text('جهة جديدة'),
+              )
+            : null,
         body: Column(
           children: [
             Padding(
@@ -205,6 +219,19 @@ class _NativeOrganizationManagementPageState
                 ),
               ),
             ),
+            if (!widget.canEditStructure)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'عرض الجهات ضمن نطاق صلاحيتك فقط؛ لا تتوفر أدوات تعديل الهيكل.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -272,13 +299,16 @@ class _NativeOrganizationManagementPageState
                                 ),
                               ),
                               isThreeLine: true,
-                              trailing: IconButton(
-                                tooltip: 'تعديل الجهة',
-                                onPressed: _loading || _saving
-                                    ? null
-                                    : () => _editOrganization(organization),
-                                icon: const Icon(Icons.edit_outlined),
-                              ),
+                              trailing: widget.canEditStructure
+                                  ? IconButton(
+                                      tooltip: 'تعديل الجهة',
+                                      onPressed: _loading || _saving
+                                          ? null
+                                          : () =>
+                                                _editOrganization(organization),
+                                      icon: const Icon(Icons.edit_outlined),
+                                    )
+                                  : null,
                             ),
                           );
                         },

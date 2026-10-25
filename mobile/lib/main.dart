@@ -1273,7 +1273,15 @@ class _DashboardPageState extends State<DashboardPage>
         }
         break;
       case 'organizations':
-        _pushPage(NativeOrganizationManagementPage(api: widget.api));
+        _pushPage(
+          NativeOrganizationManagementPage(
+            api: widget.api,
+            canEditStructure: hasMobileOrganizationStructureEditAccess(
+              accountRole: _account['role']?.toString(),
+            ),
+            isPlatformOwner: _isPlatformOwner,
+          ),
+        );
         break;
       case 'users':
         if (_canManageUsers) {
@@ -2385,9 +2393,10 @@ class _DashboardPageState extends State<DashboardPage>
                   enabled: false,
                   height: 34,
                   child: Text(
-                    _account['role'] == 'admin'
-                        ? 'إدارة النظام'
-                        : 'إدارة الجهة',
+                    getMobileManagementMenuHeading(
+                      accountRole: _account['role']?.toString(),
+                      isPlatformOwner: _isPlatformOwner,
+                    ),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -2395,6 +2404,14 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                 ),
+                if (_isPlatformOwner)
+                  const PopupMenuItem(
+                    value: 'platform_document_settings',
+                    child: _AccountMenuItem(
+                      icon: Icons.tune_rounded,
+                      title: 'إعدادات النظام والوثائق',
+                    ),
+                  ),
                 const PopupMenuItem(
                   value: 'users',
                   child: _AccountMenuItem(
@@ -2402,34 +2419,11 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إدارة المستخدمين وإضافة الحسابات',
                   ),
                 ),
-                if (_account['role'] == 'admin')
-                  const PopupMenuItem(
-                    value: 'regions',
-                    child: _AccountMenuItem(
-                      icon: Icons.account_tree_outlined,
-                      title: 'إدارة المناطق والأقسام والمخافر',
-                    ),
-                  ),
-              ],
-              if (_isPlatformOwner) ...[
-                const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  enabled: false,
-                  height: 34,
-                  child: Text(
-                    'إعدادات المالك',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF7A8493),
-                    ),
-                  ),
-                ),
                 const PopupMenuItem(
-                  value: 'platform_document_settings',
+                  value: 'organizations',
                   child: _AccountMenuItem(
-                    icon: Icons.tune_rounded,
-                    title: 'إعدادات النظام والوثائق',
+                    icon: Icons.account_tree_outlined,
+                    title: 'إدارة المناطق والأقسام والمخافر',
                   ),
                 ),
               ],

@@ -163,4 +163,45 @@ void main() {
       }
     });
   });
+
+  group('hasMobileOrganizationStructureEditAccess', () {
+    test('allows structure edits only to global admin accounts', () {
+      expect(
+        hasMobileOrganizationStructureEditAccess(accountRole: 'admin'),
+        isTrue,
+      );
+      for (final role in ['user', null]) {
+        expect(
+          hasMobileOrganizationStructureEditAccess(accountRole: role),
+          isFalse,
+        );
+      }
+    });
+  });
+
+  group('getMobileManagementMenuHeading', () {
+    test('uses the same management labels as web for each account class', () {
+      expect(
+        getMobileManagementMenuHeading(
+          accountRole: 'admin',
+          isPlatformOwner: false,
+        ),
+        'إدارة النظام',
+      );
+      expect(
+        getMobileManagementMenuHeading(
+          accountRole: 'user',
+          isPlatformOwner: true,
+        ),
+        'إعدادات المالك',
+      );
+      expect(
+        getMobileManagementMenuHeading(
+          accountRole: 'user',
+          isPlatformOwner: false,
+        ),
+        'إدارة الجهة',
+      );
+    });
+  });
 }

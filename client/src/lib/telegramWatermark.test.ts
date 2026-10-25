@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildTelegramWatermarkHtml,
   OFFICIAL_MINISTRY_NAME,
+  TELEGRAM_WATERMARK_COLUMNS,
   TELEGRAM_WATERMARK_GAP_MM,
+  TELEGRAM_WATERMARK_ROWS,
   TELEGRAM_WATERMARK_REPEAT_COUNT,
 } from "./telegramWatermark";
 
@@ -18,7 +20,9 @@ describe("official telegram watermark", () => {
     );
     expect(html).not.toContain("وزارة التربية");
     expect(OFFICIAL_MINISTRY_NAME).toBe("وزارة الداخلية");
-    expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(176);
+    expect(TELEGRAM_WATERMARK_COLUMNS).toBe(10);
+    expect(TELEGRAM_WATERMARK_ROWS).toBe(34);
+    expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(340);
     expect(TELEGRAM_WATERMARK_GAP_MM).toBe(5);
   });
 

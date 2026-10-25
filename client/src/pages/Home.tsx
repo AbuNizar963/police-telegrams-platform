@@ -3633,6 +3633,11 @@ function TelegramDetail({
       utils.settings.get.fetch(undefined, { staleTime: 0 }),
     ]);
     const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+    if (!logoDataUrl) {
+      throw new Error(
+        "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
+      );
+    }
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");

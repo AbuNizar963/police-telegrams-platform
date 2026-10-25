@@ -22,6 +22,7 @@ import 'push_notifications.dart';
 import 'public_pages.dart';
 import 'telegram_display.dart';
 import 'telegram_actions.dart';
+import 'telegram_report_labels.dart';
 import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 import 'telegram_outbox.dart';
@@ -3342,7 +3343,7 @@ class _DashboardPageState extends State<DashboardPage>
               Expanded(
                 child: _filterDropdown('السرية', classificationFilter, const [
                   ('all', 'كل المستويات'),
-                  ('normal', 'عادي'),
+                  ('normal', 'عادية'),
                   ('secret', 'سري'),
                 ], (value) => _setTelegramFilter(classification: value)),
               ),
@@ -3492,53 +3493,37 @@ class _DashboardPageState extends State<DashboardPage>
       );
     }
 
-    String statusLabel(dynamic raw) => switch ('$raw'.toLowerCase()) {
-      'pending' => 'قيد الانتظار',
-      'in_review' => 'قيد المراجعة',
-      'in_progress' => 'قيد الإجراء',
-      'resolved' => 'منجزة',
-      'completed' => 'مكتملة',
-      'submitted' => 'مرسلة للمراجعة',
-      'forwarded' => 'محالة',
-      'returned' => 'معادة للتصحيح',
-      'approved' => 'معتمدة',
-      'rejected' => 'مرفوضة',
-      'archived' => 'مؤرشفة',
-      'draft' => 'مسودة',
-      _ => '$raw' == 'null' ? 'مسودة' : '$raw',
-    };
+    String statusLabel(dynamic raw) {
+      final key = '$raw'.toLowerCase();
+      return telegramStatusLabels[key] ?? (key == 'null' ? 'مسودة' : '$raw');
+    }
 
-    String categoryLabel(dynamic raw) => switch ('$raw'.toLowerCase()) {
-      'criminal' => 'جنائي',
-      'administrative' => 'إداري',
-      'traffic' => 'مروري',
-      'security' => 'أمني',
-      'tactical' => 'عملياتي',
-      'intelligence' => 'استخباراتي',
-      'emergency' => 'طوارئ',
-      'public_order' => 'حفظ النظام',
-      'personnel' => 'شؤون الأفراد',
-      'logistics' => 'إمداد ودعم',
-      'training' => 'تدريب وتأهيل',
-      'community' => 'مجتمعي وشكاوى',
-      'other' => 'أخرى',
-      _ => '$raw',
-    };
+    String categoryLabel(dynamic raw) {
+      final key = '$raw'.toLowerCase();
+      return telegramCategoryLabels[key] ?? '$raw';
+    }
 
-    String priorityLabel(dynamic raw) => switch ('$raw'.toLowerCase()) {
-      'urgent' || 'critical' || 'high' => 'عاجلة',
-      'slow' => 'بطيئة',
-      'low' => 'منخفض',
-      'normal' || 'standard' => 'عادية',
-      _ => '$raw',
-    };
+    String priorityLabel(dynamic raw) {
+      final key = '$raw'.toLowerCase();
+      return telegramPriorityLabels[key] ??
+          switch (key) {
+            'critical' || 'high' => 'عاجلة',
+            'low' => 'منخفض',
+            'standard' => 'عادية',
+            _ => '$raw',
+          };
+    }
 
-    String confidentialityLabel(dynamic raw) => switch ('$raw'.toLowerCase()) {
-      'secret' || 'confidential' || 'restricted' => 'سري',
-      'top_secret' || 'top secret' => 'سري للغاية',
-      'normal' || 'public' => 'عادي',
-      _ => '$raw',
-    };
+    String confidentialityLabel(dynamic raw) {
+      final key = '$raw'.toLowerCase();
+      return telegramClassificationLabels[key] ??
+          switch (key) {
+            'confidential' || 'restricted' => 'سري',
+            'top_secret' || 'top secret' => 'سري للغاية',
+            'public' => 'عادية',
+            _ => '$raw',
+          };
+    }
 
     return Column(
       children: [
@@ -3986,53 +3971,32 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         DateTime.now().difference(createdAt) > const Duration(hours: 48);
   }
 
-  String _statusLabel(dynamic value) => switch ('$value'.toLowerCase()) {
-    'draft' => 'مسودة',
-    'submitted' => 'مرسلة للمراجعة',
-    'in_review' => 'قيد المراجعة',
-    'approved' => 'معتمدة',
-    'returned' => 'معادة للتصحيح',
-    'rejected' => 'مرفوضة',
-    'forwarded' => 'محالة',
-    'pending' => 'قيد الانتظار',
-    'in_progress' => 'قيد الإجراء',
-    'resolved' => 'منجزة',
-    'completed' => 'مكتملة',
-    'archived' => 'مؤرشفة',
-    _ => '$value',
-  };
+  String _statusLabel(dynamic value) {
+    final raw = '$value';
+    return telegramStatusLabels[raw.toLowerCase()] ?? raw;
+  }
 
-  String _priorityLabel(dynamic value) => switch ('$value'.toLowerCase()) {
-    'urgent' => 'عاجلة',
-    'slow' => 'بطيئة',
-    'normal' => 'عادية',
-    _ => '$value',
-  };
+  String _priorityLabel(dynamic value) {
+    final raw = '$value';
+    return telegramPriorityLabels[raw.toLowerCase()] ?? raw;
+  }
 
-  String _classificationLabel(dynamic value) =>
-      switch ('$value'.toLowerCase()) {
-        'secret' || 'confidential' || 'restricted' => 'سري',
-        'top_secret' || 'top secret' => 'سري للغاية',
-        'normal' || 'public' => 'عادي',
-        _ => '$value',
-      };
+  String _classificationLabel(dynamic value) {
+    final raw = '$value';
+    final normalized = raw.toLowerCase();
+    return telegramClassificationLabels[normalized] ??
+        switch (normalized) {
+          'confidential' || 'restricted' => 'سري',
+          'top_secret' || 'top secret' => 'سري للغاية',
+          'public' => 'عادية',
+          _ => raw,
+        };
+  }
 
-  String _categoryLabel(dynamic value) => switch ('$value'.toLowerCase()) {
-    'criminal' => 'جنائي',
-    'administrative' => 'إداري',
-    'traffic' => 'مروري',
-    'security' => 'أمني',
-    'tactical' => 'عملياتي',
-    'intelligence' => 'استخباراتي',
-    'emergency' => 'طوارئ',
-    'public_order' => 'حفظ النظام',
-    'personnel' => 'شؤون الأفراد',
-    'logistics' => 'إمداد ودعم',
-    'training' => 'تدريب وتأهيل',
-    'community' => 'مجتمعي وشكاوى',
-    'other' => 'أخرى',
-    _ => '$value',
-  };
+  String _categoryLabel(dynamic value) {
+    final raw = '$value';
+    return telegramCategoryLabels[raw.toLowerCase()] ?? raw;
+  }
 
   String _formatDate(dynamic value) {
     final date = DateTime.tryParse('$value');
@@ -4496,7 +4460,7 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
                 border: OutlineInputBorder(),
               ),
               items: const [
-                DropdownMenuItem(value: 'normal', child: Text('عادي')),
+                DropdownMenuItem(value: 'normal', child: Text('عادية')),
                 DropdownMenuItem(value: 'secret', child: Text('سري')),
               ],
               onChanged: (value) {

@@ -19,7 +19,7 @@ const _categories = <MapEntry<String, String>>[
 ];
 
 const _classifications = <MapEntry<String, String>>[
-  MapEntry('normal', 'عادي'),
+  MapEntry('normal', 'عادية'),
   MapEntry('secret', 'سري'),
 ];
 

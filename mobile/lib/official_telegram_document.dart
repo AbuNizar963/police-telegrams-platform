@@ -13,6 +13,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'api.dart';
 import 'telegram_display.dart';
+import 'telegram_report_labels.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
@@ -955,44 +956,13 @@ String buildOfficialTelegramHtml({
       _value(telegram['organizationId'], fallback: '') ==
       _value(telegram['currentOrganizationId'], fallback: '');
   final documentType = outgoing ? 'برقية صادرة' : 'برقية واردة';
-  final classification = _label({
-    'secret': 'سري',
-    'normal': 'عادي',
-  }, telegram['classification']);
-  final priority = _label({
-    'urgent': 'عاجلة',
-    'normal': 'عادية',
-    'slow': 'بطيئة',
-  }, telegram['priority']);
-  final category = _label({
-    'criminal': 'جنائي',
-    'administrative': 'إداري',
-    'traffic': 'مروري',
-    'security': 'أمني',
-    'tactical': 'عملياتي',
-    'intelligence': 'استخباراتي',
-    'emergency': 'طوارئ',
-    'public_order': 'حفظ النظام',
-    'personnel': 'شؤون الأفراد',
-    'logistics': 'إمداد ودعم',
-    'training': 'تدريب وتأهيل',
-    'community': 'مجتمعي وشكاوى',
-    'other': 'أخرى',
-  }, telegram['category']);
-  final status = _label({
-    'draft': 'مسودة',
-    'submitted': 'مرسلة للمراجعة',
-    'in_review': 'قيد المراجعة',
-    'approved': 'معتمدة',
-    'returned': 'معادة للتصحيح',
-    'rejected': 'مرفوضة',
-    'forwarded': 'محالة',
-    'pending': 'قيد الانتظار',
-    'in_progress': 'قيد الإجراء',
-    'resolved': 'منجزة',
-    'completed': 'مكتملة',
-    'archived': 'مؤرشفة',
-  }, telegram['status']);
+  final classification = _label(
+    telegramClassificationLabels,
+    telegram['classification'],
+  );
+  final priority = _label(telegramPriorityLabels, telegram['priority']);
+  final category = _label(telegramCategoryLabels, telegram['category']);
+  final status = _label(telegramStatusLabels, telegram['status']);
   final logo = logoDataUrl == null
       ? ''
       : '<img class="official-logo" src="${_escapeHtml(logoDataUrl)}" alt="الشعار الرسمي" />';
@@ -1073,7 +1043,7 @@ $watermark
 <p><strong>إلى:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['recipient']), numberSystem))}</p>
 <p><strong>الموضوع:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['subject']), numberSystem))}</p>
 </div>${showVerificationQr ? '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">$qrSvg</div>' : ''}</div></section>
-<h2 class="body-heading">نص الوثيقة</h2>
+<h2 class="body-heading">نص البرقية</h2>
 <div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
 <section class="signature">
 <p><strong>${_escapeHtml(_localizeDigits(_value(settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>

@@ -15,11 +15,27 @@ const Map<String, String> telegramStatusLabels = <String, String>{
 
 const Map<String, String> telegramClassificationLabels = <String, String>{
   'secret': 'سري',
-  'normal': 'عادي',
+  'normal': 'عادية',
 };
 
 const Map<String, String> telegramPriorityLabels = <String, String>{
   'urgent': 'عاجلة',
   'normal': 'عادية',
   'slow': 'بطيئة',
+};
+
+const Map<String, String> telegramCategoryLabels = <String, String>{
+  'administrative': 'إداري',
+  'criminal': 'جنائي',
+  'traffic': 'مروري',
+  'security': 'أمني',
+  'tactical': 'عملياتي',
+  'intelligence': 'استخباراتي',
+  'emergency': 'طوارئ',
+  'public_order': 'حفظ النظام',
+  'personnel': 'شؤون الأفراد',
+  'logistics': 'إمداد ودعم',
+  'training': 'تدريب وتأهيل',
+  'community': 'مجتمعي وشكاوى',
+  'other': 'أخرى',
 };

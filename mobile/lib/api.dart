@@ -177,6 +177,15 @@ class PoliceApi {
     }
   }
 
+  /// Reads a previously successful read-only response without treating it as
+  /// the authoritative result. Callers can render it immediately and then
+  /// invoke [call] to revalidate it with the server.
+  Future<dynamic> readCachedResponse(
+    String procedure, {
+    Map<String, dynamic>? input,
+  }) =>
+      _readOfflineResponse(procedure, input);
+
   Future<void> _writeOfflineResponse(
     String procedure,
     Map<String, dynamic>? input,

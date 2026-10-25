@@ -1629,6 +1629,33 @@ class _DashboardPageState extends State<DashboardPage>
     _refreshInProgress = true;
     if (showLoading) setState(() => loading = true);
     try {
+      final canUseCachedDashboard =
+          showLoading &&
+          telegramPage == 1 &&
+          section == 0 &&
+          searchQuery.trim().isEmpty &&
+          statusFilter == 'all' &&
+          priorityFilter == 'all' &&
+          classificationFilter == 'all' &&
+          categoryFilter == 'all' &&
+          _filterFrom == null &&
+          _filterTo == null;
+      if (canUseCachedDashboard) {
+        final cached = await widget.api.readCachedDashboard();
+        final cachedStats = cached?['stats'];
+        final cachedTelegrams = cached?['telegrams'];
+        if (mounted && cached != null && cachedTelegrams is List) {
+          setState(() {
+            if (cachedStats is Map) {
+              stats = Map<String, dynamic>.from(cachedStats);
+            }
+            telegrams = List<dynamic>.from(cachedTelegrams);
+            loading = false;
+            error = null;
+            _usingCachedData = true;
+          });
+        }
+      }
       final results = await Future.wait([
         widget.api.call('dashboard.stats'),
         widget.api.call('organizations.context').catchError((_) => null),
@@ -4017,10 +4044,26 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   }
 
   Future<void> load() async {
+    final input = {'id': widget.telegramId};
+    try {
+      final cached = await widget.api.readCachedResponse(
+        'telegrams.get',
+        input: input,
+      );
+      if (mounted && cached is Map) {
+        setState(() {
+          telegram = Map<String, dynamic>.from(cached);
+          loading = false;
+          error = null;
+        });
+      }
+    } catch (_) {
+      // A corrupt cache must never block the authoritative request.
+    }
     try {
       final data = await widget.api.call(
         'telegrams.get',
-        input: {'id': widget.telegramId},
+        input: input,
       );
       if (mounted) {
         setState(() {

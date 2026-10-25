@@ -3141,7 +3141,12 @@ function TelegramDetail({
       settings?.logoUrl?.trim() ||
       null;
 
-    return loadOfficialDocumentLogoDataUrl(logoUrl);
+    const logoDataUrl = await loadOfficialDocumentLogoDataUrl(logoUrl);
+    if (logoUrl && !logoDataUrl) {
+      throw new Error("تعذر تجهيز شعار الجهة للطباعة أو التصدير");
+    }
+
+    return logoDataUrl;
   };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
@@ -3236,8 +3241,10 @@ function TelegramDetail({
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
     // Match the working application branch: use the configured organization
     // logo directly when normalization to a data URL is unavailable.
-    const resolvedLogoUrl =
-      logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+    // The supplied URL is already resolved for this document. Do not
+    // reintroduce a remote settings URL when normalization explicitly failed:
+    // the server-side renderer blocks external network resources.
+    const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
       : "";

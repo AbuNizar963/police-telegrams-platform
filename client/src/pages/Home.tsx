@@ -61,6 +61,7 @@ import {
 } from "@/lib/telegramWatermark";
 import {
   resolveTelegramExportLogo,
+  resolveTelegramExportOrganizationId,
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
@@ -3108,14 +3109,14 @@ function TelegramDetail({
     organizationId?: string | null;
     logoUrl?: string | null;
   }): Promise<string | null> => {
-    // The telegram's organization is authoritative. The current organization
-    // is only a fallback for legacy telegram records without an owner ID.
-    // Match the working application branch: the current organization
-    // owns the active letterhead; use the legacy owner ID only when absent.
-    const logoOrganizationId =
-      telegram.currentOrganizationId?.trim() ||
-      telegram.organizationId?.trim() ||
-      null;
+    // The authenticated account owns the letterhead for this export. A
+    // telegram can have been routed to another organization after creation;
+    // only ownerless legacy accounts fall back to the telegram's IDs.
+    const logoOrganizationId = resolveTelegramExportOrganizationId({
+      accountOrganizationId: exportSettings.organizationId,
+      currentOrganizationId: telegram.currentOrganizationId,
+      ownerOrganizationId: telegram.organizationId,
+    });
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
       try {
@@ -3142,7 +3143,7 @@ function TelegramDetail({
     if (logoDataUrl) return logoDataUrl;
 
     const resolvedOrganizationLogo = resolveTelegramExportLogo({
-      telegramOrganizationId: logoOrganizationId,
+      exportOrganizationId: logoOrganizationId,
       organizationLogo,
       settingsOrganizationId: exportSettings.organizationId,
       settingsLogoUrl: exportSettings.logoUrl,

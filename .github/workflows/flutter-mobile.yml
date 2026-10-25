@@ -9,6 +9,7 @@ on:
       - ".github/workflows/flutter-mobile.yml"
   pull_request:
     branches:
+      - main
       - flutter-mobile-app
     paths:
       - "mobile/**"

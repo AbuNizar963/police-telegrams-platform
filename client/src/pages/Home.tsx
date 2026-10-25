@@ -65,6 +65,7 @@ import {
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
+import { getCachedOfficialDocumentLogo } from "@/lib/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -2783,68 +2784,70 @@ async function loadOfficialDocumentLogoDataUrl(
   }
 
   try {
-    const response = await fetch(source, { credentials: "same-origin" });
-    if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
+    return await getCachedOfficialDocumentLogo(source, async () => {
+      const response = await fetch(source, { credentials: "same-origin" });
+      if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
 
-    const blob = await response.blob();
-    const contentType = blob.type.split(";")[0].trim().toLowerCase();
-    if (
-      contentType &&
-      !contentType.startsWith("image/") &&
-      contentType !== "application/octet-stream"
-    ) {
-      throw new Error("مصدر الشعار ليس صورة صالحة");
-    }
-    if (blob.size === 0) throw new Error("ملف الشعار فارغ");
-
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    const imageMimeType = detectOfficialDocumentLogoMimeType(
-      bytes,
-      contentType,
-      source
-    );
-    if (!imageMimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
-    const normalizedBlob = new Blob([bytes], { type: imageMimeType });
-    const objectUrl = URL.createObjectURL(normalizedBlob);
-    try {
-      const image = new Image();
-      image.decoding = "async";
-      const imageLoaded = new Promise<void>((resolve, reject) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener(
-          "error",
-          () => reject(new Error("تعذر فك ترميز صورة الشعار")),
-          { once: true }
-        );
-      });
-      image.src = objectUrl;
-      await imageLoaded;
-      await image.decode?.();
-
-      if (image.naturalWidth === 0 || image.naturalHeight === 0) {
-        throw new Error("صورة الشعار غير صالحة");
+      const blob = await response.blob();
+      const contentType = blob.type.split(";")[0].trim().toLowerCase();
+      if (
+        contentType &&
+        !contentType.startsWith("image/") &&
+        contentType !== "application/octet-stream"
+      ) {
+        throw new Error("مصدر الشعار ليس صورة صالحة");
       }
+      if (blob.size === 0) throw new Error("ملف الشعار فارغ");
 
-      // Do not round-trip through canvas: the storage proxy may redirect to a
-      // signed Supabase URL, which can taint a canvas and make toDataURL()
-      // throw. Reading the validated Blob directly preserves transparency and
-      // gives both the header and watermark the exact same embedded bytes.
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === "string") {
-            resolve(reader.result);
-          } else {
-            reject(new Error("تعذر تجهيز صورة الشعار"));
-          }
-        };
-        reader.onerror = () =>
-          reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
-        reader.readAsDataURL(normalizedBlob);
-      });
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const imageMimeType = detectOfficialDocumentLogoMimeType(
+        bytes,
+        contentType,
+        source
+      );
+      if (!imageMimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
+      const normalizedBlob = new Blob([bytes], { type: imageMimeType });
+      const objectUrl = URL.createObjectURL(normalizedBlob);
+      try {
+        const image = new Image();
+        image.decoding = "async";
+        const imageLoaded = new Promise<void>((resolve, reject) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener(
+            "error",
+            () => reject(new Error("تعذر فك ترميز صورة الشعار")),
+            { once: true }
+          );
+        });
+        image.src = objectUrl;
+        await imageLoaded;
+        await image.decode?.();
+
+        if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+          throw new Error("صورة الشعار غير صالحة");
+        }
+
+        // Do not round-trip through canvas: the storage proxy may redirect to a
+        // signed Supabase URL, which can taint a canvas and make toDataURL()
+        // throw. Reading the validated Blob directly preserves transparency and
+        // gives both the header and watermark the exact same embedded bytes.
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+            } else {
+              reject(new Error("تعذر تجهيز صورة الشعار"));
+            }
+          };
+          reader.onerror = () =>
+            reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
+          reader.readAsDataURL(normalizedBlob);
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    });
   } catch (error) {
     // Avoid logging potentially signed resource URLs. Do not silently produce
     // an official document with the configured logo missing.
@@ -3060,6 +3063,9 @@ function TelegramDetail({
   const attachments = trpc.telegrams.attachments.useQuery({
     telegramId: telegram.id,
   });
+  const actions = trpc.telegrams.actions.useQuery({
+    telegramId: telegram.id,
+  });
   const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
     onSuccess: result => {
       const link = document.createElement("a");
@@ -3071,6 +3077,39 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر تنزيل المرفق"),
   });
+  const fetchAttachmentForPreview =
+    trpc.telegrams.downloadAttachment.useMutation();
+  const previewAttachment = async (file: {
+    id: number;
+    originalName: string;
+    mimeType: string;
+  }) => {
+    const isPdf = file.mimeType === "application/pdf";
+    const isImage = ["image/jpeg", "image/png", "image/webp"].includes(
+      file.mimeType
+    );
+    if (!isPdf && !isImage) {
+      toast.info("المعاينة متاحة لملفات PDF والصور فقط");
+      return;
+    }
+    try {
+      const result = await fetchAttachmentForPreview.mutateAsync({
+        attachmentId: file.id,
+      });
+      setAttachmentPreview({
+        name: file.originalName,
+        mimeType: file.mimeType,
+        // The URL is short-lived and already authorized by the server. Using
+        // it directly also supports private storage providers without a CORS
+        // dependency in the browser.
+        url: result.url,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر معاينة المرفق"
+      );
+    }
+  };
   const handleAttachment = (file?: File) => {
     if (!file) return;
     const allowed = [
@@ -3123,6 +3162,12 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
+  const [documentPreparing, setDocumentPreparing] = useState(true);
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    name: string;
+    mimeType: string;
+    url: string;
+  } | null>(null);
   const resolveTelegramLogoDataUrl = async (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
@@ -3538,6 +3583,8 @@ function TelegramDetail({
     const host = paperRef.current;
     if (!host) return;
 
+    setDocumentPreparing(true);
+
     if (documentSettingsUnavailable || !platformDocumentSettings) {
       host.replaceChildren();
       host.style.height = "";
@@ -3584,11 +3631,8 @@ function TelegramDetail({
       activeObserver.observe(host);
     };
 
-    // Render immediately so opening a telegram never waits for a network call.
-    renderPreview(platformDocumentSettings, settings?.logoUrl ?? null);
-
-    // Refresh the preview with the verified owning-organization logo when
-    // available. A failed logo lookup must never clear or break the preview.
+    // Prepare the complete official paper before showing it. This prevents a
+    // logo-less first paint followed by a visible layout shift.
     const refreshLogo = async () => {
       try {
         const [documentSettings, exportSettings] = await Promise.all([
@@ -3601,13 +3645,21 @@ function TelegramDetail({
         const previewLogoUrl =
           logoDataUrl ||
           (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
-        if (!cancelled) renderPreview(documentSettings, previewLogoUrl);
+        if (!cancelled) {
+          renderPreview(documentSettings, previewLogoUrl);
+          setDocumentPreparing(false);
+        }
       } catch (error) {
         if (!cancelled) {
           console.warn(
             "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
             error
           );
+          renderPreview(
+            platformDocumentSettings,
+            settings?.logoUrl?.trim() || null
+          );
+          setDocumentPreparing(false);
         }
       }
     };
@@ -3971,6 +4023,21 @@ function TelegramDetail({
       )}
       close={close}
     >
+      {documentPreparing && !documentSettingsUnavailable && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-6 text-center text-sm text-[#6e531e] dark:bg-[#2d281b] dark:text-[#e7cc8c]"
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#b49a55]/30 border-t-[#b49a55]" />
+          <div>
+            <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
+            <p className="mt-1 text-xs opacity-80">
+              يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
+            </p>
+          </div>
+        </div>
+      )}
       <div
         ref={paperRef}
         className="telegram-preview-stage w-full overflow-hidden rounded-sm bg-white"
@@ -4112,21 +4179,85 @@ function TelegramDetail({
                     كيلوبايت · SHA-256 {file.sha256.slice(0, 12)}...
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={downloadAttachment.isPending}
-                  onClick={() =>
-                    downloadAttachment.mutate({ attachmentId: file.id })
-                  }
-                >
-                  تنزيل آمن
-                </Button>
+                <div className="flex shrink-0 gap-2">
+                  {[
+                    "application/pdf",
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                  ].includes(file.mimeType) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={fetchAttachmentForPreview.isPending}
+                      onClick={() => void previewAttachment(file)}
+                    >
+                      {fetchAttachmentForPreview.isPending
+                        ? "جارٍ التجهيز..."
+                        : "معاينة"}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={downloadAttachment.isPending}
+                    onClick={() =>
+                      downloadAttachment.mutate({ attachmentId: file.id })
+                    }
+                  >
+                    تنزيل آمن
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+      {actions.data && actions.data.length > 0 && (
+        <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+          <summary className="cursor-pointer text-xs font-bold">
+            سجل التدقيق والإجراءات ({actions.data.length})
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {actions.data.map(action => (
+              <div
+                key={action.id}
+                className="rounded-lg border bg-background px-3 py-2 text-xs"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">
+                    {action.action === "status.transition"
+                      ? "تغيير حالة البرقية"
+                      : action.action === "attachment.upload"
+                        ? "رفع مرفق"
+                        : action.action}
+                  </span>
+                  <time
+                    className="text-[10px] text-muted-foreground"
+                    dateTime={new Date(action.createdAt).toISOString()}
+                  >
+                    {new Date(action.createdAt).toLocaleString("ar-SY")}
+                  </time>
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  المستخدم رقم {action.actorUserId}
+                  {action.fromStatus || action.toStatus
+                    ? ` · ${action.fromStatus ?? "—"} ← ${action.toStatus ?? "—"}`
+                    : ""}
+                  {action.reason ? ` · السبب: ${action.reason}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {attachmentPreview && (
+        <AttachmentPreviewModal
+          file={attachmentPreview}
+          close={() => setAttachmentPreview(null)}
+        />
       )}
       <div className="mt-5 rounded-xl border bg-muted/20 p-2 print:hidden">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -4685,6 +4816,38 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function AttachmentPreviewModal({
+  file,
+  close,
+}: {
+  file: { name: string; mimeType: string; url: string };
+  close: () => void;
+}) {
+  const isPdf = file.mimeType === "application/pdf";
+  return (
+    <Modal title={`معاينة المرفق: ${file.name}`} close={close} wide>
+      <div className="min-h-[60vh] overflow-hidden rounded-lg border bg-muted/20">
+        {isPdf ? (
+          <iframe
+            title={`معاينة ${file.name}`}
+            src={file.url}
+            className="h-[70vh] w-full"
+          />
+        ) : (
+          <div className="flex min-h-[60vh] items-center justify-center p-4">
+            <img
+              src={file.url}
+              alt={file.name}
+              className="max-h-[70vh] max-w-full object-contain"
+            />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function Modal({
   title,
   subtitle,

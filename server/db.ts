@@ -1022,6 +1022,19 @@ export async function recordTelegramAction(input: {
   throwIfError(error, "Failed to record telegram action");
 }
 
+export async function listTelegramActions(telegramId: number) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_actions")
+    .select(
+      "id, telegramId, actorUserId, action, fromStatus, toStatus, reason, metadata, createdAt"
+    )
+    .eq("telegramId", telegramId)
+    .order("createdAt", { ascending: false })
+    .limit(200);
+  throwIfError(error, "Failed to list telegram actions");
+  return data ?? [];
+}
+
 export async function createTelegramAttachment(input: {
   telegramId: number;
   storageKey: string;

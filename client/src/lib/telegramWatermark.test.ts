@@ -51,7 +51,7 @@ describe("official telegram watermark", () => {
 
     expect(html).toContain('class="page-watermark"');
     expect(html).toContain('class="watermark-logo"');
-    expect(html).toContain('class="watermark-logo-fallback"');
+    expect(html).not.toContain('class="watermark-logo-fallback"');
     expect(html).not.toContain('class="watermark-text-pattern"');
     expect(html).not.toContain(OFFICIAL_MINISTRY_NAME);
   });

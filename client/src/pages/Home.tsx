@@ -2703,41 +2703,52 @@ async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
 
   await Promise.all(
     images.map(async image => {
-      if (!image.complete) {
-        await new Promise<void>((resolve, reject) => {
-          const cleanup = () => {
-            image.removeEventListener("load", onLoad);
-            image.removeEventListener("error", onError);
-          };
-          const onLoad = () => {
-            cleanup();
-            resolve();
-          };
-          const onError = () => {
-            cleanup();
-            reject(new Error("تعذر تحميل صورة الشعار داخل البرقية"));
-          };
+      try {
+        if (!image.complete) {
+          await new Promise<void>((resolve, reject) => {
+            const cleanup = () => {
+              image.removeEventListener("load", onLoad);
+              image.removeEventListener("error", onError);
+            };
+            const onLoad = () => {
+              cleanup();
+              resolve();
+            };
+            const onError = () => {
+              cleanup();
+              reject(new Error("تعذر تحميل صورة الشعار داخل البرقية"));
+            };
 
-          image.addEventListener("load", onLoad, { once: true });
-          image.addEventListener("error", onError, { once: true });
+            image.addEventListener("load", onLoad, { once: true });
+            image.addEventListener("error", onError, { once: true });
 
-          // Close the race where the image finishes between the initial check
-          // and listener registration.
-          if (image.complete) {
-            cleanup();
-            resolve();
-          }
-        });
-      }
+            // Close the race where the image finishes between the initial
+            // check and listener registration.
+            if (image.complete) {
+              cleanup();
+              resolve();
+            }
+          });
+        }
 
-      if (typeof image.decode === "function") {
-        await image.decode();
-      }
+        if (typeof image.decode === "function") {
+          await image.decode();
+        }
 
-      if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-        throw new Error(
-          "صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير"
-        );
+        if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+          throw new Error(
+            "صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير"
+          );
+        }
+      } catch (error) {
+        // The organization logo is optional. Remove only a broken logo so a
+        // legacy or malformed image cannot block the telegram's text export.
+        if (image.classList.contains("official-logo")) {
+          image.remove();
+          return;
+        }
+
+        throw error;
       }
     })
   );

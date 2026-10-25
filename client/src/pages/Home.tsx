@@ -56,10 +56,8 @@ import {
   getTelegramExportFileBaseName,
 } from "@/lib/telegramDisplay";
 import {
+  buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
-  TELEGRAM_WATERMARK_COLUMNS,
-  TELEGRAM_WATERMARK_GAP_MM,
-  TELEGRAM_WATERMARK_ROWS,
 } from "@/lib/telegramWatermark";
 import {
   resolveTelegramExportLogo,
@@ -3172,7 +3170,7 @@ function TelegramDetail({
     const showVerificationQr = documentSettings.showVerificationQr !== false;
     // Match the working application branch: keep both watermark layers
     // visible at a restrained opacity, independent of stale legacy settings.
-    const watermarkOpacity = "0.12";
+    const watermarkOpacity = 0.12;
     const requestedHeaderDividerColor = documentSettings.headerDividerColor;
     const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
       requestedHeaderDividerColor
@@ -3314,50 +3312,7 @@ function TelegramDetail({
           print-color-adjust: exact;
         }
         .telegram-export-page * { box-sizing: border-box; }
-        .telegram-export-page .page-watermark {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          overflow: hidden;
-          pointer-events: none;
-        }
-        .telegram-export-page .watermark-logo {
-          position: absolute;
-          z-index: 1;
-          top: 50%;
-          left: 50%;
-          width: 93.75%;
-          height: 93.75%;
-          transform: translate(-50%, -50%);
-          object-fit: contain;
-          opacity: ${watermarkOpacity};
-        }
-
-        .telegram-export-page .watermark-text-pattern {
-          position: absolute;
-          z-index: 0;
-          inset: 3mm;
-          display: grid;
-          grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
-          grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);
-          column-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-          row-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-          justify-content: center;
-          align-content: start;
-          align-items: center;
-          justify-items: center;
-          overflow: hidden;
-          opacity: ${watermarkOpacity};
-        }
-        .telegram-export-page .watermark-text-pattern span {
-          color: #73777d;
-          text-align: center;
-          font-family: "Cairo", "Noto Naskh Arabic", Tahoma, serif;
-          font-size: 11px;
-          font-weight: 400;
-          line-height: 1.2;
-          white-space: nowrap;
-        }
+        ${buildTelegramWatermarkCss(watermarkOpacity)}
         .telegram-export-page .official-header, .telegram-export-page .classification,
         .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
           position: relative;

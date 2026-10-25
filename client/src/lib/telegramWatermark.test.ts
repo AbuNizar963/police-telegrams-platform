@@ -14,6 +14,7 @@ describe("official telegram watermark", () => {
 
     expect(html).toContain('class="page-watermark"');
     expect(html).toContain('class="watermark-text-pattern"');
+    expect(html).toContain('class="watermark-logo-fallback"');
     expect(html).toContain('aria-hidden="true"');
     expect(html.match(/<span>وزارة الداخلية<\/span>/g)).toHaveLength(
       TELEGRAM_WATERMARK_REPEAT_COUNT
@@ -50,6 +51,7 @@ describe("official telegram watermark", () => {
 
     expect(html).toContain('class="page-watermark"');
     expect(html).toContain('class="watermark-logo"');
+    expect(html).toContain('class="watermark-logo-fallback"');
     expect(html).not.toContain('class="watermark-text-pattern"');
     expect(html).not.toContain(OFFICIAL_MINISTRY_NAME);
   });

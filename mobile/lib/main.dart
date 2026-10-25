@@ -12,6 +12,7 @@ import 'api.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
 import 'app_update_service.dart';
+import 'mobile_access_policy.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
 import 'native_organization_management_page.dart';
@@ -1262,7 +1263,9 @@ class _DashboardPageState extends State<DashboardPage>
         refresh();
         break;
       case 'department':
-        _pushPage(DepartmentSettingsPage(api: widget.api));
+        if (_canManageOrganizationSettings) {
+          _pushPage(DepartmentSettingsPage(api: widget.api));
+        }
         break;
       case 'platform_document_settings':
         if (_isPlatformOwner) {
@@ -1273,7 +1276,9 @@ class _DashboardPageState extends State<DashboardPage>
         _pushPage(NativeOrganizationManagementPage(api: widget.api));
         break;
       case 'users':
-        _pushPage(NativeUserManagementPage(api: widget.api));
+        if (_canManageUsers) {
+          _pushPage(NativeUserManagementPage(api: widget.api));
+        }
         break;
       case 'regions':
         _pushPage(NativeOperationsPage(api: widget.api, initialTab: 1));
@@ -1880,17 +1885,23 @@ class _DashboardPageState extends State<DashboardPage>
     refresh(showLoading: false);
   }
 
-  bool get _canViewReports =>
-      _account['role'] == 'admin' ||
-      const {
-        'system_admin',
-        'organization_admin',
-        'regional_admin',
-        'organization_supervisor',
-        'reviewer',
-        'reader',
-        'auditor',
-      }.contains(activeOrganizationRole);
+  bool get _canViewReports => hasMobileTelegramReportAccess(
+    accountRole: _account['role']?.toString(),
+    organizationRole: activeOrganizationRole,
+    isPlatformOwner: _isPlatformOwner,
+  );
+
+  bool get _canManageUsers => hasMobileUserManagementAccess(
+    accountRole: _account['role']?.toString(),
+    organizationRole: activeOrganizationRole,
+    isPlatformOwner: _isPlatformOwner,
+  );
+
+  bool get _canManageOrganizationSettings =>
+      hasMobileOrganizationSettingsAccess(
+        organizationRole: activeOrganizationRole,
+        isPlatformOwner: _isPlatformOwner,
+      );
 
   bool get _isPlatformOwner =>
       activeOrganizationIsOwner || _account['isPlatformOwner'] == true;
@@ -2361,7 +2372,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
               ),
-              if (_account['role'] == 'admin' || _canViewReports)
+              if (_canManageOrganizationSettings)
                 const PopupMenuItem(
                   value: 'department',
                   child: _AccountMenuItem(
@@ -2369,12 +2380,14 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إعدادات الجهة',
                   ),
                 ),
-              if (_account['role'] == 'admin') ...[
-                const PopupMenuItem<String>(
+              if (_canManageUsers) ...[
+                PopupMenuItem<String>(
                   enabled: false,
                   height: 34,
                   child: Text(
-                    'إدارة النظام',
+                    _account['role'] == 'admin'
+                        ? 'إدارة النظام'
+                        : 'إدارة الجهة',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -2389,13 +2402,14 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إدارة المستخدمين وإضافة الحسابات',
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'regions',
-                  child: _AccountMenuItem(
-                    icon: Icons.account_tree_outlined,
-                    title: 'إدارة المناطق والأقسام والمخافر',
+                if (_account['role'] == 'admin')
+                  const PopupMenuItem(
+                    value: 'regions',
+                    child: _AccountMenuItem(
+                      icon: Icons.account_tree_outlined,
+                      title: 'إدارة المناطق والأقسام والمخافر',
+                    ),
                   ),
-                ),
               ],
               if (_isPlatformOwner) ...[
                 const PopupMenuDivider(),
@@ -2567,7 +2581,7 @@ class _DashboardPageState extends State<DashboardPage>
                     );
                   },
                 ),
-                if (_account['role'] == 'admin' || _canViewReports)
+                if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),
                     title: const Text('إدارة المستخدمين'),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
   OFFICIAL_MINISTRY_NAME,
   TELEGRAM_WATERMARK_COLUMNS,
@@ -61,5 +62,28 @@ describe("official telegram watermark", () => {
     expect(html).not.toContain('class="watermark-logo-fallback"');
     expect(html).not.toContain('class="watermark-text-pattern"');
     expect(html).not.toContain(OFFICIAL_MINISTRY_NAME);
+  });
+
+  it("covers the full sheet and retains watermark ink in printed exports", () => {
+    const css = buildTelegramWatermarkCss(0.12);
+
+    expect(css).toContain(".telegram-export-page .page-watermark");
+    expect(css).toContain("inset: 0;");
+    expect(css).toContain(".telegram-export-page .watermark-logo");
+    expect(css).toContain("width: 93.75%;");
+    expect(css).toContain("grid-template-columns: repeat(10, max-content);");
+    expect(css).toContain("grid-template-rows: repeat(34, max-content);");
+    expect(css).toContain("column-gap: 5mm;");
+    expect(css).toContain("row-gap: 5mm;");
+    expect(css).toContain("justify-content: space-between;");
+    expect(css).toContain("align-content: space-between;");
+    expect(css).toContain("print-color-adjust: exact;");
+    expect(css).toContain("opacity: 0.12;");
+  });
+
+  it("bounds watermark opacity so malformed settings cannot hide the logo", () => {
+    expect(buildTelegramWatermarkCss(2)).toContain("opacity: 1;");
+    expect(buildTelegramWatermarkCss(-1)).toContain("opacity: 0;");
+    expect(buildTelegramWatermarkCss(Number.NaN)).toContain("opacity: 0.12;");
   });
 });

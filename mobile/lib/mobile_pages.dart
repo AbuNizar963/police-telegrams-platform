@@ -8,6 +8,7 @@ import 'app_lock.dart';
 
 import 'api.dart';
 import 'telegram_report_date_formatter.dart';
+import 'telegram_report_labels.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -178,21 +179,6 @@ class _ReportsPageState extends State<ReportsPage> {
   DateTime? _from;
   DateTime? _to;
 
-  static const _statuses = <String, String>{
-    'draft': 'مسودة',
-    'submitted': 'مرسلة',
-    'in_review': 'قيد المراجعة',
-    'approved': 'معتمدة',
-    'returned': 'معادة',
-    'rejected': 'مرفوضة',
-    'forwarded': 'محالة',
-    'pending': 'معلقة',
-    'in_progress': 'قيد التنفيذ',
-    'resolved': 'تمت المعالجة',
-    'completed': 'مكتملة',
-    'archived': 'مؤرشفة',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -337,9 +323,11 @@ class _ReportsPageState extends State<ReportsPage> {
           '${row['serialCode'] ?? row['serialNumber'] ?? ''}',
           '${row['subject'] ?? ''}',
           '${row['recipient'] ?? row['organizationName'] ?? ''}',
-          _statuses['${row['status']}'] ?? '${row['status'] ?? ''}',
-          '${row['classification'] ?? ''}',
-          '${row['priority'] ?? ''}',
+          telegramStatusLabels['${row['status']}'] ?? '${row['status'] ?? ''}',
+          telegramClassificationLabels['${row['classification']}'] ??
+              '${row['classification'] ?? ''}',
+          telegramPriorityLabels['${row['priority']}'] ??
+              '${row['priority'] ?? ''}',
           formatTelegramReportDate(row['createdAt'], reportSettings),
         ];
       }),
@@ -441,7 +429,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                 value: 'all',
                                 child: Text('كل الحالات'),
                               ),
-                              ..._statuses.entries.map(
+                              ...telegramStatusLabels.entries.map(
                                 (entry) => DropdownMenuItem(
                                   value: entry.key,
                                   child: Text(entry.value),

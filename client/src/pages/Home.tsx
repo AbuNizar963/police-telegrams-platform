@@ -2692,13 +2692,6 @@ function TelegramComposer({
 }
 
 /**
- * Fetch and normalize the organization logo once before it is used by the
- * header and watermark. The server renderer has no browser session, so a
- * data URL keeps both layers independent of authenticated storage at render
- * time. A missing legacy image is optional, matching the Flutter document
- * flow: export continues without substituting another organization's logo.
- */
-/**
  * Wait until every image embedded in an official document is decoded before
  * handing the markup to the browser print dialog or the server-side renderer.
  * This is especially important for data URLs: setting img.src is synchronous,
@@ -2728,6 +2721,13 @@ async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
   );
 }
 
+/**
+ * Fetch and normalize the organization logo once before it is used by the
+ * header and watermark. The server renderer has no browser session, so a
+ * data URL keeps both layers independent of authenticated storage at render
+ * time. A missing legacy image is optional, matching the Flutter document
+ * flow: export continues without substituting another organization's logo.
+ */
 async function loadOfficialDocumentLogoDataUrl(
   logoUrl: string | null | undefined
 ): Promise<string | null> {

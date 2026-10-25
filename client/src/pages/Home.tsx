@@ -3052,8 +3052,12 @@ function TelegramDetail({
     organizationId?: string | null;
     logoUrl?: string | null;
   }): Promise<string | null> => {
+    // The telegram's organization is authoritative. The current organization
+    // is only a fallback for legacy telegram records without an owner ID.
     const logoOrganizationId =
-      telegram.currentOrganizationId ?? telegram.organizationId;
+      telegram.organizationId?.trim() ||
+      telegram.currentOrganizationId?.trim() ||
+      null;
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
       try {
@@ -3089,10 +3093,12 @@ function TelegramDetail({
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
-    const watermarkOpacityPercent = Math.max(
-      0,
-      Math.min(60, Number(documentSettings.watermarkOpacityPercent))
+    const configuredWatermarkOpacity = Number(
+      documentSettings.watermarkOpacityPercent
     );
+    const watermarkOpacityPercent = Number.isFinite(configuredWatermarkOpacity)
+      ? Math.max(0, Math.min(60, configuredWatermarkOpacity))
+      : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent;
     const watermarkOpacity = (watermarkOpacityPercent / 100).toFixed(2);
     const requestedHeaderDividerColor = documentSettings.headerDividerColor;
     const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(

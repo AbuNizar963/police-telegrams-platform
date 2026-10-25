@@ -3309,22 +3309,6 @@ function TelegramDetail({
           margin: 0 auto;
           object-fit: contain;
         }
-         .telegram-export-page .official-seal {
-          width: 110px;
-          height: 110px;
-          margin: 0 auto;
-          border: 2px solid #b49a55;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: #9a813c;
-          text-align: center;
-          line-height: 1.2;
-        }
-        .telegram-export-page .official-seal span { font-size: 20px; }
-        .telegram-export-page .official-seal strong { font-size: 11px; }
         .telegram-export-page .classification {
           display: flex;
           justify-content: space-between;

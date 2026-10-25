@@ -3141,12 +3141,9 @@ function TelegramDetail({
       settings?.logoUrl?.trim() ||
       null;
 
-    const logoDataUrl = await loadOfficialDocumentLogoDataUrl(logoUrl);
-    if (logoUrl && !logoDataUrl) {
-      throw new Error("تعذر تجهيز شعار الجهة للطباعة أو التصدير");
-    }
-
-    return logoDataUrl;
+    // Logo normalization is best-effort: never block printing or exporting
+    // the telegram text when an optional legacy logo cannot be loaded.
+    return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,

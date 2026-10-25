@@ -3096,13 +3096,9 @@ function TelegramDetail({
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
-    const rawWatermarkOpacity = documentSettings.watermarkOpacityPercent;
-    const configuredWatermarkOpacity =
-      rawWatermarkOpacity == null ? Number.NaN : Number(rawWatermarkOpacity);
-    const watermarkOpacityPercent = Number.isFinite(configuredWatermarkOpacity)
-      ? Math.max(0, Math.min(60, configuredWatermarkOpacity))
-      : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent;
-    const watermarkOpacity = (watermarkOpacityPercent / 100).toFixed(2);
+    // Match the working application branch: keep both watermark layers
+    // visible at a restrained opacity, independent of stale legacy settings.
+    const watermarkOpacity = "0.12";
     const requestedHeaderDividerColor = documentSettings.headerDividerColor;
     const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
       requestedHeaderDividerColor

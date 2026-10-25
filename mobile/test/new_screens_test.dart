@@ -12,6 +12,7 @@ class _ScreenTestApi extends PoliceApi {
 
   final calls = <String>[];
   Map<String, dynamic>? lastInput;
+  final transitionInputs = <Map<String, dynamic>>[];
 
   @override
   Future<dynamic> call(
@@ -21,6 +22,9 @@ class _ScreenTestApi extends PoliceApi {
     bool allowOfflineCache = true,
   }) async {
     calls.add(procedure);
+    if (procedure == 'telegrams.transition' && input != null) {
+      transitionInputs.add(Map<String, dynamic>.from(input));
+    }
     if (procedure == 'telegrams.create' ||
         procedure == 'profile.changePassword') {
       lastInput = input;
@@ -51,6 +55,8 @@ class _ScreenTestApi extends PoliceApi {
         return {'id': 42};
       case 'telegrams.uploadAttachment':
         return {'ok': true};
+      case 'telegrams.transition':
+        return {'success': true};
       case 'telegrams.incomingRoutes':
       case 'telegrams.attachments':
         return <dynamic>[];
@@ -330,6 +336,155 @@ void main() {
     expect(find.text('رفض'), findsOneWidget);
     expect(find.text('أرشفة'), findsNothing);
     expect(find.text('إرسال طلب إحالة'), findsNothing);
+  });
+
+  testWidgets('decision transition requires a non-empty reason', (
+    tester,
+  ) async {
+    final api = _ScreenTestApi();
+    var changedCount = 0;
+    await tester.pumpWidget(
+      _host(
+        Scaffold(
+          body: TelegramActionsPanel(
+            api: api,
+            telegramId: 42,
+            telegramStatus: 'in_review',
+            canOperate: true,
+            isAdmin: false,
+            onChanged: () => changedCount++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('رفض'));
+    await tester.pumpAndSettle();
+    expect(find.text('السبب (مطلوب)'), findsOneWidget);
+
+    await tester.tap(find.text('متابعة'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تأكيد القرار'), findsNothing);
+    expect(api.transitionInputs, isEmpty);
+    expect(changedCount, 0);
+  });
+
+  testWidgets('cancelling the return confirmation sends no transition', (
+    tester,
+  ) async {
+    final api = _ScreenTestApi();
+    var changedCount = 0;
+    await tester.pumpWidget(
+      _host(
+        Scaffold(
+          body: TelegramActionsPanel(
+            api: api,
+            telegramId: 42,
+            telegramStatus: 'in_review',
+            canOperate: true,
+            isAdmin: false,
+            onChanged: () => changedCount++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('إرجاع بسبب'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'بيانات غير مكتملة');
+    await tester.tap(find.text('متابعة'));
+    await tester.pumpAndSettle();
+    expect(find.text('تأكيد القرار'), findsOneWidget);
+    expect(api.transitionInputs, isEmpty);
+
+    await tester.tap(find.text('إلغاء'));
+    await tester.pumpAndSettle();
+
+    expect(api.transitionInputs, isEmpty);
+    expect(changedCount, 0);
+  });
+
+  testWidgets('confirming a return sends one returned transition', (
+    tester,
+  ) async {
+    final api = _ScreenTestApi();
+    var changedCount = 0;
+    await tester.pumpWidget(
+      _host(
+        Scaffold(
+          body: TelegramActionsPanel(
+            api: api,
+            telegramId: 42,
+            telegramStatus: 'in_review',
+            canOperate: true,
+            isAdmin: false,
+            onChanged: () => changedCount++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('إرجاع بسبب'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'بيانات غير مكتملة');
+    await tester.tap(find.text('متابعة'));
+    await tester.pumpAndSettle();
+    expect(find.text('تأكيد القرار'), findsOneWidget);
+
+    await tester.tap(find.text('تأكيد'));
+    await tester.pumpAndSettle();
+
+    expect(api.transitionInputs, hasLength(1));
+    expect(api.transitionInputs.single, {
+      'id': 42,
+      'toStatus': 'returned',
+      'reason': 'بيانات غير مكتملة',
+    });
+    expect(changedCount, 1);
+  });
+
+  testWidgets('confirming rejection sends one transition and refreshes', (
+    tester,
+  ) async {
+    final api = _ScreenTestApi();
+    var changedCount = 0;
+    await tester.pumpWidget(
+      _host(
+        Scaffold(
+          body: TelegramActionsPanel(
+            api: api,
+            telegramId: 42,
+            telegramStatus: 'in_review',
+            canOperate: true,
+            isAdmin: false,
+            onChanged: () => changedCount++,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('رفض'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'مخالفة التعليمات');
+    await tester.tap(find.text('متابعة'));
+    await tester.pumpAndSettle();
+    expect(find.text('تأكيد القرار'), findsOneWidget);
+
+    await tester.tap(find.text('تأكيد'));
+    await tester.pumpAndSettle();
+
+    expect(api.transitionInputs, hasLength(1));
+    expect(api.transitionInputs.single, {
+      'id': 42,
+      'toStatus': 'rejected',
+      'reason': 'مخالفة التعليمات',
+    });
+    expect(changedCount, 1);
   });
 
   testWidgets('approved telegram exposes routing to an authorized operator', (

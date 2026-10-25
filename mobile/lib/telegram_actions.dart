@@ -122,13 +122,33 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     });
   }
 
-  Future<void> transition(String status) async {
+  Future<void> transition(String status, String actionLabel) async {
     final reason = await _reasonDialog(
       context,
       title: 'تغيير حالة البرقية',
       requiredReason: status == 'rejected' || status == 'returned',
     );
-    if (reason == null) return;
+    if (reason == null || !mounted) return;
+    if (status == 'rejected' || status == 'returned') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('تأكيد القرار'),
+          content: Text('هل تريد تأكيد القرار «$actionLabel» لهذه البرقية؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('تأكيد'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
     await _run(() async {
       await widget.api.call(
         'telegrams.transition',
@@ -533,7 +553,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     return transitions
         .map(
           (action) => OutlinedButton.icon(
-            onPressed: busy ? null : () => transition(action.$1),
+            onPressed: busy ? null : () => transition(action.$1, action.$2),
             icon: Icon(action.$3),
             label: Text(action.$2),
           ),
@@ -747,13 +767,13 @@ Future<String?> _textDialog(
   required String label,
   String? hint,
 }) async {
-  final controller = TextEditingController();
+  var text = '';
   final value = await showDialog<String>(
     context: context,
     builder: (_) => AlertDialog(
       title: Text(title),
       content: TextField(
-        controller: controller,
+        onChanged: (value) => text = value,
         decoration: InputDecoration(labelText: label, hintText: hint),
       ),
       actions: [
@@ -762,13 +782,12 @@ Future<String?> _textDialog(
           child: const Text('إلغاء'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text),
+          onPressed: () => Navigator.pop(context, text),
           child: const Text('متابعة'),
         ),
       ],
     ),
   );
-  controller.dispose();
   return value;
 }
 

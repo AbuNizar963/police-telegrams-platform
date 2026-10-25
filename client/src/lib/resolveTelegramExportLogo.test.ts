@@ -44,12 +44,21 @@ describe("resolveTelegramExportLogo", () => {
     ).toBeNull();
   });
 
-  it("returns null when the telegram has no organization", () => {
+  it("uses the configured logo for legacy telegrams without an organization ID", () => {
     expect(
       resolveTelegramExportLogo({
         telegramOrganizationId: null,
         settingsOrganizationId: "org-a",
-        settingsLogoUrl: "/api/storage/department/logos/org-a/logo.png",
+        settingsLogoUrl: " /api/storage/department/logos/org-a/logo.png ",
+      })
+    ).toBe("/api/storage/department/logos/org-a/logo.png");
+  });
+
+  it("returns null when neither the telegram nor settings provide a logo", () => {
+    expect(
+      resolveTelegramExportLogo({
+        telegramOrganizationId: null,
+        settingsLogoUrl: null,
       })
     ).toBeNull();
   });

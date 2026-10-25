@@ -11,7 +11,7 @@ void main() {
     700: 'data:font/ttf;base64,AA==',
   };
 
-  Map<String, dynamic> telegram({String body = 'نص الوثيقة'}) => {
+  Map<String, dynamic> telegram({String body = 'محتوى الاختبار'}) => {
     'serialCode': '72',
     'organizationId': 'unit-1',
     'currentOrganizationId': 'unit-1',
@@ -62,7 +62,8 @@ void main() {
           'نوع الوثيقة:</strong> <span class="classification-value">برقية صادرة</span>',
         ),
       );
-      expect(html, contains('درجة الأسبقية:</strong> عاجل'));
+      expect(html, contains('درجة الأسبقية:</strong> عاجلة'));
+      expect(html, contains('درجة السرية:</strong> عادية'));
       expect(html, isNot(contains('درجة الأولوية:')));
       expect(html, contains('class="page-watermark"'));
       expect(html, contains('class="watermark-text-pattern"'));
@@ -78,7 +79,8 @@ void main() {
       expect(html, contains('<svg'));
       expect(html, contains('<path d="M'));
       expect(html, contains('اسم المسؤول'));
-      expect(html, contains('نص الوثيقة'));
+      expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
+      expect(html, isNot(contains('نص الوثيقة')));
     },
   );
 
@@ -137,7 +139,7 @@ void main() {
     expect(html, isNot(contains('class="routing-qr"')));
     expect(html, isNot(contains('<svg')));
     expect(html, contains('موضوع رسمي'));
-    expect(html, contains('نص الوثيقة'));
+    expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
   });
 
   test(

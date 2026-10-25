@@ -19,12 +19,27 @@ void main() {
     });
     expect(telegramClassificationLabels, <String, String>{
       'secret': 'سري',
-      'normal': 'عادي',
+      'normal': 'عادية',
     });
     expect(telegramPriorityLabels, <String, String>{
       'urgent': 'عاجلة',
       'normal': 'عادية',
       'slow': 'بطيئة',
+    });
+    expect(telegramCategoryLabels, <String, String>{
+      'administrative': 'إداري',
+      'criminal': 'جنائي',
+      'traffic': 'مروري',
+      'security': 'أمني',
+      'tactical': 'عملياتي',
+      'intelligence': 'استخباراتي',
+      'emergency': 'طوارئ',
+      'public_order': 'حفظ النظام',
+      'personnel': 'شؤون الأفراد',
+      'logistics': 'إمداد ودعم',
+      'training': 'تدريب وتأهيل',
+      'community': 'مجتمعي وشكاوى',
+      'other': 'أخرى',
     });
   });
 }

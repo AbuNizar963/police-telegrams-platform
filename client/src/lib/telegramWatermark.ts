@@ -1,6 +1,6 @@
 export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
-export const TELEGRAM_WATERMARK_COLUMNS = 8;
-export const TELEGRAM_WATERMARK_ROWS = 22;
+export const TELEGRAM_WATERMARK_COLUMNS = 10;
+export const TELEGRAM_WATERMARK_ROWS = 34;
 /** Half-centimetre horizontal and vertical separation between repetitions. */
 export const TELEGRAM_WATERMARK_GAP_MM = 5;
 export const TELEGRAM_WATERMARK_REPEAT_COUNT =

@@ -3182,7 +3182,10 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    const resolvedLogoUrl = logoUrl?.trim() || null;
+    // Match the working application branch: use the configured organization
+    // logo directly when normalization to a data URL is unavailable.
+    const resolvedLogoUrl =
+      logoUrl?.trim() || settings?.logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
       : "";

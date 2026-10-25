@@ -3073,12 +3073,22 @@ function TelegramDetail({
         console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
       }
     }
-    const logoUrl = resolveTelegramExportLogo({
+    const resolvedOrganizationLogo = resolveTelegramExportLogo({
       telegramOrganizationId: logoOrganizationId,
       organizationLogo,
       settingsOrganizationId: exportSettings.organizationId,
       settingsLogoUrl: exportSettings.logoUrl,
     });
+
+    // Match the working Flutter branch: the saved settings logo is the
+    // fallback when organization-scoped lookup is unavailable or incomplete.
+    // Keep this fallback for legacy telegrams and older settings records.
+    const logoUrl =
+      resolvedOrganizationLogo?.trim() ||
+      exportSettings.logoUrl?.trim() ||
+      settings?.logoUrl?.trim() ||
+      null;
+
     return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (

@@ -20,8 +20,10 @@ const _documentPageHeight = 1123;
 const _documentMarginMm = 12.7;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
-const _ministryWatermarkColumns = 8;
-const _ministryWatermarkRows = 22;
+// Keep the Flutter document watermark identical to the web export: a dense
+// full-page 10 by 34 pattern with the same spacing and restrained ink.
+const _ministryWatermarkColumns = 10;
+const _ministryWatermarkRows = 34;
 // Half-centimetre horizontal and vertical separation between repetitions.
 const _ministryWatermarkGapCss = '5mm';
 
@@ -997,11 +999,11 @@ String buildOfficialTelegramHtml({
 $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
-.telegram-export-page .page-watermark{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
 .telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:0;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,max-content);grid-template-rows:repeat($_ministryWatermarkRows,max-content);column-gap:$_ministryWatermarkGapCss;row-gap:$_ministryWatermarkGapCss;justify-content:space-between;align-content:space-between;align-items:center;justify-items:center;overflow:hidden;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:11px;font-weight:400;line-height:1.2;white-space:nowrap}
-.telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:1}
+.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:8px;font-weight:400;line-height:1.2;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:2}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid $headerDividerColor;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}
 .telegram-export-page .header-government p,.telegram-export-page .header-metadata p{margin:0;font-size:15pt;font-weight:700;line-height:1.25;white-space:nowrap;letter-spacing:-.12px;transform:scaleX(.86);transform-origin:left center}

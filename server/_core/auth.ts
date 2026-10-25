@@ -150,7 +150,9 @@ export async function verifyPassword(
       r: SCRYPT_R,
       p: SCRYPT_P,
     });
-    return derived.length === expected.length && timingSafeEqual(derived, expected);
+    return (
+      derived.length === expected.length && timingSafeEqual(derived, expected)
+    );
   } catch {
     // Malformed or unsupported persisted hashes must fail closed, not crash
     // the authentication request.

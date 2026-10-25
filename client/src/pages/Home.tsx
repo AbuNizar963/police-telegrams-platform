@@ -3239,8 +3239,6 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    // Match the working application branch: use the configured organization
-    // logo directly when normalization to a data URL is unavailable.
     // The supplied URL is already resolved for this document. Do not
     // reintroduce a remote settings URL when normalization explicitly failed:
     // the server-side renderer blocks external network resources.

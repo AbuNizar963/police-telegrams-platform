@@ -2695,7 +2695,8 @@ function TelegramComposer({
  * Wait until every image embedded in an official document is decoded before
  * handing the markup to the browser print dialog or the server-side renderer.
  * This is especially important for data URLs: setting img.src is synchronous,
- * but image decoding is not guaranteed to have completed when HTML is serialized.
+ * but image decoding is not guaranteed to have completed when HTML is
+ * serialized.
  */
 async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
   const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));

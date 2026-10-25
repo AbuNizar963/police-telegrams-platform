@@ -628,6 +628,8 @@ export default function Home() {
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
   });
   const selectedRow = list.data?.find(row => row.id === selectedId);
   const detail = trpc.telegrams.get.useQuery(
@@ -638,6 +640,7 @@ export default function Home() {
       // authoritative detail response without blocking the modal opening.
       placeholderData: selectedRow,
       staleTime: 30_000,
+      gcTime: 10 * 60_000,
     }
   );
   const utils = trpc.useUtils();

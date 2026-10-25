@@ -3534,7 +3534,11 @@ function TelegramDetail({
           utils.settings.get.fetch(undefined, { staleTime: 0 }),
         ]);
         const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
-        if (!cancelled) renderPreview(documentSettings, logoDataUrl);
+        // The active app branch uses the configured settings logo directly.
+        // Preserve that same behavior if organization lookup returns no image.
+        const previewLogoUrl =
+          logoDataUrl || (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
+        if (!cancelled) renderPreview(documentSettings, previewLogoUrl);
       } catch (error) {
         if (!cancelled) {
           console.warn(

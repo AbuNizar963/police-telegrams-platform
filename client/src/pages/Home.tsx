@@ -3469,43 +3469,78 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
+
     if (documentSettingsUnavailable || !platformDocumentSettings) {
       host.replaceChildren();
       host.style.height = "";
       return;
     }
 
-    const exportWrapper = createExportPaper(platformDocumentSettings);
-    const paper = exportWrapper.querySelector<HTMLElement>(
-      ".telegram-export-page"
-    );
-    if (!paper) return;
+    let cancelled = false;
+    let activeObserver: ResizeObserver | null = null;
 
-    host.replaceChildren(exportWrapper);
+    const renderPreview = (
+      documentSettings: PlatformDocumentSettings,
+      logoUrl: string | null
+    ) => {
+      if (cancelled) return;
 
-    const fitPaperToPreview = () => {
-      const availableWidth = host.clientWidth;
-      if (!availableWidth) return;
+      const exportWrapper = createExportPaper(documentSettings, logoUrl);
+      const paper = exportWrapper.querySelector<HTMLElement>(
+        ".telegram-export-page"
+      );
+      if (!paper) return;
 
-      const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
-      const scaledHeight = Math.ceil(paper.offsetHeight * scale);
+      activeObserver?.disconnect();
+      host.replaceChildren(exportWrapper);
 
-      exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
-      paper.style.position = "absolute";
-      paper.style.top = "0";
-      paper.style.left = "50%";
-      paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
-      paper.style.transformOrigin = "top center";
-      paper.style.transform = `scale(${scale})`;
-      host.style.height = `${scaledHeight}px`;
+      const fitPaperToPreview = () => {
+        const availableWidth = host.clientWidth;
+        if (!availableWidth) return;
+
+        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        const scaledHeight = Math.ceil(paper.offsetHeight * scale);
+
+        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+        paper.style.position = "absolute";
+        paper.style.top = "0";
+        paper.style.left = "50%";
+        paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
+        paper.style.transformOrigin = "top center";
+        paper.style.transform = `scale(${scale})`;
+        host.style.height = `${scaledHeight}px`;
+      };
+
+      fitPaperToPreview();
+      activeObserver = new ResizeObserver(fitPaperToPreview);
+      activeObserver.observe(host);
     };
 
-    fitPaperToPreview();
-    const observer = new ResizeObserver(fitPaperToPreview);
-    observer.observe(host);
+    // Render immediately so opening a telegram never waits for a network call.
+    renderPreview(platformDocumentSettings, settings?.logoUrl ?? null);
+
+    // Refresh the preview with the verified owning-organization logo when
+    // available. A failed logo lookup must never clear or break the preview.
+    const refreshLogo = async () => {
+      try {
+        const [documentSettings, exportSettings] = await Promise.all([
+          loadExportSettings(),
+          utils.settings.get.fetch(undefined, { staleTime: 0 }),
+        ]);
+        const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+        if (!cancelled) renderPreview(documentSettings, logoDataUrl);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:", error);
+        }
+      }
+    };
+
+    void refreshLogo();
 
     return () => {
-      observer.disconnect();
+      cancelled = true;
+      activeObserver?.disconnect();
       host.replaceChildren();
       host.style.height = "";
     };

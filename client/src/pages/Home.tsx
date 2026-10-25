@@ -3054,9 +3054,11 @@ function TelegramDetail({
   }): Promise<string | null> => {
     // The telegram's organization is authoritative. The current organization
     // is only a fallback for legacy telegram records without an owner ID.
+    // Match the working application branch: the current organization
+    // owns the active letterhead; use the legacy owner ID only when absent.
     const logoOrganizationId =
-      telegram.organizationId?.trim() ||
       telegram.currentOrganizationId?.trim() ||
+      telegram.organizationId?.trim() ||
       null;
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
@@ -3206,8 +3208,10 @@ function TelegramDetail({
         })()
       : "";
 
+    // Match the working application branch: the ministry watermark text
+    // remains visible regardless of stale legacy document-setting values.
     const watermark = buildTelegramWatermarkHtml(resolvedLogoUrl, {
-      showMinistryText: documentSettings.showMinistryWatermarkText !== false,
+      showMinistryText: true,
     });
 
     const wrapper = document.createElement("div");

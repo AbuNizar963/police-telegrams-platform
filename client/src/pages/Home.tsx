@@ -3171,7 +3171,7 @@ function TelegramDetail({
     const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
-      : "";
+      : `<div class="official-seal" role="img" aria-label="شعار وزارة الداخلية"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(telegram.verificationToken)}`,
       window.location.origin

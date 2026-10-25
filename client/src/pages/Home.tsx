@@ -4462,7 +4462,6 @@ function TelegramEditModal({
   );
   const [priority, setPriority] = useState<Priority>(telegram.priority);
   const [category, setCategory] = useState<Category>(telegram.category);
-  const [status, setStatus] = useState<Status>(telegram.status);
 
   return (
     <Modal title="تعديل البرقية" subtitle="تحديث بيانات السجل" close={close}>
@@ -4477,7 +4476,7 @@ function TelegramEditModal({
             classification,
             priority,
             category,
-            status,
+            status: telegram.status,
           });
         }}
       >
@@ -4553,21 +4552,17 @@ function TelegramEditModal({
               ))}
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm font-semibold">
+          <div className="grid gap-1.5 text-sm font-semibold">
             الحالة
-            <select
-              value={status}
-              onChange={event => setStatus(event.target.value as Status)}
-              className="h-10 rounded-lg border bg-background px-3"
-            >
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <output className="flex h-10 items-center rounded-lg border bg-muted/40 px-3 font-normal">
+              {statusLabels[telegram.status]}
+            </output>
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          تغيير الحالة يتم عبر إجراءات دورة الحياة، وليس من نموذج تعديل
+          البيانات.
+        </p>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={close}>
             إلغاء

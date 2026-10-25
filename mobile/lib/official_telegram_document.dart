@@ -21,7 +21,8 @@ const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
 const _ministryWatermarkColumns = 8;
 const _ministryWatermarkRows = 22;
-const _ministryWatermarkGapCss = '10mm';
+// Half-centimetre horizontal and vertical separation between repetitions.
+const _ministryWatermarkGapCss = '5mm';
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {

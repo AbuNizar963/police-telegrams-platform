@@ -170,7 +170,7 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, contains('width:93.75%;height:93.75%'));
-      expect(html, contains('column-gap:10mm;row-gap:10mm'));
+      expect(html, contains('column-gap:5mm;row-gap:5mm'));
       expect(html, contains('grid-template-columns:repeat(8,max-content)'));
       expect(html, contains('grid-template-rows:repeat(22,max-content)'));
       expect(html, contains('object-fit:contain;opacity:0.16'));

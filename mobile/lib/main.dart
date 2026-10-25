@@ -12,6 +12,7 @@ import 'api.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
 import 'app_update_service.dart';
+import 'mobile_access_policy.dart';
 import 'mobile_pages.dart';
 import 'native_operations_page.dart';
 import 'native_organization_management_page.dart';
@@ -1262,7 +1263,9 @@ class _DashboardPageState extends State<DashboardPage>
         refresh();
         break;
       case 'department':
-        _pushPage(DepartmentSettingsPage(api: widget.api));
+        if (_canManageOrganizationSettings) {
+          _pushPage(DepartmentSettingsPage(api: widget.api));
+        }
         break;
       case 'platform_document_settings':
         if (_isPlatformOwner) {
@@ -1270,10 +1273,20 @@ class _DashboardPageState extends State<DashboardPage>
         }
         break;
       case 'organizations':
-        _pushPage(NativeOrganizationManagementPage(api: widget.api));
+        _pushPage(
+          NativeOrganizationManagementPage(
+            api: widget.api,
+            canEditStructure: hasMobileOrganizationStructureEditAccess(
+              accountRole: _account['role']?.toString(),
+            ),
+            isPlatformOwner: _isPlatformOwner,
+          ),
+        );
         break;
       case 'users':
-        _pushPage(NativeUserManagementPage(api: widget.api));
+        if (_canManageUsers) {
+          _pushPage(NativeUserManagementPage(api: widget.api));
+        }
         break;
       case 'regions':
         _pushPage(NativeOperationsPage(api: widget.api, initialTab: 1));
@@ -1880,17 +1893,23 @@ class _DashboardPageState extends State<DashboardPage>
     refresh(showLoading: false);
   }
 
-  bool get _canViewReports =>
-      _account['role'] == 'admin' ||
-      const {
-        'system_admin',
-        'organization_admin',
-        'regional_admin',
-        'organization_supervisor',
-        'reviewer',
-        'reader',
-        'auditor',
-      }.contains(activeOrganizationRole);
+  bool get _canViewReports => hasMobileTelegramReportAccess(
+    accountRole: _account['role']?.toString(),
+    organizationRole: activeOrganizationRole,
+    isPlatformOwner: _isPlatformOwner,
+  );
+
+  bool get _canManageUsers => hasMobileUserManagementAccess(
+    accountRole: _account['role']?.toString(),
+    organizationRole: activeOrganizationRole,
+    isPlatformOwner: _isPlatformOwner,
+  );
+
+  bool get _canManageOrganizationSettings =>
+      hasMobileOrganizationSettingsAccess(
+        organizationRole: activeOrganizationRole,
+        isPlatformOwner: _isPlatformOwner,
+      );
 
   bool get _isPlatformOwner =>
       activeOrganizationIsOwner || _account['isPlatformOwner'] == true;
@@ -2361,7 +2380,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
               ),
-              if (_account['role'] == 'admin' || _canViewReports)
+              if (_canManageOrganizationSettings)
                 const PopupMenuItem(
                   value: 'department',
                   child: _AccountMenuItem(
@@ -2369,12 +2388,15 @@ class _DashboardPageState extends State<DashboardPage>
                     title: 'إعدادات الجهة',
                   ),
                 ),
-              if (_account['role'] == 'admin') ...[
-                const PopupMenuItem<String>(
+              if (_canManageUsers) ...[
+                PopupMenuItem<String>(
                   enabled: false,
                   height: 34,
                   child: Text(
-                    'إدارة النظام',
+                    getMobileManagementMenuHeading(
+                      accountRole: _account['role']?.toString(),
+                      isPlatformOwner: _isPlatformOwner,
+                    ),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -2382,6 +2404,14 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                 ),
+                if (_isPlatformOwner)
+                  const PopupMenuItem(
+                    value: 'platform_document_settings',
+                    child: _AccountMenuItem(
+                      icon: Icons.tune_rounded,
+                      title: 'إعدادات النظام والوثائق',
+                    ),
+                  ),
                 const PopupMenuItem(
                   value: 'users',
                   child: _AccountMenuItem(
@@ -2390,32 +2420,10 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
                 const PopupMenuItem(
-                  value: 'regions',
+                  value: 'organizations',
                   child: _AccountMenuItem(
                     icon: Icons.account_tree_outlined,
                     title: 'إدارة المناطق والأقسام والمخافر',
-                  ),
-                ),
-              ],
-              if (_isPlatformOwner) ...[
-                const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  enabled: false,
-                  height: 34,
-                  child: Text(
-                    'إعدادات المالك',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF7A8493),
-                    ),
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'platform_document_settings',
-                  child: _AccountMenuItem(
-                    icon: Icons.tune_rounded,
-                    title: 'إعدادات النظام والوثائق',
                   ),
                 ),
               ],
@@ -2567,7 +2575,7 @@ class _DashboardPageState extends State<DashboardPage>
                     );
                   },
                 ),
-                if (_account['role'] == 'admin' || _canViewReports)
+                if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),
                     title: const Text('إدارة المستخدمين'),

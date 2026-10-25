@@ -1,6 +1,7 @@
 name: Police Telegrams Flutter Mobile
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - flutter-mobile-app

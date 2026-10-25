@@ -629,12 +629,22 @@ export default function Home() {
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
+  const selectedRow = list.data?.find(row => row.id === selectedId);
   const detail = trpc.telegrams.get.useQuery(
     { id: selectedId ?? 0 },
-    { enabled: selectedId !== null }
+    {
+      enabled: selectedId !== null,
+      // Render the complete row immediately, then replace it with the
+      // authoritative detail response without blocking the modal opening.
+      placeholderData: selectedRow,
+      staleTime: 30_000,
+    }
   );
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const prefetchTelegram = (id: number) => {
+    void utils.telegrams.get.prefetch({ id }, { staleTime: 30_000, retry: 1 });
+  };
   const clearWorkplaceSensitiveState = () => {
     setSelectedId(null);
     setComposerOpen(false);
@@ -1322,7 +1332,12 @@ export default function Home() {
             {rows.map(row => (
               <button
                 key={row.id}
-                onClick={() => setSelectedId(row.id)}
+                onClick={() => {
+                  prefetchTelegram(row.id);
+                  setSelectedId(row.id);
+                }}
+                onPointerEnter={() => prefetchTelegram(row.id)}
+                onFocus={() => prefetchTelegram(row.id)}
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
                 <div className="relative flex flex-wrap items-center gap-2 pl-16">

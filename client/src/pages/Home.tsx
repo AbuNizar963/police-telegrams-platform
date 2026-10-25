@@ -3615,7 +3615,8 @@ function TelegramDetail({
         // The active app branch uses the configured settings logo directly.
         // Preserve that same behavior if organization lookup returns no image.
         const previewLogoUrl =
-          logoDataUrl || (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
+          logoDataUrl ||
+          (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
         if (!cancelled) renderPreview(documentSettings, previewLogoUrl);
       } catch (error) {
         if (!cancelled) {

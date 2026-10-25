@@ -3096,9 +3096,12 @@ function TelegramDetail({
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
-    const configuredWatermarkOpacity = Number(
-      documentSettings.watermarkOpacityPercent
-    );
+    const rawWatermarkOpacity = documentSettings.watermarkOpacityPercent;
+    const configuredWatermarkOpacity =
+      rawWatermarkOpacity == null ||
+      (typeof rawWatermarkOpacity === "string" && !rawWatermarkOpacity.trim())
+        ? Number.NaN
+        : Number(rawWatermarkOpacity);
     const watermarkOpacityPercent = Number.isFinite(configuredWatermarkOpacity)
       ? Math.max(0, Math.min(60, configuredWatermarkOpacity))
       : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent;

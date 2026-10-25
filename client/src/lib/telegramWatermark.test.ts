@@ -19,7 +19,7 @@ describe("official telegram watermark", () => {
     expect(html).not.toContain("وزارة التربية");
     expect(OFFICIAL_MINISTRY_NAME).toBe("وزارة الداخلية");
     expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(176);
-    expect(TELEGRAM_WATERMARK_GAP_MM).toBe(10);
+    expect(TELEGRAM_WATERMARK_GAP_MM).toBe(5);
   });
 
   it("keeps the organization's logo as a separate watermark layer", () => {

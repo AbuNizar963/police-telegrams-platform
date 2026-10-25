@@ -65,6 +65,7 @@ import {
   resolveTelegramExportLogo,
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
+import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -2721,7 +2722,15 @@ async function loadOfficialDocumentLogoDataUrl(
     }
     if (blob.size === 0) throw new Error("ملف الشعار فارغ");
 
-    const objectUrl = URL.createObjectURL(blob);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const imageMimeType = detectOfficialDocumentLogoMimeType(
+      bytes,
+      contentType,
+      source
+    );
+    if (!imageMimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
+    const normalizedBlob = new Blob([bytes], { type: imageMimeType });
+    const objectUrl = URL.createObjectURL(normalizedBlob);
     try {
       const image = new Image();
       image.decoding = "async";
@@ -2745,25 +2754,6 @@ async function loadOfficialDocumentLogoDataUrl(
       // signed Supabase URL, which can taint a canvas and make toDataURL()
       // throw. Reading the validated Blob directly preserves transparency and
       // gives both the header and watermark the exact same embedded bytes.
-      const imageMimeType = (() => {
-        if (contentType.startsWith("image/")) return contentType;
-        const extension = source
-          .split(/[?#]/, 1)[0]
-          .split(".")
-          .pop()
-          ?.toLowerCase();
-        return extension === "jpg" || extension === "jpeg"
-          ? "image/jpeg"
-          : extension === "webp"
-            ? "image/webp"
-            : extension === "gif"
-              ? "image/gif"
-              : extension === "svg" || extension === "svg+xml"
-                ? "image/svg+xml"
-                : "image/png";
-      })();
-      const exportBlob = new Blob([blob], { type: imageMimeType });
-
       return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -2775,7 +2765,7 @@ async function loadOfficialDocumentLogoDataUrl(
         };
         reader.onerror = () =>
           reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
-        reader.readAsDataURL(exportBlob);
+        reader.readAsDataURL(normalizedBlob);
       });
     } finally {
       URL.revokeObjectURL(objectUrl);

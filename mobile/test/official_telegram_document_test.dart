@@ -175,6 +175,16 @@ void main() {
       expect(html, contains('column-gap:5mm;row-gap:5mm'));
       expect(html, contains('grid-template-columns:repeat(8,max-content)'));
       expect(html, contains('grid-template-rows:repeat(22,max-content)'));
+      expect(
+        html,
+        contains(
+          'watermark-text-pattern{position:absolute;z-index:0;inset:0;',
+        ),
+      );
+      expect(
+        html,
+        contains('justify-content:space-between;align-content:space-between'),
+      );
       expect(html, contains('object-fit:contain;opacity:0.16'));
       expect(html, contains('overflow:hidden;opacity:0.16'));
       expect(html, contains('border-bottom:3px solid #b49a55'));

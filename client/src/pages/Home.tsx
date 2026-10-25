@@ -50,6 +50,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { showLocalTelegramNotification } from "@/lib/notifications";
+import {
+  buildTelegramWatermarkHtml,
+  TELEGRAM_WATERMARK_COLUMNS,
+  TELEGRAM_WATERMARK_GAP_MM,
+  TELEGRAM_WATERMARK_ROWS,
+} from "@/lib/telegramWatermark";
 import { getTelegramDisplayNumber } from "@/lib/telegramDisplay";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
@@ -3044,9 +3050,9 @@ function TelegramDetail({
         })()
       : "";
 
-    const watermark = settings?.logoUrl
-      ? `<img class="watermark-logo" src="${escapeHtml(settings.logoUrl)}" alt="" aria-hidden="true" />`
-      : `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+    const watermark = buildTelegramWatermarkHtml(settings?.logoUrl, {
+      showMinistryText: true,
+    });
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
@@ -3072,41 +3078,47 @@ function TelegramDetail({
         .telegram-export-page * { box-sizing: border-box; }
         .telegram-export-page .page-watermark {
           position: absolute;
-          top: 50%;
-          left: 50%;
+          inset: 0;
           z-index: 0;
-          width: 93.75%;
-          height: 93.75%;
-          max-width: none;
-          max-height: none;
-          transform: translate(-50%, -50%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          opacity: 0.12;
+          overflow: hidden;
           pointer-events: none;
         }
         .telegram-export-page .watermark-logo {
-          display: block;
-          width: 100%;
-          height: 100%;
+          position: absolute;
+          z-index: 1;
+          top: 50%;
+          left: 50%;
+          width: 93.75%;
+          height: 93.75%;
+          transform: translate(-50%, -50%);
           object-fit: contain;
+          opacity: 0.12;
         }
-        .telegram-export-page .watermark-seal {
-          width: 100%;
-          height: 100%;
-          border: 7px solid #9a813c;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+        .telegram-export-page .watermark-text-pattern {
+          position: absolute;
+          z-index: 0;
+          inset: 3mm;
+          display: grid;
+          grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
+          grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);
+          column-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+          row-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
           justify-content: center;
-          color: #9a813c;
-          text-align: center;
-          line-height: 1.25;
+          align-content: start;
+          align-items: center;
+          justify-items: center;
+          overflow: hidden;
+          opacity: 0.12;
         }
-        .telegram-export-page .watermark-seal span { font-size: 68px; }
-        .telegram-export-page .watermark-seal strong { font-size: 28px; }
+        .telegram-export-page .watermark-text-pattern span {
+          color: #73777d;
+          text-align: center;
+          font-family: "Cairo", "Noto Naskh Arabic", Tahoma, serif;
+          font-size: 11px;
+          font-weight: 400;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
         .telegram-export-page .official-header, .telegram-export-page .classification,
         .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
           position: relative;

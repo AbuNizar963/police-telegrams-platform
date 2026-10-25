@@ -184,16 +184,35 @@ export async function renderTelegramDocument(
       await document.fonts.ready;
       const images = Array.from(document.images);
       await Promise.all(
-        images.map(image =>
-          image.complete
-            ? Promise.resolve()
-            : new Promise<void>(resolve => {
-                image.addEventListener("load", () => resolve(), { once: true });
-                image.addEventListener("error", () => resolve(), {
-                  once: true,
-                });
-              })
-        )
+        images.map(async image => {
+          if (!image.complete) {
+            await new Promise<void>((resolve, reject) => {
+              const cleanup = () => {
+                image.removeEventListener("load", onLoad);
+                image.removeEventListener("error", onError);
+              };
+              const onLoad = () => {
+                cleanup();
+                resolve();
+              };
+              const onError = () => {
+                cleanup();
+                reject(new Error("تعذر تحميل صورة الشعار في محرك التصدير"));
+              };
+              image.addEventListener("load", onLoad, { once: true });
+              image.addEventListener("error", onError, { once: true });
+              if (image.complete) {
+                cleanup();
+                if (image.naturalWidth > 0) resolve();
+                else onError();
+              }
+            });
+          }
+          if (typeof image.decode === "function") await image.decode();
+          if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+            throw new Error("صورة الشعار لم تُحمّل بصورة صالحة");
+          }
+        })
       );
     });
 

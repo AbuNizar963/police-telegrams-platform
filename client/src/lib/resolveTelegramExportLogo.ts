@@ -1,6 +1,7 @@
 export type OrganizationLogoView = {
   organizationId: string;
   logoUrl: string | null;
+  logoDataUrl?: string | null;
 };
 
 /**

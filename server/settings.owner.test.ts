@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getOrganizationSettings: vi.fn(),
   upsertOrganizationSettingsForOrganization: vi.fn(),
   writeAuditLog: vi.fn(),
+  storageDownload: vi.fn(),
 }));
 
 vi.mock("./db", () => ({
@@ -26,6 +27,11 @@ vi.mock("./organization", async importOriginal => {
       mocks.getOrganizationByIdIncludingInactive,
     getUserOrganizationMembership: mocks.getUserOrganizationMembership,
   };
+});
+
+vi.mock("./storage", async importOriginal => {
+  const actual = await importOriginal<typeof import("./storage")>();
+  return { ...actual, storageDownload: mocks.storageDownload };
 });
 
 function ownerContext(): TrpcContext {
@@ -192,6 +198,78 @@ describe("platform owner organization settings", () => {
     await expect(
       caller.organizations.logo({ organizationId: organizationB.id })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("returns verified private logo bytes for export only to the owning organization", async () => {
+    const storageKey = `department/logos/${organizationA.id}/logo.png`;
+    const logoBytes = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
+    ]);
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoKey: storageKey,
+    });
+    mocks.storageDownload.mockResolvedValue({
+      body: logoBytes,
+      contentType: "application/octet-stream",
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoDataUrl: `data:image/png;base64,${logoBytes.toString("base64")}`,
+    });
+    expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationB.id,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("leaves approved external logo URLs for the browser fetch fallback", async () => {
+    const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl,
+      logoKey: logoUrl,
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl,
+      logoDataUrl: null,
+    });
+    expect(mocks.storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stored logo key scoped to a different organization", async () => {
+    const foreignStorageKey = `department/logos/${organizationB.id}/logo.png`;
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${foreignStorageKey}`,
+      logoKey: foreignStorageKey,
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(mocks.storageDownload).not.toHaveBeenCalled();
   });
 
   it("allows the platform owner to read a logo without an organization membership", async () => {

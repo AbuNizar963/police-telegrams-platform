@@ -2739,25 +2739,20 @@ async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
           );
         }
       } catch (error) {
-        // The organization logo is optional. Remove only a broken logo so a
-        // legacy or malformed image cannot block the telegram's text export.
-        if (image.classList.contains("official-logo")) {
-          image.remove();
-          return;
-        }
-
-        throw error;
+        // Never return a successful-looking document with a missing logo.
+        // The caller can show a clear retry/error message instead.
+        throw error instanceof Error
+          ? error
+          : new Error("تعذر تحميل صورة الشعار داخل البرقية");
       }
     })
   );
 }
 
 /**
- * Fetch and normalize the organization logo once before it is used by the
- * header and watermark. The server renderer has no browser session, so a
- * data URL keeps both layers independent of authenticated storage at render
- * time. A missing legacy image is optional, matching the Flutter document
- * flow: export continues without substituting another organization's logo.
+ * Normalize a legacy/external logo URL in the browser. Private organization
+ * storage is resolved by the authenticated server route instead, avoiding a
+ * browser-cookie/redirect/CORS dependency in the print and PNG path.
  */
 async function loadOfficialDocumentLogoDataUrl(
   logoUrl: string | null | undefined
@@ -2832,12 +2827,12 @@ async function loadOfficialDocumentLogoDataUrl(
       URL.revokeObjectURL(objectUrl);
     }
   } catch (error) {
-    // Avoid logging potentially signed resource URLs. The document continues
-    // with its text watermark and without a substituted logo.
+    // Avoid logging potentially signed resource URLs. Do not silently produce
+    // an official document with the configured logo missing.
     console.warn("تعذر تجهيز شعار الجهة للوثيقة:", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    throw new Error("تعذر تجهيز شعار الجهة للطباعة أو التصدير. أعد المحاولة.");
   }
 }
 
@@ -3124,16 +3119,28 @@ function TelegramDetail({
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
       try {
-        organizationLogo = await utils.organizations.logo.fetch(
+        organizationLogo = await utils.organizations.logoForExport.fetch(
           { organizationId: logoOrganizationId },
           { staleTime: 0 }
         );
       } catch (error) {
-        // Retain the verified same-organization settings fallback when it is
-        // available, just as the independent Flutter application does.
         console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
+        const sameOrganizationSettingsLogo =
+          exportSettings.organizationId?.trim() === logoOrganizationId
+            ? exportSettings.logoUrl?.trim()
+            : null;
+        if (sameOrganizationSettingsLogo) {
+          return loadOfficialDocumentLogoDataUrl(sameOrganizationSettingsLogo);
+        }
+        throw new Error(
+          "تعذر التحقق من شعار الجهة المرتبطة بالبرقية. أعد المحاولة."
+        );
       }
     }
+
+    const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
+    if (logoDataUrl) return logoDataUrl;
+
     const resolvedOrganizationLogo = resolveTelegramExportLogo({
       telegramOrganizationId: logoOrganizationId,
       organizationLogo,
@@ -3141,17 +3148,18 @@ function TelegramDetail({
       settingsLogoUrl: exportSettings.logoUrl,
     });
 
-    // Match the working Flutter branch: the saved settings logo is the
-    // fallback when organization-scoped lookup is unavailable or incomplete.
-    // Keep this fallback for legacy telegrams and older settings records.
+    // A known organization must never inherit a logo from a different account.
+    // Account settings are a permitted fallback only when their organization
+    // is the same, or when a legacy telegram has no organization ID.
     const logoUrl =
       resolvedOrganizationLogo?.trim() ||
-      exportSettings.logoUrl?.trim() ||
-      settings?.logoUrl?.trim() ||
+      (logoOrganizationId
+        ? exportSettings.organizationId?.trim() === logoOrganizationId
+          ? exportSettings.logoUrl?.trim()
+          : null
+        : exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim()) ||
       null;
 
-    // Logo normalization is best-effort: never block printing or exporting
-    // the telegram text when an optional legacy logo cannot be loaded.
     return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (

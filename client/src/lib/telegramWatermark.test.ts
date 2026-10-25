@@ -14,7 +14,7 @@ describe("official telegram watermark", () => {
 
     expect(html).toContain('class="page-watermark"');
     expect(html).toContain('class="watermark-text-pattern"');
-    expect(html).toContain('class="watermark-logo-fallback"');
+    expect(html).not.toContain("watermark-logo-fallback");
     expect(html).toContain('aria-hidden="true"');
     expect(html.match(/<span>وزارة الداخلية<\/span>/g)).toHaveLength(
       TELEGRAM_WATERMARK_REPEAT_COUNT
@@ -25,6 +25,13 @@ describe("official telegram watermark", () => {
     expect(TELEGRAM_WATERMARK_ROWS).toBe(34);
     expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(340);
     expect(TELEGRAM_WATERMARK_GAP_MM).toBe(5);
+  });
+
+  it("does not invent a logo when the organization has no configured logo", () => {
+    const html = buildTelegramWatermarkHtml();
+
+    expect(html).not.toContain("watermark-logo");
+    expect(html).not.toContain("official-seal");
   });
 
   it("keeps the organization's logo as a separate watermark layer", () => {

@@ -2692,6 +2692,69 @@ function TelegramComposer({
 }
 
 /**
+ * Wait until every image embedded in an official document is decoded before
+ * handing the markup to the browser print dialog or the server-side renderer.
+ * This is especially important for data URLs: setting img.src is synchronous,
+ * but image decoding is not guaranteed to have completed when HTML is
+ * serialized.
+ */
+async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+
+  await Promise.all(
+    images.map(async image => {
+      try {
+        if (!image.complete) {
+          await new Promise<void>((resolve, reject) => {
+            const cleanup = () => {
+              image.removeEventListener("load", onLoad);
+              image.removeEventListener("error", onError);
+            };
+            const onLoad = () => {
+              cleanup();
+              resolve();
+            };
+            const onError = () => {
+              cleanup();
+              reject(new Error("تعذر تحميل صورة الشعار داخل البرقية"));
+            };
+
+            image.addEventListener("load", onLoad, { once: true });
+            image.addEventListener("error", onError, { once: true });
+
+            // Close the race where the image finishes between the initial
+            // check and listener registration.
+            if (image.complete) {
+              cleanup();
+              resolve();
+            }
+          });
+        }
+
+        if (typeof image.decode === "function") {
+          await image.decode();
+        }
+
+        if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+          throw new Error(
+            "صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير"
+          );
+        }
+      } catch (error) {
+        // The organization logo is optional. Remove only a broken logo so a
+        // legacy or malformed image cannot block the telegram's text export.
+        if (image.classList.contains("official-logo")) {
+          image.remove();
+          return;
+        }
+
+        throw error;
+      }
+    })
+  );
+}
+
+/**
  * Fetch and normalize the organization logo once before it is used by the
  * header and watermark. The server renderer has no browser session, so a
  * data URL keeps both layers independent of authenticated storage at render
@@ -3089,6 +3152,8 @@ function TelegramDetail({
       settings?.logoUrl?.trim() ||
       null;
 
+    // Logo normalization is best-effort: never block printing or exporting
+    // the telegram text when an optional legacy logo cannot be loaded.
     return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (
@@ -3182,10 +3247,10 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
-    // Match the working application branch: use the configured organization
-    // logo directly when normalization to a data URL is unavailable.
-    const resolvedLogoUrl =
-      logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+    // The supplied URL is already resolved for this document. Do not
+    // reintroduce a remote settings URL when normalization explicitly failed:
+    // the server-side renderer blocks external network resources.
+    const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
       : "";
@@ -3550,7 +3615,8 @@ function TelegramDetail({
         // The active app branch uses the configured settings logo directly.
         // Preserve that same behavior if organization lookup returns no image.
         const previewLogoUrl =
-          logoDataUrl || (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
+          logoDataUrl ||
+          (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
         if (!cancelled) renderPreview(documentSettings, previewLogoUrl);
       } catch (error) {
         if (!cancelled) {
@@ -3589,6 +3655,7 @@ function TelegramDetail({
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
+    await waitForOfficialDocumentImages(paper);
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the
@@ -3767,6 +3834,7 @@ function TelegramDetail({
     };
 
     try {
+      await waitForOfficialDocumentImages(printRoot);
       // Wait for the exact font faces used by the official document before
       // opening the native print dialog; this keeps Arabic shaping and line
       // wrapping stable instead of printing with a fallback font. Logo bytes

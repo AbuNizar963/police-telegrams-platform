@@ -3531,7 +3531,10 @@ function TelegramDetail({
         if (!cancelled) renderPreview(documentSettings, logoDataUrl);
       } catch (error) {
         if (!cancelled) {
-          console.warn("تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:", error);
+          console.warn(
+            "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
+            error
+          );
         }
       }
     };

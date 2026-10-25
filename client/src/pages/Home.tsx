@@ -3233,7 +3233,7 @@ function TelegramDetail({
         .telegram-export-page .page-watermark {
           position: absolute;
           inset: 0;
-          z-index: 0;
+          z-index: 1;
           overflow: hidden;
           pointer-events: none;
         }
@@ -3276,7 +3276,7 @@ function TelegramDetail({
         .telegram-export-page .official-header, .telegram-export-page .classification,
         .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
           position: relative;
-          z-index: 1;
+          z-index: 2;
         }
         .telegram-export-page .official-header {
           display: grid;
@@ -4512,7 +4512,7 @@ function TelegramEditModal({
               }
               className="h-10 rounded-lg border bg-background px-3"
             >
-              <option value="normal">عادي</option>
+              <option value="normal">عادية</option>
               <option value="secret">سري</option>
             </select>
           </label>

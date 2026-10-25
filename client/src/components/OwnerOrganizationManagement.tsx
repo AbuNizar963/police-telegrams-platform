@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import {
+  hasOrganizationSettingsEditAccess,
+  hasOrganizationStructureEditAccess,
+} from "@/lib/menuAccess";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import {
@@ -132,6 +137,23 @@ export default function OwnerOrganizationManagement() {
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
   );
+  const { user } = useAuth();
+  const organizationContext = trpc.organizations.context.useQuery(undefined, {
+    enabled: open,
+  });
+  const isPlatformOwner =
+    user?.isPlatformOwner === true ||
+    organizationContext.data?.isOwner === true;
+  const canEditOrganizationStructure = hasOrganizationStructureEditAccess(
+    user?.role
+  );
+  const canOpenOrganizationEditor =
+    canEditOrganizationStructure &&
+    (isPlatformOwner || organizationContext.isSuccess);
+  const canEditOrganizationSettings = hasOrganizationSettingsEditAccess({
+    accountRole: user?.role,
+    isPlatformOwner,
+  });
   const organizations = trpc.organizations.all.useQuery(undefined, {
     enabled: open,
   });
@@ -153,7 +175,8 @@ export default function OwnerOrganizationManagement() {
         settingsQueryOrgId ?? "00000000-0000-0000-0000-000000000000",
     },
     {
-      enabled: open && Boolean(settingsQueryOrgId),
+      enabled:
+        open && canEditOrganizationSettings && Boolean(settingsQueryOrgId),
       staleTime: 60_000,
       refetchOnWindowFocus: false,
     }
@@ -263,6 +286,7 @@ export default function OwnerOrganizationManagement() {
     parentOrganizationId = "",
     type: OrganizationType = "governorate"
   ) => {
+    if (!canOpenOrganizationEditor) return;
     resetForm();
     setEditorOpen(true);
     setForm(current => ({
@@ -274,6 +298,7 @@ export default function OwnerOrganizationManagement() {
   const openEditorForEdit = (
     item: NonNullable<typeof organizations.data>[number]
   ) => {
+    if (!canOpenOrganizationEditor) return;
     const parent = (organizations.data ?? []).find(
       candidate => candidate.id === item.parentOrganizationId
     );
@@ -348,6 +373,7 @@ export default function OwnerOrganizationManagement() {
     [editingId, organizations.data]
   );
   const settingsLoadedForEditor =
+    !canEditOrganizationSettings ||
     !editingId ||
     settingsQueryOrgId !== editingId ||
     (organizationSettings.isSuccess &&
@@ -365,6 +391,10 @@ export default function OwnerOrganizationManagement() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canOpenOrganizationEditor) {
+      toast.error("لا تملك صلاحية تعديل الهيكل التنظيمي.");
+      return;
+    }
     if (form.type !== "central" && !form.parentOrganizationId) {
       toast.error("اختر الجهة الأب من الهيكل التنظيمي قبل الحفظ");
       return;
@@ -438,16 +468,22 @@ export default function OwnerOrganizationManagement() {
       if (!organizationId) {
         throw new Error("تعذر تحديد الجهة لحفظ إعداداتها");
       }
-      await saveOrganizationSettings.mutateAsync({
-        organizationId,
-        ...settingsInput,
-      });
-      await utils.organizations.settings.get.invalidate({ organizationId });
-      setSettingsSaveFailedForId(null);
+      if (canEditOrganizationSettings) {
+        await saveOrganizationSettings.mutateAsync({
+          organizationId,
+          ...settingsInput,
+        });
+        await utils.organizations.settings.get.invalidate({ organizationId });
+        setSettingsSaveFailedForId(null);
+      }
       toast.success(
-        editingId
-          ? "تم حفظ الجهة وإعداداتها المستقلة"
-          : "تمت إضافة الجهة وحفظ إعداداتها المستقلة"
+        canEditOrganizationSettings
+          ? editingId
+            ? "تم حفظ الجهة وإعداداتها المستقلة"
+            : "تمت إضافة الجهة وحفظ إعداداتها المستقلة"
+          : editingId
+            ? "تم حفظ بيانات الجهة"
+            : "تمت إضافة الجهة"
       );
       resetForm();
     } catch (error) {
@@ -466,6 +502,10 @@ export default function OwnerOrganizationManagement() {
 
   const handleLogoFile = async (file?: File) => {
     if (!file) return;
+    if (!canEditOrganizationSettings) {
+      toast.error("إعدادات شعارات الجهات متاحة لمالك المنصة فقط.");
+      return;
+    }
     if (!online) {
       toast.error("لا يوجد اتصال؛ لا يمكن رفع الشعار الآن.");
       return;
@@ -643,13 +683,15 @@ export default function OwnerOrganizationManagement() {
               إدارة المناطق والأقسام والمخافر
             </h2>
             <div className="flex shrink-0 items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => openEditorForCreate()}
-              >
-                <Plus className="ml-1 h-4 w-4" /> إضافة جهة
-              </Button>
+              {canOpenOrganizationEditor && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => openEditorForCreate()}
+                >
+                  <Plus className="ml-1 h-4 w-4" /> إضافة جهة
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -665,6 +707,12 @@ export default function OwnerOrganizationManagement() {
             التسلسل التنظيمي: وزارة الداخلية ← المحافظة ← مديرية الريف أو قسم
             المدينة ← المخفر ← الوحدة. يمكن للمالك تخصيص علاقة الأب لكل جهة.
           </p>
+          {!canEditOrganizationStructure && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              هذا العرض للجهات والحسابات الواقعة ضمن نطاق صلاحيتك، دون أدوات
+              تعديل الهيكل.
+            </p>
+          )}
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               {
@@ -1013,7 +1061,8 @@ export default function OwnerOrganizationManagement() {
                   </span>
                 </label>
               )}
-              {editingId &&
+              {canEditOrganizationSettings &&
+                editingId &&
                 settingsQueryOrgId === editingId &&
                 organizationSettings.isError && (
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
@@ -1032,7 +1081,7 @@ export default function OwnerOrganizationManagement() {
                     </Button>
                   </div>
                 )}
-              {showSettingsNotSavedWarning && (
+              {canEditOrganizationSettings && showSettingsNotSavedWarning && (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   {settingsSaveFailedForId === editingId ? (
                     <p>
@@ -1047,7 +1096,10 @@ export default function OwnerOrganizationManagement() {
                   )}
                 </div>
               )}
-              <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/10">
+              <section
+                hidden={!canEditOrganizationSettings}
+                className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/10"
+              >
                 <div>
                   <h4 className="text-sm font-bold">
                     إعدادات مستقلة لهذه الجهة
@@ -1354,6 +1406,12 @@ export default function OwnerOrganizationManagement() {
                   </label>
                 </div>
               </section>
+              {!canEditOrganizationSettings && (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  يمكن تعديل الهيكل والحسابات بصلاحية الإدارة؛ أما إعدادات
+                  الوثائق والشعارات الخاصة بالجهات فمتاحة لمالك المنصة فقط.
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button
                   type="submit"
@@ -1366,9 +1424,13 @@ export default function OwnerOrganizationManagement() {
                 >
                   {saveOrganizationSettings.isPending
                     ? "جارٍ حفظ الإعدادات..."
-                    : editingId
-                      ? "حفظ الجهة وإعداداتها"
-                      : "إضافة الجهة وإعداداتها"}
+                    : canEditOrganizationSettings
+                      ? editingId
+                        ? "حفظ الجهة وإعداداتها"
+                        : "إضافة الجهة وإعداداتها"
+                      : editingId
+                        ? "حفظ الجهة"
+                        : "إضافة الجهة"}
                 </Button>
                 {editingId && (
                   <Button type="button" variant="outline" onClick={resetForm}>
@@ -1528,28 +1590,32 @@ export default function OwnerOrganizationManagement() {
                       · {selectedOrganization.code}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() =>
-                      openEditorForCreate(
-                        selectedOrganization.id,
-                        getAllowedOrganizationChildTypes(
-                          selectedOrganization.type
-                        )[0] ?? "department"
-                      )
-                    }
-                  >
-                    <Plus className="ml-1 h-4 w-4" /> إضافة جهة فرعية
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEditorForEdit(selectedOrganization)}
-                  >
-                    <Pencil className="ml-1 h-4 w-4" /> تعديل الجهة
-                  </Button>
+                  {canOpenOrganizationEditor && (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          openEditorForCreate(
+                            selectedOrganization.id,
+                            getAllowedOrganizationChildTypes(
+                              selectedOrganization.type
+                            )[0] ?? "department"
+                          )
+                        }
+                      >
+                        <Plus className="ml-1 h-4 w-4" /> إضافة جهة فرعية
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditorForEdit(selectedOrganization)}
+                      >
+                        <Pencil className="ml-1 h-4 w-4" /> تعديل الجهة
+                      </Button>
+                    </>
+                  )}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3">
@@ -1583,25 +1649,26 @@ export default function OwnerOrganizationManagement() {
                         <p className="text-xs text-amber-700">
                           لا يوجد حساب مباشر
                         </p>
-                        {accountManagedTypes.has(
-                          selectedOrganization.type as OrganizationType
-                        ) && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={provisionAccount.isPending}
-                            onClick={() =>
-                              provisionAccount.mutate({
-                                organizationId: selectedOrganization.id,
-                              })
-                            }
-                          >
-                            {provisionAccount.isPending
-                              ? "جارٍ الإنشاء..."
-                              : "إنشاء حساب هذه الجهة"}
-                          </Button>
-                        )}
+                        {canOpenOrganizationEditor &&
+                          accountManagedTypes.has(
+                            selectedOrganization.type as OrganizationType
+                          ) && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={provisionAccount.isPending}
+                              onClick={() =>
+                                provisionAccount.mutate({
+                                  organizationId: selectedOrganization.id,
+                                })
+                              }
+                            >
+                              {provisionAccount.isPending
+                                ? "جارٍ الإنشاء..."
+                                : "إنشاء حساب هذه الجهة"}
+                            </Button>
+                          )}
                       </div>
                     )}
                   </div>

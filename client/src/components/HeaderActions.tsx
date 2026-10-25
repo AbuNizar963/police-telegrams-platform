@@ -23,6 +23,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import {
+  getManagementMenuHeading,
+  hasOrganizationSettingsMenuAccess,
+  hasUserManagementMenuAccess,
+} from "@/lib/menuAccess";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 
@@ -64,22 +69,22 @@ export default function HeaderActions() {
   const organizationContext = trpc.organizations.context.useQuery(undefined, {
     enabled: Boolean(user),
   });
-  const canManageOrganizationSettings =
-    user?.role === "admin" ||
-    ["system_admin", "organization_admin"].includes(
-      organizationContext.data?.role ?? ""
-    );
-  const canManageUsers =
-    user?.role === "admin" ||
-    [
-      "system_admin",
-      "organization_admin",
-      "regional_admin",
-      "organization_supervisor",
-    ].includes(organizationContext.data?.role ?? "");
   const isPlatformOwner =
     user?.isPlatformOwner === true ||
     organizationContext.data?.isOwner === true;
+  const canManageOrganizationSettings = hasOrganizationSettingsMenuAccess({
+    organizationRole: organizationContext.data?.role,
+    isPlatformOwner,
+  });
+  const canManageUsers = hasUserManagementMenuAccess({
+    accountRole: user?.role,
+    organizationRole: organizationContext.data?.role,
+    isPlatformOwner,
+  });
+  const managementMenuHeading = getManagementMenuHeading(
+    user?.role,
+    isPlatformOwner
+  );
   const notificationConfig = trpc.notifications.config.useQuery(undefined, {
     enabled: Boolean(user),
   });
@@ -334,7 +339,7 @@ export default function HeaderActions() {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
-                إعدادات المالك
+                {managementMenuHeading}
               </DropdownMenuLabel>
               {isPlatformOwner && (
                 <DropdownMenuItem

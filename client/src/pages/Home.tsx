@@ -3155,22 +3155,6 @@ function TelegramDetail({
           margin: 0 auto;
           object-fit: contain;
         }
-         .telegram-export-page .official-seal {
-          width: 110px;
-          height: 110px;
-          margin: 0 auto;
-          border: 2px solid #b49a55;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: #9a813c;
-          text-align: center;
-          line-height: 1.2;
-        }
-        .telegram-export-page .official-seal span { font-size: 20px; }
-        .telegram-export-page .official-seal strong { font-size: 11px; }
         .telegram-export-page .classification {
           display: flex;
           justify-content: space-between;
@@ -3432,11 +3416,9 @@ function TelegramDetail({
             image.src = dataUrl;
             await image.decode();
           } catch {
-            // Never send a broken image to Chromium. Replace it with the same
-            // vector fallback used when no logo is configured.
-            image.outerHTML = image.classList.contains("watermark-logo")
-              ? `<div class="watermark-seal" aria-hidden="true"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`
-              : `<div class="official-seal" aria-label="الشعار الرسمي"><span>★</span><strong>وزارة<br />الداخلية</strong></div>`;
+            // Do not substitute a fabricated seal for the organization logo.
+            // Omit only the unavailable image and preserve the rest of the export.
+            image.remove();
           }
         }
       )

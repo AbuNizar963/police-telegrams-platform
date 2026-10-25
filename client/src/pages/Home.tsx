@@ -3248,6 +3248,33 @@ function TelegramDetail({
           object-fit: contain;
           opacity: ${watermarkOpacity};
         }
+        .telegram-export-page .watermark-logo-fallback {
+          position: absolute;
+          z-index: 1;
+          top: 50%;
+          left: 50%;
+          width: 44%;
+          aspect-ratio: 1;
+          transform: translate(-50%, -50%);
+          border: 5px solid #b49a55;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          color: #9a813c;
+          text-align: center;
+          opacity: ${watermarkOpacity};
+        }
+        .telegram-export-page .watermark-logo-fallback span {
+          font-size: 100px;
+          line-height: 1;
+        }
+        .telegram-export-page .watermark-logo-fallback strong {
+          font-size: 34px;
+          line-height: 1.4;
+        }
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
           z-index: 0;

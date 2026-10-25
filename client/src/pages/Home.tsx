@@ -2740,20 +2740,39 @@ async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
           );
         }
       } catch (error) {
+<<<<<<< HEAD
         // Never return a successful-looking document with a missing logo.
         // The caller can show a clear retry/error message instead.
         throw error instanceof Error
           ? error
           : new Error("تعذر تحميل صورة الشعار داخل البرقية");
+=======
+        // The organization logo is optional. Remove only a broken logo so a
+        // legacy or malformed image cannot block the telegram's text export.
+        if (image.classList.contains("official-logo")) {
+          image.remove();
+          return;
+        }
+
+        throw error;
+>>>>>>> origin/fix/print-logo-watermark-image-readiness
       }
     })
   );
 }
 
 /**
+<<<<<<< HEAD
  * Normalize a legacy/external logo URL in the browser. Private organization
  * storage is resolved by the authenticated server route instead, avoiding a
  * browser-cookie/redirect/CORS dependency in the print and PNG path.
+=======
+ * Fetch and normalize the organization logo once before it is used by the
+ * header and watermark. The server renderer has no browser session, so a
+ * data URL keeps both layers independent of authenticated storage at render
+ * time. A missing legacy image is optional, matching the Flutter document
+ * flow: export continues without substituting another organization's logo.
+>>>>>>> origin/fix/print-logo-watermark-image-readiness
  */
 async function loadOfficialDocumentLogoDataUrl(
   logoUrl: string | null | undefined
@@ -3161,6 +3180,8 @@ function TelegramDetail({
         : exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim()) ||
       null;
 
+    // Logo normalization is best-effort: never block printing or exporting
+    // the telegram text when an optional legacy logo cannot be loaded.
     return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (

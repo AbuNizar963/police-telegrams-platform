@@ -2699,23 +2699,44 @@ function TelegramComposer({
  */
 async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
   const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+
   await Promise.all(
     images.map(async image => {
       if (!image.complete) {
         await new Promise<void>((resolve, reject) => {
-          image.addEventListener("load", () => resolve(), { once: true });
-          image.addEventListener(
-            "error",
-            () => reject(new Error("تعذر تحميل صورة الشعار داخل البرقية")),
-            { once: true }
-          );
+          const cleanup = () => {
+            image.removeEventListener("load", onLoad);
+            image.removeEventListener("error", onError);
+          };
+          const onLoad = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            cleanup();
+            reject(new Error("تعذر تحميل صورة الشعار داخل البرقية"));
+          };
+
+          image.addEventListener("load", onLoad, { once: true });
+          image.addEventListener("error", onError, { once: true });
+
+          // Close the race where the image finishes between the initial check
+          // and listener registration.
+          if (image.complete) {
+            cleanup();
+            resolve();
+          }
         });
       }
+
       if (typeof image.decode === "function") {
         await image.decode();
       }
+
       if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-        throw new Error("صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير");
+        throw new Error(
+          "صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير"
+        );
       }
     })
   );

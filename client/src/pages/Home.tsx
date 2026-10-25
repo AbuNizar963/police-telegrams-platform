@@ -2698,6 +2698,36 @@ function TelegramComposer({
  * time. A missing legacy image is optional, matching the Flutter document
  * flow: export continues without substituting another organization's logo.
  */
+/**
+ * Wait until every image embedded in an official document is decoded before
+ * handing the markup to the browser print dialog or the server-side renderer.
+ * This is especially important for data URLs: setting img.src is synchronous,
+ * but image decoding is not guaranteed to have completed when HTML is serialized.
+ */
+async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+  await Promise.all(
+    images.map(async image => {
+      if (!image.complete) {
+        await new Promise<void>((resolve, reject) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener(
+            "error",
+            () => reject(new Error("تعذر تحميل صورة الشعار داخل البرقية")),
+            { once: true }
+          );
+        });
+      }
+      if (typeof image.decode === "function") {
+        await image.decode();
+      }
+      if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+        throw new Error("صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير");
+      }
+    })
+  );
+}
+
 async function loadOfficialDocumentLogoDataUrl(
   logoUrl: string | null | undefined
 ): Promise<string | null> {
@@ -3589,6 +3619,7 @@ function TelegramDetail({
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
+    await waitForOfficialDocumentImages(paper);
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the
@@ -3767,6 +3798,7 @@ function TelegramDetail({
     };
 
     try {
+      await waitForOfficialDocumentImages(printRoot);
       // Wait for the exact font faces used by the official document before
       // opening the native print dialog; this keeps Arabic shaping and line
       // wrapping stable instead of printing with a fallback font. Logo bytes

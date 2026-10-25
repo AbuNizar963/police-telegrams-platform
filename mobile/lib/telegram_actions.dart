@@ -41,6 +41,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   String? error;
   List<dynamic> routes = const [];
   List<dynamic> attachments = const [];
+  List<dynamic> actions = const [];
   List<Map<String, dynamic>> routingDirectory = const [];
 
   @override
@@ -60,6 +61,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'telegrams.attachments',
           input: {'telegramId': widget.telegramId},
         ),
+        widget.api.call(
+          'telegrams.actions',
+          input: {'telegramId': widget.telegramId},
+        ),
         widget.api
             .call('organizations.routingDirectory')
             .catchError((_) => <dynamic>[]),
@@ -68,8 +73,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       setState(() {
         routes = results[0] is List ? results[0] as List : const [];
         attachments = results[1] is List ? results[1] as List : const [];
-        routingDirectory = results[2] is List
-            ? (results[2] as List)
+        actions = results[2] is List ? results[2] as List : const [];
+        routingDirectory = results[3] is List
+            ? (results[3] as List)
                   .whereType<Map>()
                   .map((item) => Map<String, dynamic>.from(item))
                   .toList()
@@ -579,6 +585,33 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     return '$mime · ${(size / 1024).ceil()} كيلوبايت · SHA-256 $hashPrefix...';
   }
 
+  Widget _actionTile(dynamic item) {
+    final action = Map<String, dynamic>.from(item as Map);
+    final value = '${action['action'] ?? 'إجراء'}';
+    final label = switch (value) {
+      'status.transition' => 'تغيير حالة البرقية',
+      'attachment.upload' => 'رفع مرفق',
+      _ => value,
+    };
+    final statuses = [
+      if (action['fromStatus'] != null) '${action['fromStatus']}',
+      if (action['toStatus'] != null) '${action['toStatus']}',
+    ];
+    final details = <String>[
+      'المستخدم رقم ${action['actorUserId'] ?? '—'}',
+      if (statuses.isNotEmpty) statuses.join(' ← '),
+      if ('${action['reason'] ?? ''}'.trim().isNotEmpty)
+        'السبب: ${action['reason']}',
+      if (action['createdAt'] != null) '${action['createdAt']}',
+    ];
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.fact_check_outlined, color: _gold),
+      title: Text(label),
+      subtitle: Text(details.join(' · ')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -634,6 +667,14 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
             ...routes.map(_routeTile),
+          ],
+          if (actions.isNotEmpty) ...[
+            const Divider(height: 28),
+            const Text(
+              'سجل التدقيق والإجراءات',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            ...actions.map(_actionTile),
           ],
           const Divider(height: 28),
           const Text('المرفقات', style: TextStyle(fontWeight: FontWeight.w800)),

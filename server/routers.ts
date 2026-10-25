@@ -45,6 +45,7 @@ import {
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
+  listTelegramActions,
   listTelegramAttachments,
   listTelegrams,
   purgeTelegramPermanently,
@@ -1370,6 +1371,23 @@ export const appRouter = router({
           "لا تملك صلاحية قراءة مرفقات هذه البرقية"
         );
         return listTelegramAttachments(input.telegramId);
+      }),
+    actions: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض سجل إجراءات هذه البرقية"
+        );
+        return listTelegramActions(input.telegramId);
       }),
     downloadAttachment: protectedProcedure
       .input(z.object({ attachmentId: z.number().int().positive() }))

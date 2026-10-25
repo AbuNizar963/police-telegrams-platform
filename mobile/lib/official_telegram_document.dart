@@ -27,6 +27,11 @@ const _ministryWatermarkRows = 34;
 // Half-centimetre horizontal and vertical separation between repetitions.
 const _ministryWatermarkGapCss = '5mm';
 
+// The API also keeps a persistent, revalidated file cache. This small
+// process cache avoids decoding the same organization logo again when an
+// officer opens several telegrams during one session.
+final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
+
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
   // Decode at the source resolution. The previous forced 600x600 decode
@@ -339,6 +344,9 @@ class _OfficialTelegramDocumentPageState
   ) async {
     final url = _value(source, fallback: '');
     if (url.isEmpty || organizationId.isEmpty) return null;
+    final cacheKey = '$organizationId\n$url';
+    final cached = _officialLogoDataUrlCache[cacheKey];
+    if (cached != null) return cached;
     try {
       final bytes = await widget.api.fetchOrganizationLogo(
         organizationId: organizationId,
@@ -346,7 +354,9 @@ class _OfficialTelegramDocumentPageState
       );
       if (bytes == null || bytes.isEmpty) return null;
       final normalized = await normalizeOfficialDocumentLogo(bytes);
-      return 'data:image/png;base64,${base64Encode(normalized)}';
+      final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+      _officialLogoDataUrlCache[cacheKey] = dataUrl;
+      return dataUrl;
     } catch (_) {
       // A missing or unreadable organization logo must remain absent; never
       // substitute a default seal or watermark.

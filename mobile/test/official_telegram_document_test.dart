@@ -82,50 +82,47 @@ void main() {
     },
   );
 
-  test(
-    'preserves the imported serial while hiding incomplete original-record notes',
-    () {
-      final source = telegram()
-        ..['originalSerial'] = 'ب ص ٠٠٦'
-        ..['importNotes'] = 'رد على ب و ٦'
-        ..['telegramDate'] = '2024-03-04T05:06:00.000Z';
-      final html = buildOfficialTelegramHtml(
-        telegram: source,
-        settings: const {
-          'numberSystem': 'latin',
-          'timezone': 'UTC',
-          'timeFormat': '12',
-          'dateFormat': 'yyyy/MM/dd HH:mm:ss',
+  test('preserves the imported serial while hiding incomplete original-record notes', () {
+    final source = telegram()
+      ..['originalSerial'] = 'ب ص ٠٠٦'
+      ..['importNotes'] = 'رد على ب و ٦'
+      ..['telegramDate'] = '2024-03-04T05:06:00.000Z';
+    final html = buildOfficialTelegramHtml(
+      telegram: source,
+      settings: const {
+        'numberSystem': 'latin',
+        'timezone': 'UTC',
+        'timeFormat': '12',
+        'dateFormat': 'yyyy/MM/dd HH:mm:ss',
+      },
+      routingDirectory: const [],
+      verificationUrl: 'https://example.test/verify/current-token',
+      referenceLinks: const [
+        {
+          'serial': '6',
+          'direction': 'incoming',
+          'verificationToken': 'related-token',
         },
-        routingDirectory: const [],
-        verificationUrl: 'https://example.test/verify/current-token',
-        referenceLinks: const [
-          {
-            'serial': '6',
-            'direction': 'incoming',
-            'verificationToken': 'related-token',
-          },
-        ],
-        fontDataUrls: fonts,
-      );
+      ],
+      fontDataUrls: fonts,
+    );
 
-      expect(html, contains('ب ص ٠٠٦'));
-      expect(html, isNot(contains('ملاحظات السجل الأصلي')));
-      expect(html, isNot(contains('class="import-notes"')));
-      expect(html, isNot(contains('border-top:1px dotted #7b8493')));
-      expect(
-        html,
-        matches(
-          RegExp(
-            r'<p class="footer-date">تاريخ إنشاء الوثيقة: \d{4}/\d{2}/\d{2} - \d{2}:\d{2}:\d{2}(?: [صم])?</p>',
-          ),
+    expect(html, contains('ب ص ٠٠٦'));
+    expect(html, isNot(contains('ملاحظات السجل الأصلي')));
+    expect(html, isNot(contains('class="import-notes"')));
+    expect(html, isNot(contains('border-top:1px dotted #7b8493')));
+    expect(
+      html,
+      matches(
+        RegExp(
+          r'<p class="footer-date">تاريخ إنشاء الوثيقة: \d{4}/\d{2}/\d{2} - \d{2}:\d{2}:\d{2}(?: [صم])?</p>',
         ),
-      );
-      expect(html, contains('الوقت والتاريخ:</strong>'));
-      expect(html, contains('تاريخ إنشاء الوثيقة:'));
-      expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
-    },
-  );
+      ),
+    );
+    expect(html, contains('الوقت والتاريخ:</strong>'));
+    expect(html, contains('تاريخ إنشاء الوثيقة:'));
+    expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
+  });
 
   test('omits the QR from the document when platform settings disable it', () {
     final html = buildOfficialTelegramHtml(

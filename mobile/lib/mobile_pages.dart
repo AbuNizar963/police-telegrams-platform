@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'app_lock.dart';
 
 import 'api.dart';
+import 'telegram_report_date_formatter.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -170,6 +171,8 @@ class _ReportsPageState extends State<ReportsPage> {
   bool loading = true;
   String? error;
   Map<String, dynamic>? report;
+  Map<String, dynamic> reportSettings = const {};
+  bool _reportSettingsLoaded = false;
   final _searchController = TextEditingController();
   String _status = 'all';
   DateTime? _from;
@@ -264,10 +267,26 @@ class _ReportsPageState extends State<ReportsPage> {
       if (_from != null) input['from'] = _dateValue(_from!);
       if (_to != null) input['to'] = _dateValue(_to!, endOfDay: true);
 
-      final result = await widget.api.call('reports.telegrams', input: input);
+      final settingsFuture = _reportSettingsLoaded
+          ? Future<dynamic>.value(reportSettings)
+          : widget.api
+                .call('settings.get')
+                .catchError((_) => <String, dynamic>{});
+      final results = await Future.wait<dynamic>([
+        widget.api.call('reports.telegrams', input: input),
+        settingsFuture,
+      ]);
       if (!mounted) return;
       setState(() {
-        report = result is Map ? Map<String, dynamic>.from(result) : {};
+        report = results[0] is Map
+            ? Map<String, dynamic>.from(results[0] as Map)
+            : {};
+        if (!_reportSettingsLoaded) {
+          reportSettings = results[1] is Map
+              ? Map<String, dynamic>.from(results[1] as Map)
+              : {};
+          _reportSettingsLoaded = true;
+        }
         error = null;
       });
     } catch (exception) {
@@ -321,7 +340,7 @@ class _ReportsPageState extends State<ReportsPage> {
           _statuses['${row['status']}'] ?? '${row['status'] ?? ''}',
           '${row['classification'] ?? ''}',
           '${row['priority'] ?? ''}',
-          '${row['createdAt'] ?? ''}',
+          formatTelegramReportDate(row['createdAt'], reportSettings),
         ];
       }),
     ];

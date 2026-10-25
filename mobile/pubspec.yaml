@@ -1,7 +1,7 @@
 name: police_telegrams
 description: تطبيق برقيات الشرطة لنظام HADIR
 publish_to: 'none'
-version: 1.0.113+658
+version: 1.0.113+658 # Release build from the latest repository code
 environment:
   sdk: ^3.13.2
 dependencies:

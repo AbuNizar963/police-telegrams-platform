@@ -3079,7 +3079,7 @@ function TelegramDetail({
         .telegram-export-page .page-watermark {
           position: absolute;
           inset: 0;
-          z-index: 0;
+          z-index: 1;
           overflow: hidden;
           pointer-events: none;
         }
@@ -3122,7 +3122,7 @@ function TelegramDetail({
         .telegram-export-page .official-header, .telegram-export-page .classification,
         .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
           position: relative;
-          z-index: 1;
+          z-index: 2;
         }
         .telegram-export-page .official-header {
           display: grid;
@@ -3279,7 +3279,7 @@ function TelegramDetail({
         }
       </style>
       <article class="telegram-export-page" dir="rtl" lang="ar">
-        <div class="page-watermark">${watermark}</div>
+        ${watermark}
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>
@@ -3310,7 +3310,7 @@ function TelegramDetail({
               ${showVerificationQr ? `<div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>` : ""}
             </div>
           </section>
-          <h2 class="body-heading">نص الوثيقة</h2>
+          <h2 class="body-heading">نص البرقية</h2>
           <div class="telegram-body">${escapeHtml(localizeDigits(telegram.body, numberSystem))}</div>
           <section class="signature">
             <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
@@ -4366,7 +4366,7 @@ function TelegramEditModal({
               }
               className="h-10 rounded-lg border bg-background px-3"
             >
-              <option value="normal">عادي</option>
+              <option value="normal">عادية</option>
               <option value="secret">سري</option>
             </select>
           </label>

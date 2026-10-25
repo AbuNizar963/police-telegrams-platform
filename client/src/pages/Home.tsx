@@ -3098,10 +3098,7 @@ function TelegramDetail({
     const showVerificationQr = documentSettings.showVerificationQr !== false;
     const rawWatermarkOpacity = documentSettings.watermarkOpacityPercent;
     const configuredWatermarkOpacity =
-      rawWatermarkOpacity == null ||
-      (typeof rawWatermarkOpacity === "string" && !rawWatermarkOpacity.trim())
-        ? Number.NaN
-        : Number(rawWatermarkOpacity);
+      rawWatermarkOpacity == null ? Number.NaN : Number(rawWatermarkOpacity);
     const watermarkOpacityPercent = Number.isFinite(configuredWatermarkOpacity)
       ? Math.max(0, Math.min(60, configuredWatermarkOpacity))
       : DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent;

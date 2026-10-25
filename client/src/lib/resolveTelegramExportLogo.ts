@@ -14,7 +14,13 @@ export function resolveTelegramExportLogo(input: {
   settingsLogoUrl?: string | null;
 }): string | null {
   const organizationId = input.telegramOrganizationId?.trim();
-  if (!organizationId) return null;
+
+  // Legacy telegrams may not have an organization ID. Match the working
+  // application branch by using the configured logo only for these ownerless
+  // records; never borrow settings from a different known organization.
+  if (!organizationId) {
+    return input.settingsLogoUrl?.trim() || null;
+  }
 
   if (input.organizationLogo?.organizationId === organizationId) {
     const logoUrl = input.organizationLogo.logoUrl?.trim();

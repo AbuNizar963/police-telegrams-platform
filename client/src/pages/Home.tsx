@@ -3251,7 +3251,7 @@ function TelegramDetail({
         .telegram-export-page .watermark-text-pattern {
           position: absolute;
           z-index: 0;
-          inset: 1%;
+          inset: 3mm;
           display: grid;
           grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
           grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);

@@ -70,10 +70,7 @@ import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
 } from "@/lib/platformDocumentSettings";
-import {
-  DEFAULT_PLATFORM_DOCUMENT_SETTINGS,
-  type PlatformDocumentSettings,
-} from "@shared/platformDocumentSettings";
+import type { PlatformDocumentSettings } from "@shared/platformDocumentSettings";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import {
   downloadTelegramWorkbook,

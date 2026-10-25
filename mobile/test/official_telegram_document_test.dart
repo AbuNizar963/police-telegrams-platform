@@ -177,9 +177,7 @@ void main() {
       expect(html, contains('grid-template-rows:repeat(34,max-content)'));
       expect(
         html,
-        contains(
-          'watermark-text-pattern{position:absolute;z-index:0;inset:0;',
-        ),
+        contains('watermark-text-pattern{position:absolute;z-index:0;inset:0;'),
       );
       expect(
         html,

@@ -4061,10 +4061,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       // A corrupt cache must never block the authoritative request.
     }
     try {
-      final data = await widget.api.call(
-        'telegrams.get',
-        input: input,
-      );
+      final data = await widget.api.call('telegrams.get', input: input);
       if (mounted) {
         setState(() {
           telegram = Map<String, dynamic>.from(data as Map);

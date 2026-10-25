@@ -3589,6 +3589,7 @@ class _DashboardPageState extends State<DashboardPage>
                   builder: (_) => TelegramDetailsPage(
                     api: widget.api,
                     telegramId: telegramId,
+                    initialTelegram: row,
                     account: _account,
                     organizationRole: activeOrganizationRole,
                     organizationIsOwner: activeOrganizationIsOwner,
@@ -3931,6 +3932,7 @@ class TelegramDetailsPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.telegramId,
+    this.initialTelegram,
     required this.account,
     required this.organizationRole,
     required this.organizationIsOwner,
@@ -3938,6 +3940,7 @@ class TelegramDetailsPage extends StatefulWidget {
   });
   final PoliceApi api;
   final int telegramId;
+  final Map<String, dynamic>? initialTelegram;
   final Map<String, dynamic> account;
   final String? organizationRole;
   final bool organizationIsOwner;
@@ -4008,6 +4011,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   @override
   void initState() {
     super.initState();
+    telegram = widget.initialTelegram;
+    loading = widget.initialTelegram == null;
     load();
   }
 
@@ -4018,7 +4023,10 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         input: {'id': widget.telegramId},
       );
       if (mounted) {
-        setState(() => telegram = Map<String, dynamic>.from(data as Map));
+        setState(() {
+          telegram = Map<String, dynamic>.from(data as Map);
+          error = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -4191,7 +4199,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         ),
         body: loading
             ? const Center(child: CircularProgressIndicator())
-            : error != null
+            : error != null && data == null
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),

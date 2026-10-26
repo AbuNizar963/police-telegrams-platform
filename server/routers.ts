@@ -460,7 +460,7 @@ export const appRouter = router({
       const canReadAuditLogs =
         isPlatformOwner(ctx.user) ||
         ctx.user.role === "admin" ||
-        membership?.role === "system_admin";
+        (membership?.isActive === true && membership.role === "system_admin");
 
       if (!canReadAuditLogs) {
         throw new TRPCError({

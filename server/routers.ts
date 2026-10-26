@@ -699,18 +699,6 @@ export const appRouter = router({
           /^department\/logos\/([0-9a-f-]{36})\//i
         );
         if (
-          !isPlatformOwner(ctx.user) &&
-          (!scopedStorageKey ||
-            scopedStorageKey[1].toLowerCase() !==
-              input.organizationId.toLowerCase())
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "أعد رفع الشعار من إعدادات الجهة؛ الشعار الحالي غير معزول",
-          });
-        }
-
-        if (
           scopedStorageKey &&
           scopedStorageKey[1].toLowerCase() !==
             input.organizationId.toLowerCase()
@@ -718,6 +706,13 @@ export const appRouter = router({
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "الشعار المحفوظ لا يتبع الجهة المطلوبة",
+          });
+        }
+
+        if (!isPlatformOwner(ctx.user) && !scopedStorageKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "أعد رفع الشعار من إعدادات الجهة؛ الشعار الحالي غير معزول",
           });
         }
 

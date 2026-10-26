@@ -126,7 +126,11 @@ export default function AuditLogPage() {
           disabled={auditQuery.isFetching}
         >
           <RefreshCw
-            className={`ml-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`}
+            className={
+              auditQuery.isFetching
+                ? "ml-2 h-4 w-4 animate-spin"
+                : "ml-2 h-4 w-4"
+            }
           />
           تحديث السجل
         </Button>

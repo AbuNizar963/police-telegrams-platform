@@ -4,13 +4,23 @@ const {
   getAuthenticatedUserFromRequest,
   storageDownload,
   storageGetSignedUrl,
+  getUserOrganizationMembership,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageDownload: vi.fn(),
   storageGetSignedUrl: vi.fn(),
+  getUserOrganizationMembership: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
+vi.mock("../organization", async importOriginal => {
+  const actual =
+    await importOriginal<typeof import("../organization")>();
+  return {
+    ...actual,
+    getUserOrganizationMembership,
+  };
+});
 vi.mock("../storage", async () => {
   const actual =
     await vi.importActual<typeof import("../storage")>("../storage");
@@ -86,6 +96,11 @@ describe("storage route", () => {
       contentType: "image/png",
     });
     storageGetSignedUrl.mockResolvedValue("https://storage.example/file");
+    getUserOrganizationMembership.mockResolvedValue({
+      userId: 7,
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      isActive: true,
+    });
   });
 
   it("requires authentication", async () => {
@@ -100,7 +115,7 @@ describe("storage route", () => {
 
   it("serves department logo bytes through the same-origin route", async () => {
     const key =
-      "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440000-badge.png";
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

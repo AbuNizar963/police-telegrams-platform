@@ -4,13 +4,22 @@ const {
   getAuthenticatedUserFromRequest,
   storageDownload,
   storageGetSignedUrl,
+  getUserOrganizationMembership,
+  getOrganizationSettings,
+  isPlatformOwner,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageDownload: vi.fn(),
   storageGetSignedUrl: vi.fn(),
+  getUserOrganizationMembership: vi.fn(),
+  getOrganizationSettings: vi.fn(),
+  isPlatformOwner: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
+vi.mock("../organization", () => ({ getUserOrganizationMembership }));
+vi.mock("../db", () => ({ getOrganizationSettings }));
+vi.mock("../ownerAccess", () => ({ isPlatformOwner }));
 vi.mock("../storage", async () => {
   const actual =
     await vi.importActual<typeof import("../storage")>("../storage");
@@ -86,6 +95,12 @@ describe("storage route", () => {
       contentType: "image/png",
     });
     storageGetSignedUrl.mockResolvedValue("https://storage.example/file");
+    getUserOrganizationMembership.mockResolvedValue({
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      isActive: true,
+    });
+    getOrganizationSettings.mockResolvedValue({ logoKey: null, logoUrl: null });
+    isPlatformOwner.mockReturnValue(false);
   });
 
   it("requires authentication", async () => {
@@ -101,6 +116,7 @@ describe("storage route", () => {
   it("serves department logo bytes through the same-origin route", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
+    getOrganizationSettings.mockResolvedValueOnce({ logoKey: key, logoUrl: null });
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);
@@ -160,6 +176,28 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
     expect(res.send).toHaveBeenCalled();
     expect(res.redirect).not.toHaveBeenCalled();
+  });
+
+  it("denies access to a logo belonging to another organization", async () => {
+    const key =
+      "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("denies access to an unscoped legacy logo unless configured for the user's organization", async () => {
+    const key = "department/logos/legacy-badge.png";
+    getOrganizationSettings.mockResolvedValueOnce({ logoKey: null, logoUrl: null });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
   });
 
   it("rejects malformed department-logo keys before touching storage", async () => {

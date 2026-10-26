@@ -345,7 +345,7 @@ function assertOrganizationLogoScope(
   ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "يجب رفع شعار الجهة من جديد؛ لا يمكن استخدام شعار غير مخصص لهذه الجهة",
+      message: "أعد رفع شعار الجهة؛ الشعار الحالي لا يخص هذه الجهة",
     });
   }
 }
@@ -361,7 +361,9 @@ async function cleanupReplacedDepartmentLogo(
 
   // Never delete a legacy unscoped/shared object: another organization may
   // still reference it. Only remove a file owned by this exact organization.
-  const scopedMatch = previousKey.match(/^department\/logos\/([0-9a-f-]{36})\//i);
+  const scopedMatch = previousKey.match(
+    /^department\/logos\/([0-9a-f-]{36})\//i
+  );
   if (
     !scopedMatch ||
     scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
@@ -706,7 +708,7 @@ export const appRouter = router({
         ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "شعار الجهة قديم أو غير معزول؛ أعد رفع الشعار من إعدادات الجهة",
+            message: "أعد رفع الشعار من إعدادات الجهة؛ الشعار الحالي غير معزول",
           });
         }
 

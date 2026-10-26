@@ -645,8 +645,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
     load();
   }
 
-  Future<void> load() async {
-    if (mounted) setState(() => loading = true);
+  Future<void> load({bool showLoading = true}) async {
+    if (showLoading && mounted) setState(() => loading = true);
     try {
       final result = await widget.api.call(
         'auditLogs.list',
@@ -717,7 +717,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
         actions: [
           IconButton(
             tooltip: 'تحديث السجل',
-            onPressed: loading ? null : load,
+            onPressed: loading ? null : () => load(showLoading: false),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -725,7 +725,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: load,
+              onRefresh: () => load(showLoading: false),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),

@@ -1250,27 +1250,9 @@ export const appRouter = router({
   }),
 
   settings: router({
-    get: protectedProcedure.query(async ({ ctx }) => {
-      const settings = await getOrCreateSettings(ctx.user.id);
-
-      // Organization settings are the single source of truth for logos.
-      // Every account in an organization receives its organization's logo,
-      // rather than a personal/stale logo saved in account-level settings.
-      if (isPlatformOwner(ctx.user)) return settings;
-
-      const membership = await getUserOrganizationMembership(ctx.user.id);
-      if (!membership?.isActive) return settings;
-
-      const organizationSettings = await getOrganizationSettings(
-        membership.organizationId
-      );
-
-      return {
-        ...settings,
-        organizationId: membership.organizationId,
-        logoUrl: organizationSettings?.logoUrl?.trim() || null,
-      };
-    }),
+    get: protectedProcedure.query(({ ctx }) =>
+      getOrCreateSettings(ctx.user.id)
+    ),
 
     uploadLogo: organizationAdminProcedure
       .input(
@@ -1365,17 +1347,6 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
-        const membership = isPlatformOwner(ctx.user)
-          ? null
-          : await getUserOrganizationMembership(ctx.user.id);
-        const organizationSettings =
-          membership?.isActive
-            ? await getOrganizationSettings(membership.organizationId)
-            : null;
-        const accountLogoUrl =
-          membership?.isActive
-            ? organizationSettings?.logoUrl?.trim() || null
-            : input.logoUrl ?? null;
         const previousLogoValue = dbSettings.logoKey ?? dbSettings.logoUrl;
         if (
           input.organizationId !== undefined &&
@@ -1447,16 +1418,11 @@ export const appRouter = router({
           dateFormat: input.dateFormat,
           timeFormat: input.timeFormat,
           numberSystem: input.numberSystem,
-          // Subordinate accounts inherit the organization logo. Their own
-          // settings must never overwrite or delete the shared organization
-          // asset. Only organization settings may change that logo.
-          logoUrl: accountLogoUrl,
+          logoUrl: input.logoUrl ?? null,
           updatedByUserId: ctx.user.id,
         });
 
-        if (!membership?.isActive) {
-          await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
-        }
+        await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
 
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),

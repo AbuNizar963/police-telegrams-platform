@@ -14,8 +14,7 @@ const {
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
 vi.mock("../organization", async importOriginal => {
-  const actual =
-    await importOriginal<typeof import("../organization")>();
+  const actual = await importOriginal<typeof import("../organization")>();
   return {
     ...actual,
     getUserOrganizationMembership,

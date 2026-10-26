@@ -285,7 +285,7 @@ describe("platform owner organization settings", () => {
     ).resolves.toMatchObject({ logoUrl, settingsExists: true });
   });
 
-  it("accepts a credential-free HTTPS logo URL from an approved external CDN", async () => {
+  it("rejects new external logo URLs so organization logos stay in Supabase storage", async () => {
     const caller = appRouter.createCaller(ownerContext());
     const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
 
@@ -294,13 +294,10 @@ describe("platform owner organization settings", () => {
         ...settingsInput(organizationA.id),
         logoUrl,
       })
-    ).resolves.toMatchObject({ organizationId: organizationA.id });
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(
       mocks.upsertOrganizationSettingsForOrganization
-    ).toHaveBeenCalledWith(
-      organizationA.id,
-      expect.objectContaining({ logoUrl })
-    );
+    ).not.toHaveBeenCalled();
   });
 });

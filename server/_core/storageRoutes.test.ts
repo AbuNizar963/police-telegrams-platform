@@ -136,7 +136,7 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
-  it("proxies logo bytes with the upstream content type when storage is reachable", async () => {
+  it("proxies logo bytes using the upstream content type", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
     const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
@@ -170,7 +170,7 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
-  it("supports legacy organization logo file names through the byte proxy", async () => {
+  it("supports legacy logo names through the byte proxy", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/official-badge.webp";
     const { handler, res } = createRouteHarness();
@@ -194,7 +194,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("denies logo access when organization membership is inactive", async () => {
+  it("denies logo access when membership is inactive", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
     getUserOrganizationMembership.mockResolvedValueOnce({
@@ -209,7 +209,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("denies access to an unscoped legacy logo unless configured for the user's organization", async () => {
+  it("denies access to an unconfigured legacy logo", async () => {
     const key = "department/logos/legacy-badge.png";
     getOrganizationSettings.mockResolvedValueOnce({
       logoKey: null,
@@ -223,7 +223,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed department-logo keys before touching storage", async () => {
+  it("rejects malformed department-logo keys", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/nested/badge.png";
     const { handler, res } = createRouteHarness();
@@ -235,7 +235,7 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("keeps telegram attachments behind their existing user authorization", async () => {
+  it("keeps telegram attachments behind existing authorization", async () => {
     const key = "telegrams/7/report.pdf";
     const user = { id: 7, role: "user" as const };
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(user);

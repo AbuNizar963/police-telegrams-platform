@@ -146,7 +146,9 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("proxies logo bytes with the upstream content type when storage is reachable", async () => {
+  it(
+    "proxies logo bytes with the upstream content type when storage is reachable",
+    async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
     const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);

@@ -325,9 +325,10 @@ function assertOrganizationLogoScope(
   previousValue: unknown
 ): void {
   const nextValue = value?.trim() || null;
-  const previous = typeof previousValue === "string"
-    ? previousValue.trim() || null
-    : null;
+  const previous =
+    typeof previousValue === "string"
+      ? previousValue.trim() || null
+      : null;
 
   // Existing legacy references may be left untouched while unrelated
   // settings are edited. Any new/replaced logo must be organization-scoped.
@@ -338,7 +339,10 @@ function assertOrganizationLogoScope(
     /^department\/logos\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[^/]+\.(?:png|jpg)$/i
   );
 
-  if (!scopedMatch || scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()) {
+  if (
+    !scopedMatch ||
+    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "يجب رفع شعار الجهة من جديد؛ لا يمكن استخدام شعار غير مخصص لهذه الجهة",
@@ -358,7 +362,10 @@ async function cleanupReplacedDepartmentLogo(
   // Never delete a legacy unscoped/shared object: another organization may
   // still reference it. Only remove a file owned by this exact organization.
   const scopedMatch = previousKey.match(/^department\/logos\/([0-9a-f-]{36})\//i);
-  if (!scopedMatch || scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()) {
+  if (
+    !scopedMatch ||
+    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
     return;
   }
 

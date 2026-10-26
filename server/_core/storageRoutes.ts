@@ -57,9 +57,10 @@ async function assertDepartmentLogoAccess(
   }
 
   const settings = await getOrganizationSettings(membership.organizationId);
-  const configuredLogoKeys = [getStoredLogoKey(settings?.logoKey), getStoredLogoKey(settings?.logoUrl)].filter(
-    (value): value is string => Boolean(value)
-  );
+  const configuredLogoKeys = [
+    getStoredLogoKey(settings?.logoKey),
+    getStoredLogoKey(settings?.logoUrl),
+  ].filter((value): value is string => Boolean(value));
 
   if (!configuredLogoKeys.includes(key)) {
     throw new StorageAccessDeniedError();

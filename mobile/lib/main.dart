@@ -1927,6 +1927,11 @@ class _DashboardPageState extends State<DashboardPage>
     isPlatformOwner: _isPlatformOwner,
   );
 
+  bool get _canViewAuditLogs =>
+      _account['role'] == 'admin' ||
+      _isPlatformOwner ||
+      activeOrganizationRole == 'system_admin';
+
   bool get _canManageUsers => hasMobileUserManagementAccess(
     accountRole: _account['role']?.toString(),
     organizationRole: activeOrganizationRole,
@@ -2616,6 +2621,16 @@ class _DashboardPageState extends State<DashboardPage>
                               NativeUserManagementPage(api: widget.api),
                         ),
                       );
+                    },
+                  ),
+                if (_canViewAuditLogs)
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: const Text('سجل الإجراءات'),
+                    subtitle: const Text('سجل التدقيق المركزي'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pushPage(AuditLogPage(api: widget.api));
                     },
                   ),
                 const Divider(color: Color(0xFF29415E)),

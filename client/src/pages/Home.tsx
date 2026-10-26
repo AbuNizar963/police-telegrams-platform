@@ -3631,22 +3631,15 @@ function TelegramDetail({
       activeObserver.observe(host);
     };
 
-    // Never leave the telegram detail modal behind an infinite loading state
-    // if a settings/logo request stalls. Show a usable preview with the
-    // account's configured logo, then replace it if the authoritative logo
-    // finishes loading later.
-    const previewFallbackTimer = window.setTimeout(() => {
-      if (cancelled) return;
-      renderPreview(
-        platformDocumentSettings,
-        settings?.logoUrl?.trim() || null
-      );
-      setDocumentPreparing(false);
-    }, 8000);
+    // Match the mobile document page: render the official paper as soon as
+    // the required document settings are available. Logo lookup is optional
+    // and must never block opening the telegram.
+    renderPreview(platformDocumentSettings, null);
+    setDocumentPreparing(false);
 
-    // Prepare the complete official paper before showing it. This prevents a
-    // logo-less first paint followed by a visible layout shift when resources
-    // are available promptly.
+    // Upgrade the initial preview with the organization-scoped logo when it
+    // becomes available. If this optional request stalls or fails, keep the
+    // already-rendered document usable rather than leaving a spinner visible.
     const refreshLogo = async () => {
       try {
         const [documentSettings, exportSettings] = await Promise.all([
@@ -3654,28 +3647,15 @@ function TelegramDetail({
           utils.settings.get.fetch(undefined, { staleTime: 0 }),
         ]);
         const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
-        // The active app branch uses the configured settings logo directly.
-        // Preserve that same behavior if organization lookup returns no image.
-        const previewLogoUrl =
-          logoDataUrl ||
-          (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
-        window.clearTimeout(previewFallbackTimer);
-        if (!cancelled) {
-          renderPreview(documentSettings, previewLogoUrl);
-          setDocumentPreparing(false);
+        if (!cancelled && logoDataUrl) {
+          renderPreview(documentSettings, logoDataUrl);
         }
       } catch (error) {
-        window.clearTimeout(previewFallbackTimer);
         if (!cancelled) {
           console.warn(
             "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
             error
           );
-          renderPreview(
-            platformDocumentSettings,
-            settings?.logoUrl?.trim() || null
-          );
-          setDocumentPreparing(false);
         }
       }
     };
@@ -3684,7 +3664,6 @@ function TelegramDetail({
 
     return () => {
       cancelled = true;
-      window.clearTimeout(previewFallbackTimer);
       activeObserver?.disconnect();
       host.replaceChildren();
       host.style.height = "";

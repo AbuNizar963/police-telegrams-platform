@@ -61,10 +61,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'telegrams.attachments',
           input: {'telegramId': widget.telegramId},
         ),
-        widget.api.call(
-          'telegrams.actions',
-          input: {'telegramId': widget.telegramId},
-        ).catchError((_) => <dynamic>[]),
+        widget.api
+            .call('telegrams.actions', input: {'telegramId': widget.telegramId})
+            .catchError((_) => <dynamic>[]),
         widget.api
             .call('organizations.routingDirectory')
             .catchError((_) => <dynamic>[]),

@@ -45,7 +45,8 @@ export function registerStorageRoutes(app: Express): void {
           if (
             !scopedLogo ||
             !membership?.isActive ||
-            membership.organizationId.toLowerCase() !== scopedLogo[1].toLowerCase()
+            membership.organizationId.toLowerCase() !==
+              scopedLogo[1].toLowerCase()
           ) {
             throw new StorageAccessDeniedError();
           }

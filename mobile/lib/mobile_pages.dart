@@ -674,12 +674,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
     final date = DateTime.tryParse('$value');
     if (date == null) return 'تاريخ غير متاح';
     final localDate = date.toLocal();
-    final formattedDate = MaterialLocalizations.of(
-      context,
-    ).formatFullDate(localDate);
-    final formattedTime = MaterialLocalizations.of(context).formatTimeOfDay(
-      TimeOfDay.fromDateTime(localDate),
-    );
+    final formattedDate = MaterialLocalizations.of(context)
+        .formatFullDate(localDate);
+    final formattedTime = MaterialLocalizations.of(context)
+        .formatTimeOfDay(TimeOfDay.fromDateTime(localDate));
     return '$formattedDate · $formattedTime';
   }
 
@@ -906,10 +904,7 @@ class _AuditDetail extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        label,
-        style: const TextStyle(fontSize: 11, color: Colors.black54),
-      ),
+      Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54)),
       const SizedBox(height: 2),
       SelectableText(value, style: const TextStyle(fontSize: 12)),
     ],

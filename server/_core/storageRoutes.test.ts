@@ -166,7 +166,7 @@ describe("storage route", () => {
       expect(res.set).toHaveBeenCalledWith("Content-Type", "image/jpeg");
       expect(res.send).toHaveBeenCalledWith(imageBytes);
       expect(res.redirect).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("supports organization-scoped logo keys", async () => {

@@ -130,6 +130,22 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
+  it("denies logo reads for a different organization", async () => {
+    getUserOrganizationMembership.mockResolvedValueOnce({
+      userId: 7,
+      organizationId: "00000000-0000-4000-8000-000000000099",
+      isActive: true,
+    });
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440000-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
   it("proxies logo bytes with the upstream content type when storage is reachable", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";

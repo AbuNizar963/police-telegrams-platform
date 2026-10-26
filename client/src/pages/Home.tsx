@@ -3202,9 +3202,9 @@ function TelegramDetail({
       }
     }
 
-    // Prefer the stable storage URL over a base64 data URL returned by the
-    // API. The browser cache downloads and converts the image once, avoiding
-    // sending the same encoded image in every export-settings response.
+    const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
+    if (logoDataUrl) return logoDataUrl;
+
     const resolvedOrganizationLogo = resolveTelegramExportLogo({
       exportOrganizationId: logoOrganizationId,
       organizationLogo,

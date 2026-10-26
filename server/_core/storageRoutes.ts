@@ -43,18 +43,23 @@ async function assertDepartmentLogoAccess(
   const segments = key.split("/");
   const possibleOrganizationId = segments[2];
 
-  if (possibleOrganizationId && ORGANIZATION_ID_PATTERN.test(possibleOrganizationId)) {
-    if (possibleOrganizationId.toLowerCase() !== membership.organizationId.toLowerCase()) {
+  if (
+    possibleOrganizationId &&
+    ORGANIZATION_ID_PATTERN.test(possibleOrganizationId)
+  ) {
+    if (
+      possibleOrganizationId.toLowerCase() !==
+      membership.organizationId.toLowerCase()
+    ) {
       throw new StorageAccessDeniedError();
     }
     return;
   }
 
   const settings = await getOrganizationSettings(membership.organizationId);
-  const configuredLogoKeys = [
-    getStoredLogoKey(settings?.logoKey),
-    getStoredLogoKey(settings?.logoUrl),
-  ].filter((value): value is string => Boolean(value));
+  const configuredLogoKeys = [getStoredLogoKey(settings?.logoKey), getStoredLogoKey(settings?.logoUrl)].filter(
+    (value): value is string => Boolean(value)
+  );
 
   if (!configuredLogoKeys.includes(key)) {
     throw new StorageAccessDeniedError();

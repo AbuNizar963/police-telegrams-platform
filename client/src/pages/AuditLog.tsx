@@ -3,7 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, History, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  History,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 const actionLabels: Record<string, string> = {
@@ -113,7 +119,9 @@ export default function AuditLogPage() {
           onClick={() => void auditQuery.refetch()}
           disabled={auditQuery.isFetching}
         >
-          <RefreshCw className={`ml-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`ml-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`}
+          />
           تحديث السجل
         </Button>
       </header>
@@ -133,7 +141,9 @@ export default function AuditLogPage() {
             <Search className="h-5 w-5 text-primary" />
             <div>
               <p className="text-xs text-muted-foreground">نتائج البحث</p>
-              <p className="text-xl font-bold tabular-nums">{filteredLogs.length}</p>
+              <p className="text-xl font-bold tabular-nums">
+                {filteredLogs.length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -142,14 +152,18 @@ export default function AuditLogPage() {
             <ShieldCheck className="h-5 w-5 text-primary" />
             <div>
               <p className="text-xs text-muted-foreground">طريقة العرض</p>
-              <p className="text-sm font-semibold">قراءة فقط · أحدث 200 إجراء</p>
+              <p className="text-sm font-semibold">
+                قراءة فقط · أحدث 200 إجراء
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="relative">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search
+          className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
         <Input
           value={search}
           onChange={event => setSearch(event.target.value)}
@@ -161,20 +175,28 @@ export default function AuditLogPage() {
 
       {auditQuery.isLoading ? (
         <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          <CardContent
+            className="p-8 text-center text-sm text-muted-foreground"
+          >
             جارٍ تحميل سجل الإجراءات...
           </CardContent>
         </Card>
       ) : auditQuery.error ? (
         <Card>
           <CardContent className="flex items-start gap-3 p-5">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <AlertTriangle
+              className="mt-0.5 h-5 w-5 shrink-0 text-destructive"
+            />
             <div className="space-y-2">
               <p className="font-semibold">تعذر تحميل سجل الإجراءات</p>
               <p className="text-sm text-muted-foreground">
                 {auditQuery.error.message}
               </p>
-              <Button type="button" variant="outline" onClick={() => void auditQuery.refetch()}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void auditQuery.refetch()}
+              >
                 إعادة المحاولة
               </Button>
             </div>
@@ -185,7 +207,9 @@ export default function AuditLogPage() {
           <CardContent className="p-8 text-center">
             <History className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
             <p className="font-semibold">
-              {search.trim() ? "لا توجد نتائج مطابقة" : "لا توجد إجراءات مسجلة بعد"}
+              {search.trim()
+                ? "لا توجد نتائج مطابقة"
+                : "لا توجد إجراءات مسجلة بعد"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {search.trim()
@@ -209,24 +233,34 @@ export default function AuditLogPage() {
                         {formatDate(log.createdAt)}
                       </p>
                     </div>
-                    <Badge variant="outline">{displayValue(log.deviceType, "unknown")}</Badge>
+                    <Badge variant="outline">
+                      {displayValue(log.deviceType, "unknown")}
+                    </Badge>
                   </div>
                   <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <p className="text-xs text-muted-foreground">منفّذ الإجراء</p>
+                      <p className="text-xs text-muted-foreground">
+                        منفّذ الإجراء
+                      </p>
                       <p className="break-words font-medium">
-                        {displayValue(log.actorName)} · رقم المستخدم {displayValue(log.actorUserId)}
+                        {displayValue(log.actorName)} · رقم المستخدم{" "}
+                        {displayValue(log.actorUserId)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">العنصر المتأثر</p>
+                      <p className="text-xs text-muted-foreground">
+                        العنصر المتأثر
+                      </p>
                       <p className="break-words font-medium">
-                        {entityLabels[log.entityType] ?? displayValue(log.entityType)}
+                        {entityLabels[log.entityType] ??
+                          displayValue(log.entityType)}
                         {log.entityId ? ` · ${log.entityId}` : ""}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">عنوان الشبكة</p>
+                      <p className="text-xs text-muted-foreground">
+                        عنوان الشبكة
+                      </p>
                       <p className="break-all font-mono text-xs">
                         {displayValue(log.ipAddress, "غير متوفر")}
                       </p>

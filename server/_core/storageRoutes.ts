@@ -5,6 +5,8 @@ import {
   storageDownload,
   storageGetSignedUrl,
 } from "../storage";
+import { getUserOrganizationMembership } from "../organization";
+import { isPlatformOwner } from "../ownerAccess";
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*key", async (req, res) => {
@@ -34,6 +36,21 @@ export function registerStorageRoutes(app: Express): void {
       }
 
       if (isDepartmentLogo) {
+        const scopedLogo = key.match(
+          /^department\/logos\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[^/]+\.(?:png|jpe?g|webp)$/i
+        );
+
+        if (!isPlatformOwner(user)) {
+          const membership = await getUserOrganizationMembership(user.id);
+          if (
+            !scopedLogo ||
+            !membership?.isActive ||
+            membership.organizationId.toLowerCase() !== scopedLogo[1].toLowerCase()
+          ) {
+            throw new StorageAccessDeniedError();
+          }
+        }
+
         // Download through the storage SDK instead of fetching a signed URL
         // over HTTP. A redirect fallback would send the browser cross-origin,
         // where export canvas conversion can fail because of CORS.

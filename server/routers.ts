@@ -326,9 +326,7 @@ function assertOrganizationLogoScope(
 ): void {
   const nextValue = value?.trim() || null;
   const previous =
-    typeof previousValue === "string"
-      ? previousValue.trim() || null
-      : null;
+    typeof previousValue === "string" ? previousValue.trim() || null : null;
 
   // Existing legacy references may be left untouched while unrelated
   // settings are edited. Any new/replaced logo must be organization-scoped.

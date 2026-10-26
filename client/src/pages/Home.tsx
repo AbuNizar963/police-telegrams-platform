@@ -3631,8 +3631,22 @@ function TelegramDetail({
       activeObserver.observe(host);
     };
 
+    // Never leave the telegram detail modal behind an infinite loading state
+    // if a settings/logo request stalls. Show a usable preview with the
+    // account's configured logo, then replace it if the authoritative logo
+    // finishes loading later.
+    const previewFallbackTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      renderPreview(
+        platformDocumentSettings,
+        settings?.logoUrl?.trim() || null
+      );
+      setDocumentPreparing(false);
+    }, 8000);
+
     // Prepare the complete official paper before showing it. This prevents a
-    // logo-less first paint followed by a visible layout shift.
+    // logo-less first paint followed by a visible layout shift when resources
+    // are available promptly.
     const refreshLogo = async () => {
       try {
         const [documentSettings, exportSettings] = await Promise.all([
@@ -3645,11 +3659,13 @@ function TelegramDetail({
         const previewLogoUrl =
           logoDataUrl ||
           (settings?.logoUrl?.trim() ? settings.logoUrl.trim() : null);
+        window.clearTimeout(previewFallbackTimer);
         if (!cancelled) {
           renderPreview(documentSettings, previewLogoUrl);
           setDocumentPreparing(false);
         }
       } catch (error) {
+        window.clearTimeout(previewFallbackTimer);
         if (!cancelled) {
           console.warn(
             "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
@@ -3668,6 +3684,7 @@ function TelegramDetail({
 
     return () => {
       cancelled = true;
+      window.clearTimeout(previewFallbackTimer);
       activeObserver?.disconnect();
       host.replaceChildren();
       host.style.height = "";

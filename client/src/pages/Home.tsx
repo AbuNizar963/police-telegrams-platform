@@ -56,15 +56,16 @@ import {
   getTelegramExportFileBaseName,
 } from "@/lib/telegramDisplay";
 import {
+  buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
-  TELEGRAM_WATERMARK_COLUMNS,
-  TELEGRAM_WATERMARK_GAP_MM,
-  TELEGRAM_WATERMARK_ROWS,
 } from "@/lib/telegramWatermark";
 import {
   resolveTelegramExportLogo,
+  resolveTelegramExportOrganizationId,
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
+import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
+import { getCachedOfficialDocumentLogo } from "@/lib/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -628,13 +629,26 @@ export default function Home() {
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
   });
+  const selectedRow = list.data?.find(row => row.id === selectedId);
   const detail = trpc.telegrams.get.useQuery(
     { id: selectedId ?? 0 },
-    { enabled: selectedId !== null }
+    {
+      enabled: selectedId !== null,
+      // Render the complete row immediately, then replace it with the
+      // authoritative detail response without blocking the modal opening.
+      placeholderData: selectedRow,
+      staleTime: 30_000,
+      gcTime: 10 * 60_000,
+    }
   );
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const prefetchTelegram = (id: number) => {
+    void utils.telegrams.get.prefetch({ id }, { staleTime: 30_000, retry: 1 });
+  };
   const clearWorkplaceSensitiveState = () => {
     setSelectedId(null);
     setComposerOpen(false);
@@ -1322,7 +1336,12 @@ export default function Home() {
             {rows.map(row => (
               <button
                 key={row.id}
-                onClick={() => setSelectedId(row.id)}
+                onClick={() => {
+                  prefetchTelegram(row.id);
+                  setSelectedId(row.id);
+                }}
+                onPointerEnter={() => prefetchTelegram(row.id)}
+                onFocus={() => prefetchTelegram(row.id)}
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
                 <div className="relative flex flex-wrap items-center gap-2 pl-16">
@@ -2691,11 +2710,88 @@ function TelegramComposer({
 }
 
 /**
- * Fetch and normalize the organization logo once before it is used by the
- * header and watermark. The server renderer has no browser session, so a
- * data URL keeps both layers independent of authenticated storage at render
- * time. A missing legacy image is optional, matching the Flutter document
- * flow: export continues without substituting another organization's logo.
+ * Wait until every image embedded in an official document is decoded before
+ * handing the markup to the browser print dialog or the server-side renderer.
+ * This is especially important for data URLs: setting img.src is synchronous,
+ * but image decoding is not guaranteed to have completed when HTML is
+ * serialized.
+ */
+const OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS = 20_000;
+const OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS = 12_000;
+
+/** Prevent a stalled network/image decoder from leaving the document UI loading forever. */
+function withPreparationTimeout<T>(
+  task: Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([task, timeout]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+}
+
+async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+
+  await Promise.all(
+    images.map(async image => {
+      try {
+        if (!image.complete) {
+          await new Promise<void>((resolve, reject) => {
+            const cleanup = () => {
+              image.removeEventListener("load", onLoad);
+              image.removeEventListener("error", onError);
+            };
+            const onLoad = () => {
+              cleanup();
+              resolve();
+            };
+            const onError = () => {
+              cleanup();
+              reject(new Error("تعذر تحميل صورة الشعار داخل البرقية"));
+            };
+
+            image.addEventListener("load", onLoad, { once: true });
+            image.addEventListener("error", onError, { once: true });
+
+            // Close the race where the image finishes between the initial
+            // check and listener registration.
+            if (image.complete) {
+              cleanup();
+              resolve();
+            }
+          });
+        }
+
+        if (typeof image.decode === "function") {
+          await image.decode();
+        }
+
+        if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+          throw new Error(
+            "صورة الشعار داخل البرقية غير صالحة للطباعة أو التصدير"
+          );
+        }
+      } catch (error) {
+        // Never return a successful-looking document with a missing logo.
+        // The caller can show a clear retry/error message instead.
+        throw error instanceof Error
+          ? error
+          : new Error("تعذر تحميل صورة الشعار داخل البرقية");
+      }
+    })
+  );
+}
+
+/**
+ * Normalize a legacy/external logo URL in the browser. Private organization
+ * storage is resolved by the authenticated server route instead, avoiding a
+ * browser-cookie/redirect/CORS dependency in the print and PNG path.
  */
 async function loadOfficialDocumentLogoDataUrl(
   logoUrl: string | null | undefined
@@ -2707,86 +2803,77 @@ async function loadOfficialDocumentLogoDataUrl(
   }
 
   try {
-    const response = await fetch(source, { credentials: "same-origin" });
-    if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
+    return await getCachedOfficialDocumentLogo(source, async () => {
+      const response = await fetch(source, { credentials: "same-origin" });
+      if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
 
-    const blob = await response.blob();
-    const contentType = blob.type.split(";")[0].trim().toLowerCase();
-    if (
-      contentType &&
-      !contentType.startsWith("image/") &&
-      contentType !== "application/octet-stream"
-    ) {
-      throw new Error("مصدر الشعار ليس صورة صالحة");
-    }
-    if (blob.size === 0) throw new Error("ملف الشعار فارغ");
-
-    const objectUrl = URL.createObjectURL(blob);
-    try {
-      const image = new Image();
-      image.decoding = "async";
-      const imageLoaded = new Promise<void>((resolve, reject) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener(
-          "error",
-          () => reject(new Error("تعذر فك ترميز صورة الشعار")),
-          { once: true }
-        );
-      });
-      image.src = objectUrl;
-      await imageLoaded;
-      await image.decode?.();
-
-      if (image.naturalWidth === 0 || image.naturalHeight === 0) {
-        throw new Error("صورة الشعار غير صالحة");
+      const blob = await response.blob();
+      const contentType = blob.type.split(";")[0].trim().toLowerCase();
+      if (
+        contentType &&
+        !contentType.startsWith("image/") &&
+        contentType !== "application/octet-stream"
+      ) {
+        throw new Error("مصدر الشعار ليس صورة صالحة");
       }
+      if (blob.size === 0) throw new Error("ملف الشعار فارغ");
 
-      // Do not round-trip through canvas: the storage proxy may redirect to a
-      // signed Supabase URL, which can taint a canvas and make toDataURL()
-      // throw. Reading the validated Blob directly preserves transparency and
-      // gives both the header and watermark the exact same embedded bytes.
-      const imageMimeType = (() => {
-        if (contentType.startsWith("image/")) return contentType;
-        const extension = source
-          .split(/[?#]/, 1)[0]
-          .split(".")
-          .pop()
-          ?.toLowerCase();
-        return extension === "jpg" || extension === "jpeg"
-          ? "image/jpeg"
-          : extension === "webp"
-            ? "image/webp"
-            : extension === "gif"
-              ? "image/gif"
-              : extension === "svg" || extension === "svg+xml"
-                ? "image/svg+xml"
-                : "image/png";
-      })();
-      const exportBlob = new Blob([blob], { type: imageMimeType });
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const imageMimeType = detectOfficialDocumentLogoMimeType(
+        bytes,
+        contentType,
+        source
+      );
+      if (!imageMimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
+      const normalizedBlob = new Blob([bytes], { type: imageMimeType });
+      const objectUrl = URL.createObjectURL(normalizedBlob);
+      try {
+        const image = new Image();
+        image.decoding = "async";
+        const imageLoaded = new Promise<void>((resolve, reject) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener(
+            "error",
+            () => reject(new Error("تعذر فك ترميز صورة الشعار")),
+            { once: true }
+          );
+        });
+        image.src = objectUrl;
+        await imageLoaded;
+        await image.decode?.();
 
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === "string") {
-            resolve(reader.result);
-          } else {
-            reject(new Error("تعذر تجهيز صورة الشعار"));
-          }
-        };
-        reader.onerror = () =>
-          reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
-        reader.readAsDataURL(exportBlob);
-      });
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
+        if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+          throw new Error("صورة الشعار غير صالحة");
+        }
+
+        // Do not round-trip through canvas: the storage proxy may redirect to a
+        // signed Supabase URL, which can taint a canvas and make toDataURL()
+        // throw. Reading the validated Blob directly preserves transparency and
+        // gives both the header and watermark the exact same embedded bytes.
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+            } else {
+              reject(new Error("تعذر تجهيز صورة الشعار"));
+            }
+          };
+          reader.onerror = () =>
+            reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
+          reader.readAsDataURL(normalizedBlob);
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    });
   } catch (error) {
-    // Avoid logging potentially signed resource URLs. The document continues
-    // with its text watermark and without a substituted logo.
+    // Avoid logging potentially signed resource URLs. Do not silently produce
+    // an official document with the configured logo missing.
     console.warn("تعذر تجهيز شعار الجهة للوثيقة:", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    throw new Error("تعذر تجهيز شعار الجهة للطباعة أو التصدير. أعد المحاولة.");
   }
 }
 
@@ -2995,6 +3082,9 @@ function TelegramDetail({
   const attachments = trpc.telegrams.attachments.useQuery({
     telegramId: telegram.id,
   });
+  const actions = trpc.telegrams.actions.useQuery({
+    telegramId: telegram.id,
+  });
   const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
     onSuccess: result => {
       const link = document.createElement("a");
@@ -3006,6 +3096,39 @@ function TelegramDetail({
     },
     onError: error => toast.error(error.message || "تعذر تنزيل المرفق"),
   });
+  const fetchAttachmentForPreview =
+    trpc.telegrams.downloadAttachment.useMutation();
+  const previewAttachment = async (file: {
+    id: number;
+    originalName: string;
+    mimeType: string;
+  }) => {
+    const isPdf = file.mimeType === "application/pdf";
+    const isImage = ["image/jpeg", "image/png", "image/webp"].includes(
+      file.mimeType
+    );
+    if (!isPdf && !isImage) {
+      toast.info("المعاينة متاحة لملفات PDF والصور فقط");
+      return;
+    }
+    try {
+      const result = await fetchAttachmentForPreview.mutateAsync({
+        attachmentId: file.id,
+      });
+      setAttachmentPreview({
+        name: file.originalName,
+        mimeType: file.mimeType,
+        // The URL is short-lived and already authorized by the server. Using
+        // it directly also supports private storage providers without a CORS
+        // dependency in the browser.
+        url: result.url,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر معاينة المرفق"
+      );
+    }
+  };
   const handleAttachment = (file?: File) => {
     if (!file) return;
     const allowed = [
@@ -3058,31 +3181,70 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
+  const [documentPreparing, setDocumentPreparing] = useState(true);
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    name: string;
+    mimeType: string;
+    url: string;
+  } | null>(null);
   const resolveTelegramLogoDataUrl = async (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
   }): Promise<string | null> => {
-    const logoOrganizationId =
-      telegram.currentOrganizationId ?? telegram.organizationId;
+    // The authenticated account owns the letterhead for this export. A
+    // telegram can have been routed to another organization after creation;
+    // only ownerless legacy accounts fall back to the telegram's IDs.
+    const logoOrganizationId = resolveTelegramExportOrganizationId({
+      accountOrganizationId: exportSettings.organizationId,
+      currentOrganizationId: telegram.currentOrganizationId,
+      ownerOrganizationId: telegram.organizationId,
+    });
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
       try {
-        organizationLogo = await utils.organizations.logo.fetch(
+        organizationLogo = await utils.organizations.logoForExport.fetch(
           { organizationId: logoOrganizationId },
           { staleTime: 0 }
         );
       } catch (error) {
-        // Retain the verified same-organization settings fallback when it is
-        // available, just as the independent Flutter application does.
         console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
+        const sameOrganizationSettingsLogo =
+          exportSettings.organizationId?.trim() === logoOrganizationId
+            ? exportSettings.logoUrl?.trim()
+            : null;
+        if (sameOrganizationSettingsLogo) {
+          return loadOfficialDocumentLogoDataUrl(sameOrganizationSettingsLogo);
+        }
+        throw new Error(
+          "تعذر التحقق من شعار الجهة المرتبطة بالبرقية. أعد المحاولة."
+        );
       }
     }
-    const logoUrl = resolveTelegramExportLogo({
-      telegramOrganizationId: logoOrganizationId,
+
+    const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
+    if (logoDataUrl) return logoDataUrl;
+
+    const resolvedOrganizationLogo = resolveTelegramExportLogo({
+      exportOrganizationId: logoOrganizationId,
       organizationLogo,
       settingsOrganizationId: exportSettings.organizationId,
       settingsLogoUrl: exportSettings.logoUrl,
     });
+
+    // A known organization must never inherit a logo from a different account.
+    // Account settings are a permitted fallback only when their organization
+    // is the same, or when a legacy telegram has no organization ID.
+    const logoUrl =
+      resolvedOrganizationLogo?.trim() ||
+      (logoOrganizationId
+        ? exportSettings.organizationId?.trim() === logoOrganizationId
+          ? exportSettings.logoUrl?.trim()
+          : null
+        : exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim()) ||
+      null;
+
+    // Logo normalization is best-effort: never block printing or exporting
+    // the telegram text when an optional legacy logo cannot be loaded.
     return loadOfficialDocumentLogoDataUrl(logoUrl);
   };
   const createExportPaper = (
@@ -3099,11 +3261,9 @@ function TelegramDetail({
 
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
-    const watermarkOpacityPercent = Math.max(
-      0,
-      Math.min(60, Number(documentSettings.watermarkOpacityPercent))
-    );
-    const watermarkOpacity = (watermarkOpacityPercent / 100).toFixed(2);
+    // Match the working application branch: keep both watermark layers
+    // visible at a restrained opacity, independent of stale legacy settings.
+    const watermarkOpacity = 0.12;
     const requestedHeaderDividerColor = documentSettings.headerDividerColor;
     const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
       requestedHeaderDividerColor
@@ -3178,6 +3338,9 @@ function TelegramDetail({
       numberSystem
     );
     const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+    // The supplied URL is already resolved for this document. Do not
+    // reintroduce a remote settings URL when normalization explicitly failed:
+    // the server-side renderer blocks external network resources.
     const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
@@ -3214,8 +3377,10 @@ function TelegramDetail({
         })()
       : "";
 
+    // Match the working application branch: the ministry watermark text
+    // remains visible regardless of stale legacy document-setting values.
     const watermark = buildTelegramWatermarkHtml(resolvedLogoUrl, {
-      showMinistryText: documentSettings.showMinistryWatermarkText !== false,
+      showMinistryText: true,
     });
 
     const wrapper = document.createElement("div");
@@ -3240,53 +3405,11 @@ function TelegramDetail({
           print-color-adjust: exact;
         }
         .telegram-export-page * { box-sizing: border-box; }
-        .telegram-export-page .page-watermark {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          overflow: hidden;
-          pointer-events: none;
-        }
-        .telegram-export-page .watermark-logo {
-          position: absolute;
-          z-index: 1;
-          top: 50%;
-          left: 50%;
-          width: 93.75%;
-          height: 93.75%;
-          transform: translate(-50%, -50%);
-          object-fit: contain;
-          opacity: ${watermarkOpacity};
-        }
-        .telegram-export-page .watermark-text-pattern {
-          position: absolute;
-          z-index: 0;
-          inset: 1%;
-          display: grid;
-          grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
-          grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);
-          column-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-          row-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-          justify-content: center;
-          align-content: start;
-          align-items: center;
-          justify-items: center;
-          overflow: hidden;
-          opacity: ${watermarkOpacity};
-        }
-        .telegram-export-page .watermark-text-pattern span {
-          color: #73777d;
-          text-align: center;
-          font-family: "Cairo", "Noto Naskh Arabic", Tahoma, serif;
-          font-size: 11px;
-          font-weight: 400;
-          line-height: 1.2;
-          white-space: nowrap;
-        }
+        ${buildTelegramWatermarkCss(watermarkOpacity)}
         .telegram-export-page .official-header, .telegram-export-page .classification,
         .telegram-export-page .telegram-content, .telegram-export-page .document-footer {
           position: relative;
-          z-index: 1;
+          z-index: 2;
         }
         .telegram-export-page .official-header {
           display: grid;
@@ -3318,22 +3441,6 @@ function TelegramDetail({
           margin: 0 auto;
           object-fit: contain;
         }
-         .telegram-export-page .official-seal {
-          width: 110px;
-          height: 110px;
-          margin: 0 auto;
-          border: 2px solid #b49a55;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: #9a813c;
-          text-align: center;
-          line-height: 1.2;
-        }
-        .telegram-export-page .official-seal span { font-size: 20px; }
-        .telegram-export-page .official-seal strong { font-size: 11px; }
         .telegram-export-page .classification {
           display: flex;
           justify-content: space-between;
@@ -3494,43 +3601,119 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
-    if (documentSettingsUnavailable || !platformDocumentSettings) {
+
+    setDocumentPreparing(true);
+
+    // Wait for the settings query to settle before deciding whether the
+    // official preview can be prepared. A failed query must not leave the
+    // document loading indicator active forever.
+    if (documentSettingsQuery.isLoading) {
       host.replaceChildren();
       host.style.height = "";
       return;
     }
 
-    const exportWrapper = createExportPaper(platformDocumentSettings);
-    const paper = exportWrapper.querySelector<HTMLElement>(
-      ".telegram-export-page"
-    );
-    if (!paper) return;
+    if (documentSettingsUnavailable || !platformDocumentSettings) {
+      host.replaceChildren();
+      host.style.height = "";
+      setDocumentPreparing(false);
+      toast.error("تعذر تحميل إعدادات الوثيقة الرسمية. أعد فتح البرقية.");
+      return;
+    }
 
-    host.replaceChildren(exportWrapper);
+    let cancelled = false;
+    let activeObserver: ResizeObserver | null = null;
 
-    const fitPaperToPreview = () => {
-      const availableWidth = host.clientWidth;
-      if (!availableWidth) return;
+    const renderPreview = (
+      documentSettings: PlatformDocumentSettings,
+      logoUrl: string | null
+    ) => {
+      if (cancelled) return;
 
-      const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
-      const scaledHeight = Math.ceil(paper.offsetHeight * scale);
+      const exportWrapper = createExportPaper(documentSettings, logoUrl);
+      const paper = exportWrapper.querySelector<HTMLElement>(
+        ".telegram-export-page"
+      );
+      if (!paper) return;
 
-      exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
-      paper.style.position = "absolute";
-      paper.style.top = "0";
-      paper.style.left = "50%";
-      paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
-      paper.style.transformOrigin = "top center";
-      paper.style.transform = `scale(${scale})`;
-      host.style.height = `${scaledHeight}px`;
+      activeObserver?.disconnect();
+      host.replaceChildren(exportWrapper);
+
+      const fitPaperToPreview = () => {
+        const availableWidth = host.clientWidth;
+        if (!availableWidth) return;
+
+        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        const scaledHeight = Math.ceil(paper.offsetHeight * scale);
+
+        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+        paper.style.position = "absolute";
+        paper.style.top = "0";
+        paper.style.left = "50%";
+        paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
+        paper.style.transformOrigin = "top center";
+        paper.style.transform = `scale(${scale})`;
+        host.style.height = `${scaledHeight}px`;
+      };
+
+      fitPaperToPreview();
+      activeObserver = new ResizeObserver(fitPaperToPreview);
+      activeObserver.observe(host);
     };
 
-    fitPaperToPreview();
-    const observer = new ResizeObserver(fitPaperToPreview);
-    observer.observe(host);
+    // Prepare the complete official document before opening it. The loading
+    // state remains visible until settings and the organization logo have been
+    // resolved, fetched, and decoded into the final preview.
+    const preparePreview = async () => {
+      try {
+        const [documentSettings, exportSettings] = await withPreparationTimeout(
+          Promise.all([
+            loadExportSettings(),
+            utils.settings.get.fetch(undefined, { staleTime: 0 }),
+          ]),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
+        );
+        const logoDataUrl = await withPreparationTimeout(
+          resolveTelegramLogoDataUrl(exportSettings),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
+        );
+        if (!logoDataUrl) {
+          throw new Error("لم يُعثر على شعار الجهة المعتمد للوثيقة.");
+        }
+        if (cancelled) return;
+        renderPreview(documentSettings, logoDataUrl);
+        const paper = host.querySelector<HTMLElement>(".telegram-export-page");
+        if (!paper) {
+          throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
+        }
+        await withPreparationTimeout(
+          waitForOfficialDocumentImages(paper),
+          OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+          "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
+        );
+        if (!cancelled) setDocumentPreparing(false);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);
+          host.replaceChildren();
+          host.style.height = "";
+          setDocumentPreparing(false);
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "تعذر تجهيز الوثيقة الرسمية. أعد المحاولة."
+          );
+        }
+      }
+    };
+
+    void preparePreview();
 
     return () => {
-      observer.disconnect();
+      cancelled = true;
+      activeObserver?.disconnect();
       host.replaceChildren();
       host.style.height = "";
     };
@@ -3539,6 +3722,7 @@ function TelegramDetail({
     settings,
     platformDocumentSettings,
     documentSettingsUnavailable,
+    documentSettingsQuery.isLoading,
     isOutgoing,
     routingDirectory,
   ]);
@@ -3550,9 +3734,15 @@ function TelegramDetail({
       utils.settings.get.fetch(undefined, { staleTime: 0 }),
     ]);
     const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+    if (!logoDataUrl) {
+      throw new Error(
+        "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
+      );
+    }
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
+    await waitForOfficialDocumentImages(paper);
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the
@@ -3731,6 +3921,7 @@ function TelegramDetail({
     };
 
     try {
+      await waitForOfficialDocumentImages(printRoot);
       // Wait for the exact font faces used by the official document before
       // opening the native print dialog; this keeps Arabic shaping and line
       // wrapping stable instead of printing with a fallback font. Logo bytes
@@ -3878,6 +4069,21 @@ function TelegramDetail({
       )}
       close={close}
     >
+      {documentPreparing && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-6 text-center text-sm text-[#6e531e] dark:bg-[#2d281b] dark:text-[#e7cc8c]"
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#b49a55]/30 border-t-[#b49a55]" />
+          <div>
+            <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
+            <p className="mt-1 text-xs opacity-80">
+              يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
+            </p>
+          </div>
+        </div>
+      )}
       <div
         ref={paperRef}
         className="telegram-preview-stage w-full overflow-hidden rounded-sm bg-white"
@@ -3885,7 +4091,7 @@ function TelegramDetail({
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
       />
-      {documentSettingsUnavailable && (
+      {documentSettingsUnavailable && !documentSettingsQuery.isLoading && (
         <div
           role="status"
           className="mt-3 rounded-xl border bg-muted/30 p-4 text-sm"
@@ -4019,21 +4225,85 @@ function TelegramDetail({
                     كيلوبايت · SHA-256 {file.sha256.slice(0, 12)}...
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={downloadAttachment.isPending}
-                  onClick={() =>
-                    downloadAttachment.mutate({ attachmentId: file.id })
-                  }
-                >
-                  تنزيل آمن
-                </Button>
+                <div className="flex shrink-0 gap-2">
+                  {[
+                    "application/pdf",
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                  ].includes(file.mimeType) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={fetchAttachmentForPreview.isPending}
+                      onClick={() => void previewAttachment(file)}
+                    >
+                      {fetchAttachmentForPreview.isPending
+                        ? "جارٍ التجهيز..."
+                        : "معاينة"}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={downloadAttachment.isPending}
+                    onClick={() =>
+                      downloadAttachment.mutate({ attachmentId: file.id })
+                    }
+                  >
+                    تنزيل آمن
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+      {actions.data && actions.data.length > 0 && (
+        <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+          <summary className="cursor-pointer text-xs font-bold">
+            سجل التدقيق والإجراءات ({actions.data.length})
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {actions.data.map(action => (
+              <div
+                key={action.id}
+                className="rounded-lg border bg-background px-3 py-2 text-xs"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">
+                    {action.action === "status.transition"
+                      ? "تغيير حالة البرقية"
+                      : action.action === "attachment.upload"
+                        ? "رفع مرفق"
+                        : action.action}
+                  </span>
+                  <time
+                    className="text-[10px] text-muted-foreground"
+                    dateTime={new Date(action.createdAt).toISOString()}
+                  >
+                    {new Date(action.createdAt).toLocaleString("ar-SY")}
+                  </time>
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  المستخدم رقم {action.actorUserId}
+                  {action.fromStatus || action.toStatus
+                    ? ` · ${action.fromStatus ?? "—"} ← ${action.toStatus ?? "—"}`
+                    : ""}
+                  {action.reason ? ` · السبب: ${action.reason}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {attachmentPreview && (
+        <AttachmentPreviewModal
+          file={attachmentPreview}
+          close={() => setAttachmentPreview(null)}
+        />
       )}
       <div className="mt-5 rounded-xl border bg-muted/20 p-2 print:hidden">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -4462,7 +4732,6 @@ function TelegramEditModal({
   );
   const [priority, setPriority] = useState<Priority>(telegram.priority);
   const [category, setCategory] = useState<Category>(telegram.category);
-  const [status, setStatus] = useState<Status>(telegram.status);
 
   return (
     <Modal title="تعديل البرقية" subtitle="تحديث بيانات السجل" close={close}>
@@ -4477,7 +4746,7 @@ function TelegramEditModal({
             classification,
             priority,
             category,
-            status,
+            status: telegram.status,
           });
         }}
       >
@@ -4523,7 +4792,7 @@ function TelegramEditModal({
               }
               className="h-10 rounded-lg border bg-background px-3"
             >
-              <option value="normal">عادي</option>
+              <option value="normal">عادية</option>
               <option value="secret">سري</option>
             </select>
           </label>
@@ -4553,21 +4822,17 @@ function TelegramEditModal({
               ))}
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm font-semibold">
+          <div className="grid gap-1.5 text-sm font-semibold">
             الحالة
-            <select
-              value={status}
-              onChange={event => setStatus(event.target.value as Status)}
-              className="h-10 rounded-lg border bg-background px-3"
-            >
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <output className="flex h-10 items-center rounded-lg border bg-muted/40 px-3 font-normal">
+              {statusLabels[telegram.status]}
+            </output>
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          تغيير الحالة يتم عبر إجراءات دورة الحياة، وليس من نموذج تعديل
+          البيانات.
+        </p>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={close}>
             إلغاء
@@ -4597,6 +4862,38 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function AttachmentPreviewModal({
+  file,
+  close,
+}: {
+  file: { name: string; mimeType: string; url: string };
+  close: () => void;
+}) {
+  const isPdf = file.mimeType === "application/pdf";
+  return (
+    <Modal title={`معاينة المرفق: ${file.name}`} close={close} wide>
+      <div className="min-h-[60vh] overflow-hidden rounded-lg border bg-muted/20">
+        {isPdf ? (
+          <iframe
+            title={`معاينة ${file.name}`}
+            src={file.url}
+            className="h-[70vh] w-full"
+          />
+        ) : (
+          <div className="flex min-h-[60vh] items-center justify-center p-4">
+            <img
+              src={file.url}
+              alt={file.name}
+              className="max-h-[70vh] max-w-full object-contain"
+            />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function Modal({
   title,
   subtitle,

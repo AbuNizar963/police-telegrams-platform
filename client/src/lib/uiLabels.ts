@@ -1,6 +1,6 @@
 export const classificationLabels = {
   secret: "سري",
-  normal: "عادي",
+  normal: "عادية",
 } as const;
 
 export const priorityLabels = {

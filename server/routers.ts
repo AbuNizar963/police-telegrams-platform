@@ -48,6 +48,8 @@ import {
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
+  listAuditLogs,
+  listTelegramActions,
   listTelegramAttachments,
   listTelegrams,
   purgeTelegramPermanently,
@@ -114,11 +116,14 @@ import {
   StorageAccessDeniedError,
   storageCreateSignedUrl,
   storageDelete,
+  storageDownload,
+  storageGetSignedUrl,
   storageKeyFromStoredUrl,
   organizationAttachmentKeyMatches,
   storagePutOrganizationAttachment,
   storagePutDepartmentLogo,
 } from "./storage";
+import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 import {
   ALLOWED_ATTACHMENT_TYPES,
   validateUploadedFile,
@@ -441,6 +446,25 @@ export const appRouter = router({
   profile: profileRouter,
   userManagement: userManagementRouter,
 
+  auditLogs: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const membership = await getUserOrganizationMembership(ctx.user.id);
+      const canReadAuditLogs =
+        isPlatformOwner(ctx.user) ||
+        ctx.user.role === "admin" ||
+        (membership?.isActive === true && membership.role === "system_admin");
+
+      if (!canReadAuditLogs) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا تملك صلاحية عرض سجل الإجراءات",
+        });
+      }
+
+      return listAuditLogs();
+    }),
+  }),
+
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
 
@@ -577,6 +601,82 @@ export const appRouter = router({
           organizationId: input.organizationId,
           logoUrl: settings?.logoUrl ?? null,
           settingsExists: Boolean(settings),
+        };
+      }),
+
+    logoForExport: protectedProcedure
+      .input(z.object({ organizationId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          const membership = await getUserOrganizationMembership(ctx.user.id);
+          if (
+            !membership ||
+            !membership.isActive ||
+            membership.organizationId !== input.organizationId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "لا تملك صلاحية تصدير شعار هذه الجهة",
+            });
+          }
+        }
+
+        const settings = await getOrganizationSettings(input.organizationId);
+        const logoUrl = settings?.logoUrl?.trim() || null;
+        const storedLogo = settings?.logoKey?.trim() || logoUrl;
+        const storageKey = storedLogo
+          ? storedLogo.startsWith("department/logos/")
+            ? storedLogo
+            : storageKeyFromStoredUrl(storedLogo, ENV.supabaseStorageBucket)
+          : null;
+
+        if (!storageKey) {
+          return {
+            organizationId: input.organizationId,
+            logoUrl,
+            logoDataUrl: null,
+          };
+        }
+
+        const departmentLogoKeyPattern =
+          /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
+        if (!departmentLogoKeyPattern.test(storageKey)) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "مسار شعار الجهة غير صالح للتصدير",
+          });
+        }
+        const scopedStorageKey = storageKey.match(
+          /^department\/logos\/([0-9a-f-]{36})\//i
+        );
+        if (
+          scopedStorageKey &&
+          scopedStorageKey[1].toLowerCase() !==
+            input.organizationId.toLowerCase()
+        ) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "الشعار المحفوظ لا يتبع الجهة المطلوبة",
+          });
+        }
+
+        const asset = await storageDownload(storageKey);
+        const mimeType = detectOfficialDocumentLogoMimeType(
+          asset.body,
+          asset.contentType,
+          storageKey
+        );
+        if (!mimeType || asset.body.length === 0) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "ملف شعار الجهة غير صالح للطباعة أو التصدير",
+          });
+        }
+
+        return {
+          organizationId: input.organizationId,
+          logoUrl,
+          logoDataUrl: `data:${mimeType};base64,${asset.body.toString("base64")}`,
         };
       }),
 
@@ -1491,6 +1591,23 @@ export const appRouter = router({
           "لا تملك صلاحية قراءة مرفقات هذه البرقية"
         );
         return listTelegramAttachments(input.telegramId);
+      }),
+    actions: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض سجل إجراءات هذه البرقية"
+        );
+        return listTelegramActions(input.telegramId);
       }),
     downloadAttachment: protectedProcedure
       .input(z.object({ attachmentId: z.number().int().positive() }))

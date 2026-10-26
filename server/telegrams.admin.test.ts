@@ -194,7 +194,24 @@ describe("telegram administration permissions", () => {
     await expect(caller.telegrams.update(updateInput)).resolves.toMatchObject({
       subject: "موضوع معدل",
     });
-    expect(mocked.updateTelegram).toHaveBeenCalled();
+    expect(mocked.updateTelegram).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ status: "pending" })
+    );
+  });
+
+  it("rejects lifecycle status changes through content updates", async () => {
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await expect(
+      caller.telegrams.update({
+        ...updateInput,
+        status: "completed",
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(mocked.updateTelegram).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
   });
 
   it("uploads a PDF only after its signature matches the declared MIME type", async () => {

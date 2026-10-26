@@ -10,6 +10,7 @@ import PlatformDocumentSettings from "./components/PlatformDocumentSettings";
 import OperationsWorkspace from "./components/OperationsWorkspace";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import AuditLogPage from "./pages/AuditLog";
 import VerifyTelegram from "./pages/VerifyTelegram";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
@@ -31,6 +32,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/verify/:token" component={VerifyTelegram} />
+      <Route path="/audit-log">
+        <DashboardPage>
+          <AuditLogPage />
+        </DashboardPage>
+      </Route>
       <Route path="/profile">
         <DashboardPage>
           <Profile />

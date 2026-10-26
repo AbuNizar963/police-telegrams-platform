@@ -1022,6 +1022,19 @@ export async function recordTelegramAction(input: {
   throwIfError(error, "Failed to record telegram action");
 }
 
+export async function listTelegramActions(telegramId: number) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_actions")
+    .select(
+      "id, telegramId, actorUserId, action, fromStatus, toStatus, reason, metadata, createdAt"
+    )
+    .eq("telegramId", telegramId)
+    .order("createdAt", { ascending: false })
+    .limit(200);
+  throwIfError(error, "Failed to list telegram actions");
+  return data ?? [];
+}
+
 export async function createTelegramAttachment(input: {
   telegramId: number;
   storageOrganizationId: string;
@@ -1355,6 +1368,19 @@ export async function purgeTelegramPermanently(
       .map(row => String((row as { storageKey?: unknown }).storageKey ?? ""))
       .filter(key => key.length > 0),
   };
+}
+
+export async function listAuditLogs() {
+  const { data, error } = await getSupabaseAdmin()
+    .from("audit_logs")
+    .select(
+      "id, actorUserId, actorName, action, entityType, entityId, metadata, ipAddress, deviceType, createdAt"
+    )
+    .order("createdAt", { ascending: false })
+    .limit(200);
+
+  throwIfError(error, "Failed to list audit logs");
+  return data ?? [];
 }
 
 export async function writeAuditLog(

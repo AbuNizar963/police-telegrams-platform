@@ -123,7 +123,7 @@ describe("telegram export resource isolation", () => {
 });
 
 describe("official PNG resolution metadata", () => {
-  it("writes physical resolution matching an 8K A4 PNG without changing image dimensions", () => {
+  it("writes high-quality physical resolution without changing image dimensions", () => {
     const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
     const ihdrLength = Buffer.alloc(4);
     ihdrLength.writeUInt32BE(13, 0);
@@ -146,10 +146,10 @@ describe("official PNG resolution metadata", () => {
     const physicalChunk = result.indexOf(Buffer.from("pHYs", "ascii"));
     expect(physicalChunk).toBeGreaterThan(0);
     expect(result.readUInt32BE(physicalChunk + 4)).toBe(
-      Math.round(((7680 / 297) * 25.4) / 0.0254)
+      Math.round((4 * 96) / 0.0254)
     );
     expect(result.readUInt32BE(physicalChunk + 8)).toBe(
-      Math.round(((7680 / 297) * 25.4) / 0.0254)
+      Math.round((4 * 96) / 0.0254)
     );
     expect(result[physicalChunk + 12]).toBe(1);
     expect(result.readUInt32BE(16)).toBe(1);

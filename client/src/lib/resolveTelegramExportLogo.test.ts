@@ -1,11 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { resolveTelegramExportLogo } from "./resolveTelegramExportLogo";
+import {
+  resolveTelegramExportLogo,
+  resolveTelegramExportOrganizationId,
+} from "./resolveTelegramExportLogo";
+
+describe("resolveTelegramExportOrganizationId", () => {
+  it("prefers the authenticated account's organization over the route target", () => {
+    expect(
+      resolveTelegramExportOrganizationId({
+        accountOrganizationId: " account-org ",
+        currentOrganizationId: "recipient-org",
+        ownerOrganizationId: "sender-org",
+      })
+    ).toBe("account-org");
+  });
+
+  it("uses telegram organization IDs only for legacy accounts without one", () => {
+    expect(
+      resolveTelegramExportOrganizationId({
+        accountOrganizationId: " ",
+        currentOrganizationId: "recipient-org",
+        ownerOrganizationId: "sender-org",
+      })
+    ).toBe("recipient-org");
+    expect(resolveTelegramExportOrganizationId({})).toBeNull();
+  });
+});
 
 describe("resolveTelegramExportLogo", () => {
   it("prefers the logo belonging to the telegram organization", () => {
     expect(
       resolveTelegramExportLogo({
-        telegramOrganizationId: "org-b",
+        exportOrganizationId: "org-b",
         organizationLogo: {
           organizationId: "org-b",
           logoUrl: " /api/storage/department/logos/org-b/logo.png ",
@@ -19,7 +45,7 @@ describe("resolveTelegramExportLogo", () => {
   it("uses account settings only when their organization matches the telegram", () => {
     expect(
       resolveTelegramExportLogo({
-        telegramOrganizationId: "org-a",
+        exportOrganizationId: "org-a",
         organizationLogo: {
           organizationId: "org-a",
           logoUrl: null,
@@ -33,7 +59,7 @@ describe("resolveTelegramExportLogo", () => {
   it("never borrows a logo from another organization", () => {
     expect(
       resolveTelegramExportLogo({
-        telegramOrganizationId: "org-b",
+        exportOrganizationId: "org-b",
         organizationLogo: {
           organizationId: "org-a",
           logoUrl: "/api/storage/department/logos/org-a/logo.png",
@@ -44,12 +70,21 @@ describe("resolveTelegramExportLogo", () => {
     ).toBeNull();
   });
 
-  it("returns null when the telegram has no organization", () => {
+  it("uses the configured logo for legacy telegrams without an organization ID", () => {
     expect(
       resolveTelegramExportLogo({
-        telegramOrganizationId: null,
+        exportOrganizationId: null,
         settingsOrganizationId: "org-a",
-        settingsLogoUrl: "/api/storage/department/logos/org-a/logo.png",
+        settingsLogoUrl: " /api/storage/department/logos/org-a/logo.png ",
+      })
+    ).toBe("/api/storage/department/logos/org-a/logo.png");
+  });
+
+  it("returns null when neither the telegram nor settings provide a logo", () => {
+    expect(
+      resolveTelegramExportLogo({
+        exportOrganizationId: null,
+        settingsLogoUrl: null,
       })
     ).toBeNull();
   });

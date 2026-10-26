@@ -1,14 +1,17 @@
 name: Police Telegrams Flutter Mobile
 
 on:
+  workflow_dispatch:
   push:
     branches:
+      - main
       - flutter-mobile-app
     paths:
       - "mobile/**"
       - ".github/workflows/flutter-mobile.yml"
   pull_request:
     branches:
+      - main
       - flutter-mobile-app
     paths:
       - "mobile/**"
@@ -22,15 +25,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-flutter-mobile:
-    name: Verify Flutter mobile app
+  build-and-verify:
+    name: Verify and build Flutter mobile app
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: mobile
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -50,3 +55,48 @@ jobs:
 
       - name: Run Flutter tests
         run: flutter test
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Generate APK checksum
+        run: sha256sum build/app/outputs/flutter-apk/app-release.apk > build/app/outputs/flutter-apk/SHA256SUMS.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: police-telegrams-android-apk
+          path: |
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+            mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Read app version
+        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'release-mobile')
+        id: version
+        working-directory: mobile
+        shell: bash
+        run: |
+          VERSION_LINE="$(grep '^version:' pubspec.yaml | head -n 1 | awk '{print $2}')"
+          VERSION="${VERSION_LINE%%+*}"
+          BUILD="${VERSION_LINE##*+}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}-build.${BUILD}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'release-mobile')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Police Telegrams ${{ steps.version.outputs.version }} (build ${{ steps.version.outputs.build }})
+          body: |
+            Android APK built from the latest repository default-branch code.
+
+            Build commit: ${{ github.sha }}
+            SHA-256 checksum is included as SHA256SUMS.txt.
+          files: |
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+            mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          generate_release_notes: true

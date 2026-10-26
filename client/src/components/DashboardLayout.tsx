@@ -16,6 +16,7 @@ import {
   Archive,
   Activity,
   FileSpreadsheet,
+  History,
   LayoutDashboard,
   LockKeyhole,
   MapPinned,
@@ -36,6 +37,13 @@ import HeaderActions from "./HeaderActions";
 
 const menuItems = [
   { key: "dashboard", icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
+  {
+    key: "audit-log",
+    icon: History,
+    label: "سجل الإجراءات",
+    path: "/audit-log",
+    auditOnly: true,
+  },
   {
     key: "create-telegram",
     icon: Plus,
@@ -373,6 +381,10 @@ function DashboardLayoutContent({
       "regional_admin",
       "organization_supervisor",
     ].includes(organizationContext.data?.role ?? "");
+  const canViewAuditLogs =
+    user?.role === "admin" ||
+    organizationContext.data?.isOwner === true ||
+    organizationContext.data?.role === "system_admin";
   const [location, setLocation] = useLocation();
   const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -456,7 +468,7 @@ function DashboardLayoutContent({
             </p>
             <SidebarMenu className="gap-1.5">
               {menuItems
-                .filter(item => !item.adminOnly || canManageUsers)
+                .filter(item => (!item.adminOnly || canManageUsers) && (!item.auditOnly || canViewAuditLogs))
                 .map(item => {
                   const isActive = location === item.path;
                   return (

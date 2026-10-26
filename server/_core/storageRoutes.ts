@@ -1,7 +1,12 @@
 import type { Express } from "express";
 import { getAuthenticatedUserFromRequest } from "./auth";
+import { getTelegramAttachmentByStorageKey, getTelegramById } from "../db";
+import { canAccessTelegramScope } from "../telegramAccess";
 import {
   StorageAccessDeniedError,
+  organizationAttachmentKeyMatches,
+  parseOrganizationAttachmentKey,
+  storageCreateSignedUrl,
   storageDownload,
   storageGetSignedUrl,
 } from "../storage";
@@ -48,6 +53,50 @@ export function registerStorageRoutes(app: Express): void {
         res.set("X-Content-Type-Options", "nosniff");
         res.send(asset.body);
         return;
+      }
+
+      const scopedAttachment = parseOrganizationAttachmentKey(key);
+      if (key.startsWith("organizations/") && !scopedAttachment) {
+        throw new StorageAccessDeniedError();
+      }
+
+      const isLegacyAttachmentKey = /^telegrams\/[1-9]\d*\/[^/]+$/.test(key);
+      if (scopedAttachment || isLegacyAttachmentKey) {
+        const attachment = await getTelegramAttachmentByStorageKey(key);
+        if (!attachment) {
+          if (scopedAttachment) throw new StorageAccessDeniedError();
+        } else {
+          const telegram = await getTelegramById(attachment.telegramId);
+          const metadataMatchesTelegram =
+            telegram !== null &&
+            telegram !== undefined &&
+            attachment.storageOrganizationId === telegram.organizationId;
+          const keyMatchesMetadata =
+            !scopedAttachment ||
+            (scopedAttachment.organizationId ===
+              attachment.storageOrganizationId &&
+              scopedAttachment.telegramId === telegram?.id &&
+              organizationAttachmentKeyMatches(
+                key,
+                attachment.storageOrganizationId,
+                attachment.telegramId
+              ));
+
+          if (
+            !metadataMatchesTelegram ||
+            !keyMatchesMetadata ||
+            !telegram ||
+            !(await canAccessTelegramScope(user, telegram))
+          ) {
+            throw new StorageAccessDeniedError();
+          }
+
+          const url = await storageCreateSignedUrl(key, 10 * 60);
+          res.set("Cache-Control", "private, no-store");
+          res.set("Vary", "Cookie");
+          res.redirect(307, url);
+          return;
+        }
       }
 
       const url = await storageGetSignedUrl(key, user);

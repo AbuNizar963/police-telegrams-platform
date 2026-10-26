@@ -33,8 +33,7 @@ export function detectFileType(bytes: Buffer): AllowedAttachmentType | null {
     bytes.subarray(8, 12).toString() === "WAVE"
   )
     return "audio/wav";
-  if (bytes.subarray(0, 4).toString() === "\x1a\x45\xdf\xa3")
-    return "audio/webm";
+  if (startsWithBytes(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return "audio/webm";
   if (
     bytes.subarray(0, 3).toString() === "ID3" ||
     (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)

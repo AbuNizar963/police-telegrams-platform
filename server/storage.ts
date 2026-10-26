@@ -1,4 +1,5 @@
 import type { User } from "../drizzle/schema";
+import type { AllowedAttachmentType } from "./fileSecurity";
 import { getStorageProvider } from "./storageProvider";
 
 function normalizeKey(relKey: string): string {
@@ -16,15 +17,6 @@ function sanitizeFileName(fileName: string): string {
   }
 
   return sanitized.slice(0, 180);
-}
-
-function appendHashSuffix(relKey: string): string {
-  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  const lastDot = relKey.lastIndexOf(".");
-
-  if (lastDot === -1) return `${relKey}_${hash}`;
-
-  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
 export function storageStableUrl(key: string): string {
@@ -142,24 +134,72 @@ export class StorageAccessDeniedError extends Error {
   }
 }
 
-export async function storagePut(
-  relKey: string,
-  data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream"
-): Promise<{ key: string; url: string }> {
-  const normalizedKey = normalizeKey(relKey);
-  const segments = normalizedKey.split("/");
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type OrganizationAttachmentKeyParts = {
+  organizationId: string;
+  telegramId: number;
+};
+
+export function parseOrganizationAttachmentKey(
+  key: string
+): OrganizationAttachmentKeyParts | null {
+  const segments = key.split("/");
+  const telegramId = Number(segments[3]);
   if (
-    segments.length !== 3 ||
-    segments[0] !== "telegrams" ||
-    !/^\d+$/.test(segments[1])
+    segments.length !== 6 ||
+    segments[0] !== "organizations" ||
+    !UUID_PATTERN.test(segments[1]) ||
+    segments[2] !== "telegrams" ||
+    !/^[1-9]\d*$/.test(segments[3]) ||
+    !Number.isSafeInteger(telegramId) ||
+    segments[4] !== "attachments" ||
+    !UUID_PATTERN.test(segments[5].slice(0, 36)) ||
+    segments[5][36] !== "-" ||
+    !segments[5].slice(37) ||
+    segments[5].slice(37).includes("\\")
   ) {
-    throw new Error("Invalid storage key");
+    return null;
   }
 
-  const safeFileName = sanitizeFileName(segments[2]);
-  const key = appendHashSuffix(`telegrams/${segments[1]}/${safeFileName}`);
+  return {
+    organizationId: segments[1],
+    telegramId,
+  };
+}
+
+export function organizationAttachmentKeyMatches(
+  key: string,
+  organizationId: string,
+  telegramId: number
+): boolean {
+  const parts = parseOrganizationAttachmentKey(key);
+  return Boolean(
+    parts &&
+    parts.organizationId === organizationId &&
+    parts.telegramId === telegramId
+  );
+}
+
+export async function storagePutOrganizationAttachment(
+  organizationId: string,
+  telegramId: number,
+  fileName: string,
+  data: Buffer | Uint8Array | string,
+  contentType: AllowedAttachmentType
+): Promise<{ key: string; url: string }> {
+  const safeOrganizationId = organizationId.trim();
+  if (
+    !UUID_PATTERN.test(safeOrganizationId) ||
+    !Number.isSafeInteger(telegramId) ||
+    telegramId <= 0
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+
+  const safeFileName = sanitizeFileName(fileName);
+  const key = `organizations/${safeOrganizationId}/telegrams/${telegramId}/attachments/${crypto.randomUUID()}-${safeFileName}`;
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
 
   await getStorageProvider().upload(key, body, {
@@ -167,8 +207,6 @@ export async function storagePut(
     cacheControl: "3600",
   });
 
-  // Keep attachment URLs stable. The authorized storage route creates a
-  // fresh short-lived signed URL when the attachment is requested.
   return { key, url: storageStableUrl(key) };
 }
 

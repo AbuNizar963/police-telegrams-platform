@@ -636,6 +636,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
     'telegram.create': 'إنشاء برقية',
     'telegram.import.excel': 'استيراد برقيات من Excel',
     'telegram.broadcast': 'توزيع برقية على جهات',
+    'telegram.broadcast.atomic_failure': 'فشل توزيع البرقية',
+    'user.create': 'إنشاء مستخدم',
+    'user.update': 'تعديل بيانات مستخدم',
+    'user.disable': 'تعطيل مستخدم',
+    'user.enable': 'تفعيل مستخدم',
+    'user.delete': 'حذف مستخدم',
     'platform.owner_workplace.switch': 'تغيير جهة عمل المالك',
   };
 

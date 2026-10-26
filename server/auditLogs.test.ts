@@ -57,9 +57,7 @@ describe("audit log access control", () => {
     expect(mocked.listAuditLogs).toHaveBeenCalledOnce();
   });
 
-  it(
-    "allows an active system-admin membership to read the audit log",
-    async () => {
+  it("allows an active system-admin membership to read the audit log", async () => {
       mocked.getUserOrganizationMembership.mockResolvedValue({
         organizationId: "00000000-0000-4000-8000-000000000099",
         role: "system_admin",

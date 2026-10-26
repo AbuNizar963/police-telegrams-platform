@@ -31,11 +31,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Print canonical audit page formatting for verification
-        run: |
-          pnpm exec prettier --write client/src/pages/AuditLog.tsx
-          git diff -- client/src/pages/AuditLog.tsx
-
       - name: Reject legacy platform dependencies
         run: |
           if git grep -niE 'vite-plugin-manus-runtime|BUILT_IN_FORGE|VITE_FRONTEND_FORGE|OAUTH_SERVER_URL|VITE_OAUTH_PORTAL_URL|OWNER_OPEN_ID|MANUS_|__MANUS__|manus' -- ':!pnpm-lock.yaml' ':!.github/workflows/ci.yml'; then

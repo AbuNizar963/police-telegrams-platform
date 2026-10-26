@@ -3585,9 +3585,20 @@ function TelegramDetail({
 
     setDocumentPreparing(true);
 
+    // Wait for the settings query to settle before deciding whether the
+    // official preview can be prepared. A failed query must not leave the
+    // document loading indicator active forever.
+    if (documentSettingsQuery.isLoading) {
+      host.replaceChildren();
+      host.style.height = "";
+      return;
+    }
+
     if (documentSettingsUnavailable || !platformDocumentSettings) {
       host.replaceChildren();
       host.style.height = "";
+      setDocumentPreparing(false);
+      toast.error("تعذر تحميل إعدادات الوثيقة الرسمية. أعد فتح البرقية.");
       return;
     }
 
@@ -3631,36 +3642,43 @@ function TelegramDetail({
       activeObserver.observe(host);
     };
 
-    // Match the mobile document page: render the official paper as soon as
-    // the required document settings are available. Logo lookup is optional
-    // and must never block opening the telegram.
-    renderPreview(platformDocumentSettings, null);
-    setDocumentPreparing(false);
-
-    // Upgrade the initial preview with the organization-scoped logo when it
-    // becomes available. If this optional request stalls or fails, keep the
-    // already-rendered document usable rather than leaving a spinner visible.
-    const refreshLogo = async () => {
+    // Prepare the complete official document before opening it. The loading
+    // state remains visible until settings and the organization logo have been
+    // resolved, fetched, and decoded into the final preview.
+    const preparePreview = async () => {
       try {
         const [documentSettings, exportSettings] = await Promise.all([
           loadExportSettings(),
           utils.settings.get.fetch(undefined, { staleTime: 0 }),
         ]);
         const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
-        if (!cancelled && logoDataUrl) {
-          renderPreview(documentSettings, logoDataUrl);
+        if (!logoDataUrl) {
+          throw new Error("لم يُعثر على شعار الجهة المعتمد للوثيقة.");
         }
+        if (cancelled) return;
+        renderPreview(documentSettings, logoDataUrl);
+        const paper = host.querySelector<HTMLElement>(".telegram-export-page");
+        if (!paper) {
+          throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
+        }
+        await waitForOfficialDocumentImages(paper);
+        if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {
-          console.warn(
-            "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
-            error
+          console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);
+          host.replaceChildren();
+          host.style.height = "";
+          setDocumentPreparing(false);
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "تعذر تجهيز الوثيقة الرسمية. أعد المحاولة."
           );
         }
       }
     };
 
-    void refreshLogo();
+    void preparePreview();
 
     return () => {
       cancelled = true;
@@ -3673,6 +3691,7 @@ function TelegramDetail({
     settings,
     platformDocumentSettings,
     documentSettingsUnavailable,
+    documentSettingsQuery.isLoading,
     isOutgoing,
     routingDirectory,
   ]);
@@ -4019,7 +4038,7 @@ function TelegramDetail({
       )}
       close={close}
     >
-      {documentPreparing && !documentSettingsUnavailable && (
+      {documentPreparing && (
         <div
           role="status"
           aria-live="polite"
@@ -4041,7 +4060,7 @@ function TelegramDetail({
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
       />
-      {documentSettingsUnavailable && (
+      {documentSettingsUnavailable && !documentSettingsQuery.isLoading && (
         <div
           role="status"
           className="mt-3 rounded-xl border bg-muted/30 p-4 text-sm"

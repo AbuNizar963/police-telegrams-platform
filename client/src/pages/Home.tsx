@@ -3585,9 +3585,20 @@ function TelegramDetail({
 
     setDocumentPreparing(true);
 
+    // Wait for the settings query to settle before deciding whether the
+    // official preview can be prepared. A failed query must not leave the
+    // document loading indicator active forever.
+    if (documentSettingsQuery.isLoading) {
+      host.replaceChildren();
+      host.style.height = "";
+      return;
+    }
+
     if (documentSettingsUnavailable || !platformDocumentSettings) {
       host.replaceChildren();
       host.style.height = "";
+      setDocumentPreparing(false);
+      toast.error("تعذر تحميل إعدادات الوثيقة الرسمية. أعد فتح البرقية.");
       return;
     }
 
@@ -3647,7 +3658,10 @@ function TelegramDetail({
         if (cancelled) return;
         renderPreview(documentSettings, logoDataUrl);
         const paper = host.querySelector<HTMLElement>(".telegram-export-page");
-        if (paper) await waitForOfficialDocumentImages(paper);
+        if (!paper) {
+          throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
+        }
+        await waitForOfficialDocumentImages(paper);
         if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {
@@ -3677,6 +3691,7 @@ function TelegramDetail({
     settings,
     platformDocumentSettings,
     documentSettingsUnavailable,
+    documentSettingsQuery.isLoading,
     isOutgoing,
     routingDirectory,
   ]);

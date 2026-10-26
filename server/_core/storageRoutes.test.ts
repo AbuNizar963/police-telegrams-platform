@@ -75,7 +75,9 @@ describe("storage key authorization", () => {
   it("rejects malformed or traversal keys", () => {
     const user = { id: 7, role: "user" as const };
     expect(canAccessStorageKey("other/7/report.pdf", user)).toBe(false);
-    expect(canAccessStorageKey("telegrams/7/../private.pdf", user)).toBe(false);
+    expect(canAccessStorageKey("telegrams/7/../private.pdf", user)).toBe(
+      false
+    );
     expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", user)).toBe(
       false
     );
@@ -184,6 +186,21 @@ describe("storage route", () => {
   it("denies access to a logo belonging to another organization", async () => {
     const key =
       "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("denies logo access to users whose organization membership is inactive", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    getUserOrganizationMembership.mockResolvedValueOnce({
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      isActive: false,
+    });
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

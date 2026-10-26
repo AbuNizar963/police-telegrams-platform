@@ -57,17 +57,20 @@ describe("audit log access control", () => {
     expect(mocked.listAuditLogs).toHaveBeenCalledOnce();
   });
 
-  it("allows an active system-admin membership to read the audit log", async () => {
-    mocked.getUserOrganizationMembership.mockResolvedValue({
-      organizationId: "00000000-0000-4000-8000-000000000099",
-      role: "system_admin",
-      isActive: true,
-    });
-    const caller = appRouter.createCaller(contextFor("user"));
+  it(
+    "allows an active system-admin membership to read the audit log",
+    async () => {
+      mocked.getUserOrganizationMembership.mockResolvedValue({
+        organizationId: "00000000-0000-4000-8000-000000000099",
+        role: "system_admin",
+        isActive: true,
+      });
+      const caller = appRouter.createCaller(contextFor("user"));
 
-    await expect(caller.auditLogs.list()).resolves.toEqual([]);
-    expect(mocked.listAuditLogs).toHaveBeenCalledOnce();
-  });
+      await expect(caller.auditLogs.list()).resolves.toEqual([]);
+      expect(mocked.listAuditLogs).toHaveBeenCalledOnce();
+    }
+  );
 
   it("rejects users without audit-log permission", async () => {
     const caller = appRouter.createCaller(contextFor("user"));

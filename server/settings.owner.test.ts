@@ -285,7 +285,7 @@ describe("platform owner organization settings", () => {
     ).resolves.toMatchObject({ logoUrl, settingsExists: true });
   });
 
-  it("rejects new external logo URLs so organization logos stay in Supabase storage", async () => {
+  it("rejects external URLs for new organization logos", async () => {
     const caller = appRouter.createCaller(ownerContext());
     const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
 

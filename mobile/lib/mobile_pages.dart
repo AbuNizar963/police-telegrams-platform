@@ -382,7 +382,6 @@ class _ReportsPageState extends State<ReportsPage> {
           : RefreshIndicator(
               onRefresh: load,
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 children: [
                   Card(
@@ -728,6 +727,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
           : RefreshIndicator(
               onRefresh: load,
               child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 children: [
                   Card(

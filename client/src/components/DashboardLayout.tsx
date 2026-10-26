@@ -469,7 +469,11 @@ function DashboardLayoutContent({
             </p>
             <SidebarMenu className="gap-1.5">
               {menuItems
-                .filter(item => (!item.adminOnly || canManageUsers) && (!item.auditOnly || canViewAuditLogs))
+                .filter(
+                  item =>
+                    (!item.adminOnly || canManageUsers) &&
+                    (!item.auditOnly || canViewAuditLogs)
+                )
                 .map(item => {
                   const isActive = location === item.path;
                   return (

@@ -149,24 +149,25 @@ describe("storage route", () => {
   it(
     "proxies logo bytes with the upstream content type when storage is reachable",
     async () => {
-    const key =
-      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
-    const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
-    storageDownload.mockResolvedValueOnce({
-      body: imageBytes,
-      contentType: "image/jpeg",
-    });
-    const { handler, res } = createRouteHarness();
+      const key =
+        "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
+      const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+      storageDownload.mockResolvedValueOnce({
+        body: imageBytes,
+        contentType: "image/jpeg",
+      });
+      const { handler, res } = createRouteHarness();
 
-    await handler({ params: { key: key.split("/") } }, res);
+      await handler({ params: { key: key.split("/") } }, res);
 
-    expect(storageDownload).toHaveBeenCalledWith(key);
-    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
-    expect(res.set).toHaveBeenCalledWith("Vary", "Cookie");
-    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/jpeg");
-    expect(res.send).toHaveBeenCalledWith(imageBytes);
-    expect(res.redirect).not.toHaveBeenCalled();
-  });
+      expect(storageDownload).toHaveBeenCalledWith(key);
+      expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+      expect(res.set).toHaveBeenCalledWith("Vary", "Cookie");
+      expect(res.set).toHaveBeenCalledWith("Content-Type", "image/jpeg");
+      expect(res.send).toHaveBeenCalledWith(imageBytes);
+      expect(res.redirect).not.toHaveBeenCalled();
+    }
+  );
 
   it("supports organization-scoped logo keys", async () => {
     const key =

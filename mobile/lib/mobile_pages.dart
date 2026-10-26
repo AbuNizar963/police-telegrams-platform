@@ -605,6 +605,307 @@ class _ReportRows extends StatelessWidget {
   }
 }
 
+class AuditLogPage extends StatefulWidget {
+  const AuditLogPage({super.key, required this.api});
+
+  final PoliceApi api;
+
+  @override
+  State<AuditLogPage> createState() => _AuditLogPageState();
+}
+
+class _AuditLogPageState extends State<AuditLogPage> {
+  bool loading = true;
+  String? error;
+  List<dynamic> entries = const [];
+  String search = '';
+
+  static const actionLabels = <String, String>{
+    'organization.settings.update': 'تحديث إعدادات الجهة',
+    'organization.create': 'إنشاء جهة',
+    'organization.update': 'تعديل جهة',
+    'settings.update': 'تحديث الإعدادات',
+    'platform.document_settings.update': 'تحديث إعدادات الوثائق',
+    'attachment.upload': 'رفع مرفق',
+    'attachment.download': 'تنزيل مرفق',
+    'telegram.update': 'تعديل برقية',
+    'telegram.delete': 'حذف برقية',
+    'telegram.route': 'إحالة برقية',
+    'telegram.route.receive': 'تأكيد استلام إحالة',
+    'telegram.status.transition': 'تغيير حالة برقية',
+    'telegram.create': 'إنشاء برقية',
+    'telegram.import.excel': 'استيراد برقيات من Excel',
+    'telegram.broadcast': 'توزيع برقية على جهات',
+    'platform.owner_workplace.switch': 'تغيير جهة عمل المالك',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    if (mounted) setState(() => loading = true);
+    try {
+      final result = await widget.api.call(
+        'auditLogs.list',
+        allowOfflineCache: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        entries = result is List ? result : const [];
+        error = null;
+      });
+    } catch (exception) {
+      if (mounted) setState(() => error = _errorMessage(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    final date = DateTime.tryParse('$value');
+    if (date == null) return 'تاريخ غير متاح';
+    return MaterialLocalizations.of(context).formatFullDate(date.toLocal()) +
+        ' · ' +
+        MaterialLocalizations.of(context).formatTimeOfDay(
+          TimeOfDay.fromDateTime(date.toLocal()),
+        );
+  }
+
+  String _metadata(dynamic value) {
+    if (value is! String || value.trim().isEmpty) return '';
+    try {
+      return const JsonEncoder.withIndent('  ').convert(jsonDecode(value));
+    } catch (_) {
+      return value;
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredEntries {
+    final query = search.trim().toLowerCase();
+    final rows = entries.whereType<Map>().map(
+      (item) => Map<String, dynamic>.from(item),
+    );
+    if (query.isEmpty) return rows.toList();
+    return rows.where((entry) {
+      final searchable = [
+        entry['actorName'],
+        entry['actorUserId'],
+        entry['action'],
+        actionLabels['${entry['action']}'],
+        entry['entityType'],
+        entry['entityId'],
+        entry['ipAddress'],
+        entry['deviceType'],
+        entry['metadata'],
+      ].map((value) => _stringValue(value, '')).join(' ').toLowerCase();
+      return searchable.contains(query);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'سجل الإجراءات',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'تحديث السجل',
+            onPressed: loading ? null : load,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.history, color: _navy, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'سجل التدقيق المركزي',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${entries.length} إجراء محمّل · أحدث 200 إجراء · قراءة فقط',
+                                  style: const TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: TextField(
+                      onChanged: (value) => setState(() => search = value),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'بحث بالمستخدم أو الإجراء أو المعرّف',
+                      ),
+                    ),
+                  ),
+                  if (error != null) _ErrorCard(message: error!),
+                  if (error == null && _filteredEntries.isEmpty)
+                    _EmptyCard(
+                      message: search.trim().isEmpty
+                          ? 'لا توجد إجراءات مسجلة بعد.'
+                          : 'لا توجد نتائج مطابقة للبحث.',
+                    ),
+                  ..._filteredEntries.map((entry) {
+                    final action = _stringValue(entry['action'], 'إجراء');
+                    final actionLabel = actionLabels[action] ?? action;
+                    final metadata = _metadata(entry['metadata']);
+                    final entity = _stringValue(entry['entityType']);
+                    final entityId = _stringValue(entry['entityId'], '');
+                    final ipAddress = _stringValue(
+                      entry['ipAddress'],
+                      'غير متوفر',
+                    );
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const CircleAvatar(
+                                  backgroundColor: Color(0xFFF1E8D5),
+                                  child: Icon(Icons.history, color: _navy),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        actionLabel,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _formatDate(entry['createdAt']),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  _stringValue(entry['deviceType'], 'unknown'),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 24),
+                            _AuditDetail(
+                              label: 'منفّذ الإجراء',
+                              value:
+                                  '${_stringValue(entry['actorName'])} · المستخدم رقم ${_stringValue(entry['actorUserId'])}',
+                            ),
+                            const SizedBox(height: 8),
+                            _AuditDetail(
+                              label: 'العنصر المتأثر',
+                              value: entityId.isEmpty
+                                  ? entity
+                                  : '$entity · $entityId',
+                            ),
+                            const SizedBox(height: 8),
+                            _AuditDetail(
+                              label: 'عنوان الشبكة',
+                              value: ipAddress,
+                            ),
+                            if (metadata.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                childrenPadding: const EdgeInsets.only(
+                                  bottom: 8,
+                                ),
+                                title: const Text(
+                                  'تفاصيل الإجراء',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                children: [
+                                  SelectableText(
+                                    metadata,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+    ),
+  );
+}
+
+class _AuditDetail extends StatelessWidget {
+  const _AuditDetail({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(fontSize: 11, color: Colors.black54),
+      ),
+      const SizedBox(height: 2),
+      SelectableText(value, style: const TextStyle(fontSize: 12)),
+    ],
+  );
+}
+
 class ProfileSettingsPage extends StatefulWidget {
   const ProfileSettingsPage({
     super.key,

@@ -338,14 +338,14 @@ async function cleanupReplacedDepartmentLogo(
 function assertLogoBelongsToOrganization(
   logoValue: string | null | undefined,
   organizationId: string | null,
-  previousValue: unknown
+  previousValues: unknown[]
 ): void {
   if (!logoValue) return;
 
   // Keep a previously configured legacy URL working until the organization
   // uploads a replacement. New logo assignments must use that organization's
   // own private storage directory.
-  if (logoValue === previousValue) return;
+  if (previousValues.some(value => value === logoValue)) return;
 
   const key = departmentLogoKeyFromStoredValue(logoValue);
   const expectedPrefix = organizationId
@@ -1376,7 +1376,7 @@ export const appRouter = router({
         assertLogoBelongsToOrganization(
           input.logoUrl,
           dbSettings.organizationId,
-          previousLogoValue
+          [dbSettings.logoKey, dbSettings.logoUrl]
         );
         if (
           input.organizationId !== undefined &&

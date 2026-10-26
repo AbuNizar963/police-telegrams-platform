@@ -384,7 +384,8 @@ function DashboardLayoutContent({
   const canViewAuditLogs =
     user?.role === "admin" ||
     organizationContext.data?.isOwner === true ||
-    organizationContext.data?.role === "system_admin";
+    (organizationContext.data?.isActive === true &&
+      organizationContext.data?.role === "system_admin");
   const [location, setLocation] = useLocation();
   const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";

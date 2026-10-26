@@ -194,7 +194,10 @@ describe("storage route", () => {
 
   it("denies access to an unscoped legacy logo unless configured for the user's organization", async () => {
     const key = "department/logos/legacy-badge.png";
-    getOrganizationSettings.mockResolvedValueOnce({ logoKey: null, logoUrl: null });
+    getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: null,
+      logoUrl: null,
+    });
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

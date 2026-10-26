@@ -2716,6 +2716,25 @@ function TelegramComposer({
  * but image decoding is not guaranteed to have completed when HTML is
  * serialized.
  */
+const OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS = 20_000;
+const OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS = 12_000;
+
+/** Prevent a stalled network/image decoder from leaving the document UI loading forever. */
+function withPreparationTimeout<T>(
+  task: Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([task, timeout]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+}
+
 async function waitForOfficialDocumentImages(root: ParentNode): Promise<void> {
   const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
 
@@ -3647,11 +3666,19 @@ function TelegramDetail({
     // resolved, fetched, and decoded into the final preview.
     const preparePreview = async () => {
       try {
-        const [documentSettings, exportSettings] = await Promise.all([
-          loadExportSettings(),
-          utils.settings.get.fetch(undefined, { staleTime: 0 }),
-        ]);
-        const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+        const [documentSettings, exportSettings] = await withPreparationTimeout(
+          Promise.all([
+            loadExportSettings(),
+            utils.settings.get.fetch(undefined, { staleTime: 0 }),
+          ]),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
+        );
+        const logoDataUrl = await withPreparationTimeout(
+          resolveTelegramLogoDataUrl(exportSettings),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
+        );
         if (!logoDataUrl) {
           throw new Error("لم يُعثر على شعار الجهة المعتمد للوثيقة.");
         }
@@ -3661,7 +3688,11 @@ function TelegramDetail({
         if (!paper) {
           throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
         }
-        await waitForOfficialDocumentImages(paper);
+        await withPreparationTimeout(
+          waitForOfficialDocumentImages(paper),
+          OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+          "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
+        );
         if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {

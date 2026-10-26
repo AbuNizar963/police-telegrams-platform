@@ -673,11 +673,14 @@ class _AuditLogPageState extends State<AuditLogPage> {
   String _formatDate(dynamic value) {
     final date = DateTime.tryParse('$value');
     if (date == null) return 'تاريخ غير متاح';
-    return MaterialLocalizations.of(context).formatFullDate(date.toLocal()) +
-        ' · ' +
-        MaterialLocalizations.of(context).formatTimeOfDay(
-          TimeOfDay.fromDateTime(date.toLocal()),
-        );
+    final localDate = date.toLocal();
+    final formattedDate = MaterialLocalizations.of(
+      context,
+    ).formatFullDate(localDate);
+    final formattedTime = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(localDate),
+    );
+    return '$formattedDate · $formattedTime';
   }
 
   String _metadata(dynamic value) {

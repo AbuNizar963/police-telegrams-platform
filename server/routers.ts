@@ -319,18 +319,52 @@ function departmentLogoKeyFromStoredValue(value: unknown): string | null {
   return key && DEPARTMENT_LOGO_KEY_PATTERN.test(key) ? key : null;
 }
 
+function assertOrganizationLogoScope(
+  value: string | null | undefined,
+  organizationId: string,
+  previousValue: unknown
+): void {
+  const nextValue = value?.trim() || null;
+  const previous = typeof previousValue === "string"
+    ? previousValue.trim() || null
+    : null;
+
+  // Existing legacy references may be left untouched while unrelated
+  // settings are edited. Any new/replaced logo must be organization-scoped.
+  if (!nextValue || nextValue === previous) return;
+
+  const key = departmentLogoKeyFromStoredValue(nextValue);
+  const scopedMatch = key?.match(
+    /^department\/logos\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[^/]+\.(?:png|jpg)$/i
+  );
+
+  if (!scopedMatch || scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "يجب رفع شعار الجهة من جديد؛ لا يمكن استخدام شعار غير مخصص لهذه الجهة",
+    });
+  }
+}
+
 async function cleanupReplacedDepartmentLogo(
   previousValue: unknown,
-  nextValue: unknown
+  nextValue: unknown,
+  organizationId: string | null
 ): Promise<void> {
   const previousKey = departmentLogoKeyFromStoredValue(previousValue);
   const nextKey = departmentLogoKeyFromStoredValue(nextValue);
-  if (!previousKey || previousKey === nextKey) return;
+  if (!organizationId || !previousKey || previousKey === nextKey) return;
+
+  // Never delete a legacy unscoped/shared object: another organization may
+  // still reference it. Only remove a file owned by this exact organization.
+  const scopedMatch = previousKey.match(/^department\/logos\/([0-9a-f-]{36})\//i);
+  if (!scopedMatch || scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()) {
+    return;
+  }
+
   try {
     await storageDelete(previousKey);
   } catch (error) {
-    // A successful settings update must not be rolled back because an old,
-    // already-missing object could not be removed.
     console.error("[Storage] Replaced department logo cleanup failed", error);
   }
 }
@@ -816,6 +850,11 @@ export const appRouter = router({
           const previousSettings = await getOrganizationSettings(
             input.organizationId
           );
+          assertOrganizationLogoScope(
+            input.logoUrl,
+            organization.id,
+            previousSettings?.logoUrl
+          );
           assertSupportedTimezone(input.timezone);
           const outgoingStart = getStartingNumberFromPrefix(
             input.serialPrefix,
@@ -861,7 +900,8 @@ export const appRouter = router({
 
           await cleanupReplacedDepartmentLogo(
             previousSettings?.logoKey ?? previousSettings?.logoUrl,
-            input.logoUrl
+            input.logoUrl,
+            organization.id
           );
 
           await writeAuditLog({
@@ -1377,6 +1417,14 @@ export const appRouter = router({
           }
           return numericPrefix;
         };
+        if (dbSettings.organizationId) {
+          assertOrganizationLogoScope(
+            input.logoUrl,
+            dbSettings.organizationId,
+            dbSettings.logoUrl
+          );
+        }
+
         const outgoingStart = startFromPrefix(
           input.serialPrefix,
           input.serialStart,
@@ -1422,7 +1470,7 @@ export const appRouter = router({
           updatedByUserId: ctx.user.id,
         });
 
-        await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
+        await cleanupReplacedDepartmentLogo(\n          previousLogoValue,\n          input.logoUrl,\n          dbSettings.organizationId\n        );
 
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),

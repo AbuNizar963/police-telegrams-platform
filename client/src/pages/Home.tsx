@@ -4038,7 +4038,7 @@ function TelegramDetail({
       )}
       close={close}
     >
-      {documentPreparing && !documentSettingsUnavailable && (
+      {documentPreparing && (
         <div
           role="status"
           aria-live="polite"
@@ -4060,7 +4060,7 @@ function TelegramDetail({
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
       />
-      {documentSettingsUnavailable && (
+      {documentSettingsUnavailable && !documentSettingsQuery.isLoading && (
         <div
           role="status"
           className="mt-3 rounded-xl border bg-muted/30 p-4 text-sm"

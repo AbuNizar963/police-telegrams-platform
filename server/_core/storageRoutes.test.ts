@@ -194,7 +194,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("denies logo access to users whose organization membership is inactive", async () => {
+  it("denies logo access when organization membership is inactive", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
     getUserOrganizationMembership.mockResolvedValueOnce({

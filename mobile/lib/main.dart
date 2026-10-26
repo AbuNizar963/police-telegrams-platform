@@ -813,6 +813,7 @@ class _DashboardPageState extends State<DashboardPage>
   String? activeOrganizationId;
   String? activeOrganizationName;
   String? activeOrganizationRole;
+  bool activeOrganizationIsActive = false;
   bool activeOrganizationIsOwner = false;
   String? _organizationLogoUrl;
   String? _loadedOrganizationLogoIdentity;
@@ -1796,6 +1797,9 @@ class _DashboardPageState extends State<DashboardPage>
           activeOrganizationRole = organizationContext is Map
               ? organizationContext['role']?.toString()
               : null;
+          activeOrganizationIsActive =
+              organizationContext is Map &&
+              organizationContext['isActive'] == true;
           activeOrganizationIsOwner =
               organizationContext is Map &&
               organizationContext['isOwner'] == true;
@@ -1930,7 +1934,7 @@ class _DashboardPageState extends State<DashboardPage>
   bool get _canViewAuditLogs =>
       _account['role'] == 'admin' ||
       _isPlatformOwner ||
-      activeOrganizationRole == 'system_admin';
+      (activeOrganizationIsActive && activeOrganizationRole == 'system_admin');
 
   bool get _canManageUsers => hasMobileUserManagementAccess(
     accountRole: _account['role']?.toString(),

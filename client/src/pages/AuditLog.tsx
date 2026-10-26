@@ -226,7 +226,9 @@ export default function AuditLogPage() {
             return (
               <Card key={log.id}>
                 <CardContent className="space-y-3 p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div
+                    className="flex flex-wrap items-start justify-between gap-3"
+                  >
                     <div className="min-w-0 space-y-1">
                       <h2 className="break-words font-bold">{actionLabel}</h2>
                       <p className="text-xs text-muted-foreground">
@@ -237,7 +239,9 @@ export default function AuditLogPage() {
                       {displayValue(log.deviceType, "unknown")}
                     </Badge>
                   </div>
-                  <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  <div
+                    className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3"
+                  >
                     <div>
                       <p className="text-xs text-muted-foreground">
                         منفّذ الإجراء
@@ -271,7 +275,9 @@ export default function AuditLogPage() {
                       <summary className="cursor-pointer text-sm font-semibold">
                         تفاصيل الإجراء
                       </summary>
-                      <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5">
+                      <pre
+                        className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5"
+                      >
                         {metadata}
                       </pre>
                     </details>

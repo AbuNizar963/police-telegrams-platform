@@ -692,6 +692,18 @@ export const appRouter = router({
           /^department\/logos\/([0-9a-f-]{36})\//i
         );
         if (
+          !isPlatformOwner(ctx.user) &&
+          (!scopedStorageKey ||
+            scopedStorageKey[1].toLowerCase() !==
+              input.organizationId.toLowerCase())
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "شعار الجهة قديم أو غير معزول؛ أعد رفع الشعار من إعدادات الجهة",
+          });
+        }
+
+        if (
           scopedStorageKey &&
           scopedStorageKey[1].toLowerCase() !==
             input.organizationId.toLowerCase()

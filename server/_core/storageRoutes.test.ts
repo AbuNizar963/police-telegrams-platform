@@ -21,8 +21,7 @@ vi.mock("../organization", () => ({ getUserOrganizationMembership }));
 vi.mock("../db", () => ({ getOrganizationSettings }));
 vi.mock("../ownerAccess", () => ({ isPlatformOwner }));
 vi.mock("../storage", async () => {
-  const actual =
-    await vi.importActual<typeof import("../storage")>("../storage");
+  const actual = await vi.importActual<typeof import("../storage")>("../storage");
   return {
     ...actual,
     storageDownload,

@@ -116,7 +116,10 @@ describe("storage route", () => {
   it("serves department logo bytes through the same-origin route", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
-    getOrganizationSettings.mockResolvedValueOnce({ logoKey: key, logoUrl: null });
+    getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: key,
+      logoUrl: null,
+    });
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

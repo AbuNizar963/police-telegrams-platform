@@ -1352,6 +1352,19 @@ export async function purgeTelegramPermanently(
   };
 }
 
+export async function listAuditLogs() {
+  const { data, error } = await getSupabaseAdmin()
+    .from("audit_logs")
+    .select(
+      "id, actorUserId, actorName, action, entityType, entityId, metadata, ipAddress, deviceType, createdAt"
+    )
+    .order("createdAt", { ascending: false })
+    .limit(200);
+
+  throwIfError(error, "Failed to list audit logs");
+  return data ?? [];
+}
+
 export async function writeAuditLog(
   input: Omit<
     AuditLog,

@@ -1470,7 +1470,11 @@ export const appRouter = router({
           updatedByUserId: ctx.user.id,
         });
 
-        await cleanupReplacedDepartmentLogo(\n          previousLogoValue,\n          input.logoUrl,\n          dbSettings.organizationId\n        );
+        await cleanupReplacedDepartmentLogo(
+          previousLogoValue,
+          input.logoUrl,
+          dbSettings.organizationId
+        );
 
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),

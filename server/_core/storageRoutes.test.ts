@@ -21,7 +21,8 @@ vi.mock("../organization", () => ({ getUserOrganizationMembership }));
 vi.mock("../db", () => ({ getOrganizationSettings }));
 vi.mock("../ownerAccess", () => ({ isPlatformOwner }));
 vi.mock("../storage", async () => {
-  const actual = await vi.importActual<typeof import("../storage")>("../storage");
+  const actual =
+    await vi.importActual<typeof import("../storage")>("../storage");
   return {
     ...actual,
     storageDownload,
@@ -74,9 +75,7 @@ describe("storage key authorization", () => {
   it("rejects malformed or traversal keys", () => {
     const user = { id: 7, role: "user" as const };
     expect(canAccessStorageKey("other/7/report.pdf", user)).toBe(false);
-    expect(canAccessStorageKey("telegrams/7/../private.pdf", user)).toBe(
-      false
-    );
+    expect(canAccessStorageKey("telegrams/7/../private.pdf", user)).toBe(false);
     expect(canAccessStorageKey("telegrams/not-a-user/report.pdf", user)).toBe(
       false
     );

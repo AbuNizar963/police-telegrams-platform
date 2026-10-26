@@ -47,6 +47,7 @@ import {
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
+  listAuditLogs,
   listTelegramActions,
   listTelegramAttachments,
   listTelegrams,
@@ -452,6 +453,25 @@ export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
   userManagement: userManagementRouter,
+
+  auditLogs: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const membership = await getUserOrganizationMembership(ctx.user.id);
+      const canReadAuditLogs =
+        isPlatformOwner(ctx.user) ||
+        ctx.user.role === "admin" ||
+        membership?.role === "system_admin";
+
+      if (!canReadAuditLogs) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا تملك صلاحية عرض سجل الإجراءات",
+        });
+      }
+
+      return listAuditLogs();
+    }),
+  }),
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

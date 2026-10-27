@@ -2946,6 +2946,7 @@ function TelegramDetail({
   close: () => void;
 }) {
   const paperRef = useRef<HTMLDivElement>(null);
+  const preparedTelegramIdRef = useRef<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
@@ -3598,6 +3599,12 @@ function TelegramDetail({
     const host = paperRef.current;
     if (!host) return;
 
+    // React Query can expose equivalent telegram/settings objects with new
+    // references during background refreshes. Do not cancel a valid document
+    // preparation and restart the logo request for the same telegram.
+    if (preparedTelegramIdRef.current === telegram.id) return;
+    preparedTelegramIdRef.current = telegram.id;
+
     setDocumentPreparing(true);
 
     // Do not gate preview preparation on the separate React Query state:
@@ -3644,29 +3651,18 @@ function TelegramDetail({
       activeObserver.observe(host);
     };
 
-    // Prepare the complete official document before opening it. The loading
-    // state remains visible until settings and the organization logo have been
-    // resolved, fetched, and decoded into the final preview.
+    // Render the official paper as soon as its document settings are ready.
+    // Logo retrieval is an enhancement step and must never prevent the user
+    // from opening the telegram or leave the detail view behind a spinner.
     const preparePreview = async () => {
       try {
-        const [documentSettings, exportSettings] = await withPreparationTimeout(
-          Promise.all([
-            loadExportSettings(),
-            utils.settings.get.fetch(undefined, { staleTime: 0 }),
-          ]),
+        const documentSettings = await withPreparationTimeout(
+          loadExportSettings(),
           OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
           "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
         );
-        const logoDataUrl = await withPreparationTimeout(
-          resolveTelegramLogoDataUrl(exportSettings),
-          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-          "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
-        );
-        if (!logoDataUrl) {
-          throw new Error("لم يُعثر على شعار الجهة المعتمد للوثيقة.");
-        }
         if (cancelled) return;
-        renderPreview(documentSettings, logoDataUrl);
+        renderPreview(documentSettings, null);
         const paper = host.querySelector<HTMLElement>(".telegram-export-page");
         if (!paper) {
           throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
@@ -3677,6 +3673,35 @@ function TelegramDetail({
           "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
         );
         if (!cancelled) setDocumentPreparing(false);
+
+        // Upgrade the already-visible paper with the organization-scoped
+        // Supabase logo. A slow or unavailable logo must not hide the usable
+        // telegram preview; printing/export still performs its own strict
+        // logo validation before producing an official file.
+        try {
+          const exportSettings = await withPreparationTimeout(
+            utils.settings.get.fetch(undefined, { staleTime: 0 }),
+            OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+            "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
+          );
+          const logoDataUrl = await withPreparationTimeout(
+            resolveTelegramLogoDataUrl(exportSettings),
+            OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+            "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع."
+          );
+          if (!cancelled && logoDataUrl) {
+            renderPreview(documentSettings, logoDataUrl);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            console.warn(
+              "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
+              {
+                error: error instanceof Error ? error.message : String(error),
+              }
+            );
+          }
+        }
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);
@@ -3700,13 +3725,7 @@ function TelegramDetail({
       host.replaceChildren();
       host.style.height = "";
     };
-  }, [
-    telegram,
-    settings,
-    platformDocumentSettings,
-    isOutgoing,
-    routingDirectory,
-  ]);
+  }, [telegram.id]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
     await withPreparationTimeout(

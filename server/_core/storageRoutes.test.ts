@@ -360,6 +360,35 @@ describe("storage route", () => {
     );
   });
 
+  it("resolves a legacy attachment owner from its telegram during rollout", async () => {
+    const key = "telegrams/42/report.pdf";
+    const telegram = {
+      id: 7,
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
+    };
+    getTelegramAttachmentByStorageKey.mockResolvedValueOnce({
+      telegramId: 7,
+      storageOrganizationId: null,
+      storageKey: key,
+    });
+    getTelegramById.mockResolvedValueOnce(telegram);
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(canAccessTelegramScope).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7 }),
+      telegram
+    );
+    expect(storageCreateSignedUrl).toHaveBeenCalledWith(key, 10 * 60);
+    expect(res.redirect).toHaveBeenCalledWith(
+      307,
+      "https://storage.example/scoped-file"
+    );
+  });
+
   it("requires matching metadata and organization scope for a new attachment key", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     const currentOrganizationId = "550e8400-e29b-41d4-a716-446655440099";
@@ -409,6 +438,29 @@ describe("storage route", () => {
       currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
     });
     canAccessTelegramScope.mockResolvedValueOnce(false);
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageCreateSignedUrl).not.toHaveBeenCalled();
+    expect(storageGetSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it("rejects a new scoped key when its metadata owner is missing", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const key = `organizations/${organizationId}/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf`;
+    getTelegramAttachmentByStorageKey.mockResolvedValueOnce({
+      telegramId: 7,
+      storageOrganizationId: null,
+      storageKey: key,
+    });
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(true);
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);

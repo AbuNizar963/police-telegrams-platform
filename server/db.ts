@@ -1102,7 +1102,7 @@ export async function getTelegramAttachmentById(id: number) {
   return data as {
     id: number;
     telegramId: number;
-    storageOrganizationId: string;
+    storageOrganizationId: string | null;
     storageKey: string;
     originalName: string;
     mimeType: string;
@@ -1124,7 +1124,7 @@ export async function getTelegramAttachmentByStorageKey(storageKey: string) {
   return data as {
     id: number;
     telegramId: number;
-    storageOrganizationId: string;
+    storageOrganizationId: string | null;
     storageKey: string;
   } | null;
 }

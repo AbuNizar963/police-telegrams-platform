@@ -9,11 +9,15 @@ SELECT has_column(
   'attachment metadata records the storage-owning organization'
 );
 
-SELECT col_not_null(
-  'public',
-  'telegram_attachments',
-  'storageOrganizationId',
-  'storage-owning organization is required'
+SELECT ok(
+  NOT (
+    SELECT attribute.attnotnull
+    FROM pg_attribute AS attribute
+    WHERE attribute.attrelid = 'public.telegram_attachments'::regclass
+      AND attribute.attname = 'storageOrganizationId'
+      AND NOT attribute.attisdropped
+  ),
+  'storage owner remains nullable during the expand-and-deploy phase'
 );
 
 SELECT has_index(
@@ -41,9 +45,10 @@ SELECT ok(
     FROM public.telegram_attachments AS attachment
     JOIN public.telegrams AS telegram
       ON telegram.id = attachment."telegramId"
-    WHERE attachment."storageOrganizationId" IS DISTINCT FROM telegram."organizationId"
+    WHERE attachment."storageOrganizationId" IS NOT NULL
+      AND attachment."storageOrganizationId" IS DISTINCT FROM telegram."organizationId"
   ),
-  'existing attachment metadata is backfilled from the immutable telegram origin'
+  'backfilled attachment owners match the immutable telegram origin'
 );
 
 SELECT * FROM finish();

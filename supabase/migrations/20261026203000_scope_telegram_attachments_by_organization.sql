@@ -1,3 +1,5 @@
+-- Phase 1 (expand): keep this column nullable while old and new server
+-- instances overlap during deployment. Old instances do not write this field.
 ALTER TABLE public.telegram_attachments
   ADD COLUMN IF NOT EXISTS "storageOrganizationId" uuid;
 
@@ -6,9 +8,6 @@ SET "storageOrganizationId" = telegram."organizationId"
 FROM public.telegrams AS telegram
 WHERE telegram.id = attachment."telegramId"
   AND attachment."storageOrganizationId" IS NULL;
-
-ALTER TABLE public.telegram_attachments
-  ALTER COLUMN "storageOrganizationId" SET NOT NULL;
 
 DO $$
 BEGIN

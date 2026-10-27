@@ -138,10 +138,13 @@ export function registerStorageRoutes(app: Express): void {
           throw new StorageAccessDeniedError();
         } else {
           const telegram = await getTelegramById(attachment.telegramId);
+          const storageOrganizationId =
+            attachment.storageOrganizationId ??
+            (isLegacyAttachmentKey ? (telegram?.organizationId ?? null) : null);
           const metadataMatchesTelegram =
             telegram !== null &&
             telegram !== undefined &&
-            attachment.storageOrganizationId === telegram.organizationId;
+            storageOrganizationId === telegram.organizationId;
           const keyMatchesMetadata =
             !scopedAttachment ||
             (scopedAttachment.organizationId ===

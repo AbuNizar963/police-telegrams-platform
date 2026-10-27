@@ -5,21 +5,6 @@ import 'api.dart';
 const _navy = Color(0xFF101C35);
 const _gold = Color(0xFFC9A45C);
 
-const statusLabels = <String, String>{
-  'draft': 'مسودة',
-  'submitted': 'مرسلة للمراجعة',
-  'in_review': 'قيد المراجعة',
-  'approved': 'معتمدة',
-  'returned': 'معادة للتصحيح',
-  'rejected': 'مرفوضة',
-  'forwarded': 'محالة',
-  'pending': 'قيد الانتظار',
-  'in_progress': 'قيد الإجراء',
-  'resolved': 'منجزة',
-  'completed': 'مكتملة',
-  'archived': 'مؤرشفة',
-};
-
 String _errorMessage(Object error) =>
     error.toString().replaceFirst('Exception: ', '');
 
@@ -160,6 +145,21 @@ class _ReportsPageState extends State<ReportsPage> {
   bool loading = true;
   String? error;
   Map<String, dynamic>? report;
+
+  static const statusLabels = <String, String>{
+    'draft': 'مسودة',
+    'submitted': 'مرسلة للمراجعة',
+    'in_review': 'قيد المراجعة',
+    'approved': 'معتمدة',
+    'returned': 'معادة للتصحيح',
+    'rejected': 'مرفوضة',
+    'forwarded': 'محالة',
+    'pending': 'قيد الانتظار',
+    'in_progress': 'قيد الإجراء',
+    'resolved': 'منجزة',
+    'completed': 'مكتملة',
+    'archived': 'مؤرشفة',
+  };
 
   @override
   void initState() {

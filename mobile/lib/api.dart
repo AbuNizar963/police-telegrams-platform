@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -80,25 +79,13 @@ class PoliceApi {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     final uri = Uri.parse('$baseUrl/api/trpc/auth.login');
-    late final http.Response response;
-    try {
-      response = await http
-          .post(
-            uri,
-            headers: {
-              'content-type': 'application/json',
-              'accept': 'application/json',
-            },
-            body: jsonEncode({
-              'json': {'username': username, 'password': password},
-            }),
-          )
-          .timeout(const Duration(seconds: 8));
-    } on TimeoutException {
-      throw NetworkException('استغرق الاتصال بالخادم وقتًا أطول من المتوقع');
-    } catch (_) {
-      throw NetworkException('تعذر الاتصال بالخادم');
-    }
+    final response = await http.post(
+      uri,
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'json': {'username': username, 'password': password},
+      }),
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_message(response.body));
     }

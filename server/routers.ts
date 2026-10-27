@@ -375,6 +375,31 @@ async function cleanupReplacedDepartmentLogo(
     console.error("[Storage] Replaced department logo cleanup failed", error);
   }
 }
+
+function assertLogoBelongsToOrganization(
+  logoValue: string | null | undefined,
+  organizationId: string | null,
+  previousValues: unknown[]
+): void {
+  if (!logoValue) return;
+
+  // Keep a previously configured legacy URL working until the organization
+  // uploads a replacement. New logo assignments must use that organization's
+  // own private storage directory.
+  if (previousValues.some(value => value === logoValue)) return;
+
+  const key = departmentLogoKeyFromStoredValue(logoValue);
+  const expectedPrefix = organizationId
+    ? `department/logos/${organizationId}/`
+    : null;
+
+  if (!key || !expectedPrefix || !key.startsWith(expectedPrefix)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "يجب حفظ شعار الجهة في مسار التخزين الخاص بها داخل Supabase",
+    });
+  }
+}
 const organizationSettingsPayloadSchema = z.object({
   departmentName: z.string().trim().min(2).max(255),
   unitName: z.string().trim().max(255),
@@ -1402,6 +1427,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
         const previousLogoValue = dbSettings.logoKey ?? dbSettings.logoUrl;
+        assertLogoBelongsToOrganization(
+          input.logoUrl,
+          dbSettings.organizationId,
+          [dbSettings.logoKey, dbSettings.logoUrl]
+        );
         if (
           input.organizationId !== undefined &&
           dbSettings.organizationId !== input.organizationId

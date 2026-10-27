@@ -5,11 +5,17 @@ const {
   storageDownload,
   storageGetSignedUrl,
   getUserOrganizationMembership,
+  getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization,
+  isPlatformOwner,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageDownload: vi.fn(),
   storageGetSignedUrl: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
+  getOrganizationSettings: vi.fn(),
+  isDepartmentLogoExclusiveToOrganization: vi.fn(),
+  isPlatformOwner: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
@@ -20,6 +26,11 @@ vi.mock("../organization", async importOriginal => {
     getUserOrganizationMembership,
   };
 });
+vi.mock("../db", () => ({
+  getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization,
+}));
+vi.mock("../ownerAccess", () => ({ isPlatformOwner }));
 vi.mock("../storage", async () => {
   const actual =
     await vi.importActual<typeof import("../storage")>("../storage");
@@ -96,10 +107,15 @@ describe("storage route", () => {
     });
     storageGetSignedUrl.mockResolvedValue("https://storage.example/file");
     getUserOrganizationMembership.mockResolvedValue({
-      userId: 7,
       organizationId: "550e8400-e29b-41d4-a716-446655440000",
       isActive: true,
     });
+    getOrganizationSettings.mockResolvedValue({
+      logoKey: null,
+      logoUrl: null,
+    });
+    isDepartmentLogoExclusiveToOrganization.mockResolvedValue(true);
+    isPlatformOwner.mockReturnValue(false);
   });
 
   it("requires authentication", async () => {
@@ -145,7 +161,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it("proxies logo bytes with the storage content type", async () => {
+  it("proxies logo bytes using the upstream content type", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
     const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
@@ -179,7 +195,7 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
-  it("supports legacy organization logo file names through the byte proxy", async () => {
+  it("supports legacy logo names through the byte proxy", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/official-badge.webp";
     const { handler, res } = createRouteHarness();
@@ -192,7 +208,85 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed department-logo keys before touching storage", async () => {
+  it("serves a uniquely configured unscoped legacy logo", async () => {
+    const key = "department/logos/official-badge.png";
+    getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: key,
+      logoUrl: null,
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(isDepartmentLogoExclusiveToOrganization).toHaveBeenCalledWith(
+      key,
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(res.send).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("denies access to a logo belonging to another organization", async () => {
+    const key =
+      "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("denies logo access when membership is inactive", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";
+    getUserOrganizationMembership.mockResolvedValueOnce({
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      isActive: false,
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("denies access to an unconfigured legacy logo", async () => {
+    const key = "department/logos/legacy-badge.png";
+    getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: null,
+      logoUrl: null,
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("denies a legacy logo key configured for another organization", async () => {
+    const key = "department/logos/legacy-badge.png";
+    getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: key,
+      logoUrl: null,
+    });
+    isDepartmentLogoExclusiveToOrganization.mockResolvedValueOnce(false);
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(isDepartmentLogoExclusiveToOrganization).toHaveBeenCalledWith(
+      key,
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed department-logo keys", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/nested/badge.png";
     const { handler, res } = createRouteHarness();
@@ -204,7 +298,7 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("keeps telegram attachments behind their existing user authorization", async () => {
+  it("keeps telegram attachments behind existing authorization", async () => {
     const key = "telegrams/7/report.pdf";
     const user = { id: 7, role: "user" as const };
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(user);

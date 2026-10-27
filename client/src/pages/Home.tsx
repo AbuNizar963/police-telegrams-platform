@@ -3592,23 +3592,10 @@ function TelegramDetail({
 
     setDocumentPreparing(true);
 
-    // Wait for the settings query to settle before deciding whether the
-    // official preview can be prepared. A failed query must not leave the
-    // document loading indicator active forever.
-    if (documentSettingsQuery.isLoading) {
-      host.replaceChildren();
-      host.style.height = "";
-      return;
-    }
-
-    if (documentSettingsUnavailable || !platformDocumentSettings) {
-      host.replaceChildren();
-      host.style.height = "";
-      setDocumentPreparing(false);
-      toast.error("تعذر تحميل إعدادات الوثيقة الرسمية. أعد فتح البرقية.");
-      return;
-    }
-
+    // Do not gate preview preparation on the separate React Query state:
+    // that query can remain loading while the direct fetch below is usable.
+    // The direct fetch is bounded by withPreparationTimeout, so the preview
+    // either renders or exits loading with a visible error.
     let cancelled = false;
     let activeObserver: ResizeObserver | null = null;
 
@@ -3709,8 +3696,6 @@ function TelegramDetail({
     telegram,
     settings,
     platformDocumentSettings,
-    documentSettingsUnavailable,
-    documentSettingsQuery.isLoading,
     isOutgoing,
     routingDirectory,
   ]);

@@ -1,4 +1,8 @@
-import * as XLSX from "xlsx";
+type XlsxModule = typeof import("xlsx");
+
+async function loadXlsx(): Promise<XlsxModule> {
+  return import("xlsx");
+}
 
 export const TELEGRAM_SHEET_HEADERS = [
   "الرقم المتسلسل",
@@ -59,7 +63,7 @@ function normalized(value: unknown) {
     .toLowerCase();
 }
 
-function makeSheet(rows: TelegramSpreadsheetExportRow[]) {
+function makeSheet(XLSX: XlsxModule, rows: TelegramSpreadsheetExportRow[]) {
   const values = rows.map(row => [
     row.serial,
     row.time,
@@ -91,15 +95,16 @@ function makeSheet(rows: TelegramSpreadsheetExportRow[]) {
   return sheet;
 }
 
-export function downloadTelegramWorkbook(
+export async function downloadTelegramWorkbook(
   rows: TelegramSpreadsheetExportRow[],
   fileName: string
 ) {
+  const XLSX = await loadXlsx();
   const workbook = XLSX.utils.book_new();
   const outgoing = rows.filter(row => row.direction === "صادر");
   const incoming = rows.filter(row => row.direction === "وارد");
-  XLSX.utils.book_append_sheet(workbook, makeSheet(outgoing), "صادر");
-  XLSX.utils.book_append_sheet(workbook, makeSheet(incoming), "وارد");
+  XLSX.utils.book_append_sheet(workbook, makeSheet(XLSX, outgoing), "صادر");
+  XLSX.utils.book_append_sheet(workbook, makeSheet(XLSX, incoming), "وارد");
   XLSX.writeFile(workbook, fileName, { bookType: "xlsx" });
 }
 
@@ -184,6 +189,7 @@ export async function parseTelegramWorkbook(
       matrix: sheet.usedRange().value(),
     }));
   } else {
+    const XLSX = await loadXlsx();
     const workbook = XLSX.read(buffer, {
       type: "array",
       cellDates: false,

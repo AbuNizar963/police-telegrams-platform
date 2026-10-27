@@ -1,17 +1,59 @@
-# police_telegrams
+# تطبيق برقيات الشرطة للهاتف
 
-A new Flutter project.
+تطبيق Flutter مرتبط بمنصة برقيات الشرطة. يوفّر تسجيل الدخول، لوحة المتابعة، البرقيات الصادرة والواردة، إنشاء البرقيات ومرفقاتها، الإشعارات، التقارير، وإعدادات الملف الشخصي.
 
-## Getting Started
+## العمل دون اتصال
 
-This project is a starting point for a Flutter application.
+- تُحفظ آخر لوحة متابعة محليًا لتبقى البيانات متاحة عند انقطاع الاتصال.
+- تدخل العمليات التي تعذر إرسالها في قائمة انتظار آمنة، وتُزامن بالترتيب عند عودة الاتصال.
+- لا تتجاوز العملية التالفة أو المتعارضة غيرها؛ يظهر التعارض للمراجعة بدل استبدال بيانات الخادم تلقائيًا.
+- الحد الأقصى للمرفق المحفوظ دون اتصال هو 2 ميغابايت.
 
-A few resources to get you started if this is your first Flutter project:
+## المتطلبات والتشغيل
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter 3.47.2، بما يتوافق مع إصدار Dart المحدد في `pubspec.yaml`.
+- إعداد Android أو iOS وأداة تشغيل/جهاز.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+العنوان الافتراضي للخادم هو نسخة Vercel الموجودة في `lib/api.dart`. لتغييره أثناء التطوير:
+
+```bash
+flutter run --dart-define=API_BASE_URL=https://your-server.example
+```
+
+عند تشغيل خادم محلي من محاكي Android، يكون العنوان المعتاد:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+```
+
+لا تضع أسرار الخادم أو مفاتيح إدارية في التطبيق. ملفات Firebase المحلية الحساسة لا تُرفع إلى Git؛ اتبع `FIREBASE_SETUP_AR.md` لإعداد الإشعارات.
+
+## التحقق من الجودة
+
+```bash
+dart format lib test
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+```
+
+يستخدم المشروع `flutter_lints`. لا تُضف تجاهلًا عامًا لقواعد التحليل لإخفاء خطأ حقيقي.
+
+## بناء Android
+
+```bash
+flutter build apk --release
+```
+
+ينشئ سير العمل `.github/workflows/flutter-mobile.yml` حزمة APK وقيمة SHA-256 عند تغيير ملفات الهاتف، ويرفعهما كقطع أثرية للمراجعة. لا يُنشأ إصدار GitHub إلا من `main` ومع رسالة التزام تتضمن `release-mobile` وفق شروط سير العمل.
+
+## الاختبارات
+
+توجد اختبارات واجهة الدخول وقواعد العمل دون اتصال في `test/`. عند تعديل المزامنة أو الجلسة أو المرفقات، أضف حالات تغطي النجاح والفشل والتعارض والبيانات التالفة، ولا تعتمد على نجاح البناء وحده.

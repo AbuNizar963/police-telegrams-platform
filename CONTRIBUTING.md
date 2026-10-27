@@ -30,8 +30,8 @@ Run from `mobile/`:
 
 ```bash
 flutter pub get
-./tool/format_dart.sh --fix
-./tool/format_dart.sh --check
+dart format lib test
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 flutter build apk --debug

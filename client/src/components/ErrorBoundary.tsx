@@ -24,34 +24,49 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-dvh items-center justify-center bg-background p-8">
-          <div className="flex flex-col items-center w-full max-w-2xl p-8">
+        <main
+          className="flex min-h-dvh items-center justify-center bg-background p-6"
+          dir="rtl"
+          role="alert"
+        >
+          <div className="flex w-full max-w-xl flex-col items-center text-center">
             <AlertTriangle
               size={48}
-              className="text-destructive mb-6 flex-shrink-0"
+              className="mb-6 shrink-0 text-destructive"
+              aria-hidden="true"
             />
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+            <h1 className="mb-3 text-2xl font-bold">حدث خطأ غير متوقع</h1>
+            <p className="mb-6 max-w-md leading-7 text-muted-foreground">
+              تعذر عرض هذه الصفحة. أعد تحميلها للمتابعة، ولن تؤثر إعادة التحميل
+              على البيانات المحفوظة في الخادم.
+            </p>
 
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
-            </div>
+            {import.meta.env.DEV && this.state.error ? (
+              <details className="mb-6 w-full rounded-lg bg-muted p-4 text-right">
+                <summary className="cursor-pointer font-semibold">
+                  تفاصيل تقنية للمطور
+                </summary>
+                <pre className="mt-3 overflow-auto whitespace-break-spaces text-sm text-muted-foreground">
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            ) : null}
 
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
+                "flex min-h-11 items-center gap-2 rounded-lg px-5 py-2",
                 "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
+                "cursor-pointer hover:opacity-90"
               )}
             >
-              <RotateCcw size={16} />
-              Reload Page
+              <RotateCcw size={16} aria-hidden="true" />
+              إعادة تحميل الصفحة
             </button>
           </div>
-        </div>
+        </main>
       );
     }
 

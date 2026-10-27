@@ -50,6 +50,13 @@ class _LoginPageState extends State<LoginPage> {
     unawaited(_restoreSession());
   }
 
+  @override
+  void dispose() {
+    username.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
   Future<void> _restoreSession() async {
     final account = await api.restoreCachedAccount();
     if (!mounted || account == null) return;
@@ -349,8 +356,13 @@ class _DashboardPageState extends State<DashboardPage> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
-          IconButton(onPressed: refresh, icon: const Icon(Icons.refresh)),
           IconButton(
+            tooltip: 'تحديث البيانات',
+            onPressed: refresh,
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'تسجيل الخروج',
             onPressed: () async {
               final navigator = Navigator.of(context);
               await widget.api.logout();
@@ -820,6 +832,14 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
   bool busy = false;
   String priority = 'normal';
   String? error;
+
+  @override
+  void dispose() {
+    subject.dispose();
+    recipient.dispose();
+    body.dispose();
+    super.dispose();
+  }
 
   Future<void> submit() async {
     if (subject.text.trim().length < 2 ||

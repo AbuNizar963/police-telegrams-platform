@@ -9,4 +9,8 @@ void main() {
   test('rejects an offline attachment larger than 2 MiB', () {
     expect(isOfflineAttachmentSizeAllowed(2 * 1024 * 1024 + 1), isFalse);
   });
+
+  test('rejects a negative offline attachment size', () {
+    expect(isOfflineAttachmentSizeAllowed(-1), isFalse);
+  });
 }

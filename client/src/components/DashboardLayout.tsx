@@ -432,6 +432,12 @@ function DashboardLayoutContent({
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="fixed right-4 top-3 z-50 -translate-y-24 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg transition-transform focus:translate-y-0"
+      >
+        تجاوز إلى المحتوى الرئيسي
+      </a>
       {!isMobile && !isCollapsed ? (
         <button
           type="button"
@@ -557,7 +563,11 @@ function DashboardLayoutContent({
             <HeaderActions />
           </div>
         )}
-        <main className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
+        >
           {children}
         </main>
       </SidebarInset>

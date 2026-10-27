@@ -5,28 +5,28 @@
   font-family: "Cairo";
   font-style: normal;
   font-weight: 400;
-  font-display: block;
+  font-display: swap;
   src: url("/fonts/cairo-400.ttf") format("truetype");
 }
 @font-face {
   font-family: "Cairo";
   font-style: normal;
   font-weight: 500;
-  font-display: block;
+  font-display: swap;
   src: url("/fonts/cairo-500.ttf") format("truetype");
 }
 @font-face {
   font-family: "Cairo";
   font-style: normal;
   font-weight: 600;
-  font-display: block;
+  font-display: swap;
   src: url("/fonts/cairo-600.ttf") format("truetype");
 }
 @font-face {
   font-family: "Cairo";
   font-style: normal;
   font-weight: 700;
-  font-display: block;
+  font-display: swap;
   src: url("/fonts/cairo-700.ttf") format("truetype");
 }
 
@@ -163,7 +163,7 @@
   }
   :focus-visible {
     outline: 3px solid color-mix(in oklch, var(--ring) 58%, transparent);
-    outline-offset: -3px;
+    outline-offset: 2px;
   }
 }
 
@@ -268,5 +268,20 @@
   }
   button:active {
     transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

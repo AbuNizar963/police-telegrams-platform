@@ -329,4 +329,4 @@ class OfflineFirstService {
 }
 
 bool isOfflineAttachmentSizeAllowed(int bytes) =>
-    bytes <= _maxOfflineAttachmentBytes;
+    bytes >= 0 && bytes <= _maxOfflineAttachmentBytes;

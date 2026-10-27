@@ -4,13 +4,22 @@ const {
   getAuthenticatedUserFromRequest,
   storageDownload,
   storageGetSignedUrl,
+  getUserOrganizationMembership,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   storageDownload: vi.fn(),
   storageGetSignedUrl: vi.fn(),
+  getUserOrganizationMembership: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
+vi.mock("../organization", async importOriginal => {
+  const actual = await importOriginal<typeof import("../organization")>();
+  return {
+    ...actual,
+    getUserOrganizationMembership,
+  };
+});
 vi.mock("../storage", async () => {
   const actual =
     await vi.importActual<typeof import("../storage")>("../storage");
@@ -86,6 +95,11 @@ describe("storage route", () => {
       contentType: "image/png",
     });
     storageGetSignedUrl.mockResolvedValue("https://storage.example/file");
+    getUserOrganizationMembership.mockResolvedValue({
+      userId: 7,
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      isActive: true,
+    });
   });
 
   it("requires authentication", async () => {
@@ -100,7 +114,7 @@ describe("storage route", () => {
 
   it("serves department logo bytes through the same-origin route", async () => {
     const key =
-      "department/logos/550e8400-e29b-41d4-a716-446655440000-badge.png";
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440000-badge.png";
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);
@@ -115,7 +129,23 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
-  it("proxies logo bytes with the upstream content type when storage is reachable", async () => {
+  it("denies logo reads for a different organization", async () => {
+    getUserOrganizationMembership.mockResolvedValueOnce({
+      userId: 7,
+      organizationId: "00000000-0000-4000-8000-000000000099",
+      isActive: true,
+    });
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440000-badge.png";
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("proxies logo bytes with the storage content type", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.jpg";
     const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);

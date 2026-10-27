@@ -3207,16 +3207,12 @@ function TelegramDetail({
           { staleTime: 0 }
         );
       } catch (error) {
-        console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
-        const sameOrganizationSettingsLogo =
-          exportSettings.organizationId?.trim() === logoOrganizationId
-            ? exportSettings.logoUrl?.trim()
-            : null;
-        if (sameOrganizationSettingsLogo) {
-          return loadOfficialDocumentLogoDataUrl(sameOrganizationSettingsLogo);
-        }
+        // Never substitute a URL from account settings when the direct
+        // organization-scoped Supabase Storage read fails. The server
+        // procedure verifies membership and downloads the stored object.
+        console.error("تعذر جلب شعار الجهة مباشرة من Supabase Storage:", error);
         throw new Error(
-          "تعذر التحقق من شعار الجهة المرتبطة بالبرقية. أعد المحاولة."
+          "تعذر جلب شعار حساب الجهة من Supabase Storage. تحقق من وجود الشعار وصلاحية الحساب ثم أعد المحاولة."
         );
       }
     }
@@ -3224,28 +3220,20 @@ function TelegramDetail({
     const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
     if (logoDataUrl) return logoDataUrl;
 
-    const resolvedOrganizationLogo = resolveTelegramExportLogo({
-      exportOrganizationId: logoOrganizationId,
-      organizationLogo,
-      settingsOrganizationId: exportSettings.organizationId,
-      settingsLogoUrl: exportSettings.logoUrl,
-    });
+    // For identified organizations, require the organization's stored
+    // Supabase Storage logo payload. Do not fall back to a settings URL that
+    // can be stale or point outside the organization's storage scope.
+    if (logoOrganizationId) {
+      throw new Error(
+        "تعذر تحميل شعار الجهة من تخزين Supabase. تحقق من ملف الشعار المحفوظ للجهة ثم أعد المحاولة."
+      );
+    }
 
-    // A known organization must never inherit a logo from a different account.
-    // Account settings are a permitted fallback only when their organization
-    // is the same, or when a legacy telegram has no organization ID.
-    const logoUrl =
-      resolvedOrganizationLogo?.trim() ||
-      (logoOrganizationId
-        ? exportSettings.organizationId?.trim() === logoOrganizationId
-          ? exportSettings.logoUrl?.trim()
-          : null
-        : exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim()) ||
-      null;
-
-    // Logo normalization is best-effort: never block printing or exporting
-    // the telegram text when an optional legacy logo cannot be loaded.
-    return loadOfficialDocumentLogoDataUrl(logoUrl);
+    // Legacy telegrams without an organization ID may still use their saved
+    // legacy URL; this path is never used for an identified organization.
+    const legacyLogoUrl =
+      exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+    return loadOfficialDocumentLogoDataUrl(legacyLogoUrl);
   };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
@@ -3604,23 +3592,10 @@ function TelegramDetail({
 
     setDocumentPreparing(true);
 
-    // Wait for the settings query to settle before deciding whether the
-    // official preview can be prepared. A failed query must not leave the
-    // document loading indicator active forever.
-    if (documentSettingsQuery.isLoading) {
-      host.replaceChildren();
-      host.style.height = "";
-      return;
-    }
-
-    if (documentSettingsUnavailable || !platformDocumentSettings) {
-      host.replaceChildren();
-      host.style.height = "";
-      setDocumentPreparing(false);
-      toast.error("تعذر تحميل إعدادات الوثيقة الرسمية. أعد فتح البرقية.");
-      return;
-    }
-
+    // Do not gate preview preparation on the separate React Query state:
+    // that query can remain loading while the direct fetch below is usable.
+    // The direct fetch is bounded by withPreparationTimeout, so the preview
+    // either renders or exits loading with a visible error.
     let cancelled = false;
     let activeObserver: ResizeObserver | null = null;
 
@@ -3721,28 +3696,47 @@ function TelegramDetail({
     telegram,
     settings,
     platformDocumentSettings,
-    documentSettingsUnavailable,
-    documentSettingsQuery.isLoading,
     isOutgoing,
     routingDirectory,
   ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
-    await document.fonts.ready;
-    const [documentSettings, exportSettings] = await Promise.all([
-      loadExportSettings(),
-      utils.settings.get.fetch(undefined, { staleTime: 0 }),
-    ]);
-    const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+    await withPreparationTimeout(
+      document.fonts.ready,
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تحميل خطوط الوثيقة الرسمية وقتًا أطول من المتوقع. أعد المحاولة."
+    );
+
+    const [documentSettings, exportSettings] = await withPreparationTimeout(
+      Promise.all([
+        loadExportSettings(),
+        utils.settings.get.fetch(undefined, { staleTime: 0 }),
+      ]),
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
+    );
+
+    const logoDataUrl = await withPreparationTimeout(
+      resolveTelegramLogoDataUrl(exportSettings),
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
+    );
+
     if (!logoDataUrl) {
       throw new Error(
         "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
       );
     }
+
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
-    await waitForOfficialDocumentImages(paper);
+
+    await withPreparationTimeout(
+      waitForOfficialDocumentImages(paper),
+      OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+      "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
+    );
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the

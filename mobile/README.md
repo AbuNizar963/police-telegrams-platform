@@ -54,7 +54,7 @@ flutter build apk --debug
 flutter build apk --release
 ```
 
-ينشئ سير العمل `.github/workflows/flutter-mobile.yml` حزمة APK وقيمة SHA-256 عند تغيير ملفات الهاتف، ويرفعهما كقطع أثرية للمراجعة. لا يُنشأ إصدار GitHub إلا من `main` ومع رسالة التزام تتضمن `release-mobile` وفق شروط سير العمل.
+ينشئ سير العمل `.github/workflows/flutter-mobile.yml` حزمة APK وقيمة SHA-256 عند تغيير ملفات الهاتف، ويرفعهما كقطع أثرية للمراجعة. لا يُنشأ إصدار GitHub إلا من `flutter-mobile-app` ومع رسالة التزام تتضمن `release-mobile` وفق شروط سير العمل.
 
 ## الاختبارات
 

@@ -3701,21 +3701,42 @@ function TelegramDetail({
   ]);
 
   const renderOfficialDocument = async (format: "pdf" | "png") => {
-    await document.fonts.ready;
-    const [documentSettings, exportSettings] = await Promise.all([
-      loadExportSettings(),
-      utils.settings.get.fetch(undefined, { staleTime: 0 }),
-    ]);
-    const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+    await withPreparationTimeout(
+      document.fonts.ready,
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تحميل خطوط الوثيقة الرسمية وقتًا أطول من المتوقع. أعد المحاولة."
+    );
+
+    const [documentSettings, exportSettings] = await withPreparationTimeout(
+      Promise.all([
+        loadExportSettings(),
+        utils.settings.get.fetch(undefined, { staleTime: 0 }),
+      ]),
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
+    );
+
+    const logoDataUrl = await withPreparationTimeout(
+      resolveTelegramLogoDataUrl(exportSettings),
+      OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+      "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
+    );
+
     if (!logoDataUrl) {
       throw new Error(
         "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
       );
     }
+
     const wrapper = createExportPaper(documentSettings, logoDataUrl);
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
-    await waitForOfficialDocumentImages(paper);
+
+    await withPreparationTimeout(
+      waitForOfficialDocumentImages(paper),
+      OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+      "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
+    );
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the

@@ -3207,16 +3207,12 @@ function TelegramDetail({
           { staleTime: 0 }
         );
       } catch (error) {
-        console.warn("تعذر تحميل شعار الجهة المرتبطة بالبرقية:", error);
-        const sameOrganizationSettingsLogo =
-          exportSettings.organizationId?.trim() === logoOrganizationId
-            ? exportSettings.logoUrl?.trim()
-            : null;
-        if (sameOrganizationSettingsLogo) {
-          return loadOfficialDocumentLogoDataUrl(sameOrganizationSettingsLogo);
-        }
+        // Never substitute a URL from account settings when the direct
+        // organization-scoped Supabase Storage read fails. The server
+        // procedure verifies membership and downloads the stored object.
+        console.error("تعذر جلب شعار الجهة مباشرة من Supabase Storage:", error);
         throw new Error(
-          "تعذر التحقق من شعار الجهة المرتبطة بالبرقية. أعد المحاولة."
+          "تعذر جلب شعار حساب الجهة من Supabase Storage. تحقق من وجود الشعار وصلاحية الحساب ثم أعد المحاولة."
         );
       }
     }

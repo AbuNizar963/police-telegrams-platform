@@ -198,20 +198,18 @@ describe("storage route", () => {
     expect(storageGetSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("keeps telegram attachments behind their existing user authorization", async () => {
+  it("rejects a legacy attachment when its metadata row is missing", async () => {
     const key = "telegrams/7/report.pdf";
-    const user = { id: 7, role: "user" as const };
-    getAuthenticatedUserFromRequest.mockResolvedValueOnce(user);
     const { handler, res } = createRouteHarness();
 
     await handler({ params: { key: key.split("/") } }, res);
 
-    expect(storageGetSignedUrl).toHaveBeenCalledWith(key, user);
+    expect(getTelegramAttachmentByStorageKey).toHaveBeenCalledWith(key);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageCreateSignedUrl).not.toHaveBeenCalled();
     expect(storageDownload).not.toHaveBeenCalled();
-    expect(res.redirect).toHaveBeenCalledWith(
-      307,
-      "https://storage.example/file"
-    );
+    expect(storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(res.redirect).not.toHaveBeenCalled();
   });
 
   it("keeps a legacy attachment readable through its metadata and current telegram scope", async () => {

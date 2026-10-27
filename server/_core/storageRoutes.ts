@@ -64,7 +64,10 @@ export function registerStorageRoutes(app: Express): void {
       if (scopedAttachment || isLegacyAttachmentKey) {
         const attachment = await getTelegramAttachmentByStorageKey(key);
         if (!attachment) {
-          if (scopedAttachment) throw new StorageAccessDeniedError();
+          // Both new and legacy attachment objects require an authoritative
+          // metadata row. Legacy keys remain readable only through their
+          // linked telegram and current organization scope.
+          throw new StorageAccessDeniedError();
         } else {
           const telegram = await getTelegramById(attachment.telegramId);
           const metadataMatchesTelegram =

@@ -209,12 +209,19 @@ class PoliceApi {
       response = await http
           .post(
             uri,
-            headers: {'content-type': 'application/json'},
+            headers: {
+              'content-type': 'application/json',
+              'accept': 'application/json',
+            },
             body: jsonEncode({
               'json': {'username': username, 'password': password},
             }),
           )
           .timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      throw const NetworkException(
+        'استغرق الاتصال بالخادم وقتًا أطول من المتوقع',
+      );
     } catch (_) {
       throw const NetworkException();
     }

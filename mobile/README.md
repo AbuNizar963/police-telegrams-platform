@@ -1,37 +1,61 @@
-# police_telegrams
+# تطبيق برقيات الشرطة للهاتف
 
-A new Flutter project.
+تطبيق Flutter مرتبط بمنصة برقيات الشرطة. يوفّر تسجيل الدخول، لوحة المتابعة، البرقيات الصادرة والواردة، إنشاء البرقيات ومرفقاتها، الإشعارات، التقارير، وإعدادات الملف الشخصي.
 
-## Getting Started
+## المتطلبات والتشغيل
 
-This project is a starting point for a Flutter application.
+- Flutter وDart وفق الإصدار المحدد في `pubspec.yaml` وسير عمل GitHub Actions.
+- إعداد Android أو iOS وأداة تشغيل أو جهاز.
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+العنوان الافتراضي للخادم مضبوط في `mobile/lib/api.dart`. لتغييره أثناء التطوير:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run --dart-define=API_BASE_URL=https://your-server.example
+```
+
+عند تشغيل خادم محلي من محاكي Android، يكون العنوان المعتاد:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+```
+
+لا تضع أسرار الخادم أو المفاتيح الإدارية في التطبيق. ملفات Firebase المحلية الحساسة لا تُرفع إلى Git؛ اتبع `FIREBASE_SETUP_AR.md` لإعداد الإشعارات.
+
+## العمل دون اتصال
+
+- تُحفظ بعض البيانات المقروءة سابقًا محليًا لتبقى الشاشات الأساسية قابلة للعرض عند انقطاع الاتصال.
+- لا تستخدم البيانات المحلية بدل عمليات الكتابة المؤكدة على الخادم.
+- تظهر أخطاء المزامنة أو التعارض للمراجعة بدل استبدال بيانات الخادم تلقائيًا.
+- المرفقات تُحفظ وتُدار وفق حدود التخزين ومسار المزامنة الموجودين في التطبيق؛ لا تُعطّل التحقق من النوع أو الحجم.
 
 ## Dart formatting and verification
 
-Use the repository's canonical formatter from the `mobile` directory before
-committing Dart changes:
+استخدم formatter المشروع المعتمد من مجلد `mobile` قبل الالتزام بتغييرات Dart:
 
 ```bash
 ./tool/format_dart.sh --fix
 ./tool/format_dart.sh --check
 flutter analyze
 flutter test
+flutter build apk --debug
 ```
 
-The formatter is pinned through the Flutter version configured in GitHub
-Actions. Direct pushes to `flutter-mobile-app` are formatted before analysis and
-tests; if formatting changes files, CI commits only those formatted Dart files
-after the checks pass. Pull requests are never rewritten by CI: an unformatted
-pull request reports the affected files and the exact command to fix them.
-Formatting changes whitespace only; it does not minify or rewrite application
-logic.
+الـ formatter مثبت من خلال إصدار Flutter المحدد في GitHub Actions. التغييرات الناتجة عن التنسيق مسموح أن تعدل المسافات فقط؛ لا تستخدم التنسيق لإخفاء تغيير في منطق التطبيق أو ضغط الملفات في سطر واحد.
+
+## بناء Android
+
+```bash
+flutter build apk --release
+```
+
+ينشئ سير العمل `.github/workflows/flutter-mobile.yml` حزمة APK وقيمة SHA-256 عند تغيير ملفات الهاتف، ويرفعهما كقطع أثرية للمراجعة. لا يُنشأ إصدار GitHub إلا من `main` ومع رسالة التزام تتضمن `release-mobile` وفق شروط سير العمل.
+
+## الاختبارات
+
+عند تعديل الجلسة أو المزامنة أو المرفقات أو وثيقة البرقية الرسمية، أضف حالات تغطي النجاح والفشل والتعارض والبيانات التالفة، ولا تعتمد على نجاح البناء وحده. يجب تشغيل `flutter analyze` و`flutter test` و`flutter build apk --debug` قبل دفع فرع `flutter-mobile-app`.

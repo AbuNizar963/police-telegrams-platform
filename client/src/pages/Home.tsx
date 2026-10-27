@@ -3224,28 +3224,20 @@ function TelegramDetail({
     const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
     if (logoDataUrl) return logoDataUrl;
 
-    const resolvedOrganizationLogo = resolveTelegramExportLogo({
-      exportOrganizationId: logoOrganizationId,
-      organizationLogo,
-      settingsOrganizationId: exportSettings.organizationId,
-      settingsLogoUrl: exportSettings.logoUrl,
-    });
+    // For identified organizations, require the organization's stored
+    // Supabase Storage logo payload. Do not fall back to a settings URL that
+    // can be stale or point outside the organization's storage scope.
+    if (logoOrganizationId) {
+      throw new Error(
+        "تعذر تحميل شعار الجهة من تخزين Supabase. تحقق من ملف الشعار المحفوظ للجهة ثم أعد المحاولة."
+      );
+    }
 
-    // A known organization must never inherit a logo from a different account.
-    // Account settings are a permitted fallback only when their organization
-    // is the same, or when a legacy telegram has no organization ID.
-    const logoUrl =
-      resolvedOrganizationLogo?.trim() ||
-      (logoOrganizationId
-        ? exportSettings.organizationId?.trim() === logoOrganizationId
-          ? exportSettings.logoUrl?.trim()
-          : null
-        : exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim()) ||
-      null;
-
-    // Logo normalization is best-effort: never block printing or exporting
-    // the telegram text when an optional legacy logo cannot be loaded.
-    return loadOfficialDocumentLogoDataUrl(logoUrl);
+    // Legacy telegrams without an organization ID may still use their saved
+    // legacy URL; this path is never used for an identified organization.
+    const legacyLogoUrl =
+      exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+    return loadOfficialDocumentLogoDataUrl(legacyLogoUrl);
   };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,

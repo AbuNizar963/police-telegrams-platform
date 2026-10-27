@@ -2798,13 +2798,12 @@ async function loadOfficialDocumentLogoDataUrl(
 ): Promise<string | null> {
   const source = logoUrl?.trim();
   if (!source) return null;
-  if (/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(source)) {
-    return source;
-  }
 
   try {
     return await getCachedOfficialDocumentLogo(source, async () => {
-      const response = await fetch(source, { credentials: "same-origin" });
+      const response = source.startsWith("data:")
+        ? await fetch(source)
+        : await fetch(source, { credentials: "same-origin" });
       if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
 
       const blob = await response.blob();
@@ -2846,23 +2845,32 @@ async function loadOfficialDocumentLogoDataUrl(
           throw new Error("صورة الشعار غير صالحة");
         }
 
-        // Do not round-trip through canvas: the storage proxy may redirect to a
-        // signed Supabase URL, which can taint a canvas and make toDataURL()
-        // throw. Reading the validated Blob directly preserves transparency and
-        // gives both the header and watermark the exact same embedded bytes.
-        return await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === "string") {
-              resolve(reader.result);
-            } else {
-              reject(new Error("تعذر تجهيز صورة الشعار"));
-            }
-          };
-          reader.onerror = () =>
-            reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
-          reader.readAsDataURL(normalizedBlob);
-        });
+        // The source logo may be up to 5 MB and is embedded twice in the
+        // official document (header and watermark). Normalize it before
+        // embedding so the authenticated render request remains below the
+        // server HTML/body limits while the original Supabase object stays
+        // untouched. WebP preserves transparency and is supported by the
+        // browser and Chromium renderer used for PDF/PNG output.
+        const maxDimension = 1200;
+        const scale = Math.min(
+          1,
+          maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
+        );
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("تعذر تجهيز صورة الشعار");
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        const optimized = canvas.toDataURL("image/webp", 0.92);
+        const dataUrl = optimized.startsWith("data:image/webp")
+          ? optimized
+          : canvas.toDataURL("image/png");
+        if (!dataUrl.startsWith("data:image/")) {
+          throw new Error("تعذر تجهيز صورة الشعار");
+        }
+        return dataUrl;
       } finally {
         URL.revokeObjectURL(objectUrl);
       }

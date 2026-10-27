@@ -1068,6 +1068,7 @@ export async function listTelegramActions(telegramId: number) {
 
 export async function createTelegramAttachment(input: {
   telegramId: number;
+  storageOrganizationId: string;
   storageKey: string;
   originalName: string;
   mimeType: string;
@@ -1079,6 +1080,7 @@ export async function createTelegramAttachment(input: {
     .from("telegram_attachments")
     .insert({
       telegramId: input.telegramId,
+      storageOrganizationId: input.storageOrganizationId,
       storageKey: input.storageKey,
       originalName: input.originalName,
       mimeType: input.mimeType,
@@ -1100,6 +1102,7 @@ export async function getTelegramAttachmentById(id: number) {
   return data as {
     id: number;
     telegramId: number;
+    storageOrganizationId: string;
     storageKey: string;
     originalName: string;
     mimeType: string;
@@ -1108,6 +1111,21 @@ export async function getTelegramAttachmentById(id: number) {
     uploadedByUserId: number;
     scanStatus: string;
     createdAt: string;
+  } | null;
+}
+
+export async function getTelegramAttachmentByStorageKey(storageKey: string) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_attachments")
+    .select("id, telegramId, storageOrganizationId, storageKey")
+    .eq("storageKey", storageKey)
+    .maybeSingle();
+  throwIfError(error, "Failed to load attachment metadata by storage key");
+  return data as {
+    id: number;
+    telegramId: number;
+    storageOrganizationId: string;
+    storageKey: string;
   } | null;
 }
 

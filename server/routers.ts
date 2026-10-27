@@ -15,6 +15,7 @@ import {
 import { ENV } from "./_core/env";
 import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
+import { canAccessTelegramScope, canViewAllTelegrams } from "./telegramAccess";
 import { z } from "zod";
 import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
@@ -118,7 +119,8 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
-  storagePut,
+  organizationAttachmentKeyMatches,
+  storagePutOrganizationAttachment,
   storagePutDepartmentLogo,
 } from "./storage";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
@@ -468,10 +470,6 @@ type TelegramScopeUser = {
   username?: string | null;
 };
 
-function canViewAllTelegrams(user: TelegramScopeUser): boolean {
-  return user.role === "admin" && !isPlatformOwner(user);
-}
-
 async function assertTelegramOrganizationScope(
   user: TelegramScopeUser,
   telegram: {
@@ -480,13 +478,7 @@ async function assertTelegramOrganizationScope(
   },
   message: string
 ): Promise<void> {
-  if (canViewAllTelegrams(user)) return;
-
-  const organizationId = await getUserOrganizationId(user.id);
-  if (
-    telegram.organizationId !== organizationId &&
-    telegram.currentOrganizationId !== organizationId
-  ) {
+  if (!(await canAccessTelegramScope(user, telegram))) {
     throw new TRPCError({ code: "FORBIDDEN", message });
   }
 }
@@ -1610,8 +1602,27 @@ export const appRouter = router({
           });
         }
 
-        const uploaded = await storagePut(
-          `telegrams/${ctx.user.id}/${input.fileName}`,
+        try {
+          validateUploadedFile({
+            bytes,
+            declaredType: input.contentType,
+            fileName: input.fileName,
+            maxBytes: 10 * 1024 * 1024,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : "بيانات المرفق غير صالحة",
+          });
+        }
+
+        const uploaded = await storagePutOrganizationAttachment(
+          telegram.organizationId,
+          telegram.id,
+          input.fileName,
           bytes,
           input.contentType
         );
@@ -1619,6 +1630,7 @@ export const appRouter = router({
         try {
           await createTelegramAttachment({
             telegramId: input.telegramId,
+            storageOrganizationId: telegram.organizationId,
             storageKey: uploaded.key,
             originalName: input.fileName,
             mimeType: input.contentType,
@@ -1715,6 +1727,20 @@ export const appRouter = router({
           telegram,
           "لا تملك صلاحية تنزيل هذا المرفق"
         );
+        if (
+          attachment.storageOrganizationId !== telegram.organizationId ||
+          (attachment.storageKey.startsWith("organizations/") &&
+            !organizationAttachmentKeyMatches(
+              attachment.storageKey,
+              attachment.storageOrganizationId,
+              telegram.id
+            ))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "مسار المرفق لا يطابق الجهة المالكة",
+          });
+        }
         const url = await storageCreateSignedUrl(
           attachment.storageKey,
           10 * 60

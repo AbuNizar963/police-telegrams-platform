@@ -6,6 +6,7 @@ import { ENV } from "./_core/env";
 const mocked = vi.hoisted(() => ({
   allocateSerialNumber: vi.fn(),
   createTelegram: vi.fn(),
+  createTelegramAttachment: vi.fn(),
   updateTelegram: vi.fn(),
   purgeTelegramPermanently: vi.fn(),
   getDashboardStats: vi.fn(),
@@ -13,6 +14,7 @@ const mocked = vi.hoisted(() => ({
   getOrCreateSettings: vi.fn(),
   getOrganizationSettings: vi.fn(),
   getTelegramById: vi.fn(),
+  getTelegramAttachmentById: vi.fn(),
   listTelegrams: vi.fn(),
   getTelegramReport: vi.fn(),
   getUserOrganizationId: vi.fn(),
@@ -54,12 +56,17 @@ vi.mock("./organization", async importOriginal => {
 });
 const storageMocks = vi.hoisted(() => ({
   storageDelete: vi.fn(),
+  storageCreateSignedUrl: vi.fn(),
+  storagePutOrganizationAttachment: vi.fn(),
 }));
 vi.mock("./storage", async importOriginal => {
   const actual = await importOriginal<typeof import("./storage")>();
   return {
     ...actual,
     storageDelete: storageMocks.storageDelete,
+    storageCreateSignedUrl: storageMocks.storageCreateSignedUrl,
+    storagePutOrganizationAttachment:
+      storageMocks.storagePutOrganizationAttachment,
   };
 });
 
@@ -131,10 +138,21 @@ const updateInput = {
   status: "pending" as const,
 };
 
+function attachmentCaller() {
+  organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+    organizationId: telegram.organizationId,
+    role: "member",
+    isActive: true,
+  });
+  mocked.getUserOrganizationId.mockResolvedValue(telegram.organizationId);
+  return appRouter.createCaller(contextFor("user"));
+}
+
 describe("telegram administration permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.getTelegramById.mockResolvedValue(telegram);
+    mocked.getTelegramAttachmentById.mockResolvedValue(null);
     mocked.getOrganizationSettings.mockResolvedValue(undefined);
     organizationMocks.getUserOrganizationMembership.mockResolvedValue({
       organizationId: "00000000-0000-4000-8000-000000000099",
@@ -151,7 +169,15 @@ describe("telegram administration permissions", () => {
       telegram,
       attachmentStorageKeys: [],
     });
+    mocked.createTelegramAttachment.mockResolvedValue(undefined);
     storageMocks.storageDelete.mockResolvedValue(undefined);
+    storageMocks.storageCreateSignedUrl.mockResolvedValue(
+      "https://storage.example/scoped-attachment"
+    );
+    storageMocks.storagePutOrganizationAttachment.mockResolvedValue({
+      key: "organizations/00000000-0000-4000-8000-000000000007/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf",
+      url: "/api/storage/organization-scoped-attachment",
+    });
     mocked.writeAuditLog.mockResolvedValue(undefined);
     mocked.recordTelegramAction.mockResolvedValue(undefined);
   });
@@ -186,6 +212,131 @@ describe("telegram administration permissions", () => {
 
     expect(mocked.updateTelegram).not.toHaveBeenCalled();
     expect(mocked.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("uploads a PDF only after its signature matches the declared MIME type", async () => {
+    const bytes = Buffer.from("%PDF-1.7\nfixture");
+    const caller = attachmentCaller();
+
+    await expect(
+      caller.telegrams.uploadAttachment({
+        telegramId: 7,
+        fileName: "report.pdf",
+        contentType: "application/pdf",
+        base64: bytes.toString("base64"),
+      })
+    ).resolves.toMatchObject({
+      key: "organizations/00000000-0000-4000-8000-000000000007/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf",
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      size: bytes.byteLength,
+    });
+
+    expect(storageMocks.storagePutOrganizationAttachment).toHaveBeenCalledWith(
+      telegram.organizationId,
+      telegram.id,
+      "report.pdf",
+      bytes,
+      "application/pdf"
+    );
+    expect(mocked.createTelegramAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: 7,
+        storageOrganizationId: telegram.organizationId,
+        storageKey:
+          "organizations/00000000-0000-4000-8000-000000000007/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf",
+        originalName: "report.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: bytes.byteLength,
+        uploadedByUserId: 42,
+        sha256: expect.any(String),
+      })
+    );
+  });
+
+  it("rejects mismatched attachment content before storage or metadata writes", async () => {
+    const caller = attachmentCaller();
+
+    await expect(
+      caller.telegrams.uploadAttachment({
+        telegramId: 7,
+        fileName: "report.pdf",
+        contentType: "application/pdf",
+        base64: Buffer.from("not a PDF").toString("base64"),
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(
+      storageMocks.storagePutOrganizationAttachment
+    ).not.toHaveBeenCalled();
+    expect(mocked.createTelegramAttachment).not.toHaveBeenCalled();
+    expect(mocked.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsafe attachment file names before storage", async () => {
+    const caller = attachmentCaller();
+
+    await expect(
+      caller.telegrams.uploadAttachment({
+        telegramId: 7,
+        fileName: "../report.pdf",
+        contentType: "application/pdf",
+        base64: Buffer.from("%PDF-1.7\nfixture").toString("base64"),
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(
+      storageMocks.storagePutOrganizationAttachment
+    ).not.toHaveBeenCalled();
+    expect(mocked.createTelegramAttachment).not.toHaveBeenCalled();
+  });
+
+  it("creates a temporary URL only for metadata owned by the telegram origin", async () => {
+    const storageKey =
+      "organizations/00000000-0000-4000-8000-000000000007/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf";
+    mocked.getTelegramAttachmentById.mockResolvedValueOnce({
+      id: 12,
+      telegramId: telegram.id,
+      storageOrganizationId: telegram.organizationId,
+      storageKey,
+      originalName: "report.pdf",
+      mimeType: "application/pdf",
+      sha256: "a".repeat(64),
+    });
+    const caller = attachmentCaller();
+
+    await expect(
+      caller.telegrams.downloadAttachment({ attachmentId: 12 })
+    ).resolves.toEqual({
+      url: "https://storage.example/scoped-attachment",
+      fileName: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(storageMocks.storageCreateSignedUrl).toHaveBeenCalledWith(
+      storageKey,
+      10 * 60
+    );
+  });
+
+  it("does not sign an attachment whose metadata owner differs from the telegram origin", async () => {
+    mocked.getTelegramAttachmentById.mockResolvedValueOnce({
+      id: 13,
+      telegramId: telegram.id,
+      storageOrganizationId: "00000000-0000-4000-8000-000000000099",
+      storageKey:
+        "organizations/00000000-0000-4000-8000-000000000099/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf",
+      originalName: "report.pdf",
+      mimeType: "application/pdf",
+      sha256: "b".repeat(64),
+    });
+    const caller = attachmentCaller();
+
+    await expect(
+      caller.telegrams.downloadAttachment({ attachmentId: 13 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(storageMocks.storageCreateSignedUrl).not.toHaveBeenCalled();
   });
 
   it("allows ordinary officers to delete a telegram during the 48-hour window", async () => {

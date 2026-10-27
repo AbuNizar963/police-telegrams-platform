@@ -360,6 +360,10 @@ export const telegramAttachments = pgTable(
     telegramId: integer("telegramId")
       .notNull()
       .references(() => telegrams.id, { onDelete: "restrict" }),
+    storageOrganizationId: uuid("storageOrganizationId").references(
+      () => organizations.id,
+      { onDelete: "restrict" }
+    ),
     storageKey: text("storageKey").notNull().unique(),
     originalName: varchar("originalName", { length: 180 }).notNull(),
     mimeType: varchar("mimeType", { length: 120 }).notNull(),
@@ -378,6 +382,10 @@ export const telegramAttachments = pgTable(
   table => [
     index("telegram_attachments_telegram_idx").on(
       table.telegramId,
+      table.createdAt
+    ),
+    index("telegram_attachments_storage_org_idx").on(
+      table.storageOrganizationId,
       table.createdAt
     ),
     index("telegram_attachments_scan_idx").on(table.scanStatus),

@@ -15,6 +15,7 @@ import {
 import { ENV } from "./_core/env";
 import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
+import { canAccessTelegramScope, canViewAllTelegrams } from "./telegramAccess";
 import { z } from "zod";
 import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
@@ -118,7 +119,8 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
-  storagePut,
+  organizationAttachmentKeyMatches,
+  storagePutOrganizationAttachment,
   storagePutDepartmentLogo,
 } from "./storage";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
@@ -319,19 +321,85 @@ function departmentLogoKeyFromStoredValue(value: unknown): string | null {
   return key && DEPARTMENT_LOGO_KEY_PATTERN.test(key) ? key : null;
 }
 
+function assertOrganizationLogoScope(
+  value: string | null | undefined,
+  organizationId: string,
+  previousValue: unknown
+): void {
+  const nextValue = value?.trim() || null;
+  const previous =
+    typeof previousValue === "string" ? previousValue.trim() || null : null;
+
+  // Existing legacy references may be left untouched while unrelated
+  // settings are edited. Any new/replaced logo must be organization-scoped.
+  if (!nextValue || nextValue === previous) return;
+
+  const key = departmentLogoKeyFromStoredValue(nextValue);
+  const scopedMatch = key?.match(
+    /^department\/logos\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/[^/]+\.(?:png|jpg)$/i
+  );
+
+  if (
+    !scopedMatch ||
+    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "أعد رفع شعار الجهة؛ الشعار الحالي لا يخص هذه الجهة",
+    });
+  }
+}
+
 async function cleanupReplacedDepartmentLogo(
   previousValue: unknown,
-  nextValue: unknown
+  nextValue: unknown,
+  organizationId: string | null
 ): Promise<void> {
   const previousKey = departmentLogoKeyFromStoredValue(previousValue);
   const nextKey = departmentLogoKeyFromStoredValue(nextValue);
-  if (!previousKey || previousKey === nextKey) return;
+  if (!organizationId || !previousKey || previousKey === nextKey) return;
+
+  // Never delete a legacy unscoped/shared object: another organization may
+  // still reference it. Only remove a file owned by this exact organization.
+  const scopedMatch = previousKey.match(
+    /^department\/logos\/([0-9a-f-]{36})\//i
+  );
+  if (
+    !scopedMatch ||
+    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
+    return;
+  }
+
   try {
     await storageDelete(previousKey);
   } catch (error) {
-    // A successful settings update must not be rolled back because an old,
-    // already-missing object could not be removed.
     console.error("[Storage] Replaced department logo cleanup failed", error);
+  }
+}
+
+function assertLogoBelongsToOrganization(
+  logoValue: string | null | undefined,
+  organizationId: string | null,
+  previousValues: unknown[]
+): void {
+  if (!logoValue) return;
+
+  // Keep a previously configured legacy URL working until the organization
+  // uploads a replacement. New logo assignments must use that organization's
+  // own private storage directory.
+  if (previousValues.some(value => value === logoValue)) return;
+
+  const key = departmentLogoKeyFromStoredValue(logoValue);
+  const expectedPrefix = organizationId
+    ? `department/logos/${organizationId}/`
+    : null;
+
+  if (!key || !expectedPrefix || !key.startsWith(expectedPrefix)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "يجب حفظ شعار الجهة في مسار التخزين الخاص بها داخل Supabase",
+    });
   }
 }
 const organizationSettingsPayloadSchema = z.object({
@@ -402,10 +470,6 @@ type TelegramScopeUser = {
   username?: string | null;
 };
 
-function canViewAllTelegrams(user: TelegramScopeUser): boolean {
-  return user.role === "admin" && !isPlatformOwner(user);
-}
-
 async function assertTelegramOrganizationScope(
   user: TelegramScopeUser,
   telegram: {
@@ -414,13 +478,7 @@ async function assertTelegramOrganizationScope(
   },
   message: string
 ): Promise<void> {
-  if (canViewAllTelegrams(user)) return;
-
-  const organizationId = await getUserOrganizationId(user.id);
-  if (
-    telegram.organizationId !== organizationId &&
-    telegram.currentOrganizationId !== organizationId
-  ) {
+  if (!(await canAccessTelegramScope(user, telegram))) {
     throw new TRPCError({ code: "FORBIDDEN", message });
   }
 }
@@ -668,6 +726,13 @@ export const appRouter = router({
           });
         }
 
+        if (!isPlatformOwner(ctx.user) && !scopedStorageKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "أعد رفع الشعار من إعدادات الجهة؛ الشعار الحالي غير معزول",
+          });
+        }
+
         const asset = await storageDownload(storageKey);
         const mimeType = detectOfficialDocumentLogoMimeType(
           asset.body,
@@ -816,6 +881,11 @@ export const appRouter = router({
           const previousSettings = await getOrganizationSettings(
             input.organizationId
           );
+          assertOrganizationLogoScope(
+            input.logoUrl,
+            organization.id,
+            previousSettings?.logoUrl
+          );
           assertSupportedTimezone(input.timezone);
           const outgoingStart = getStartingNumberFromPrefix(
             input.serialPrefix,
@@ -861,7 +931,8 @@ export const appRouter = router({
 
           await cleanupReplacedDepartmentLogo(
             previousSettings?.logoKey ?? previousSettings?.logoUrl,
-            input.logoUrl
+            input.logoUrl,
+            organization.id
           );
 
           await writeAuditLog({
@@ -1348,6 +1419,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const dbSettings = await getOrCreateSettings(ctx.user.id);
         const previousLogoValue = dbSettings.logoKey ?? dbSettings.logoUrl;
+        assertLogoBelongsToOrganization(
+          input.logoUrl,
+          dbSettings.organizationId,
+          [dbSettings.logoKey, dbSettings.logoUrl]
+        );
         if (
           input.organizationId !== undefined &&
           dbSettings.organizationId !== input.organizationId
@@ -1377,6 +1453,14 @@ export const appRouter = router({
           }
           return numericPrefix;
         };
+        if (dbSettings.organizationId) {
+          assertOrganizationLogoScope(
+            input.logoUrl,
+            dbSettings.organizationId,
+            dbSettings.logoUrl
+          );
+        }
+
         const outgoingStart = startFromPrefix(
           input.serialPrefix,
           input.serialStart,
@@ -1422,7 +1506,11 @@ export const appRouter = router({
           updatedByUserId: ctx.user.id,
         });
 
-        await cleanupReplacedDepartmentLogo(previousLogoValue, input.logoUrl);
+        await cleanupReplacedDepartmentLogo(
+          previousLogoValue,
+          input.logoUrl,
+          dbSettings.organizationId
+        );
 
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),
@@ -1514,8 +1602,27 @@ export const appRouter = router({
           });
         }
 
-        const uploaded = await storagePut(
-          `telegrams/${ctx.user.id}/${input.fileName}`,
+        try {
+          validateUploadedFile({
+            bytes,
+            declaredType: input.contentType,
+            fileName: input.fileName,
+            maxBytes: 10 * 1024 * 1024,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : "بيانات المرفق غير صالحة",
+          });
+        }
+
+        const uploaded = await storagePutOrganizationAttachment(
+          telegram.organizationId,
+          telegram.id,
+          input.fileName,
           bytes,
           input.contentType
         );
@@ -1523,6 +1630,7 @@ export const appRouter = router({
         try {
           await createTelegramAttachment({
             telegramId: input.telegramId,
+            storageOrganizationId: telegram.organizationId,
             storageKey: uploaded.key,
             originalName: input.fileName,
             mimeType: input.contentType,
@@ -1619,6 +1727,20 @@ export const appRouter = router({
           telegram,
           "لا تملك صلاحية تنزيل هذا المرفق"
         );
+        if (
+          attachment.storageOrganizationId !== telegram.organizationId ||
+          (attachment.storageKey.startsWith("organizations/") &&
+            !organizationAttachmentKeyMatches(
+              attachment.storageKey,
+              attachment.storageOrganizationId,
+              telegram.id
+            ))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "مسار المرفق لا يطابق الجهة المالكة",
+          });
+        }
         const url = await storageCreateSignedUrl(
           attachment.storageKey,
           10 * 60

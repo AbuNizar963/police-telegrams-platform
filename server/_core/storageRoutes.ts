@@ -1,10 +1,85 @@
 import type { Express } from "express";
+import { ENV } from "./env";
 import { getAuthenticatedUserFromRequest } from "./auth";
+import { getTelegramAttachmentByStorageKey, getTelegramById } from "../db";
+import { canAccessTelegramScope } from "../telegramAccess";
+import {
+  getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization,
+} from "../db";
+import { isPlatformOwner } from "../ownerAccess";
+import { getUserOrganizationMembership } from "../organization";
 import {
   StorageAccessDeniedError,
+  organizationAttachmentKeyMatches,
+  parseOrganizationAttachmentKey,
+  storageCreateSignedUrl,
   storageDownload,
   storageGetSignedUrl,
+  storageKeyFromStoredUrl,
 } from "../storage";
+
+const ORGANIZATION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const DEPARTMENT_LOGO_KEY_PATTERN =
+  /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
+
+function getStoredLogoKey(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const storedValue = value.trim();
+  if (storedValue.startsWith("department/logos/")) return storedValue;
+  return storageKeyFromStoredUrl(storedValue, ENV.supabaseStorageBucket);
+}
+
+/**
+ * Logo objects are private. Organization-scoped keys are accessible only to
+ * members of that organization; legacy unscoped keys are accessible only when
+ * they are the exact logo configured for the authenticated user's organization.
+ */
+async function assertDepartmentLogoAccess(
+  key: string,
+  user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>>
+): Promise<void> {
+  if (isPlatformOwner(user)) return;
+
+  const membership = await getUserOrganizationMembership(user.id);
+  if (!membership || !membership.isActive) {
+    throw new StorageAccessDeniedError();
+  }
+
+  const segments = key.split("/");
+  const possibleOrganizationId = segments[2];
+
+  if (
+    possibleOrganizationId &&
+    ORGANIZATION_ID_PATTERN.test(possibleOrganizationId)
+  ) {
+    if (
+      possibleOrganizationId.toLowerCase() !==
+      membership.organizationId.toLowerCase()
+    ) {
+      throw new StorageAccessDeniedError();
+    }
+    return;
+  }
+
+  const settings = await getOrganizationSettings(membership.organizationId);
+  const configuredLogoKeys = [
+    getStoredLogoKey(settings?.logoKey),
+    getStoredLogoKey(settings?.logoUrl),
+  ].filter((value): value is string => Boolean(value));
+
+  if (
+    !configuredLogoKeys.includes(key) ||
+    !(await isDepartmentLogoExclusiveToOrganization(
+      key,
+      membership.organizationId
+    ))
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+}
 
 export function registerStorageRoutes(app: Express): void {
   app.get("/api/storage/*key", async (req, res) => {
@@ -23,20 +98,18 @@ export function registerStorageRoutes(app: Express): void {
     }
 
     try {
-      // Department logos have existed in several storage naming formats.
-      // Accept only image files directly under department/logos or one
-      // organization-UUID directory below it; never allow nested paths.
-      const departmentLogoKeyPattern =
-        /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
-      const isDepartmentLogo = departmentLogoKeyPattern.test(key);
+      // Department logos support legacy names and organization-scoped names,
+      // but nested paths are never valid.
+      const isDepartmentLogo = DEPARTMENT_LOGO_KEY_PATTERN.test(key);
       if (key.startsWith("department/logos/") && !isDepartmentLogo) {
         throw new StorageAccessDeniedError();
       }
 
       if (isDepartmentLogo) {
-        // Download through the storage SDK instead of fetching a signed URL
-        // over HTTP. A redirect fallback would send the browser cross-origin,
-        // where export canvas conversion can fail because of CORS.
+        await assertDepartmentLogoAccess(key, user);
+
+        // Serve bytes through the same-origin route so exports do not depend
+        // on cross-origin canvas permissions.
         const asset = await storageDownload(key);
         if (asset.body.length === 0) {
           throw new Error("Logo storage returned an empty object");
@@ -48,6 +121,56 @@ export function registerStorageRoutes(app: Express): void {
         res.set("X-Content-Type-Options", "nosniff");
         res.send(asset.body);
         return;
+      }
+
+      const scopedAttachment = parseOrganizationAttachmentKey(key);
+      if (key.startsWith("organizations/") && !scopedAttachment) {
+        throw new StorageAccessDeniedError();
+      }
+
+      const isLegacyAttachmentKey = /^telegrams\/[1-9]\d*\/[^/]+$/.test(key);
+      if (scopedAttachment || isLegacyAttachmentKey) {
+        const attachment = await getTelegramAttachmentByStorageKey(key);
+        if (!attachment) {
+          // Both new and legacy attachment objects require an authoritative
+          // metadata row. Legacy keys remain readable only through their
+          // linked telegram and current organization scope.
+          throw new StorageAccessDeniedError();
+        } else {
+          const telegram = await getTelegramById(attachment.telegramId);
+          const storageOrganizationId =
+            attachment.storageOrganizationId ??
+            (isLegacyAttachmentKey ? (telegram?.organizationId ?? null) : null);
+          const metadataMatchesTelegram =
+            telegram !== null &&
+            telegram !== undefined &&
+            storageOrganizationId === telegram.organizationId;
+          const keyMatchesMetadata =
+            !scopedAttachment ||
+            (scopedAttachment.organizationId ===
+              attachment.storageOrganizationId &&
+              scopedAttachment.telegramId === telegram?.id &&
+              organizationAttachmentKeyMatches(
+                key,
+                attachment.storageOrganizationId,
+                attachment.telegramId
+              ));
+
+          if (
+            !metadataMatchesTelegram ||
+            !keyMatchesMetadata ||
+            !telegram ||
+            !(await canAccessTelegramScope(user, telegram))
+          ) {
+            throw new StorageAccessDeniedError();
+          }
+
+          const url = await storageCreateSignedUrl(key, 10 * 60);
+          res.set("Cache-Control", "private, no-store");
+          res.set("Vary", "Cookie");
+          res.redirect(307, url);
+          return;
+        }
       }
 
       const url = await storageGetSignedUrl(key, user);

@@ -625,6 +625,37 @@ export async function getOrganizationSettings(
     : undefined;
 }
 
+export async function isDepartmentLogoExclusiveToOrganization(
+  logoKey: string,
+  organizationId: string
+): Promise<boolean> {
+  const client = getSupabaseAdmin();
+  const pageSize = 500;
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await client
+      .from("department_settings")
+      .select("organizationId, logoUrl")
+      .range(offset, offset + pageSize - 1);
+    throwIfError(error, "Failed to verify legacy organization logo ownership");
+
+    for (const row of data ?? []) {
+      if (row.organizationId === organizationId) continue;
+      if (typeof row.logoUrl !== "string" || !row.logoUrl.trim()) continue;
+
+      const storedValue = row.logoUrl.trim();
+      const storedKey = storedValue.startsWith("department/logos/")
+        ? storedValue
+        : storageKeyFromStoredUrl(storedValue, ENV.supabaseStorageBucket);
+      if (storedKey === logoKey) return false;
+    }
+
+    if ((data?.length ?? 0) < pageSize) return true;
+    offset += pageSize;
+  }
+}
+
 export async function upsertOrganizationSettingsForOrganization(
   organizationId: string,
   values: Record<string, unknown>
@@ -1037,6 +1068,7 @@ export async function listTelegramActions(telegramId: number) {
 
 export async function createTelegramAttachment(input: {
   telegramId: number;
+  storageOrganizationId: string;
   storageKey: string;
   originalName: string;
   mimeType: string;
@@ -1048,6 +1080,7 @@ export async function createTelegramAttachment(input: {
     .from("telegram_attachments")
     .insert({
       telegramId: input.telegramId,
+      storageOrganizationId: input.storageOrganizationId,
       storageKey: input.storageKey,
       originalName: input.originalName,
       mimeType: input.mimeType,
@@ -1069,6 +1102,7 @@ export async function getTelegramAttachmentById(id: number) {
   return data as {
     id: number;
     telegramId: number;
+    storageOrganizationId: string | null;
     storageKey: string;
     originalName: string;
     mimeType: string;
@@ -1077,6 +1111,21 @@ export async function getTelegramAttachmentById(id: number) {
     uploadedByUserId: number;
     scanStatus: string;
     createdAt: string;
+  } | null;
+}
+
+export async function getTelegramAttachmentByStorageKey(storageKey: string) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_attachments")
+    .select("id, telegramId, storageOrganizationId, storageKey")
+    .eq("storageKey", storageKey)
+    .maybeSingle();
+  throwIfError(error, "Failed to load attachment metadata by storage key");
+  return data as {
+    id: number;
+    telegramId: number;
+    storageOrganizationId: string | null;
+    storageKey: string;
   } | null;
 }
 

@@ -4,14 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
       - flutter-mobile-app
     paths:
       - "mobile/**"
       - ".github/workflows/flutter-mobile.yml"
   pull_request:
     branches:
-      - main
       - flutter-mobile-app
     paths:
       - "mobile/**"
@@ -73,7 +71,7 @@ jobs:
           retention-days: 30
 
       - name: Read app version
-        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'release-mobile')
+        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
         id: version
         working-directory: mobile
         shell: bash
@@ -86,13 +84,13 @@ jobs:
           echo "tag=v${VERSION}-build.${BUILD}" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'release-mobile')
+        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Police Telegrams ${{ steps.version.outputs.version }} (build ${{ steps.version.outputs.build }})
           body: |
-            Android APK built from the latest repository default-branch code.
+            Android APK built from the latest flutter-mobile-app branch code.
 
             Build commit: ${{ github.sha }}
             SHA-256 checksum is included as SHA256SUMS.txt.

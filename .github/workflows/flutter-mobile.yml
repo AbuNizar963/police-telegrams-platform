@@ -1,7 +1,6 @@
 name: Police Telegrams Flutter Mobile
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - flutter-mobile-app
@@ -14,26 +13,26 @@ on:
     paths:
       - "mobile/**"
       - ".github/workflows/flutter-mobile.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-mobile-${{ github.ref }}
+  # Cancel obsolete pull-request runs; never interrupt direct-push release builds.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
-concurrency:
-  group: police-telegrams-flutter-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build-and-verify:
-    name: Verify and build Flutter mobile app
+  verify-flutter-mobile:
+    name: Verify Flutter mobile app
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     defaults:
       run:
         working-directory: mobile
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -45,56 +44,315 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      # Keep the source-of-truth check strict: CI must never hide unformatted
+      # files by silently accepting formatter changes.
+      - name: Verify Dart formatting
+        id: dart_format_check
+        continue-on-error: true
+        run: ./tool/format_dart.sh --check
+
+      # When formatting fails, print the exact formatter-produced diff so the
+      # developer can apply the same Dart SDK formatter locally.
+      - name: Show required Dart formatting changes
+        if: steps.dart_format_check.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dart format lib test
+          git --no-pager diff -- lib test
+          echo "::warning::Dart formatting is required. Apply the diff above, commit it, and rerun Actions."
 
       - name: Analyze Dart source
         run: flutter analyze
 
       - name: Run Flutter tests
-        run: flutter test
+        run: flutter test --concurrency=1 --reporter expanded
 
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Generate APK checksum
-        run: sha256sum build/app/outputs/flutter-apk/app-release.apk > build/app/outputs/flutter-apk/SHA256SUMS.txt
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: police-telegrams-android-apk
-          path: |
-            mobile/build/app/outputs/flutter-apk/app-release.apk
-            mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Read app version
-        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
-        id: version
-        working-directory: mobile
+      - name: Enforce clean formatting and whitespace
+        if: always()
         shell: bash
         run: |
-          VERSION_LINE="$(grep '^version:' pubspec.yaml | head -n 1 | awk '{print $2}')"
-          VERSION="${VERSION_LINE%%+*}"
-          BUILD="${VERSION_LINE##*+}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
-          echo "tag=v${VERSION}-build.${BUILD}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          git diff --check
+          if [ "${{ steps.dart_format_check.outcome }}" != "success" ]; then
+            echo "::error::Dart formatter check failed. The required formatting diff is printed in the preceding step."
+            exit 1
+          fi
 
-      - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
+
+  build-android-apk:
+    name: Build signed Android APK
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.release_version.outputs.release_version }}
+      release_tag: ${{ steps.release_version.outputs.release_tag }}
+      notification_client_state: ${{ steps.notification_readiness.outputs.firebase_state }}
+      push_backend_state: ${{ steps.notification_readiness.outputs.push_backend_state }}
+    # Fork pull requests do not receive repository secrets. Do not produce
+    # an unsigned or debug-signed APK as a substitute for a release artifact.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine release version
+        id: release_version
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Reuse the release tag when this exact workflow run is retried.
+          existing_tag="$(git tag --points-at "$GITHUB_SHA" --list "v*-build.${GITHUB_RUN_NUMBER}" | head -n 1 || true)"
+          if [ -n "$existing_tag" ]; then
+            release_version="${existing_tag#v}"
+            release_version="${release_version%-build.*}"
+          else
+            # Only build tags count as versions already published by this workflow.
+            # A newer pubspec version is honored instead of being overwritten by an older tag.
+            latest_built_version="$(git tag --list 'v[0-9]*-build.[0-9]*' | sed -nE 's/^v([0-9]+\.[0-9]+\.[0-9]+)-build\.[0-9]+$/\1/p' | sort -V | tail -n 1)"
+            pubspec_version="$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+)(\+[0-9]+)?$/\1/p' mobile/pubspec.yaml | head -n 1)"
+
+            if ! [[ "$pubspec_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Could not determine a valid version from mobile/pubspec.yaml."
+              exit 1
+            fi
+
+            if [ -z "$latest_built_version" ]; then
+              release_version="$pubspec_version"
+            else
+              newest_version="$(printf '%s\n%s\n' "$latest_built_version" "$pubspec_version" | sort -V | tail -n 1)"
+              if [ "$newest_version" != "$latest_built_version" ]; then
+                release_version="$pubspec_version"
+              else
+                IFS='.' read -r major minor patch <<< "$latest_built_version"
+                release_version="${major}.${minor}.$((patch + 1))"
+              fi
+            fi
+          fi
+
+          release_tag="v${release_version}-build.${GITHUB_RUN_NUMBER}"
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Release version: $release_version"
+          echo "Release tag: $release_tag"
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prepare release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required Android release signing secret $name is missing."
+              exit 1
+            fi
+          done
+
+          keystore_path="$RUNNER_TEMP/police-telegrams-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          test -s "$keystore_path"
+
+          # Validate the keystore password and alias without printing secret values.
+          keytool -list \
+            -keystore "$keystore_path" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            >/dev/null
+
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+
+      - name: Prepare Firebase notification configuration
+        id: notification_readiness
+        env:
+          FIREBASE_ANDROID_CONFIG_BASE64: ${{ secrets.FIREBASE_ANDROID_CONFIG_BASE64 }}
+          PUSH_NOTIFICATIONS_SERVER_READY: ${{ secrets.PUSH_NOTIFICATIONS_SERVER_READY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config_path="android/app/google-services.json"
+          firebase_state=missing
+          if [ -n "${FIREBASE_ANDROID_CONFIG_BASE64:-}" ]; then
+            printf '%s' "$FIREBASE_ANDROID_CONFIG_BASE64" | base64 --decode > "$config_path"
+            if ! jq -e --arg package_id "com.police_telegrams" \
+              '.project_info.project_id != null and any(.client[]?; .client_info.android_client_info.package_name == $package_id)' \
+              "$config_path" >/dev/null; then
+              echo "::error::FIREBASE_ANDROID_CONFIG_BASE64 is not a valid configuration for this Android package."
+              exit 1
+            fi
+            chmod 600 "$config_path"
+            firebase_state=configured
+            echo "Android Firebase configuration validated."
+          else
+            echo "::warning::Android Firebase configuration is missing; build will be verified but no Release will be published."
+          fi
+
+          push_backend_state=not_ready
+          if [ "${PUSH_NOTIFICATIONS_SERVER_READY:-}" = "true" ]; then
+            push_backend_state=ready
+          else
+            echo "::warning::PUSH_NOTIFICATIONS_SERVER_READY is not true; no Release will be published until Firebase Admin is configured and deployed on the server."
+          fi
+
+          # Do not export booleans that can equal a configured secret value
+          # (for example, the readiness secret itself is the literal "true").
+          echo "firebase_state=$firebase_state" >> "$GITHUB_OUTPUT"
+          echo "push_backend_state=$push_backend_state" >> "$GITHUB_OUTPUT"
+
+      - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
+        run: flutter build apk --release --build-name "$RELEASE_VERSION" --build-number "$GITHUB_RUN_NUMBER"
+
+      - name: Verify APK output and signature
+        run: |
+          set -euo pipefail
+
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$apk"
+          file "$apk"
+
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$apksigner_path" ]; then
+            echo "::error::Android apksigner was not found in the installed SDK."
+            exit 1
+          fi
+
+          "$apksigner_path" verify --verbose "$apk"
+          "$apksigner_path" verify --print-certs "$apk"
+
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/police-telegrams-release.jks"
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: police-telegrams-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  build-ios:
+    name: Verify iOS build
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify iOS build without signing
+        run: flutter build ios --release --no-codesign
+  publish-mobile-release:
+    name: Publish Android APK Release
+    runs-on: ubuntu-latest
+    needs:
+      - verify-flutter-mobile
+      - build-android-apk
+      - build-ios
+    if: >-
+      github.event_name != 'pull_request' &&
+      needs.build-android-apk.outputs.notification_client_state == 'configured'
+    permissions:
+      contents: write
+    steps:
+      - name: Download signed APK
+        uses: actions/download-artifact@v8
+        with:
+          name: police-telegrams-android-apk
+          path: release-assets
+
+      - name: Verify release asset and generate checksum
+        run: |
+          set -euo pipefail
+          test -s release-assets/app-release.apk
+          file release-assets/app-release.apk
+          sha256sum release-assets/app-release.apk | tee release-assets/SHA256SUMS.txt
+
+      - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Police Telegrams ${{ steps.version.outputs.version }} (build ${{ steps.version.outputs.build }})
-          body: |
-            Android APK built from the latest flutter-mobile-app branch code.
-
-            Build commit: ${{ github.sha }}
-            SHA-256 checksum is included as SHA256SUMS.txt.
+          tag_name: ${{ needs.build-android-apk.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: Police Telegrams ${{ needs.build-android-apk.outputs.release_version }} (build ${{ github.run_number }})
+          # Prefer the actual triggering commit message over GitHub's generated
+          # Full Changelog boilerplate, which can be the only release-note text
+          # when changes were pushed directly to the mobile branch.
+          body: ${{ github.event.head_commit.message || 'تحسينات وإصلاحات لتطبيق الهاتف.' }}
+          generate_release_notes: false
+          make_latest: true
+          fail_on_unmatched_files: true
+          overwrite_files: true
           files: |
-            mobile/build/app/outputs/flutter-apk/app-release.apk
-            mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
-          generate_release_notes: true
+            release-assets/app-release.apk
+            release-assets/SHA256SUMS.txt
+
+      - name: Notify mobile devices about the new release
+        if: needs.build-android-apk.outputs.push_backend_state == 'ready'
+        env:
+          RELEASE_NOTIFICATION_URL: ${{ vars.RELEASE_NOTIFICATION_URL || 'https://police-telegrams-platform.vercel.app' }}
+          RELEASE_NOTIFICATION_SECRET: ${{ secrets.RELEASE_NOTIFICATION_SECRET }}
+          RELEASE_VERSION: ${{ needs.build-android-apk.outputs.release_version }}
+          RELEASE_TAG: ${{ needs.build-android-apk.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELEASE_NOTIFICATION_SECRET:-}" ]; then
+            echo "::warning::RELEASE_NOTIFICATION_SECRET is not configured; skipping mobile release notification."
+            exit 0
+          fi
+          release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+          payload="$(jq -cn \
+            --arg version "$RELEASE_VERSION" \
+            --arg buildNumber "$GITHUB_RUN_NUMBER" \
+            --arg releaseUrl "$release_url" \
+            --arg title "تحديث جديد لتطبيق برقيات الشرطة" \
+            --arg body "الإصدار ${RELEASE_VERSION} متوفر الآن. اضغط لمعرفة التفاصيل." \
+            '{version:$version, buildNumber:($buildNumber|tonumber), releaseUrl:$releaseUrl, title:$title, body:$body}')"
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-delay 2 --max-time 30 \
+            -X POST "${RELEASE_NOTIFICATION_URL%/}/api/internal/mobile-release" \
+            -H "content-type: application/json" \
+            -H "x-release-notification-secret: ${RELEASE_NOTIFICATION_SECRET}" \
+            --data "$payload"

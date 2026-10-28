@@ -1,0 +1,122 @@
+name: Excel import and export verification
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/excel-import-export.yml"
+      - "client/src/lib/telegramSpreadsheet.ts"
+      - "client/src/lib/telegramSpreadsheet.test.ts"
+      - "client/src/pages/Home.tsx"
+      - "server/telegramImportWorkbook.ts"
+      - "server/telegramImportWorkbook.test.ts"
+      - "server/telegramWorkbook.ts"
+      - "server/telegramWorkbook.test.ts"
+      - "server/routers.ts"
+      - "server/importedDate.ts"
+      - "server/importedDate.test.ts"
+      - "mobile/lib/telegram_excel_page.dart"
+      - "mobile/lib/telegram_excel_codec.dart"
+      - "mobile/test/telegram_excel_codec_test.dart"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/excel-import-export.yml"
+      - "client/src/lib/telegramSpreadsheet.ts"
+      - "client/src/lib/telegramSpreadsheet.test.ts"
+      - "client/src/pages/Home.tsx"
+      - "server/telegramImportWorkbook.ts"
+      - "server/telegramImportWorkbook.test.ts"
+      - "server/telegramWorkbook.ts"
+      - "server/telegramWorkbook.test.ts"
+      - "server/routers.ts"
+      - "server/importedDate.ts"
+      - "server/importedDate.test.ts"
+      - "mobile/lib/telegram_excel_page.dart"
+      - "mobile/lib/telegram_excel_codec.dart"
+      - "mobile/test/telegram_excel_codec_test.dart"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: excel-import-export-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.14.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      - name: Check formatting of Excel import and export files
+        run: >-
+          pnpm exec prettier --check
+          client/src/lib/telegramSpreadsheet.ts
+          client/src/lib/telegramSpreadsheet.test.ts
+          client/src/pages/Home.tsx
+          server/importedDate.ts
+          server/importedDate.test.ts
+          server/telegramImportWorkbook.ts
+          server/telegramImportWorkbook.test.ts
+          server/telegramWorkbook.ts
+          server/telegramWorkbook.test.ts
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Install Flutter dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Check Dart formatting
+        working-directory: mobile
+        run: >-
+          dart format --output=none --set-exit-if-changed
+          lib/telegram_excel_codec.dart
+          test/telegram_excel_codec_test.dart
+
+      - name: Test Flutter Excel codec
+        working-directory: mobile
+        run: flutter test --no-pub test/telegram_excel_codec_test.dart
+
+      - name: Test Excel import and export
+        run: >-
+          pnpm exec vitest run
+          client/src/lib/telegramSpreadsheet.test.ts
+          server/importedDate.test.ts
+          server/telegramImportWorkbook.test.ts
+          server/telegramWorkbook.test.ts
+
+      - name: Production build
+        run: pnpm build

@@ -27,7 +27,7 @@ jobs:
     name: Verify and build Flutter mobile app
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     defaults:
       run:
         working-directory: mobile
@@ -70,21 +70,50 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  publish-release:
+    name: Publish verified Android release
+    runs-on: ubuntu-latest
+    needs: build-and-verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download verified APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: police-telegrams-android-apk
+          path: mobile/build/app/outputs/flutter-apk
+
       - name: Read app version
-        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
         id: version
         working-directory: mobile
         shell: bash
         run: |
+          set -euo pipefail
           VERSION_LINE="$(grep '^version:' pubspec.yaml | head -n 1 | awk '{print $2}')"
+          if [[ -z "$VERSION_LINE" || "$VERSION_LINE" != *+* ]]; then
+            echo "Expected pubspec.yaml version in <version>+<build> format" >&2
+            exit 1
+          fi
           VERSION="${VERSION_LINE%%+*}"
           BUILD="${VERSION_LINE##*+}"
+          if [[ -z "$VERSION" || -z "$BUILD" ]]; then
+            echo "Invalid app version in pubspec.yaml" >&2
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}-build.${BUILD}" >> "$GITHUB_OUTPUT"
 
+      - name: Verify downloaded APK checksum
+        working-directory: mobile/build/app/outputs/flutter-apk
+        run: sha256sum --check SHA256SUMS.txt
+
       - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/flutter-mobile-app' && contains(github.event.head_commit.message, 'release-mobile')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}

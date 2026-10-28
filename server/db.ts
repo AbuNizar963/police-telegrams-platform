@@ -1453,6 +1453,27 @@ const mapNotification = (row: Record<string, unknown>): NotificationRecord => ({
   readAt: row.readAt ? asDate(row.readAt) : null,
   createdAt: asDate(row.createdAt),
 });
+
+export async function listActiveOrganizationMemberIds(
+  organizationId: string
+): Promise<number[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("organization_memberships")
+    .select("userId, organizations!inner(isActive)")
+    .eq("organizationId", organizationId)
+    .eq("isActive", true)
+    .eq("organizations.isActive", true);
+  throwIfError(error, "Failed to load active notification recipients");
+
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .map(row => Number(row.userId))
+        .filter(userId => Number.isSafeInteger(userId) && userId > 0)
+    )
+  );
+}
+
 export async function notifyOrganizationUsers(input: {
   organizationId: string;
   type: string;
@@ -1462,17 +1483,7 @@ export async function notifyOrganizationUsers(input: {
   routeId?: number | null;
 }): Promise<void> {
   const supabase = getSupabaseAdmin();
-  const { data: members, error: memberError } = await supabase
-    .from("organization_memberships")
-    .select("userId")
-    .eq("organizationId", input.organizationId)
-    .eq("isActive", true);
-  throwIfError(memberError, "Failed to load notification recipients");
-  const userIds = Array.from(
-    new Set(
-      (members ?? []).map(row => Number(row.userId)).filter(Number.isFinite)
-    )
-  );
+  const userIds = await listActiveOrganizationMemberIds(input.organizationId);
   if (userIds.length === 0) return;
   const { error } = await supabase.from("notifications").insert(
     userIds.map(userId => ({

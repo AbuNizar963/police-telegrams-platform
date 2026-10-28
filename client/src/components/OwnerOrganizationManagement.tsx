@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { prepareOrganizationLogoUpload } from "@/lib/organizationLogoUpload";
 import {
   hasOrganizationSettingsEditAccess,
   hasOrganizationStructureEditAccess,
@@ -524,26 +525,12 @@ export default function OwnerOrganizationManagement() {
     }
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error("تعذر قراءة ملف الشعار"));
-        reader.onload = () => {
-          const value = String(reader.result ?? "");
-          if (!value) {
-            reject(new Error("ملف الشعار فارغ"));
-            return;
-          }
-          resolve(
-            value.includes(",") ? value.slice(value.indexOf(",") + 1) : value
-          );
-        };
-        reader.readAsDataURL(file);
-      });
+      const normalizedLogo = await prepareOrganizationLogoUpload(file);
       const result = await uploadLogo.mutateAsync({
         organizationId: editingId,
         fileName: file.name,
-        contentType: file.type as "image/png" | "image/jpeg",
-        base64,
+        contentType: normalizedLogo.contentType,
+        base64: normalizedLogo.base64,
       });
       setSettingsDraft(current => ({ ...current, logoUrl: result.url }));
       toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");

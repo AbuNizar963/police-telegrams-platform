@@ -1,4 +1,4 @@
-const CACHE_NAME = "police-telegrams-shell-v8";
+const CACHE_NAME = "police-telegrams-shell-v9";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -7,6 +7,20 @@ const SHELL = [
   "/notification-icon.png",
   "/notification-badge.png",
 ];
+
+function getSameOriginTarget(value) {
+  try {
+    const target = new URL(
+      typeof value === "string" && value ? value : "/",
+      self.location.origin
+    );
+    return target.origin === self.location.origin
+      ? target.href
+      : new URL("/", self.location.origin).href;
+  } catch {
+    return new URL("/", self.location.origin).href;
+  }
+}
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -77,10 +91,7 @@ self.addEventListener("push", event => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const targetUrl = new URL(
-    event.notification.data?.url || "/",
-    self.location.origin
-  ).href;
+  const targetUrl = getSameOriginTarget(event.notification.data?.url);
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
@@ -102,13 +113,29 @@ self.addEventListener("fetch", event => {
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname === "/api" ||
-    url.pathname.startsWith("/api/") ||
-    request.mode === "navigate" ||
+    url.pathname.startsWith("/api/")
+  ) {
+    return;
+  }
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetch(request);
+        } catch {
+          return (await caches.match("/")) || Response.error();
+        }
+      })()
+    );
+    return;
+  }
+  if (
     !/\.(?:css|js|mjs|png|jpe?g|webp|avif|svg|ico|woff2?|ttf|otf)$/i.test(
       url.pathname
     )
-  )
+  ) {
     return;
+  }
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);

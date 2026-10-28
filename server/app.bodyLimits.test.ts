@@ -40,7 +40,7 @@ describe("request body limits", () => {
     expect(getJsonBodyLimit("/api/trpc/telegrams.uploadAttachment")).toBe(
       "16mb"
     );
-    expect(getJsonBodyLimit("/api/trpc/settings.uploadLogo")).toBe("8mb");
+    expect(getJsonBodyLimit("/api/trpc/settings.uploadLogo")).toBe("4mb");
     expect(getJsonBodyLimit("/api/trpc/telegrams.importRows")).toBe("50mb");
     expect(getJsonBodyLimit("/api/trpc/telegrams.importWorkbookPreview")).toBe(
       "22mb"
@@ -52,8 +52,8 @@ describe("request body limits", () => {
     ).toBe("50mb");
   });
 
-  it("allows the HTML export limit plus JSON overhead without applying it globally", () => {
-    expect(getJsonBodyLimit("/api/telegram-render")).toBe("10mb");
+  it("keeps the HTML export request below the Vercel payload ceiling", () => {
+    expect(getJsonBodyLimit("/api/telegram-render")).toBe("4mb");
   });
 
   it("rejects unauthenticated uploads before parsing JSON", async () => {

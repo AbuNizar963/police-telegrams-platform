@@ -3,7 +3,7 @@ import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
-const MAX_HTML_BYTES = 8_000_000;
+const MAX_HTML_BYTES = 3_900_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 // Keep the export in the high-quality print range while avoiding the very
 // large Chromium surface that can fail in serverless memory limits.

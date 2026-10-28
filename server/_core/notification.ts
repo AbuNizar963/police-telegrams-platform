@@ -5,6 +5,7 @@ import webpush from "web-push";
 import {
   deleteMobilePushToken,
   deletePushSubscription,
+  listActiveOrganizationMemberIds,
   listAllMobilePushTokens,
   listMobilePushTokens,
   listPushSubscriptions,
@@ -136,18 +137,27 @@ if (firebaseConfigured && getApps().length === 0) {
   }
 }
 
-async function notifyFirebaseOrganization(input: {
-  organizationId: string;
-  serialCode: string;
-  subject: string;
-  recipient: string;
-  priority?: string | null;
-  category?: string | null;
-  telegramId: number;
-  direction: TelegramNotificationDirection;
-}): Promise<{ sent: number; removed: number; configured: boolean }> {
+async function notifyFirebaseOrganization(
+  input: {
+    organizationId: string;
+    serialCode: string;
+    subject: string;
+    recipient: string;
+    priority?: string | null;
+    category?: string | null;
+    telegramId: number;
+    direction: TelegramNotificationDirection;
+  },
+  activeRecipientIds: ReadonlySet<number>
+): Promise<{
+  sent: number;
+  removed: number;
+  configured: boolean;
+}> {
   if (!firebaseConfigured) return { sent: 0, removed: 0, configured: false };
-  const tokens = await listMobilePushTokens(input.organizationId);
+  const tokens = (await listMobilePushTokens(input.organizationId)).filter(
+    item => activeRecipientIds.has(item.userId)
+  );
   if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
   const shortNumber = getShortTelegramNumber(input.serialCode);
   const priority = input.priority ?? "normal";
@@ -180,7 +190,8 @@ async function notifyFirebaseOrganization(input: {
           alertLevel: presentation.alertLevel,
         },
         android: {
-          priority: "high",
+          priority: presentation.isUrgent ? "high" : "normal",
+          ttl: 300_000,
           notification: {
             channelId: presentation.androidChannelId,
             sound: presentation.androidSound,
@@ -189,7 +200,11 @@ async function notifyFirebaseOrganization(input: {
           },
         },
         apns: {
-          headers: { "apns-priority": "10", "apns-push-type": "alert" },
+          headers: {
+            "apns-priority": presentation.isUrgent ? "10" : "5",
+            "apns-push-type": "alert",
+            "apns-expiration": String(Math.floor(Date.now() / 1000) + 300),
+          },
           payload: {
             aps: {
               sound: presentation.iosSound,
@@ -242,23 +257,34 @@ export async function notifyOrganizationTelegramCreated(input: {
   telegramId: number;
   direction?: TelegramNotificationDirection;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
+  if (!vapidConfigured && !firebaseConfigured) {
+    return { sent: 0, removed: 0, configured: false };
+  }
   const direction = input.direction ?? "outgoing";
   const priority = input.priority ?? "normal";
+  const activeRecipientIds = new Set(
+    await listActiveOrganizationMemberIds(input.organizationId)
+  );
   const presentation = getTelegramNotificationPresentation({
     priority,
     category: input.category,
     direction,
   });
-  const firebaseResult = await notifyFirebaseOrganization({
-    ...input,
-    priority,
-    direction,
-  });
+  const firebaseResult = await notifyFirebaseOrganization(
+    {
+      ...input,
+      priority,
+      direction,
+    },
+    activeRecipientIds
+  );
   if (!vapidConfigured) {
     return firebaseResult;
   }
 
-  const subscriptions = await listPushSubscriptions(input.organizationId);
+  const subscriptions = (
+    await listPushSubscriptions(input.organizationId)
+  ).filter(subscription => activeRecipientIds.has(subscription.userId));
   const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type: "telegram.created",
@@ -269,7 +295,6 @@ export async function notifyOrganizationTelegramCreated(input: {
     data: {
       telegramId: input.telegramId,
       serialCode: input.serialCode,
-      recipient: input.recipient,
       priority,
       category: input.category ?? "",
       alertLevel: presentation.alertLevel,
@@ -334,21 +359,33 @@ export async function notifyOrganizationRouteEvent(input: {
   routeId: number;
   routeSerialCode?: string | null;
 }): Promise<{ sent: number; removed: number; configured: boolean }> {
-  if (!vapidConfigured) {
+  if (!vapidConfigured && !firebaseConfigured) {
     return { sent: 0, removed: 0, configured: false };
   }
-  const subscriptions = await listPushSubscriptions(input.organizationId);
+  const activeRecipientIds = new Set(
+    await listActiveOrganizationMemberIds(input.organizationId)
+  );
+  const firebaseResult = await notifyFirebaseRouteEvent(
+    input,
+    activeRecipientIds
+  );
+  if (!vapidConfigured) return firebaseResult;
+
+  const subscriptions = (
+    await listPushSubscriptions(input.organizationId)
+  ).filter(subscription => activeRecipientIds.has(subscription.userId));
+  const body = getRouteNotificationBody(input.serialCode);
   const payload = JSON.stringify({
     type: `telegram.${input.type}`,
     title: input.title,
-    body: input.body,
+    body,
     tag: `telegram-route-${input.routeId}-${input.type}`,
     url: `/?telegram=${input.telegramId}`,
     data: {
       telegramId: input.telegramId,
       serialCode: input.serialCode,
       routeId: input.routeId,
-      routeSerialCode: input.routeSerialCode ?? null,
+      routeSerialCode: input.routeSerialCode ?? "",
     },
   });
   let sent = 0;
@@ -394,7 +431,116 @@ export async function notifyOrganizationRouteEvent(input: {
       }
     })
   );
-  return { sent, removed, configured: true };
+  return {
+    sent: sent + firebaseResult.sent,
+    removed: removed + firebaseResult.removed,
+    configured: true,
+  };
+}
+
+type RouteNotificationInput = {
+  organizationId: string;
+  type: "route.requested" | "route.approved" | "route.rejected";
+  title: string;
+  body: string;
+  telegramId: number;
+  serialCode: string;
+  routeId: number;
+  routeSerialCode?: string | null;
+};
+
+function getRouteNotificationBody(serialCode: string): string {
+  const shortNumber = getShortTelegramNumber(serialCode);
+  return `رقم البرقية: ${shortNumber}\nيوجد تحديث على مسار البرقية. افتح التطبيق لعرض التفاصيل.`;
+}
+
+export function buildRouteFirebaseMessage(input: RouteNotificationInput) {
+  const tag = `telegram-route-${input.routeId}-${input.type}`;
+  return {
+    notification: {
+      title: input.title.trim() || "تحديث مسار البرقية",
+      body: getRouteNotificationBody(input.serialCode),
+    },
+    data: {
+      type: `telegram.${input.type}`,
+      telegramId: String(input.telegramId),
+      serialCode: input.serialCode,
+      routeId: String(input.routeId),
+      routeSerialCode: input.routeSerialCode ?? "",
+    },
+    android: {
+      priority: "normal" as const,
+      ttl: 300_000,
+      notification: {
+        channelId: TELEGRAM_ANDROID_GENERAL_CHANNEL_ID,
+        sound: TELEGRAM_NOTIFICATION_SOUND,
+        visibility: "private" as const,
+        tag,
+      },
+    },
+    apns: {
+      headers: {
+        "apns-priority": "5",
+        "apns-push-type": "alert",
+        "apns-expiration": String(Math.floor(Date.now() / 1000) + 300),
+      },
+      payload: {
+        aps: {
+          sound: TELEGRAM_IOS_NOTIFICATION_SOUND,
+          badge: 1,
+          threadId: `telegram-${input.telegramId}`,
+          "interruption-level": "active",
+        },
+      },
+    },
+  };
+}
+
+async function notifyFirebaseRouteEvent(
+  input: RouteNotificationInput,
+  activeRecipientIds: ReadonlySet<number>
+): Promise<{ sent: number; removed: number; configured: boolean }> {
+  if (!firebaseConfigured) return { sent: 0, removed: 0, configured: false };
+  const tokens = (await listMobilePushTokens(input.organizationId)).filter(
+    item => activeRecipientIds.has(item.userId)
+  );
+  if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
+
+  const invalidTokens: MobilePushTokenRecord[] = [];
+  let sent = 0;
+  for (let index = 0; index < tokens.length; index += 500) {
+    const batch = tokens.slice(index, index + 500);
+    let response;
+    try {
+      response = await getMessaging().sendEachForMulticast({
+        tokens: batch.map(item => item.token),
+        ...buildRouteFirebaseMessage(input),
+      });
+    } catch (error) {
+      console.warn(
+        "[Notification] Firebase route delivery batch failed",
+        error
+      );
+      continue;
+    }
+
+    sent += response.successCount;
+    response.responses.forEach((result, responseIndex) => {
+      const token = batch[responseIndex];
+      const invalidCode = [
+        "messaging/registration-token-not-registered",
+        "messaging/invalid-registration-token",
+      ].includes(result.error?.code ?? "");
+      if (!result.success && invalidCode && token) invalidTokens.push(token);
+    });
+  }
+
+  await Promise.all(
+    invalidTokens.map(({ token, userId }) =>
+      deleteMobilePushToken(token, userId)
+    )
+  );
+  return { sent, removed: invalidTokens.length, configured: true };
 }
 
 export async function notifyMobileRelease(input: {

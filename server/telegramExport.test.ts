@@ -91,6 +91,11 @@ describe("telegram export HTML validation", () => {
   it("rejects empty HTML", () => {
     expect(isSafeExportHtml("")).toBe(false);
   });
+
+  it("rejects an export document above the serverless payload budget", () => {
+    const oversizedDocument = `${safeDocument}${"x".repeat(3_900_001)}`;
+    expect(isSafeExportHtml(oversizedDocument)).toBe(false);
+  });
 });
 
 describe("telegram export resource isolation", () => {

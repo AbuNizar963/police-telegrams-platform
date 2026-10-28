@@ -203,6 +203,23 @@ describe("storage route", () => {
     expect(res.redirect).not.toHaveBeenCalled();
   });
 
+  it("returns a clear payload limit for legacy logos above the Vercel ceiling", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/large-badge.png";
+    storageDownload.mockResolvedValueOnce({
+      body: Buffer.alloc(4_000_001),
+      contentType: "image/png",
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.send).toHaveBeenCalledWith(
+      "Logo exceeds the serverless image size limit"
+    );
+  });
+
   it("supports organization-scoped logo keys", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";

@@ -2805,9 +2805,19 @@ async function loadOfficialDocumentLogoDataUrl(
       const response = source.startsWith("data:")
         ? await fetch(source)
         : await fetch(source, { credentials: "same-origin" });
-      if (!response.ok) throw new Error("تعذر تحميل صورة الوثيقة");
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error(
+            "ملف شعار الجهة كبير جدًا للتصدير. أعد رفع شعار أصغر."
+          );
+        }
+        throw new Error("تعذر تحميل صورة الوثيقة");
+      }
 
       const blob = await response.blob();
+      if (blob.size > 4 * 1024 * 1024) {
+        throw new Error("ملف شعار الجهة كبير جدًا للتصدير. أعد رفع شعار أصغر.");
+      }
       const contentType = blob.type.split(";")[0].trim().toLowerCase();
       if (
         contentType &&
@@ -2846,32 +2856,47 @@ async function loadOfficialDocumentLogoDataUrl(
           throw new Error("صورة الشعار غير صالحة");
         }
 
-        // The source logo may be up to 5 MB and is embedded twice in the
-        // official document (header and watermark). Normalize it before
-        // embedding so the authenticated render request remains below the
-        // server HTML/body limits while the original Supabase object stays
-        // untouched. WebP preserves transparency and is supported by the
-        // browser and Chromium renderer used for PDF/PNG output.
-        const maxDimension = 1200;
-        const scale = Math.min(
-          1,
-          maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
-        );
+        // The logo is embedded twice (header and watermark). Vercel rejects
+        // function requests above 4.5 MB, so cap the encoded logo itself and
+        // reduce dimensions/quality only as needed. The original storage object
+        // remains unchanged.
+        const maximumDataUrlLength = 400 * 1024;
+        const minimumDimension = 256;
+        let maxDimension = 1200;
+        let quality = 0.92;
         const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
         const context = canvas.getContext("2d");
         if (!context) throw new Error("تعذر تجهيز صورة الشعار");
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-        const optimized = canvas.toDataURL("image/webp", 0.92);
-        const dataUrl = optimized.startsWith("data:image/webp")
-          ? optimized
-          : canvas.toDataURL("image/png");
-        if (!dataUrl.startsWith("data:image/")) {
-          throw new Error("تعذر تجهيز صورة الشعار");
+        while (true) {
+          const scale = Math.min(
+            1,
+            maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
+          );
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+          const optimized = canvas.toDataURL("image/webp", quality);
+          const dataUrl = optimized.startsWith("data:image/webp")
+            ? optimized
+            : canvas.toDataURL("image/png");
+          if (!dataUrl.startsWith("data:image/")) {
+            throw new Error("تعذر تجهيز صورة الشعار");
+          }
+          if (dataUrl.length <= maximumDataUrlLength) return dataUrl;
+          if (maxDimension <= minimumDimension) {
+            throw new Error(
+              "ملف شعار الجهة كبير جدًا للتصدير. أعد رفع شعار أصغر."
+            );
+          }
+
+          maxDimension = Math.max(
+            minimumDimension,
+            Math.floor(maxDimension * 0.75)
+          );
+          quality = Math.max(0.72, quality - 0.06);
         }
-        return dataUrl;
       } finally {
         URL.revokeObjectURL(objectUrl);
       }
@@ -2882,6 +2907,9 @@ async function loadOfficialDocumentLogoDataUrl(
     console.warn("تعذر تجهيز شعار الجهة للوثيقة:", {
       error: error instanceof Error ? error.message : String(error),
     });
+    if (error instanceof Error && error.message.startsWith("ملف شعار الجهة")) {
+      throw error;
+    }
     throw new Error("تعذر تجهيز شعار الجهة للطباعة أو التصدير. أعد المحاولة.");
   }
 }
@@ -3228,7 +3256,11 @@ function TelegramDetail({
     }
 
     const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
-    if (logoDataUrl) return logoDataUrl;
+    if (logoDataUrl) return loadOfficialDocumentLogoDataUrl(logoDataUrl);
+    const organizationLogoUrl = organizationLogo?.logoUrl?.trim();
+    if (organizationLogoUrl?.startsWith("/api/storage/")) {
+      return loadOfficialDocumentLogoDataUrl(organizationLogoUrl);
+    }
 
     // For identified organizations, require the organization's stored
     // Supabase Storage logo payload. Do not fall back to a settings URL that
@@ -3834,17 +3866,31 @@ function TelegramDetail({
   </head>
   <body>${wrapper.innerHTML}</body>
 </html>`;
+    const requestBody = JSON.stringify({ format, html });
+    const requestBytes = new TextEncoder().encode(requestBody).byteLength;
+    if (requestBytes > 3_900_000) {
+      throw new Error(
+        "حجم الوثيقة أكبر من الحد الآمن للتصدير. قلّل حجم الشعار أو النص ثم أعد المحاولة."
+      );
+    }
     const response = await fetch("/api/telegram-render", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format, html }),
+      body: requestBody,
     });
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
-      throw new Error(payload?.error || "تعذر إنشاء الوثيقة الرسمية");
+      if (response.status === 413) {
+        throw new Error(
+          "حجم الوثيقة أكبر من الحد الآمن للتصدير. قلّل حجم الشعار أو النص ثم أعد المحاولة."
+        );
+      }
+      throw new Error(
+        payload?.error || "تعذر إنشاء الوثيقة الرسمية حاليًا. أعد المحاولة."
+      );
     }
     return response.blob();
   };

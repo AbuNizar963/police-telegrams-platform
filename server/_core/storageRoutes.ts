@@ -24,6 +24,7 @@ const ORGANIZATION_ID_PATTERN =
 
 const DEPARTMENT_LOGO_KEY_PATTERN =
   /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
+const MAX_DEPARTMENT_LOGO_RESPONSE_BYTES = 4_000_000;
 
 function getStoredLogoKey(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -113,6 +114,10 @@ export function registerStorageRoutes(app: Express): void {
         const asset = await storageDownload(key);
         if (asset.body.length === 0) {
           throw new Error("Logo storage returned an empty object");
+        }
+        if (asset.body.length > MAX_DEPARTMENT_LOGO_RESPONSE_BYTES) {
+          res.status(413).send("Logo exceeds the serverless image size limit");
+          return;
         }
 
         res.set("Cache-Control", "private, no-store");

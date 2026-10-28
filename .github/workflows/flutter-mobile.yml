@@ -88,9 +88,11 @@ jobs:
       release_tag: ${{ steps.release_version.outputs.release_tag }}
       notification_client_state: ${{ steps.notification_readiness.outputs.firebase_state }}
       push_backend_state: ${{ steps.notification_readiness.outputs.push_backend_state }}
-    # Fork pull requests do not receive repository secrets. Do not produce
-    # an unsigned or debug-signed APK as a substitute for a release artifact.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # This job consumes Android signing secrets and executes project-controlled
+    # build scripts. Never run it for pull requests, including same-repository
+    # branches, because their code can otherwise expose release credentials.
+    # Pull requests still run the secret-free analysis, tests, and iOS build.
+    if: github.event_name != 'pull_request'
     defaults:
       run:
         working-directory: mobile

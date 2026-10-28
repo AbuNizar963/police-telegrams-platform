@@ -58,7 +58,7 @@ jobs:
         run: flutter build apk --release
 
       - name: Generate APK checksum
-        run: sha256sum build/app/outputs/flutter-apk/app-release.apk > build/app/outputs/flutter-apk/SHA256SUMS.txt
+        run: cd build/app/outputs/flutter-apk && sha256sum app-release.apk > SHA256SUMS.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

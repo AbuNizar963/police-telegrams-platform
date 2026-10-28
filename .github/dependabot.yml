@@ -21,27 +21,6 @@ updates:
     commit-message:
       prefix: "deps"
 
-  - package-ecosystem: pub
-    directory: "/mobile"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    versioning-strategy: increase
-    groups:
-      security-updates:
-        applies-to: security-updates
-        patterns:
-          - "*"
-      flutter-dependencies:
-        applies-to: version-updates
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "deps(mobile)"
-
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

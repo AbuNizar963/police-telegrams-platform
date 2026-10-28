@@ -41,7 +41,7 @@ describe("canAccessTelegramScope", () => {
     await expect(canAccessTelegramScope(user, telegram)).resolves.toBe(true);
   });
 
-  it("allows access when the user's organization is the telegram's current organization", async () => {
+  it("allows access through the current organization", async () => {
     await expect(
       canAccessTelegramScope(user, {
         organizationId: "org-origin",
@@ -60,13 +60,13 @@ describe("canAccessTelegramScope", () => {
     expect(mocks.getOrganizationById).not.toHaveBeenCalled();
   });
 
-  it("denies access when the organization is missing or inactive", async () => {
+  it("denies access for an inactive organization", async () => {
     mocks.getOrganizationById.mockResolvedValue(null);
 
     await expect(canAccessTelegramScope(user, telegram)).resolves.toBe(false);
   });
 
-  it("keeps the explicitly global admin scope without requiring membership", async () => {
+  it("preserves global admin access", async () => {
     await expect(
       canAccessTelegramScope(
         { id: 7, role: "admin" },

@@ -6,8 +6,6 @@ on:
     paths:
       - "package.json"
       - "pnpm-lock.yaml"
-      - "mobile/pubspec.yaml"
-      - "mobile/pubspec.lock"
       - ".github/workflows/**"
       - ".github/dependabot.yml"
   workflow_dispatch:

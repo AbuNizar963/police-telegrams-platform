@@ -3,7 +3,7 @@ name: Police Telegrams Flutter Mobile
 on:
   push:
     branches:
-      - main
+      - flutter-mobile-app
     paths:
       - "mobile/**"
       - "server/**"
@@ -12,7 +12,7 @@ on:
       - ".github/workflows/flutter-mobile.yml"
   pull_request:
     branches:
-      - main
+      - flutter-mobile-app
     paths:
       - "mobile/**"
       - "server/**"
@@ -100,7 +100,7 @@ jobs:
     # build scripts. Never run it for pull requests, including same-repository
     # branches, because their code can otherwise expose release credentials.
     # Pull requests still run the secret-free analysis, tests, and iOS build.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/flutter-mobile-app'
     defaults:
       run:
         working-directory: mobile
@@ -261,6 +261,10 @@ jobs:
           "$apksigner_path" verify --verbose "$apk"
           "$apksigner_path" verify --print-certs "$apk"
 
+      - name: Generate APK checksum
+        working-directory: build/app/outputs/flutter-apk
+        run: sha256sum app-release.apk > SHA256SUMS.txt
+
       - name: Remove temporary signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/police-telegrams-release.jks"
@@ -269,7 +273,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: police-telegrams-android-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            mobile/build/app/outputs/flutter-apk/app-release.apk
+            mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -304,7 +310,7 @@ jobs:
       - build-ios
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/main' &&
+      github.ref == 'refs/heads/flutter-mobile-app' &&
       needs.build-android-apk.outputs.notification_client_state == 'configured'
     permissions:
       contents: write
@@ -315,12 +321,13 @@ jobs:
           name: police-telegrams-android-apk
           path: release-assets
 
-      - name: Verify release asset and generate checksum
+      - name: Verify downloaded APK and checksum
         run: |
           set -euo pipefail
           test -s release-assets/app-release.apk
+          test -s release-assets/SHA256SUMS.txt
           file release-assets/app-release.apk
-          sha256sum release-assets/app-release.apk | tee release-assets/SHA256SUMS.txt
+          (cd release-assets && sha256sum --check SHA256SUMS.txt)
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2

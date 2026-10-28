@@ -24,11 +24,14 @@ pnpm build
 
 For database changes, also run the local Supabase migration and database test workflow documented in `.github/workflows/ci.yml`.
 
-## Flutter mobile checks
+## Flutter mobile development
 
-Run from `mobile/`:
+The Flutter client is maintained on `flutter-mobile-app`, not in `main`. Fetch the branch first, then run the checks from `mobile/`:
 
 ```bash
+git fetch origin
+git switch --track origin/flutter-mobile-app
+cd mobile
 flutter pub get
 dart format lib test
 dart format --output=none --set-exit-if-changed lib test

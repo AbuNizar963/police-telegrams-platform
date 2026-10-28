@@ -159,6 +159,10 @@ describe("telegram administration permissions", () => {
       role: "member",
       isActive: true,
     });
+    organizationMocks.getOrganizationById.mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000099",
+      isActive: true,
+    });
     mocked.updateTelegram.mockImplementation(async (id, values) => ({
       ...telegram,
       ...values,

@@ -1,4 +1,7 @@
-import { getUserOrganizationMembership } from "./organization";
+import {
+  getOrganizationById,
+  getUserOrganizationMembership,
+} from "./organization";
 import { isPlatformOwner } from "./ownerAccess";
 
 export type TelegramOrganizationScope = {
@@ -24,6 +27,11 @@ export async function canAccessTelegramScope(
 
   const membership = await getUserOrganizationMembership(user.id);
   if (!membership?.isActive) return false;
+
+  // Membership rows can remain active after an organization is disabled.
+  // Do not let those stale memberships continue to grant access to its data.
+  const organization = await getOrganizationById(membership.organizationId);
+  if (!organization) return false;
 
   return (
     telegram.organizationId === membership.organizationId ||

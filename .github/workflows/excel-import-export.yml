@@ -3,7 +3,7 @@ name: Excel import and export verification
 on:
   push:
     branches:
-      - main
+      - flutter-mobile-app
     paths:
       - ".github/workflows/excel-import-export.yml"
       - "client/src/lib/telegramSpreadsheet.ts"
@@ -23,7 +23,7 @@ on:
       - "pnpm-lock.yaml"
   pull_request:
     branches:
-      - main
+      - flutter-mobile-app
     paths:
       - ".github/workflows/excel-import-export.yml"
       - "client/src/lib/telegramSpreadsheet.ts"

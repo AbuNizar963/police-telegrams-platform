@@ -2,7 +2,7 @@ name: Dependency Review
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: ["flutter-mobile-app"]
     paths:
       - "package.json"
       - "pnpm-lock.yaml"

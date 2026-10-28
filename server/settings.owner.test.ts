@@ -200,7 +200,7 @@ describe("platform owner organization settings", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("returns verified private logo bytes for export only to the owning organization", async () => {
+  it("returns a protected same-origin logo URL without serializing image bytes", async () => {
     const storageKey = `department/logos/${organizationA.id}/logo.png`;
     const logoBytes = Buffer.from([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
@@ -223,7 +223,7 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: `data:image/png;base64,${logoBytes.toString("base64")}`,
+      logoDataUrl: null,
     });
     expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
 

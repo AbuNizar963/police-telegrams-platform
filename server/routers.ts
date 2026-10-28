@@ -746,10 +746,19 @@ export const appRouter = router({
           });
         }
 
+        // Do not serialize the full image as Base64 in the tRPC response. The
+        // extra Base64 expansion can exceed Vercel's 4.5 MB function payload
+        // limit before the browser has a chance to downsample the logo. The
+        // same-origin storage route repeats the organization access check and
+        // returns the image bytes for client-side normalization.
+        const encodedStoragePath = storageKey
+          .split("/")
+          .map(segment => encodeURIComponent(segment))
+          .join("/");
         return {
           organizationId: input.organizationId,
-          logoUrl,
-          logoDataUrl: `data:${mimeType};base64,${asset.body.toString("base64")}`,
+          logoUrl: `/api/storage/${encodedStoragePath}`,
+          logoDataUrl: null,
         };
       }),
 
@@ -1331,22 +1340,22 @@ export const appRouter = router({
           organizationId: z.string().uuid(),
           fileName: z.string().trim().min(1).max(180),
           contentType: z.enum(["image/jpeg", "image/png"]),
-          base64: z.string().min(1).max(7_000_000),
+          base64: z.string().min(1).max(3_600_000),
         })
       )
       .mutation(async ({ ctx, input }) => {
         const bytes = Buffer.from(input.base64, "base64");
-        if (bytes.byteLength > 5 * 1024 * 1024) {
+        if (bytes.byteLength > 2_621_440) {
           throw new TRPCError({
             code: "PAYLOAD_TOO_LARGE",
-            message: "حجم الشعار يتجاوز 5 ميغابايت",
+            message: "حجم الشعار بعد الضغط يجب ألا يتجاوز 2.5 ميغابايت",
           });
         }
         validateUploadedFile({
           bytes,
           declaredType: input.contentType,
           fileName: input.fileName,
-          maxBytes: 5 * 1024 * 1024,
+          maxBytes: 2_621_440,
         });
 
         const organization = await getOrganizationByIdIncludingInactive(

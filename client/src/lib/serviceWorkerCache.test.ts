@@ -52,7 +52,7 @@ describe("service worker cache cleanup", () => {
     expect(deleteCache).not.toHaveBeenCalledWith("another-library-cache");
   });
 
-  it("does not intercept navigations, API responses, or dynamic files", () => {
+  it("falls back to the shell for offline navigations but ignores APIs and dynamic files", async () => {
     const listeners = new Map<string, (event: any) => void>();
     const selfScope = {
       addEventListener: vi.fn((name: string, handler: (event: any) => void) => {
@@ -60,21 +60,34 @@ describe("service worker cache cleanup", () => {
       }),
       location: { origin: "https://police.example.test" },
     };
+    const shell = { offline: true };
+    const cachesApi = { match: vi.fn(async () => shell) };
+    const fetchNetwork = vi.fn(async () => {
+      throw new Error("offline");
+    });
 
     new Function("self", "caches", "fetch", serviceWorkerSource)(
       selfScope,
-      {},
-      vi.fn()
+      cachesApi,
+      fetchNetwork
     );
 
     const fetchHandler = listeners.get("fetch");
     expect(fetchHandler).toBeDefined();
+    const navigation = {
+      method: "GET",
+      url: "https://police.example.test/telegrams/7",
+      mode: "navigate",
+    };
+    const navigationRespondWith = vi.fn();
+    fetchHandler?.({ request: navigation, respondWith: navigationRespondWith });
+    await expect(navigationRespondWith.mock.calls[0][0]).resolves.toEqual(
+      shell
+    );
+    expect(fetchNetwork).toHaveBeenCalledWith(navigation);
+    expect(cachesApi.match).toHaveBeenCalledWith("/");
+
     for (const request of [
-      {
-        method: "GET",
-        url: "https://police.example.test/telegrams/7",
-        mode: "navigate",
-      },
       {
         method: "GET",
         url: "https://police.example.test/api/trpc/auth.me",
@@ -136,5 +149,38 @@ describe("service worker cache cleanup", () => {
 
     expect(fetchAsset).toHaveBeenCalledOnce();
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it("keeps notification clicks on the application origin", async () => {
+    const listeners = new Map<string, (event: any) => void>();
+    const openWindow = vi.fn(async (url: string) => ({ url }));
+    const selfScope = {
+      addEventListener: vi.fn((name: string, handler: (event: any) => void) => {
+        listeners.set(name, handler);
+      }),
+      location: { origin: "https://police.example.test" },
+      clients: {
+        matchAll: vi.fn(async () => []),
+        openWindow,
+      },
+    };
+
+    new Function("self", "caches", serviceWorkerSource)(selfScope, {});
+
+    const close = vi.fn();
+    let clickPromise: Promise<unknown> | undefined;
+    listeners.get("notificationclick")?.({
+      notification: {
+        close,
+        data: { url: "https://attacker.example/collect" },
+      },
+      waitUntil(promise: Promise<unknown>) {
+        clickPromise = promise;
+      },
+    });
+    await clickPromise;
+
+    expect(close).toHaveBeenCalledOnce();
+    expect(openWindow).toHaveBeenCalledWith("https://police.example.test/");
   });
 });

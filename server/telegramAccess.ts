@@ -1,4 +1,7 @@
-import { getOrganizationById, getUserOrganizationMembership } from "./organization";
+import {
+  getOrganizationById,
+  getUserOrganizationMembership,
+} from "./organization";
 import { isPlatformOwner } from "./ownerAccess";
 
 export type TelegramOrganizationScope = {

@@ -82,9 +82,10 @@ export async function getUserOrganizationMembership(
     typeof user.organizationId === "string" ? user.organizationId : null;
   let membershipQuery = client
     .from("organization_memberships")
-    .select("*")
+    .select("*, organizations!inner(isActive)")
     .eq("userId", userId)
-    .eq("isActive", true);
+    .eq("isActive", true)
+    .eq("organizations.isActive", true);
   if (homeOrganizationId) {
     membershipQuery = membershipQuery.eq("organizationId", homeOrganizationId);
   }
@@ -95,7 +96,12 @@ export async function getUserOrganizationMembership(
     .maybeSingle();
 
   throwIfError(error, "Failed to load organization membership");
-  return data ? mapMembership(data as Record<string, unknown>) : null;
+  if (!data) return null;
+  const { organizations: _organization, ...membershipData } = data as Record<
+    string,
+    unknown
+  >;
+  return mapMembership(membershipData);
 }
 
 export async function getOrganizationById(
@@ -153,7 +159,7 @@ export async function listOrganizationsForUser(
         : null;
     })
     .filter((organization): organization is Organization =>
-      Boolean(organization)
+      Boolean(organization?.isActive)
     );
 }
 

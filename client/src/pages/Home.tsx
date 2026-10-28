@@ -72,6 +72,7 @@ import {
 } from "@/lib/platformDocumentSettings";
 import type { PlatformDocumentSettings } from "@shared/platformDocumentSettings";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
+import { isTelegramManagementWindowOpen } from "@shared/telegramPermissions";
 import {
   downloadTelegramWorkbook,
   parseTelegramWorkbook,
@@ -1494,9 +1495,9 @@ export default function Home() {
           canManageContent={Boolean(me.data)}
           managementExpired={
             Boolean(me.data) &&
-            me.data?.role !== "admin" &&
+            me.data?.isPlatformOwner !== true &&
             organizationContext.data?.isOwner !== true &&
-            Date.now() - detail.data.createdAt.getTime() > 48 * 60 * 60 * 1000
+            !isTelegramManagementWindowOpen(detail.data.createdAt)
           }
           canOperate={
             me.data?.role === "admin" ||

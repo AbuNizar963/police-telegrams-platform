@@ -27,7 +27,7 @@ Copy the variables from `.env.example` into Vercel. Required for the core applic
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY` (server-only; never expose it to the browser)
 - `ADMIN_EMAILS`
 
 Maps require `VITE_GOOGLE_MAPS_API_KEY`.

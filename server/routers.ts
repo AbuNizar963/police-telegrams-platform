@@ -15,7 +15,12 @@ import {
 import { ENV } from "./_core/env";
 import { isAllowedPushEndpoint } from "./_core/pushEndpoint";
 import { isPlatformOwner, isPlatformOwnerUserId } from "./ownerAccess";
-import { canAccessTelegramScope, canViewAllTelegrams } from "./telegramAccess";
+import {
+  canAccessTelegramScope,
+  canViewAllTelegrams,
+  getActiveUserOrganizationId,
+} from "./telegramAccess";
+import { canManageTelegramContent as canManageTelegramContentByTime } from "@shared/telegramPermissions";
 import { z } from "zod";
 import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
@@ -64,7 +69,6 @@ import {
   writeAuditLog,
   createLocalOwnerUser,
   getUserByUsername,
-  getUserOrganizationId,
   deletePushSubscription,
   deleteMobilePushToken,
   listUserNotifications,
@@ -483,15 +487,11 @@ async function assertTelegramOrganizationScope(
   }
 }
 
-const TELEGRAM_MANAGEMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
-
 function canManageTelegramContent(
   user: TelegramScopeUser,
   createdAt: Date
 ): boolean {
-  if (isPlatformOwner(user)) return true;
-  const ageMs = Date.now() - createdAt.getTime();
-  return ageMs >= 0 && ageMs <= TELEGRAM_MANAGEMENT_WINDOW_MS;
+  return canManageTelegramContentByTime(createdAt, isPlatformOwner(user));
 }
 
 async function assertOwnerOrganizationScope(
@@ -501,7 +501,7 @@ async function assertOwnerOrganizationScope(
 ): Promise<void> {
   if (!isPlatformOwner(user)) return;
 
-  const activeOrganizationId = await getUserOrganizationId(user.id);
+  const activeOrganizationId = await getActiveUserOrganizationId(user);
   if (organizationId !== activeOrganizationId) {
     throw new TRPCError({ code: "FORBIDDEN", message });
   }
@@ -1185,7 +1185,7 @@ export const appRouter = router({
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       const canViewAll = canViewAllTelegrams(ctx.user);
-      const organizationId = await getUserOrganizationId(ctx.user.id);
+      const organizationId = await getActiveUserOrganizationId(ctx.user);
 
       return getDashboardStats(ctx.user.id, canViewAll, organizationId);
     }),
@@ -1200,7 +1200,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         await upsertMobilePushToken({
           userId: ctx.user.id,
           organizationId,
@@ -1216,9 +1216,9 @@ export const appRouter = router({
         return { registered: false };
       }),
     inbox: protectedProcedure.query(async ({ ctx }) => {
-      const organizationId = isPlatformOwner(ctx.user)
-        ? await getUserOrganizationId(ctx.user.id)
-        : undefined;
+      const organizationId = canViewAllTelegrams(ctx.user)
+        ? undefined
+        : await getActiveUserOrganizationId(ctx.user);
       return listUserNotifications(ctx.user.id, organizationId);
     }),
     markRead: protectedProcedure
@@ -1250,7 +1250,7 @@ export const appRouter = router({
           });
         }
 
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         await upsertPushSubscription({
           userId: ctx.user.id,
           organizationId,
@@ -1810,11 +1810,11 @@ export const appRouter = router({
         const membership = await getUserOrganizationMembership(ctx.user.id);
         const regionalManagerScope =
           membership?.role === "regional_admin"
-            ? await getManagedOrganizationIds(ctx.user)
+            ? await getManagedOrganizationIds(ctx.user, { activeOnly: true })
             : null;
         const organizationId = canViewAll
           ? null
-          : await getUserOrganizationId(ctx.user.id);
+          : await getActiveUserOrganizationId(ctx.user);
         const descendants =
           !owner && input?.organizationScope
             ? await listOrganizationDescendants(ctx.user.id)
@@ -1864,7 +1864,7 @@ export const appRouter = router({
         const canViewAll = canViewAllTelegrams(ctx.user);
         const organizationId = canViewAll
           ? null
-          : await getUserOrganizationId(ctx.user.id);
+          : await getActiveUserOrganizationId(ctx.user);
         const rows = await listTelegrams(
           ctx.user.id,
           canViewAll,
@@ -2630,7 +2630,7 @@ export const appRouter = router({
           }
         }
 
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         const numbering = await getOrCreateSettings(ctx.user.id);
         const numberSystem = normalizeNumberSystem(numbering.numberSystem);
         let organizationSerialNumber: number;
@@ -3010,7 +3010,7 @@ export const appRouter = router({
         return telegram;
       }),
     nextOutgoingSerial: protectedProcedure.query(async ({ ctx }) => {
-      const organizationId = await getUserOrganizationId(ctx.user.id);
+      const organizationId = await getActiveUserOrganizationId(ctx.user);
       return {
         number: await getSuggestedOrganizationSerialNumber(organizationId),
       };
@@ -3028,7 +3028,7 @@ export const appRouter = router({
     resolveImportReferences: protectedProcedure
       .input(z.object({ notes: z.string().max(4000) }))
       .query(async ({ ctx, input }) => {
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         const references = Array.from(
           input.notes.matchAll(/ب\s*([وص])\s*([0-9٠-٩۰-۹]+)/g)
         ).slice(0, 20);
@@ -3069,7 +3069,7 @@ export const appRouter = router({
     importPreview: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         const existing = await listAllTelegramsForImport(
           ctx.user.id,
           organizationId
@@ -3088,7 +3088,7 @@ export const appRouter = router({
     importRows: organizationAdminProcedure
       .input(z.object({ rows: z.array(excelImportRowSchema).min(1).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        const organizationId = await getUserOrganizationId(ctx.user.id);
+        const organizationId = await getActiveUserOrganizationId(ctx.user);
         const settings = await getOrCreateSettings(ctx.user.id);
         const creatorName = ctx.user.name ?? ctx.user.email ?? "شرطي مسجل";
         const existingTelegrams = await listAllTelegramsForImport(

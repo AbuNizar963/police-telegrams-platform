@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getOrganizationById: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
   isPlatformOwner: vi.fn(),
 }));
 
 vi.mock("./organization", () => ({
-  getOrganizationById: mocks.getOrganizationById,
   getUserOrganizationMembership: mocks.getUserOrganizationMembership,
 }));
 
@@ -29,10 +27,6 @@ describe("canAccessTelegramScope", () => {
     mocks.isPlatformOwner.mockReturnValue(false);
     mocks.getUserOrganizationMembership.mockResolvedValue({
       organizationId: "org-a",
-      isActive: true,
-    });
-    mocks.getOrganizationById.mockResolvedValue({
-      id: "org-a",
       isActive: true,
     });
   });
@@ -57,11 +51,10 @@ describe("canAccessTelegramScope", () => {
     });
 
     await expect(canAccessTelegramScope(user, telegram)).resolves.toBe(false);
-    expect(mocks.getOrganizationById).not.toHaveBeenCalled();
   });
 
-  it("denies access for an inactive organization", async () => {
-    mocks.getOrganizationById.mockResolvedValue(null);
+  it("denies access when the membership query excludes a disabled organization", async () => {
+    mocks.getUserOrganizationMembership.mockResolvedValue(null);
 
     await expect(canAccessTelegramScope(user, telegram)).resolves.toBe(false);
   });

@@ -1,7 +1,5 @@
-import {
-  getOrganizationById,
-  getUserOrganizationMembership,
-} from "./organization";
+import { TRPCError } from "@trpc/server";
+import { getUserOrganizationMembership } from "./organization";
 import { isPlatformOwner } from "./ownerAccess";
 
 export type TelegramOrganizationScope = {
@@ -19,6 +17,19 @@ export function canViewAllTelegrams(user: ScopeUser): boolean {
   return user.role === "admin" && !isPlatformOwner(user);
 }
 
+export async function getActiveUserOrganizationId(
+  user: ScopeUser
+): Promise<string> {
+  const membership = await getUserOrganizationMembership(user.id);
+  if (!membership?.isActive) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "جهة العمل غير مفعّلة أو لا تملك عضوية نشطة فيها",
+    });
+  }
+  return membership.organizationId;
+}
+
 export async function canAccessTelegramScope(
   user: ScopeUser,
   telegram: TelegramOrganizationScope
@@ -27,11 +38,6 @@ export async function canAccessTelegramScope(
 
   const membership = await getUserOrganizationMembership(user.id);
   if (!membership?.isActive) return false;
-
-  // Membership rows can remain active after an organization is disabled.
-  // Do not let those stale memberships continue to grant access to its data.
-  const organization = await getOrganizationById(membership.organizationId);
-  if (!organization) return false;
 
   return (
     telegram.organizationId === membership.organizationId ||

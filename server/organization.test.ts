@@ -82,6 +82,19 @@ describe("organization repository", () => {
     });
   });
 
+  it("excludes active membership rows whose organization has been disabled", async () => {
+    const organizationId = "00000000-0000-0000-0000-000000000001";
+    mocks.maybeSingle
+      .mockResolvedValueOnce({
+        data: { organizationId },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: null });
+
+    await expect(getUserOrganizationMembership(7)).resolves.toBeNull();
+    expect(mocks.eq).toHaveBeenCalledWith("organizations.isActive", true);
+  });
+
   it("supports the ministry, governorate, rural or city branch, station, and unit hierarchy", () => {
     expect(canOrganizationHaveParent("governorate", "central")).toBe(true);
     expect(canOrganizationHaveParent("police_department", "governorate")).toBe(

@@ -26,6 +26,9 @@ const mocked = vi.hoisted(() => ({
   routeTelegramBroadcastAtomic: vi.fn(),
   hasTelegramRoute: vi.fn(),
 }));
+const organizationMocks = vi.hoisted(() => ({
+  getUserOrganizationMembership: vi.fn(),
+}));
 
 vi.mock("./db", () => mocked);
 vi.mock("./organization", async importOriginal => {
@@ -38,6 +41,8 @@ vi.mock("./organization", async importOriginal => {
     routeTelegram: mocked.routeTelegram,
     routeTelegramBroadcastAtomic: mocked.routeTelegramBroadcastAtomic,
     hasTelegramRoute: mocked.hasTelegramRoute,
+    getUserOrganizationMembership:
+      organizationMocks.getUserOrganizationMembership,
   };
 });
 
@@ -76,6 +81,11 @@ describe("telegrams.create", () => {
     mocked.getUserOrganizationId.mockResolvedValue(
       "00000000-0000-0000-0000-000000000001"
     );
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: "00000000-0000-0000-0000-000000000001",
+      role: "member",
+      isActive: true,
+    });
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "OUT",
       incomingSerialPrefix: "IN",

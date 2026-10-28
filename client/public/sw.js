@@ -1,4 +1,4 @@
-const CACHE_NAME = "police-telegrams-shell-v7";
+const CACHE_NAME = "police-telegrams-shell-v8";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -101,7 +101,12 @@ self.addEventListener("fetch", event => {
   if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    url.pathname.startsWith("/api/")
+    url.pathname === "/api" ||
+    url.pathname.startsWith("/api/") ||
+    request.mode === "navigate" ||
+    !/\.(?:css|js|mjs|png|jpe?g|webp|avif|svg|ico|woff2?|ttf|otf)$/i.test(
+      url.pathname
+    )
   )
     return;
   event.respondWith(
@@ -110,7 +115,12 @@ self.addEventListener("fetch", event => {
       const preload = await event.preloadResponse;
       try {
         const response = preload || (await fetch(request));
-        if (response.ok && response.type === "basic") {
+        const cacheControl = response.headers.get("cache-control") || "";
+        if (
+          response.ok &&
+          response.type === "basic" &&
+          !/(?:private|no-store|no-cache)/i.test(cacheControl)
+        ) {
           const cache = await caches.open(CACHE_NAME);
           await cache.put(request, response.clone());
         }

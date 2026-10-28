@@ -31,7 +31,7 @@ export async function getScopedMembership(
   userId: number
 ): Promise<ScopedMembership | null> {
   const membership = await getUserOrganizationMembership(userId);
-  if (!membership || !membership.isActive) return null;
+  if (!membership) return null;
   return {
     organizationId: membership.organizationId,
     role: membership.role,
@@ -39,12 +39,18 @@ export async function getScopedMembership(
   };
 }
 
-export async function getManagedOrganizationIds(user: {
-  id: number;
-  role?: string | null;
-  isPlatformOwner?: boolean | null;
-}): Promise<string[]> {
-  const organizations = await listAllOrganizations();
+export async function getManagedOrganizationIds(
+  user: {
+    id: number;
+    role?: string | null;
+    isPlatformOwner?: boolean | null;
+  },
+  options: { activeOnly?: boolean } = {}
+): Promise<string[]> {
+  const allOrganizations = await listAllOrganizations();
+  const organizations = options.activeOnly
+    ? allOrganizations.filter(organization => organization.isActive)
+    : allOrganizations;
   if (canManageAllOrganizations(user))
     return organizations.map(item => item.id);
 

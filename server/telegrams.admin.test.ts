@@ -470,6 +470,32 @@ describe("telegram administration permissions", () => {
     );
   });
 
+  it("blocks scoped telegram reads when the organization has no active membership", async () => {
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue(null);
+    const caller = appRouter.createCaller(contextFor("user"));
+
+    await expect(caller.telegrams.list()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.telegrams.exportRows()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(
+      caller.reports.telegrams({ page: 1, pageSize: 10 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.dashboard.stats()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.notifications.inbox()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+
+    expect(mocked.listTelegrams).not.toHaveBeenCalled();
+    expect(mocked.getTelegramReport).not.toHaveBeenCalled();
+    expect(mocked.getDashboardStats).not.toHaveBeenCalled();
+    expect(mocked.listUserNotifications).not.toHaveBeenCalled();
+  });
+
   it("limits owner pending approvals to the active workplace instead of global admin scope", async () => {
     organizationMocks.listPendingRouteApprovals.mockResolvedValue([]);
     const caller = appRouter.createCaller(ownerContextForTest());

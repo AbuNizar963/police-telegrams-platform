@@ -828,6 +828,7 @@ class _DashboardPageState extends State<DashboardPage>
   int unreadNotificationCount = 0;
   bool _pushEnabled = false;
   bool _pushBusy = false;
+  final _pushTokenRegistration = OrganizationPushTokenRegistration();
   int section = 0;
   int telegramPage = 1;
   bool hasNextTelegramPage = false;
@@ -914,9 +915,9 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_checkForAppUpdate());
     });
-    push
+      push
         .initialize(
-          onToken: _registerPushToken,
+          onToken: _handlePushToken,
           onTelegramOpened: _openIncomingTelegram,
           onForegroundTelegram: (_) {
             refresh();
@@ -925,7 +926,14 @@ class _DashboardPageState extends State<DashboardPage>
         )
         .then((_) async {
           final enabled = await push.notificationsEnabled();
-          if (mounted) setState(() => _pushEnabled = enabled);
+          if (mounted) {
+            setState(() => _pushEnabled = enabled);
+            if (enabled) {
+              unawaited(
+                _syncPushTokenForActiveOrganization(activeOrganizationId),
+              );
+            }
+          }
         });
   }
 
@@ -1097,16 +1105,38 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
-  Future<void> _registerPushToken(String token) async {
+  void _handlePushToken(String token) {
+    unawaited(_registerPushToken(token).then<void>((_) {}));
+  }
+
+  Future<bool> _registerPushToken(String token) async {
+    final organizationId = activeOrganizationId;
     try {
       await widget.api.call(
         'notifications.registerMobileToken',
         mutation: true,
         input: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
       );
+      if (organizationId == activeOrganizationId) {
+        _pushTokenRegistration.markRegistered(organizationId);
+      }
+      return true;
     } catch (_) {
       // A temporary registration failure must not block the user interface.
+      return false;
     }
+  }
+
+  Future<void> _syncPushTokenForActiveOrganization(
+    String? organizationId,
+  ) async {
+    if (!mounted || !_pushEnabled) return;
+    await _pushTokenRegistration.ensureRegistered(
+      organizationId: organizationId,
+      notificationsEnabled: push.notificationsEnabled,
+      currentToken: push.currentToken,
+      registerToken: _registerPushToken,
+    );
   }
 
   Future<void> _syncOutbox({bool showProgress = true}) async {
@@ -1215,6 +1245,7 @@ class _DashboardPageState extends State<DashboardPage>
           );
         }
         await push.disableNotifications();
+        _pushTokenRegistration.clear();
         if (mounted) {
           setState(() => _pushEnabled = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1223,7 +1254,7 @@ class _DashboardPageState extends State<DashboardPage>
         }
       } else {
         final enabled = await push.enableNotifications(
-          onToken: (token) => _registerPushToken(token),
+          onToken: _handlePushToken,
         );
         if (mounted) {
           setState(() => _pushEnabled = enabled);
@@ -1235,6 +1266,11 @@ class _DashboardPageState extends State<DashboardPage>
                     : 'اسمح بالإشعارات من إعدادات الجهاز ثم أعد المحاولة',
               ),
             ),
+          );
+        }
+        if (enabled) {
+          unawaited(
+            _syncPushTokenForActiveOrganization(activeOrganizationId),
           );
         }
       }
@@ -1368,6 +1404,7 @@ class _DashboardPageState extends State<DashboardPage>
     } catch (_) {
       // PoliceApi.logout clears the local session in its finally block.
     }
+    _pushTokenRegistration.clear();
     AppLockRuntime.setSessionActive(false);
     if (!mounted) return;
     navigator.pushReplacement(
@@ -1823,6 +1860,9 @@ class _DashboardPageState extends State<DashboardPage>
         });
       }
       unawaited(_loadOrganizationLogo(organizationId, _organizationLogoUrl));
+      if (organizationId != null && organizationId.isNotEmpty) {
+        unawaited(_syncPushTokenForActiveOrganization(organizationId));
+      }
       if (telegramPage == 1 &&
           section == 0 &&
           searchQuery.trim().isEmpty &&

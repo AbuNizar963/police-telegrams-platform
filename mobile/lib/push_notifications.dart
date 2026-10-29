@@ -9,6 +9,64 @@ const MethodChannel _androidTelegramNotificationChannel = MethodChannel(
   'com.hadir.police.police_telegrams/telegram_notifications',
 );
 
+class OrganizationPushTokenRegistration {
+  String? _registeredOrganizationId;
+  bool _syncInProgress = false;
+  String? _pendingOrganizationId;
+
+  String? get registeredOrganizationId => _registeredOrganizationId;
+
+  void markRegistered(String? organizationId) {
+    final normalized = organizationId?.trim();
+    if (normalized != null && normalized.isNotEmpty) {
+      _registeredOrganizationId = normalized;
+    }
+  }
+
+  void clear() {
+    _registeredOrganizationId = null;
+    _pendingOrganizationId = null;
+  }
+
+  Future<void> ensureRegistered({
+    required String? organizationId,
+    required Future<bool> Function() notificationsEnabled,
+    required Future<String?> Function() currentToken,
+    required Future<bool> Function(String token) registerToken,
+  }) async {
+    final requested = organizationId?.trim();
+    if (requested == null || requested.isEmpty) return;
+    if (_syncInProgress) {
+      _pendingOrganizationId = requested;
+      return;
+    }
+    if (requested == _registeredOrganizationId) return;
+
+    _syncInProgress = true;
+    var target = requested;
+    try {
+      while (target != null && target.isNotEmpty) {
+        if (target == _registeredOrganizationId) {
+          target = _pendingOrganizationId;
+          _pendingOrganizationId = null;
+          continue;
+        }
+        if (!await notificationsEnabled()) return;
+        final token = await currentToken();
+        if (token == null || token.trim().isEmpty) return;
+        if (!await registerToken(token)) return;
+
+        _registeredOrganizationId = target;
+        target = _pendingOrganizationId;
+        _pendingOrganizationId = null;
+      }
+    } finally {
+      _syncInProgress = false;
+      _pendingOrganizationId = null;
+    }
+  }
+}
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();

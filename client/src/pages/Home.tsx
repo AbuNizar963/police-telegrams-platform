@@ -3317,6 +3317,36 @@ function TelegramDetail({
     const legacyLogoUrl = settingsLogoUrl || settings?.logoUrl?.trim() || null;
     return loadOfficialDocumentLogoDataUrl(legacyLogoUrl);
   };
+  const resolveTelegramPreviewLogoUrl = async (exportSettings: {
+    organizationId?: string | null;
+    logoUrl?: string | null;
+  }): Promise<string | null> => {
+    const logoOrganizationId = resolveTelegramExportOrganizationId({
+      accountOrganizationId: exportSettings.organizationId,
+      currentOrganizationId: telegram.currentOrganizationId,
+      ownerOrganizationId: telegram.organizationId,
+    });
+    let organizationLogo: OrganizationLogoView | null = null;
+    if (logoOrganizationId) {
+      organizationLogo = await utils.organizations.logo.fetch(
+        { organizationId: logoOrganizationId },
+        { staleTime: 0 }
+      );
+    }
+    const logoUrl = resolveTelegramExportLogo({
+      exportOrganizationId: logoOrganizationId,
+      organizationLogo:
+        organizationLogo?.organizationId === logoOrganizationId
+          ? organizationLogo
+          : null,
+      settingsOrganizationId: exportSettings.organizationId,
+      settingsLogoUrl: exportSettings.logoUrl?.trim() || null,
+    });
+    if (logoOrganizationId && !logoUrl) {
+      throw new Error("تعذر تحديد شعار الجهة المطابق لهذه البرقية.");
+    }
+    return logoUrl;
+  };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
     logoUrl: string | null = settings?.logoUrl ?? null
@@ -3747,23 +3777,32 @@ function TelegramDetail({
         );
         if (!cancelled) setDocumentPreparing(false);
 
-        // Upgrade the already-visible paper with the organization-scoped
-        // Supabase logo. A slow or unavailable logo must not hide the usable
-        // telegram preview; printing/export still performs its own strict
-        // logo validation before producing an official file.
+        // Upgrade the already-visible paper using the authenticated same-origin
+        // image URL. The preview should render the image directly instead of
+        // depending on a large inline-data conversion succeeding first.
         try {
           const exportSettings = await withPreparationTimeout(
             utils.settings.get.fetch(undefined, { staleTime: 0 }),
             OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
             "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
           );
-          const logoDataUrl = await withPreparationTimeout(
-            resolveTelegramLogoDataUrl(exportSettings),
+          const logoUrl = await withPreparationTimeout(
+            resolveTelegramPreviewLogoUrl(exportSettings),
             OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-            "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع."
+            "استغرق تحميل رابط شعار الجهة وقتًا أطول من المتوقع."
           );
-          if (!cancelled && logoDataUrl) {
-            renderPreview(documentSettings, logoDataUrl);
+          if (!cancelled && logoUrl) {
+            renderPreview(documentSettings, logoUrl);
+            const logoPaper = host.querySelector<HTMLElement>(
+              ".telegram-export-page"
+            );
+            if (logoPaper) {
+              await withPreparationTimeout(
+                waitForOfficialDocumentImages(logoPaper),
+                OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+                "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
+              );
+            }
           }
         } catch (error) {
           if (!cancelled) {

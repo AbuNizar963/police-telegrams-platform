@@ -48,6 +48,7 @@ import {
   getOrCreateSettings,
   getPlatformDocumentSettings,
   getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization,
   getTelegramById,
   findTelegramByOfficialSerial,
   getTelegramAttachmentById,
@@ -727,10 +728,20 @@ export const appRouter = router({
         }
 
         if (!isPlatformOwner(ctx.user) && !scopedStorageKey) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "أعد رفع الشعار من إعدادات الجهة؛ الشعار الحالي غير معزول",
-          });
+          // Older logos can be unscoped. Permit them only when this exact
+          // organization is their sole configured owner; the storage proxy
+          // repeats the same exclusivity check before serving the bytes.
+          const isExclusive = await isDepartmentLogoExclusiveToOrganization(
+            storageKey,
+            input.organizationId
+          );
+          if (!isExclusive) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "أعد رفع الشعار من إعدادات الجهة؛ الشعار القديم مستخدم لأكثر من جهة",
+            });
+          }
         }
 
         const asset = await storageDownload(storageKey);

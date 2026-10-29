@@ -43,7 +43,7 @@ class OrganizationPushTokenRegistration {
     if (requested == _registeredOrganizationId) return;
 
     _syncInProgress = true;
-    var target = requested;
+    String? target = requested;
     try {
       while (target != null && target.isNotEmpty) {
         if (target == _registeredOrganizationId) {

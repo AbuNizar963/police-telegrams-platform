@@ -3237,6 +3237,12 @@ function TelegramDetail({
       currentOrganizationId: telegram.currentOrganizationId,
       ownerOrganizationId: telegram.organizationId,
     });
+    const settingsLogoUrl = exportSettings.logoUrl?.trim() || null;
+    const fallbackLogoUrl = resolveTelegramExportLogo({
+      exportOrganizationId: logoOrganizationId,
+      settingsOrganizationId: exportSettings.organizationId,
+      settingsLogoUrl,
+    });
     let organizationLogo: OrganizationLogoView | null = null;
     if (logoOrganizationId) {
       try {
@@ -3245,36 +3251,70 @@ function TelegramDetail({
           { staleTime: 0 }
         );
       } catch (error) {
-        // Never substitute a URL from account settings when the direct
-        // organization-scoped Supabase Storage read fails. The server
-        // procedure verifies membership and downloads the stored object.
-        console.error("تعذر جلب شعار الجهة مباشرة من Supabase Storage:", error);
+        // The fallback resolver permits settings only when they belong to the
+        // exact export organization. This avoids borrowing another unit's logo.
+        if (fallbackLogoUrl) {
+          try {
+            const fallback =
+              await loadOfficialDocumentLogoDataUrl(fallbackLogoUrl);
+            if (fallback) return fallback;
+          } catch {
+            // Keep the scoped endpoint error below; the print UI can report it.
+          }
+        }
+        console.error("تعذر جلب شعار الجهة عبر الخادم:", error);
         throw new Error(
-          "تعذر جلب شعار حساب الجهة من Supabase Storage. تحقق من وجود الشعار وصلاحية الحساب ثم أعد المحاولة."
+          "تعذر جلب شعار الجهة من الخادم. تحقق من وجود الشعار وصلاحية الحساب ثم أعد المحاولة."
         );
       }
     }
 
-    const logoDataUrl = organizationLogo?.logoDataUrl?.trim();
-    if (logoDataUrl) return loadOfficialDocumentLogoDataUrl(logoDataUrl);
-    const organizationLogoUrl = organizationLogo?.logoUrl?.trim();
-    if (organizationLogoUrl?.startsWith("/api/storage/")) {
-      return loadOfficialDocumentLogoDataUrl(organizationLogoUrl);
+    const scopedOrganizationLogo =
+      organizationLogo?.organizationId === logoOrganizationId
+        ? organizationLogo
+        : null;
+    const logoDataUrl = scopedOrganizationLogo?.logoDataUrl?.trim();
+    if (logoDataUrl) {
+      try {
+        return await loadOfficialDocumentLogoDataUrl(logoDataUrl);
+      } catch (error) {
+        if (fallbackLogoUrl && fallbackLogoUrl !== logoDataUrl) {
+          const fallback =
+            await loadOfficialDocumentLogoDataUrl(fallbackLogoUrl);
+          if (fallback) return fallback;
+        }
+        throw error;
+      }
     }
 
-    // For identified organizations, require the organization's stored
-    // Supabase Storage logo payload. Do not fall back to a settings URL that
-    // can be stale or point outside the organization's storage scope.
+    const organizationLogoUrl = resolveTelegramExportLogo({
+      exportOrganizationId: logoOrganizationId,
+      organizationLogo: scopedOrganizationLogo,
+      settingsOrganizationId: exportSettings.organizationId,
+      settingsLogoUrl,
+    });
+    if (organizationLogoUrl) {
+      try {
+        return await loadOfficialDocumentLogoDataUrl(organizationLogoUrl);
+      } catch (error) {
+        if (fallbackLogoUrl && fallbackLogoUrl !== organizationLogoUrl) {
+          const fallback =
+            await loadOfficialDocumentLogoDataUrl(fallbackLogoUrl);
+          if (fallback) return fallback;
+        }
+        throw error;
+      }
+    }
+
+    // Do not borrow a logo from settings that belong to another organization.
     if (logoOrganizationId) {
       throw new Error(
-        "تعذر تحميل شعار الجهة من تخزين Supabase. تحقق من ملف الشعار المحفوظ للجهة ثم أعد المحاولة."
+        "تعذر تحميل شعار الجهة. تحقق من ملف الشعار المحفوظ للجهة ثم أعد المحاولة."
       );
     }
 
-    // Legacy telegrams without an organization ID may still use their saved
-    // legacy URL; this path is never used for an identified organization.
-    const legacyLogoUrl =
-      exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+    // Legacy telegrams without an organization ID may still use their saved URL.
+    const legacyLogoUrl = settingsLogoUrl || settings?.logoUrl?.trim() || null;
     return loadOfficialDocumentLogoDataUrl(legacyLogoUrl);
   };
   const createExportPaper = (

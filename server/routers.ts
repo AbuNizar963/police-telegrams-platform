@@ -770,7 +770,10 @@ export const appRouter = router({
         return {
           organizationId: input.organizationId,
           logoUrl,
-          logoDataUrl: `data:${mimeType};base64,${asset.body.toString("base64")}`,
+          logoDataUrl:
+            asset.body.length <= 2_500_000
+              ? `data:${mimeType};base64,${asset.body.toString("base64")}`
+              : null,
         };
       }),
 

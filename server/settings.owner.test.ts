@@ -252,6 +252,34 @@ describe("platform owner organization settings", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("omits inline data for logos larger than the safe tRPC payload cap", async () => {
+    const storageKey = `department/logos/${organizationA.id}/large-logo.png`;
+    const logoBytes = Buffer.alloc(2_500_001);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(
+      logoBytes
+    );
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoKey: storageKey,
+    });
+    mocks.storageDownload.mockResolvedValue({
+      body: logoBytes,
+      contentType: "image/png",
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).resolves.toMatchObject({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoDataUrl: null,
+    });
+  });
+
   it("leaves approved external logo URLs for the browser fetch fallback", async () => {
     const logoUrl = "https://cdn.example.gov.sy/identity/police-logo.png";
     mocks.getOrganizationSettings.mockResolvedValue({

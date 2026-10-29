@@ -515,7 +515,13 @@ class PoliceApi {
       // A missing, incomplete, or expired cache is refreshed below.
     }
 
-    final bytes = await fetchImageAsset(source);
+    var bytes = await fetchImageAsset(source);
+    if (bytes == null || bytes.isEmpty) {
+      // Some mobile networks or intermediaries mishandle the second image
+      // request even though authenticated tRPC calls work. Retry through the
+      // same protected API origin using its size-bounded inline logo payload.
+      bytes = await _fetchOrganizationLogoFromApi(organizationId);
+    }
     if (generation != _logoCacheGeneration) return null;
     if (bytes == null || bytes.isEmpty) return staleBytes;
     if (bytes.length <= _maximumCachedOrganizationLogoBytes) {
@@ -540,6 +546,43 @@ class PoliceApi {
       }
     }
     return bytes;
+  }
+
+  Future<Uint8List?> _fetchOrganizationLogoFromApi(
+    String organizationId,
+  ) async {
+    try {
+      final result = await call(
+        'organizations.logoForExport',
+        input: {'organizationId': organizationId},
+        allowOfflineCache: false,
+      );
+      if (result is! Map ||
+          result['organizationId']?.toString() != organizationId) {
+        return null;
+      }
+      final dataUrl = result['logoDataUrl']?.toString().trim() ?? '';
+      final match = RegExp(
+        r'^data:(image/(?:png|jpeg|webp));base64,',
+        caseSensitive: false,
+      ).firstMatch(dataUrl);
+      final contentType = match?.group(1);
+      if (match == null || contentType == null) return null;
+
+      final bytes = Uint8List.fromList(
+        base64Decode(dataUrl.substring(match.end)),
+      );
+      if (bytes.isEmpty ||
+          bytes.length > _maximumCachedOrganizationLogoBytes ||
+          !_isSupportedImagePayload(contentType, bytes)) {
+        return null;
+      }
+      return bytes;
+    } catch (_) {
+      // The same-origin byte route remains the primary path; this fallback is
+      // best-effort and must not prevent settings or telegram screens opening.
+      return null;
+    }
   }
 
   bool _isSupportedImagePayload(String contentType, Uint8List bytes) {

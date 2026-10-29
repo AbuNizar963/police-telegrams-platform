@@ -262,7 +262,7 @@ jobs:
           "$apksigner_path" verify --print-certs "$apk"
 
       - name: Generate APK checksum
-        working-directory: build/app/outputs/flutter-apk
+        working-directory: mobile/build/app/outputs/flutter-apk
         run: sha256sum app-release.apk > SHA256SUMS.txt
 
       - name: Remove temporary signing material

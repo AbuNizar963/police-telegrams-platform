@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getOrganizationByIdIncludingInactive: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
   getOrganizationSettings: vi.fn(),
+  isDepartmentLogoExclusiveToOrganization: vi.fn(),
   upsertOrganizationSettingsForOrganization: vi.fn(),
   writeAuditLog: vi.fn(),
   storageDownload: vi.fn(),
@@ -14,6 +15,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./db", () => ({
   getOrganizationSettings: mocks.getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization:
+    mocks.isDepartmentLogoExclusiveToOrganization,
   upsertOrganizationSettingsForOrganization:
     mocks.upsertOrganizationSettingsForOrganization,
   writeAuditLog: mocks.writeAuditLog,
@@ -111,6 +114,7 @@ describe("platform owner organization settings", () => {
         [organizationA, organizationB].find(item => item.id === organizationId)
     );
     mocks.getOrganizationSettings.mockResolvedValue(undefined);
+    mocks.isDepartmentLogoExclusiveToOrganization.mockResolvedValue(false);
     mocks.getUserOrganizationMembership.mockResolvedValue({
       userId: 7,
       organizationId: organizationA.id,
@@ -232,6 +236,71 @@ describe("platform owner organization settings", () => {
         organizationId: organizationB.id,
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("allows an unscoped legacy logo only when it belongs exclusively to this organization", async () => {
+    const storageKey = "department/logos/legacy-logo.png";
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+    });
+    mocks.isDepartmentLogoExclusiveToOrganization.mockResolvedValue(true);
+    mocks.storageDownload.mockResolvedValue({
+      body: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      contentType: "image/png",
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoDataUrl: null,
+    });
+    expect(mocks.isDepartmentLogoExclusiveToOrganization).toHaveBeenCalledWith(
+      storageKey,
+      organizationA.id
+    );
+    expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
+  });
+
+  it("rejects an unscoped legacy logo referenced by more than one organization", async () => {
+    const storageKey = "department/logos/shared-legacy-logo.png";
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+    });
+    mocks.isDepartmentLogoExclusiveToOrganization.mockResolvedValue(false);
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("never treats a telegram attachment as an organization's official logo", async () => {
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl:
+        "https://example.test/api/storage/telegrams/1/attachment-image.png",
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(
+      mocks.isDepartmentLogoExclusiveToOrganization
+    ).not.toHaveBeenCalled();
+    expect(mocks.storageDownload).not.toHaveBeenCalled();
   });
 
   it("leaves approved external logo URLs for the browser fetch fallback", async () => {

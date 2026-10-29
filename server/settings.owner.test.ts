@@ -204,6 +204,25 @@ describe("platform owner organization settings", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("returns organization storage logos through the protected API route", async () => {
+    const storageKey = `department/logos/${organizationA.id}/${organizationA.id}-logo.png`;
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl:
+        "https://region-storage.supabase.co/object/public/logos/logo.png",
+      logoKey: storageKey,
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logo({ organizationId: organizationA.id })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      settingsExists: true,
+    });
+  });
+
   it("returns a protected same-origin logo URL without serializing image bytes", async () => {
     const storageKey = `department/logos/${organizationA.id}/logo.png`;
     const logoBytes = Buffer.from([

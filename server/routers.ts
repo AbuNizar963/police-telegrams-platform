@@ -126,6 +126,7 @@ import {
   organizationAttachmentKeyMatches,
   storagePutOrganizationAttachment,
   storagePutDepartmentLogo,
+  storageStableUrl,
 } from "./storage";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 import {
@@ -663,9 +664,29 @@ export const appRouter = router({
         }
 
         const settings = await getOrganizationSettings(input.organizationId);
+        const configuredLogoUrl = settings?.logoUrl?.trim() || null;
+        const storageKey = departmentLogoKeyFromStoredValue(
+          settings?.logoKey || configuredLogoUrl
+        );
+        const scopedLogo = storageKey?.match(
+          /^department\/logos\/([0-9a-f-]{36})\//i
+        );
+        if (
+          scopedLogo &&
+          scopedLogo[1].toLowerCase() !== input.organizationId.toLowerCase()
+        ) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "الشعار المحفوظ لا يتبع الجهة المطلوبة",
+          });
+        }
         return {
           organizationId: input.organizationId,
-          logoUrl: settings?.logoUrl ?? null,
+          // Always use the authenticated same-origin image route for private
+          // storage objects instead of exposing a region-sensitive CDN URL.
+          logoUrl: storageKey
+            ? storageStableUrl(storageKey)
+            : configuredLogoUrl,
           settingsExists: Boolean(settings),
         };
       }),

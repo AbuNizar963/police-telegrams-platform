@@ -974,7 +974,7 @@ class _DashboardPageState extends State<DashboardPage>
     final lastAttempt = _lastLogoLoadAttemptAt;
     if (isSameIdentity &&
         lastAttempt != null &&
-        now.difference(lastAttempt) < const Duration(minutes: 5)) {
+        now.difference(lastAttempt) < const Duration(seconds: 30)) {
       return;
     }
 
@@ -1078,6 +1078,11 @@ class _DashboardPageState extends State<DashboardPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Revalidate the organization logo as soon as connectivity may have
+      // changed; the persisted cache remains available if this request fails.
+      _lastLogoLoadAttemptAt = null;
+      _logoLookupResolved = false;
+      _lastLogoLookupSucceeded = false;
       _startRefreshTimer();
       refresh(showLoading: false);
       unawaited(_syncOutbox(showProgress: false));

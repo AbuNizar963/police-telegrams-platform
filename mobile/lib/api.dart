@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class NetworkException implements Exception {
   const NetworkException([this.message = 'تعذر الاتصال بالخادم']);
@@ -40,16 +41,18 @@ class PoliceApi {
              defaultValue: 'https://police-telegrams-platform.vercel.app',
            ),
        _httpClient = httpClient ?? _sharedHttpClient,
-       _imageCacheDirectory = imageCacheDirectory ?? Directory.systemTemp;
+       _imageCacheDirectory = imageCacheDirectory;
 
   static final http.Client _sharedHttpClient = http.Client();
   static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
 
   final String baseUrl;
   final http.Client _httpClient;
-  final Directory _imageCacheDirectory;
+  final Directory? _imageCacheDirectory;
   final _storage = const FlutterSecureStorage();
   final Map<String, Future<Uint8List?>> _organizationLogoRequests = {};
+  Future<Directory>? _logoCacheDirectoryFuture;
+  int _logoCacheGeneration = 0;
 
   Future<dynamic> call(
     String procedure, {
@@ -235,6 +238,7 @@ class PoliceApi {
     // Do not let a newly authenticated account inherit the previous
     // account's offline responses on a shared device.
     await _clearOfflineCache();
+    await clearOrganizationLogoCache();
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
       await _storage.write(
@@ -260,6 +264,7 @@ class PoliceApi {
       if (user is Map) return Map<String, dynamic>.from(user);
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
+      await clearOrganizationLogoCache();
       return null;
     } on NetworkException {
       // A cached authenticated session is sufficient to open the app offline.
@@ -269,6 +274,7 @@ class PoliceApi {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _storage.delete(key: 'session_cookie');
         await _storage.delete(key: 'cached_account');
+        await clearOrganizationLogoCache();
         return null;
       }
       // A server or network failure is not proof that the session expired.
@@ -287,6 +293,7 @@ class PoliceApi {
       await _clearOfflineCache();
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
+      await clearOrganizationLogoCache();
     }
   }
 
@@ -415,13 +422,38 @@ class PoliceApi {
         : baseUri.resolve(value);
     if (!uri.isScheme('http') && !uri.isScheme('https')) return '';
     final path = uri.path;
-    final isSignedStorageUrl =
-        path.contains('/storage/v1/object/sign/') ||
-        path.startsWith('/api/storage/department/logos/');
-    final query = isSignedStorageUrl ? '' : uri.query;
     final port = uri.hasPort ? ':${uri.port}' : '';
-    return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port$path'
-        '${query.isEmpty ? '' : '?$query'}';
+    // Query strings can contain expiring storage tokens. The object path is
+    // sufficient for cache identity and avoids persisting credentials.
+    return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port$path';
+  }
+
+  Future<Directory> _organizationLogoCacheDirectory() =>
+      _logoCacheDirectoryFuture ??= _resolveOrganizationLogoCacheDirectory();
+
+  Future<Directory> _resolveOrganizationLogoCacheDirectory() async {
+    Directory root;
+    try {
+      root = _imageCacheDirectory ?? await getApplicationSupportDirectory();
+    } catch (_) {
+      // Preserve best-effort rendering if path_provider is unavailable.
+      root = Directory.systemTemp;
+    }
+    return Directory(
+      '${root.path}${Platform.pathSeparator}'
+      'police-telegrams-organization-logos',
+    );
+  }
+
+  Future<void> clearOrganizationLogoCache() async {
+    _logoCacheGeneration++;
+    _organizationLogoRequests.clear();
+    try {
+      final directory = await _organizationLogoCacheDirectory();
+      if (await directory.exists()) await directory.delete(recursive: true);
+    } catch (_) {
+      // Cache cleanup must never block login, logout, or session recovery.
+    }
   }
 
   Future<Uint8List?> fetchOrganizationLogo({
@@ -441,6 +473,7 @@ class PoliceApi {
       organizationId: normalizedOrganizationId,
       source: source,
       identity: identity,
+      generation: _logoCacheGeneration,
     );
     _organizationLogoRequests[requestKey] = request;
     return request.whenComplete(() {
@@ -452,14 +485,12 @@ class PoliceApi {
     required String organizationId,
     required String source,
     required String identity,
+    required int generation,
   }) async {
     final fileStem = base64Url
         .encode(utf8.encode(organizationId))
         .replaceAll('=', '');
-    final cacheDirectory = Directory(
-      '${_imageCacheDirectory.path}${Platform.pathSeparator}'
-      'police-telegrams-organization-logos',
-    );
+    final cacheDirectory = await _organizationLogoCacheDirectory();
     final imageFile = File(
       '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
     );
@@ -473,7 +504,8 @@ class PoliceApi {
       if (metadata is Map && metadata['identity'] == identity) {
         final bytes = await imageFile.readAsBytes();
         if (bytes.isNotEmpty &&
-            bytes.length <= _maximumCachedOrganizationLogoBytes) {
+            bytes.length <= _maximumCachedOrganizationLogoBytes &&
+            _isSupportedImagePayload('', Uint8List.fromList(bytes))) {
           staleBytes = Uint8List.fromList(bytes);
           // Always revalidate: the logo can be overwritten at the same storage
           // path, which a URL-only cache identity cannot detect. Keep cached
@@ -485,9 +517,11 @@ class PoliceApi {
     }
 
     final bytes = await fetchImageAsset(source);
+    if (generation != _logoCacheGeneration) return null;
     if (bytes == null || bytes.isEmpty) return staleBytes;
     if (bytes.length <= _maximumCachedOrganizationLogoBytes) {
       try {
+        if (generation != _logoCacheGeneration) return null;
         await cacheDirectory.create(recursive: true);
         final temporaryImage = File('${imageFile.path}.tmp');
         final temporaryMetadata = File('${metadataFile.path}.tmp');

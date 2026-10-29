@@ -263,6 +263,52 @@ void main() {
     },
   );
 
+  test('logout clears the persistent organization logo cache', () async {
+    final cacheRoot = await Directory.systemTemp.createTemp(
+      'police-telegrams-logo-logout-test-',
+    );
+    addTearDown(() => cacheRoot.delete(recursive: true));
+    final logoCacheDirectory = Directory(
+      '${cacheRoot.path}${Platform.pathSeparator}'
+      'police-telegrams-organization-logos',
+    );
+    await logoCacheDirectory.create(recursive: true);
+    await File(
+      '${logoCacheDirectory.path}${Platform.pathSeparator}cached-logo.bin',
+    ).writeAsBytes([1, 2, 3]);
+
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {'json': null},
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+      imageCacheDirectory: cacheRoot,
+    );
+
+    await api.logout();
+
+    expect(await logoCacheDirectory.exists(), isFalse);
+  });
+
+  test('organization logo cache identities never persist URL query tokens', () {
+    final api = PoliceApi(baseUrl: 'https://police.example.test');
+    expect(
+      api.organizationLogoCacheIdentity(
+        'https://police.example.test/api/storage/department/logos/logo.png?token=secret',
+      ),
+      'https://police.example.test/api/storage/department/logos/logo.png',
+    );
+  });
+
   test('logout clears offline caches and preserves the outbox', () async {
     _secureStorageForTest['session_cookie'] = 'session=value';
     _secureStorageForTest['offline_settings'] = '{"departmentName":"old"}';

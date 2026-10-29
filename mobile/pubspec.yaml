@@ -12,6 +12,7 @@ dependencies:
   cross_file: ^0.3.4+2
   http: ^1.6.0
   package_info_plus: ^9.0.0
+  path_provider: ^2.1.6
   url_launcher: ^6.3.2
   flutter_secure_storage: ^9.2.4
   local_auth: ^2.3.0

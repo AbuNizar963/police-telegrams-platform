@@ -200,6 +200,24 @@ describe("platform owner organization settings", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("normalizes a stored organization logo to the same-origin storage route", async () => {
+    const storageKey = `department/logos/${organizationA.id}/11111111-1111-4111-8111-111111111111-logo.png`;
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `https://storage.example.test/storage/v1/object/sign/telegram-files/${storageKey}?token=temporary`,
+      logoKey: storageKey,
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logo({ organizationId: organizationA.id })
+    ).resolves.toEqual({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      settingsExists: true,
+    });
+  });
+
   it("returns verified private logo bytes for export only to the owning organization", async () => {
     const storageKey = `department/logos/${organizationA.id}/logo.png`;
     const logoBytes = Buffer.from([

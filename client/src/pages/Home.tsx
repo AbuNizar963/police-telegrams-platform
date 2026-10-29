@@ -2836,23 +2836,38 @@ async function loadOfficialDocumentLogoDataUrl(
       );
       if (!imageMimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
       const normalizedBlob = new Blob([bytes], { type: imageMimeType });
-      const objectUrl = URL.createObjectURL(normalizedBlob);
+      let bitmap: ImageBitmap | null = null;
+      let fallbackImage: HTMLImageElement | null = null;
       try {
-        const image = new Image();
-        image.decoding = "async";
-        const imageLoaded = new Promise<void>((resolve, reject) => {
-          image.addEventListener("load", () => resolve(), { once: true });
-          image.addEventListener(
-            "error",
-            () => reject(new Error("تعذر فك ترميز صورة الشعار")),
-            { once: true }
-          );
-        });
-        image.src = objectUrl;
-        await imageLoaded;
-        await image.decode?.();
+        // The site CSP intentionally excludes blob: from img-src. Decode the
+        // fetched bytes directly instead of routing them through a blob URL.
+        if (typeof createImageBitmap === "function") {
+          try {
+            bitmap = await createImageBitmap(normalizedBlob);
+          } catch {
+            // Older browsers can fall back to a CSP-permitted data: image.
+          }
+        }
+        if (!bitmap) {
+          const sourceDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (typeof reader.result === "string") resolve(reader.result);
+              else reject(new Error("تعذر تجهيز صورة الشعار"));
+            };
+            reader.onerror = () =>
+              reject(reader.error ?? new Error("تعذر قراءة صورة الشعار"));
+            reader.readAsDataURL(normalizedBlob);
+          });
+          fallbackImage = new Image();
+          fallbackImage.decoding = "async";
+          fallbackImage.src = sourceDataUrl;
+          await fallbackImage.decode();
+        }
 
-        if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+        const imageWidth = bitmap?.width ?? fallbackImage?.naturalWidth ?? 0;
+        const imageHeight = bitmap?.height ?? fallbackImage?.naturalHeight ?? 0;
+        if (imageWidth === 0 || imageHeight === 0) {
           throw new Error("صورة الشعار غير صالحة");
         }
 
@@ -2871,11 +2886,17 @@ async function loadOfficialDocumentLogoDataUrl(
         while (true) {
           const scale = Math.min(
             1,
-            maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
+            maxDimension / Math.max(imageWidth, imageHeight)
           );
-          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          canvas.width = Math.max(1, Math.round(imageWidth * scale));
+          canvas.height = Math.max(1, Math.round(imageHeight * scale));
+          context.drawImage(
+            bitmap ?? fallbackImage!,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
 
           const optimized = canvas.toDataURL("image/webp", quality);
           const dataUrl = optimized.startsWith("data:image/webp")
@@ -2898,7 +2919,7 @@ async function loadOfficialDocumentLogoDataUrl(
           quality = Math.max(0.72, quality - 0.06);
         }
       } finally {
-        URL.revokeObjectURL(objectUrl);
+        bitmap?.close();
       }
     });
   } catch (error) {

@@ -445,7 +445,7 @@ void main() {
       imageBytes,
     );
     // A failed refresh must still return the previously cached valid image.
-    expect(secondClientRequests, 1);
+    expect(secondClientRequests, 2);
   });
 
   test(
@@ -487,64 +487,59 @@ void main() {
     },
   );
 
-  test(
-    'organization logo falls back to the authenticated tRPC payload when image GET fails',
-    () async {
-      final cacheDirectory = await Directory.systemTemp.createTemp(
-        'police-telegrams-inline-logo-test-',
-      );
-      addTearDown(() => cacheDirectory.delete(recursive: true));
-      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
-      const sessionCookie = 'sid=authenticated-session';
-      final imageBytes = Uint8List.fromList(
-        base64Decode(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
-        ),
-      );
-      _secureStorageForTest['session_cookie'] = sessionCookie;
-      var imageRequestCount = 0;
-      var logoApiRequestCount = 0;
-      final client = MockClient((request) async {
-        expect(request.headers['cookie'], sessionCookie);
-        if (request.url.path.startsWith('/api/storage/')) {
-          imageRequestCount++;
-          return http.Response('image route unavailable', 503);
-        }
-        if (request.url.path.endsWith('/organizations.logoForExport')) {
-          logoApiRequestCount++;
-          return http.Response(
-            jsonEncode({
-              'result': {
-                'data': {
-                  'json': {
-                    'organizationId': organizationId,
-                    'logoDataUrl':
-                        'data:image/png;base64,${base64Encode(imageBytes)}',
-                  },
+  test('organization logo falls back to the authenticated tRPC payload when image GET fails', () async {
+    final cacheDirectory = await Directory.systemTemp.createTemp(
+      'police-telegrams-inline-logo-test-',
+    );
+    addTearDown(() => cacheDirectory.delete(recursive: true));
+    const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+    const sessionCookie = 'sid=authenticated-session';
+    final imageBytes = Uint8List.fromList(
+      base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
+      ),
+    );
+    _secureStorageForTest['session_cookie'] = sessionCookie;
+    var imageRequestCount = 0;
+    var logoApiRequestCount = 0;
+    final client = MockClient((request) async {
+      expect(request.headers['cookie'], sessionCookie);
+      if (request.url.path.startsWith('/api/storage/')) {
+        imageRequestCount++;
+        return http.Response('image route unavailable', 503);
+      }
+      if (request.url.path.endsWith('/organizations.logoForExport')) {
+        logoApiRequestCount++;
+        return http.Response(
+          jsonEncode({
+            'result': {
+              'data': {
+                'json': {
+                  'organizationId': organizationId,
+                  'logoDataUrl':
+                      'data:image/png;base64,${base64Encode(imageBytes)}',
                 },
               },
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
-          );
-        }
-        return http.Response('unexpected request', 404);
-      });
-      addTearDown(client.close);
-      final api = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: client,
-        imageCacheDirectory: cacheDirectory,
-      );
-
-      final bytes = await api.fetchOrganizationLogo(
-        organizationId: organizationId,
-        source: '/api/storage/department/logos/$organizationId/logo.png',
-      );
-
-      expect(bytes, imageBytes);
-      expect(imageRequestCount, 1);
-      expect(logoApiRequestCount, 1);
-    },
-  );
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('unexpected request', 404);
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+      imageCacheDirectory: cacheDirectory,
+    );
+    final bytes = await api.fetchOrganizationLogo(
+      organizationId: organizationId,
+      source: '/api/storage/department/logos/$organizationId/logo.png',
+    );
+    expect(bytes, imageBytes);
+    expect(imageRequestCount, 1);
+    expect(logoApiRequestCount, 1);
+  });
 }

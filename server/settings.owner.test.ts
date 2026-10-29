@@ -246,7 +246,7 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: null,
+      logoDataUrl: `data:image/png;base64,${logoBytes.toString("base64")}`,
     });
     expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
 
@@ -255,6 +255,34 @@ describe("platform owner organization settings", () => {
         organizationId: organizationB.id,
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("omits inline data for logos larger than the safe tRPC payload cap", async () => {
+    const storageKey = `department/logos/${organizationA.id}/large-logo.png`;
+    const logoBytes = Buffer.alloc(2_500_001);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(
+      logoBytes
+    );
+    mocks.getOrganizationSettings.mockResolvedValue({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoKey: storageKey,
+    });
+    mocks.storageDownload.mockResolvedValue({
+      body: logoBytes,
+      contentType: "image/png",
+    });
+    const caller = appRouter.createCaller(memberContext());
+
+    await expect(
+      caller.organizations.logoForExport({
+        organizationId: organizationA.id,
+      })
+    ).resolves.toMatchObject({
+      organizationId: organizationA.id,
+      logoUrl: `/api/storage/${storageKey}`,
+      logoDataUrl: null,
+    });
   });
 
   it("allows an unscoped legacy logo only when it belongs exclusively to this organization", async () => {
@@ -277,7 +305,7 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: null,
+      logoDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     });
     expect(mocks.isDepartmentLogoExclusiveToOrganization).toHaveBeenCalledWith(
       storageKey,

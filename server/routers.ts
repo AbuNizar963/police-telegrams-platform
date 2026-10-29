@@ -778,11 +778,6 @@ export const appRouter = router({
           });
         }
 
-        // Do not serialize the full image as Base64 in the tRPC response. The
-        // extra Base64 expansion can exceed Vercel's 4.5 MB function payload
-        // limit before the browser has a chance to downsample the logo. The
-        // same-origin storage route repeats the organization access check and
-        // returns the image bytes for client-side normalization.
         const encodedStoragePath = storageKey
           .split("/")
           .map(segment => encodeURIComponent(segment))
@@ -790,7 +785,14 @@ export const appRouter = router({
         return {
           organizationId: input.organizationId,
           logoUrl: `/api/storage/${encodedStoragePath}`,
-          logoDataUrl: null,
+          // Small logos can travel in the authenticated tRPC response as a
+          // mobile fallback when a separate image request is blocked or
+          // mishandles cookies. Cap the source bytes to stay below Vercel's
+          // response-size limit after Base64 expansion.
+          logoDataUrl:
+            asset.body.length <= 2_500_000
+              ? `data:${mimeType};base64,${asset.body.toString("base64")}`
+              : null,
         };
       }),
 

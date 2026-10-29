@@ -915,7 +915,7 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_checkForAppUpdate());
     });
-      push
+    push
         .initialize(
           onToken: _handlePushToken,
           onTelegramOpened: _openIncomingTelegram,
@@ -1269,9 +1269,7 @@ class _DashboardPageState extends State<DashboardPage>
           );
         }
         if (enabled) {
-          unawaited(
-            _syncPushTokenForActiveOrganization(activeOrganizationId),
-          );
+          unawaited(_syncPushTokenForActiveOrganization(activeOrganizationId));
         }
       }
     } catch (_) {

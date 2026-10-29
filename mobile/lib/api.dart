@@ -33,22 +33,21 @@ class PoliceApi {
   PoliceApi({
     String? baseUrl,
     http.Client? httpClient,
-    Directory? imageCacheDirectory,
+    this.imageCacheDirectory,
   }) : baseUrl =
            baseUrl ??
            const String.fromEnvironment(
              'API_BASE_URL',
              defaultValue: 'https://police-telegrams-platform.vercel.app',
            ),
-       _httpClient = httpClient ?? _sharedHttpClient,
-       _imageCacheDirectory = imageCacheDirectory;
+       _httpClient = httpClient ?? _sharedHttpClient;
 
   static final http.Client _sharedHttpClient = http.Client();
   static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
 
   final String baseUrl;
   final http.Client _httpClient;
-  final Directory? _imageCacheDirectory;
+  final Directory? imageCacheDirectory;
   final _storage = const FlutterSecureStorage();
   final Map<String, Future<Uint8List?>> _organizationLogoRequests = {};
   Future<Directory>? _logoCacheDirectoryFuture;
@@ -434,7 +433,7 @@ class PoliceApi {
   Future<Directory> _resolveOrganizationLogoCacheDirectory() async {
     Directory root;
     try {
-      root = _imageCacheDirectory ?? await getApplicationSupportDirectory();
+      root = imageCacheDirectory ?? await getApplicationSupportDirectory();
     } catch (_) {
       // Preserve best-effort rendering if path_provider is unavailable.
       root = Directory.systemTemp;

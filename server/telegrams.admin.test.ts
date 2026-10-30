@@ -213,18 +213,19 @@ describe("telegram administration permissions", () => {
     });
     const caller = appRouter.createCaller(contextFor("user"));
 
-    await expect(
-      caller.telegrams.recordDocumentOutput({
-        id: telegram.id,
-        operation: "print",
-        format: "pdf",
-      })
-    ).resolves.toEqual({ success: true });
+    const result = await caller.telegrams.recordDocumentOutput({
+      id: telegram.id,
+      operation: "print",
+      format: "pdf",
+    });
+    expect(result.success).toBe(true);
+    expect(new Date(result.occurredAt).toISOString()).toBe(result.occurredAt);
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "telegram.document.print",
         entityType: "telegram",
         entityId: String(telegram.id),
+        metadata: expect.stringContaining(result.occurredAt),
       })
     );
   });

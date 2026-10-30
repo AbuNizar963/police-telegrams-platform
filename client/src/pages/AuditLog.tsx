@@ -14,46 +14,16 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
-
-const actionLabels: Record<string, string> = {
-  "organization.settings.update": "تحديث إعدادات الجهة",
-  "organization.create": "إنشاء جهة",
-  "organization.update": "تعديل جهة",
-  "settings.update": "تحديث الإعدادات",
-  "platform.document_settings.update": "تحديث إعدادات الوثائق",
-  "attachment.upload": "رفع مرفق",
-  "attachment.download": "تنزيل مرفق",
-  "telegram.update": "تعديل برقية",
-  "telegram.delete": "حذف برقية",
-  "telegram.route": "إحالة برقية",
-  "telegram.route.receive": "تأكيد استلام إحالة",
-  "telegram.status.transition": "تغيير حالة برقية",
-  "telegram.create": "إنشاء برقية",
-  "telegram.document.print": "طباعة وثيقة برقية",
-  "telegram.document.download": "تنزيل أو مشاركة وثيقة برقية",
-  "telegram.export.rows": "تجهيز تصدير سجل البرقيات",
-  "telegram.export.workbook": "تصدير سجل البرقيات إلى Excel",
-  "telegram.import.excel": "استيراد برقيات من Excel",
-  "telegram.broadcast": "توزيع برقية على جهات",
-  "telegram.broadcast.atomic_failure": "فشل توزيع البرقية",
-  "user.create": "إنشاء مستخدم",
-  "user.update": "تعديل بيانات مستخدم",
-  "user.disable": "تعطيل مستخدم",
-  "user.enable": "تفعيل مستخدم",
-  "user.delete": "حذف مستخدم",
-  "platform.owner_workplace.switch": "تغيير جهة عمل المالك",
-};
-
-const entityLabels: Record<string, string> = {
-  telegram: "برقية",
-  telegram_attachment: "مرفق برقية",
-  telegram_collection: "مجموعة برقيات",
-  organization: "جهة",
-  user: "مستخدم",
-  settings: "إعدادات",
-  attachment: "مرفق",
-  platform: "النظام",
-};
+import {
+  auditActionLabel,
+  auditActionLabels,
+  auditDeviceLabel,
+  auditEntitySummary,
+  auditRoleLabel,
+  auditUserAgentSummary,
+  rawAuditDetails,
+  readableAuditFields,
+} from "@/lib/auditPresentation";
 
 type Filters = {
   search: string;
@@ -92,15 +62,6 @@ function formatDate(value: unknown): string {
     fractionalSecondDigits: 3,
     hour12: false,
   });
-}
-
-function formatMetadata(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
 }
 
 function dayStart(value: string): string | undefined {
@@ -178,6 +139,10 @@ export default function AuditLogPage() {
               سجل مركزي للعمليات الإدارية والأمنية، للقراءة فقط، يتحدث تلقائيًا
               كل خمس ثوانٍ.
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ستظهر تفاصيل الإجراء والبرقية بلغة واضحة؛ أما بيانات الشبكة
+              والمعرّفات الفنية فتوجد عند الحاجة ضمن قسم المختصين.
+            </p>
           </div>
         </div>
         <Button
@@ -245,7 +210,7 @@ export default function AuditLogPage() {
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="">كل الإجراءات</option>
-                {Object.entries(actionLabels).map(([value, label]) => (
+                {Object.entries(auditActionLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -417,19 +382,21 @@ function Metric({
 }
 
 function AuditEntry({ log }: { log: Record<string, unknown> }) {
-  const metadata = formatMetadata(log.metadata);
-  const beforeState = formatMetadata(log.beforeState);
-  const afterState = formatMetadata(log.afterState);
-  const action = displayValue(log.action, "إجراء");
-  const actionLabel = actionLabels[action] ?? action;
-  const entityType = displayValue(log.entityType);
-  const userAgent = displayValue(log.userAgent, "غير متوفر");
+  const metadataFields = readableAuditFields(log.metadata);
+  const beforeFields = readableAuditFields(log.beforeState);
+  const afterFields = readableAuditFields(log.afterState);
+  const rawMetadata = rawAuditDetails(log.metadata);
+  const rawBeforeState = rawAuditDetails(log.beforeState);
+  const rawAfterState = rawAuditDetails(log.afterState);
+  const actionLabel = auditActionLabel(log.action);
+  const deviceLabel = auditDeviceLabel(log.deviceType);
+  const userAgentSummary = auditUserAgentSummary(log.userAgent);
   const actorSnapshot = [
-    displayValue(log.actorName),
-    `رقم المستخدم ${displayValue(log.actorUserId)}`,
-    displayValue(log.actorRank, "بدون رتبة"),
-    displayValue(log.actorRole, "بدون دور"),
+    displayValue(log.actorName, "مستخدم غير معروف"),
+    displayValue(log.actorRank, "الرتبة غير محددة"),
+    auditRoleLabel(log.actorRole),
   ].join(" · ");
+  const entitySummary = auditEntitySummary(log.entityType, log.entityId);
 
   return (
     <Card>
@@ -438,58 +405,94 @@ function AuditEntry({ log }: { log: Record<string, unknown> }) {
           <div className="min-w-0 space-y-1">
             <h2 className="break-words font-bold">{actionLabel}</h2>
             <p className="text-xs text-muted-foreground">
-              {formatDate(log.createdAt)}
+              وقت تسجيل الإجراء: {formatDate(log.createdAt)}
             </p>
           </div>
-          <Badge variant="outline">
-            {displayValue(log.deviceType, "unknown")}
-          </Badge>
+          <Badge variant="outline">{deviceLabel}</Badge>
         </div>
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Detail label="منفّذ الإجراء" value={actorSnapshot} />
+          <Detail label="السجل المعني" value={entitySummary} />
           <Detail
-            label="العنصر المتأثر"
-            value={`${entityLabels[entityType] ?? entityType}${log.entityId ? ` · ${log.entityId}` : ""}`}
-          />
-          <Detail
-            label="عنوان الشبكة"
-            value={displayValue(log.ipAddress, "غير متوفر")}
-            mono
+            label="الجهاز المستخدم"
+            value={`${deviceLabel} · ${userAgentSummary}`}
           />
         </div>
         {log.reason ? (
           <Detail label="سبب الإجراء" value={displayValue(log.reason)} />
         ) : null}
-        {metadata ? (
-          <JsonDetail title="تفاصيل الإجراء" value={metadata} />
+        {metadataFields.length > 0 ? (
+          <ReadableDetails
+            title="تفاصيل العملية بلغة واضحة"
+            fields={metadataFields}
+            raw={rawMetadata}
+          />
         ) : null}
-        {beforeState || afterState ? (
+        {beforeFields.length > 0 || afterFields.length > 0 ? (
           <details className="rounded-lg border bg-muted/20 p-3">
             <summary className="cursor-pointer text-sm font-semibold">
-              مقارنة قبل / بعد
+              التغييرات المسجلة قبل الإجراء وبعده
             </summary>
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
-              {beforeState ? (
-                <JsonDetail title="قبل" value={beforeState} compact />
+              {beforeFields.length > 0 ? (
+                <div className="rounded-md border bg-background/60 p-3">
+                  <h3 className="text-sm font-semibold">قبل التعديل</h3>
+                  <AuditFields fields={beforeFields} />
+                  {rawBeforeState ? (
+                    <RawAuditDetails
+                      title="البيانات الأصلية للمختصين"
+                      value={rawBeforeState}
+                    />
+                  ) : null}
+                </div>
               ) : null}
-              {afterState ? (
-                <JsonDetail title="بعد" value={afterState} compact />
+              {afterFields.length > 0 ? (
+                <div className="rounded-md border bg-background/60 p-3">
+                  <h3 className="text-sm font-semibold">بعد التعديل</h3>
+                  <AuditFields fields={afterFields} />
+                  {rawAfterState ? (
+                    <RawAuditDetails
+                      title="البيانات الأصلية للمختصين"
+                      value={rawAfterState}
+                    />
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </details>
         ) : null}
         <details className="rounded-lg border bg-muted/10 p-3">
           <summary className="cursor-pointer text-sm font-semibold">
-            سياق الجهاز وسلامة السجل
+            معلومات فنية للمختصين
           </summary>
           <div className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
-            <Detail label="المتصفح / الجهاز" value={userAgent} mono />
             <Detail
-              label="بصمة السجل"
-              value={displayValue(log.entryHash, "بانتظار الترحيل")}
+              label="عنوان الشبكة (IP)"
+              value={displayValue(log.ipAddress, "غير متاح")}
+              mono
+            />
+            <Detail label="المتصفح ونظام الجهاز" value={userAgentSummary} />
+            <Detail
+              label="بصمة نزاهة السجل"
+              value={displayValue(log.entryHash, "غير متاحة")}
+              mono
+            />
+            <Detail
+              label="معرّف منفّذ الإجراء"
+              value={displayValue(log.actorUserId, "غير متاح")}
               mono
             />
           </div>
+          {log.userAgent ? (
+            <RawAuditDetails
+              title="بيانات المتصفح الأصلية"
+              value={displayValue(log.userAgent)}
+            />
+          ) : null}
+          <p className="mt-2 text-xs text-muted-foreground">
+            تُعرض هذه القيم لأغراض التحقق والدعم الفني، ولا يلزم فهمها لمراجعة
+            الإجراء.
+          </p>
         </details>
       </CardContent>
     </Card>
@@ -519,28 +522,53 @@ function Detail({
   );
 }
 
-function JsonDetail({
-  title,
-  value,
-  compact = false,
+function AuditFields({
+  fields,
 }: {
-  title: string;
-  value: string;
-  compact?: boolean;
+  fields: ReturnType<typeof readableAuditFields>;
 }) {
   return (
-    <details
-      className={
-        compact
-          ? "rounded-md border bg-background/60 p-2"
-          : "rounded-lg border bg-muted/20 p-3"
-      }
-      open={compact}
-    >
+    <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      {fields.map((field, index) => (
+        <Detail
+          key={`${field.label}-${index}`}
+          label={field.label}
+          value={field.value}
+        />
+      ))}
+    </dl>
+  );
+}
+
+function ReadableDetails({
+  title,
+  fields,
+  raw,
+}: {
+  title: string;
+  fields: ReturnType<typeof readableAuditFields>;
+  raw: string;
+}) {
+  return (
+    <details className="rounded-lg border bg-muted/20 p-3">
       <summary className="cursor-pointer text-sm font-semibold">
         {title}
       </summary>
-      <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5">
+      <AuditFields fields={fields} />
+      {raw ? (
+        <RawAuditDetails title="البيانات الأصلية للمختصين" value={raw} />
+      ) : null}
+    </details>
+  );
+}
+
+function RawAuditDetails({ title, value }: { title: string; value: string }) {
+  return (
+    <details className="mt-3 rounded-md border bg-background/60 p-2">
+      <summary className="cursor-pointer text-xs font-semibold">
+        {title}
+      </summary>
+      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-5">
         {value}
       </pre>
     </details>

@@ -1886,6 +1886,7 @@ export const appRouter = router({
           telegram,
           "لا تملك صلاحية إخراج هذه البرقية"
         );
+        const occurredAt = new Date().toISOString();
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
@@ -1897,9 +1898,10 @@ export const appRouter = router({
             serialNumber: telegram.serialNumber,
             serialCode: telegram.serialCode,
             format: input.format,
+            occurredAt,
           }),
         });
-        return { success: true as const };
+        return { success: true as const, occurredAt };
       }),
     incomingRoutes: protectedProcedure
       .input(z.object({ telegramId: z.number().int().positive() }))

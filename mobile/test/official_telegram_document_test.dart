@@ -128,6 +128,9 @@ void main() {
     expect(html, contains('data-icon="person" aria-hidden="true"'));
     expect(html, contains('data-icon="location" aria-hidden="true"'));
     expect(html, contains('data-icon="calendar" aria-hidden="true"'));
+    expect(html, contains('flex-wrap: nowrap;'));
+    expect(html, contains('gap: 2px;'));
+    expect(html, contains('white-space: nowrap;'));
     expect(html, isNot(contains('تم إنشاء هذه الوثيقة بواسطة:')));
     expect(html, contains('الوقت والتاريخ:</strong>'));
     expect(html, contains('تاريخ ووقت إنشاء الوثيقة:'));

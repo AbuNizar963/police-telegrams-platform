@@ -1061,28 +1061,31 @@ $fontFaces
 .telegram-export-page .signature{display:flex;flex-direction:column;align-items:stretch;align-self:flex-end;width:min(48%,320px);margin-top:auto;margin-right:auto;margin-left:0;padding-top:26px;text-align:center;line-height:1.9}
 .telegram-export-page .signature p{width:100%;margin:0;font-size:16px;font-weight:700;text-align:center}.telegram-export-page .signature-label{margin-top:14px!important;color:#667085;font-size:12px}
 .telegram-export-page .document-footer {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  gap: 12px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
   margin-top: 16px;
   color: #667085;
-  font-size: 11px;
+  font-size: 10px;
   direction: rtl;
+  white-space: nowrap;
 }
 .telegram-export-page .document-footer p {
   display: flex;
-  align-items: flex-start;
-  gap: 5px;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 2px;
   min-width: 0;
   margin: 0;
+  white-space: nowrap;
 }
 .telegram-export-page .footer-icon {
   display: block;
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
-  margin-top: 2px;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
   fill: none;
   stroke: #667085;
   stroke-linecap: round;
@@ -1091,7 +1094,9 @@ $fontFaces
 }
 .telegram-export-page .document-footer .footer-text {
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .telegram-export-page .footer-creator {
   justify-content: flex-start;

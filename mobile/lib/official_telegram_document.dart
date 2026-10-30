@@ -27,6 +27,18 @@ const _ministryWatermarkColumns = 10;
 const _ministryWatermarkRows = 34;
 // Half-centimetre horizontal and vertical separation between repetitions.
 const _ministryWatermarkGapCss = '5mm';
+const _documentFooterPersonIcon = '''<svg class="footer-icon" data-icon="person" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+  <circle cx="12" cy="8" r="3.5" />
+  <path d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6" />
+</svg>''';
+const _documentFooterLocationIcon = '''<svg class="footer-icon" data-icon="location" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+  <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+  <circle cx="12" cy="10" r="2.5" />
+</svg>''';
+const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calendar" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+  <rect x="3.5" y="5" width="17" height="16" rx="2" />
+  <path d="M16 3v4M8 3v4M3.5 10h17" />
+</svg>''';
 
 // The API also keeps a persistent, revalidated file cache. This small
 // process cache avoids decoding the same organization logo again when an
@@ -1048,8 +1060,51 @@ $fontFaces
 .telegram-export-page .body-heading{margin:20px 0 14px;text-align:center;font-size:17px;font-weight:700}.telegram-export-page .telegram-body{min-height:150px;white-space:pre-wrap;overflow-wrap:anywhere;text-align:justify;line-height:2;font-size:20px;font-weight:500}
 .telegram-export-page .signature{display:flex;flex-direction:column;align-items:stretch;align-self:flex-end;width:min(48%,320px);margin-top:auto;margin-right:auto;margin-left:0;padding-top:26px;text-align:center;line-height:1.9}
 .telegram-export-page .signature p{width:100%;margin:0;font-size:16px;font-weight:700;text-align:center}.telegram-export-page .signature-label{margin-top:14px!important;color:#667085;font-size:12px}
-.telegram-export-page .document-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px;margin-top:16px;color:#667085;font-size:11px;direction:rtl}
-.telegram-export-page .document-footer p{margin:0}.telegram-export-page .footer-creator{text-align:right}.telegram-export-page .footer-location{text-align:center}.telegram-export-page .footer-date{text-align:left}
+.telegram-export-page .document-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin-top: 16px;
+  color: #667085;
+  font-size: 11px;
+  direction: rtl;
+}
+.telegram-export-page .document-footer p {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+.telegram-export-page .footer-icon {
+  display: block;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  fill: none;
+  stroke: #667085;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+.telegram-export-page .document-footer .footer-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.telegram-export-page .footer-creator {
+  justify-content: flex-start;
+  text-align: right;
+}
+.telegram-export-page .footer-location {
+  justify-content: center;
+  text-align: center;
+}
+.telegram-export-page .footer-date {
+  justify-content: flex-end;
+  text-align: left;
+}
 @media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
@@ -1081,9 +1136,9 @@ $watermark
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
 </section></main>
 <footer class="document-footer">
-<p class="footer-creator">منشئ الوثيقة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
-<p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">تاريخ ووقت إنشاء الوثيقة: ${_escapeHtml(documentCreatedAt)}</p>
+<p class="footer-creator">$_documentFooterPersonIcon<span class="footer-text">منشئ الوثيقة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</span></p>
+<p class="footer-location">$_documentFooterLocationIcon<span class="footer-text">الموقع: ${_escapeHtml(location)}</span></p>
+<p class="footer-date">$_documentFooterCalendarIcon<span class="footer-text">تاريخ ووقت إنشاء الوثيقة: ${_escapeHtml(documentCreatedAt)}</span></p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

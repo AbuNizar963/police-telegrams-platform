@@ -123,29 +123,33 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
             right: 16,
             child: SafeArea(
               bottom: false,
-              child: IgnorePointer(
-                ignoring: !_visible,
-                child: Semantics(
-                  liveRegion: true,
-                  label: _message,
-                  child: AnimatedSlide(
-                    duration: _reduceMotion
-                        ? Duration.zero
-                        : const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    offset: _visible ? Offset.zero : const Offset(0, -0.35),
-                    child: AnimatedOpacity(
+              child: Align(
+                alignment: Alignment.topCenter,
+                heightFactor: 1,
+                child: IgnorePointer(
+                  ignoring: !_visible,
+                  child: Semantics(
+                    liveRegion: true,
+                    label: _message,
+                    child: AnimatedSlide(
                       duration: _reduceMotion
                           ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                      opacity: _visible ? 1 : 0,
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 520),
-                          child: _ToastCard(
-                            message: _message!,
-                            kind: _kind,
-                            onClose: dismiss,
+                          : const Duration(milliseconds: 240),
+                      curve: Curves.easeOutCubic,
+                      offset: _visible ? Offset.zero : const Offset(0, -0.35),
+                      child: AnimatedOpacity(
+                        duration: _reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 180),
+                        opacity: _visible ? 1 : 0,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            child: _ToastCard(
+                              message: _message!,
+                              kind: _kind,
+                              onClose: dismiss,
+                            ),
                           ),
                         ),
                       ),
@@ -295,14 +299,18 @@ class _FallbackToastView extends StatelessWidget {
     right: 16,
     child: SafeArea(
       bottom: false,
-      child: Material(
-        color: Colors.transparent,
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: _ToastCard(message: message, kind: kind, onClose: close),
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: 1,
+        child: Material(
+          color: Colors.transparent,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: _ToastCard(message: message, kind: kind, onClose: close),
+              ),
             ),
           ),
         ),

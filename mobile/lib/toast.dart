@@ -212,38 +212,39 @@ class _ToastCard extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Container(width: 4, color: _color),
-              const SizedBox(width: 14),
-              Icon(_icon, color: _color, size: 23),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  child: Text(
-                    message,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.right,
+        child: Row(
+          children: [
+            Container(width: 4, color: _color),
+            const SizedBox(width: 14),
+            Icon(_icon, color: _color, size: 23),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                child: Text(
+                  message,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.right,
                 ),
               ),
-              IconButton(
-                tooltip: 'إغلاق الإشعار',
+            ),
+            Semantics(
+              label: 'إغلاق الإشعار',
+              button: true,
+              child: IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed: onClose,
                 icon: const Icon(Icons.close_rounded, size: 19),
               ),
-              const SizedBox(width: 4),
-            ],
-          ),
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
       ),
     ),

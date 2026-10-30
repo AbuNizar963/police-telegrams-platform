@@ -85,7 +85,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 10));
     expect(find.text('جارٍ التحميل'), findsOneWidget);
-    await tester.tap(find.byTooltip('إغلاق الإشعار'));
+    await tester.tap(find.bySemanticsLabel('إغلاق الإشعار'));
     await tester.pumpAndSettle();
     expect(find.text('جارٍ التحميل'), findsNothing);
   });

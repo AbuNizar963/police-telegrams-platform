@@ -953,6 +953,9 @@ void main() {
 
     // The welcome panel is the default view; status stays hidden until swiping.
     expect(find.text('الجهة الحالية'), findsOneWidget);
+    final welcomePanel = find.byKey(const ValueKey<String>('welcome-panel'));
+    expect(welcomePanel, findsOneWidget);
+    final welcomePanelHeight = tester.getSize(welcomePanel).height;
     expect(find.text('حالة صندوق الخروج'), findsNothing);
     expect(find.text('لا توجد برقيات معلقة محليًا.'), findsNothing);
     await tester.drag(find.text('الجهة الحالية'), const Offset(300, 0));
@@ -962,6 +965,11 @@ void main() {
     expect(status, findsOneWidget);
     expect(find.text('حالة صندوق الخروج'), findsOneWidget);
     expect(find.textContaining('الخادم متصل • آخر تحقق'), findsOneWidget);
+    final outboxPanel = find.byKey(
+      const ValueKey<String>('outbox-status-panel'),
+    );
+    expect(outboxPanel, findsOneWidget);
+    expect(tester.getSize(outboxPanel).height, welcomePanelHeight);
 
     await tester.pump(const Duration(seconds: 9));
     await tester.pump();

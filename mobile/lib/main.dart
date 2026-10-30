@@ -2214,48 +2214,112 @@ class _DashboardPageState extends State<DashboardPage>
       'syncing' => Icons.sync,
       _ => Icons.cloud_upload_outlined,
     };
+    final detailMessage =
+        _lastSyncMessage ??
+        (_pendingOutbox > 0
+            ? 'لديك $_pendingOutbox برقية بانتظار المزامنة.'
+            : _idleOutboxMessage);
+
     return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.fromLTRB(13, 12, 13, 10),
+      key: const ValueKey<String>('outbox-status-panel'),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 150),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 0.22)),
+        color: const Color(0xFFFFFEFC),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E5DF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C10233F),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(icon, color: accent, size: 21),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  _syncPhase == 'syncing'
-                      ? 'المزامنة اللحظية قيد التنفيذ'
-                      : _syncPhase == 'success'
-                      ? 'اكتملت المزامنة بنجاح'
-                      : _syncPhase == 'idle'
-                      ? 'حالة صندوق الخروج'
-                      : _pendingOutbox > 0
-                      ? 'صندوق الخروج — $_pendingOutbox معلقة'
-                      : 'حالة صندوق الخروج',
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: accent.withValues(alpha: 0.16)),
+                ),
+                child: Center(
+                  child: _outboxSyncing
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(accent),
+                          ),
+                        )
+                      : Icon(icon, color: accent, size: 24),
                 ),
               ),
-              if (_pendingOutbox > 0)
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'حالة صندوق الخروج',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: navy,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: _serverStatusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            _serverStatusMessage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _serverStatusColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (_pendingOutbox > 0) ...[
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 9,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
+                    color: accent.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: accent.withValues(alpha: 0.18)),
                   ),
                   child: Text(
                     '$_pendingOutbox معلقة',
@@ -2266,64 +2330,92 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-          if (_lastSyncMessage != null ||
-              (!_outboxSyncing && _pendingOutbox == 0)) ...[
-            const SizedBox(height: 5),
-            Text(
-              _lastSyncMessage ?? _idleOutboxMessage,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF667085),
-                fontSize: 10,
-                height: 1.35,
-              ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F7F2),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-          ],
-          const SizedBox(height: 4),
-          Text(
-            _serverStatusMessage,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _serverStatusColor,
-              fontSize: 10,
-              height: 1.35,
-            ),
-          ),
-          if (_lastSyncAt != null && !_outboxSyncing)
-            Padding(
-              padding: const EdgeInsets.only(top: 3),
-              child: Text(
-                'آخر فحص للصندوق ${_syncTime(_lastSyncAt!)}',
-                style: const TextStyle(color: Color(0xFF98A2B3), fontSize: 9),
-              ),
-            ),
-          if (_outboxSyncing) ...[
-            const SizedBox(height: 9),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: const LinearProgressIndicator(minHeight: 3),
-            ),
-          ],
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Wrap(
-              spacing: 2,
+            child: Row(
               children: [
-                TextButton(
-                  onPressed: _openOutbox,
-                  child: const Text('التفاصيل'),
+                const Icon(Icons.outbox_outlined, color: navy, size: 18),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _lastSyncAt == null
+                            ? 'مزامنة البرقيات'
+                            : 'آخر فحص ${_syncTime(_lastSyncAt!)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF7A8493),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        detailMessage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: navy,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                TextButton(
-                  onPressed: _outboxSyncInProgress ? null : () => _syncOutbox(),
-                  child: const Text('مزامنة الآن'),
+                IconButton(
+                  tooltip: 'التفاصيل',
+                  onPressed: _openOutbox,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 34,
+                    height: 34,
+                  ),
+                  icon: const Icon(Icons.list_alt_outlined, size: 19),
+                  color: navy,
+                ),
+                IconButton(
+                  tooltip: 'مزامنة الآن',
+                  onPressed: _outboxSyncInProgress
+                      ? null
+                      : () => _syncOutbox(),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 34,
+                    height: 34,
+                  ),
+                  icon: const Icon(Icons.sync_rounded, size: 19),
+                  color: navy,
                 ),
               ],
             ),
           ),
+          if (_outboxSyncing) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: accent,
+                backgroundColor: accent.withValues(alpha: 0.12),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -2853,8 +2945,10 @@ class _DashboardPageState extends State<DashboardPage>
 
   Widget _welcomePanel() {
     return Container(
+      key: const ValueKey<String>('welcome-panel'),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 150),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFEFC),
         borderRadius: BorderRadius.circular(22),

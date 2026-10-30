@@ -363,7 +363,7 @@ export default function HeaderActions() {
                 className="cursor-pointer justify-end gap-2"
               >
                 <Users className="h-4 w-4" />
-                <span>إدارة المستخدمين وإضافة الحسابات</span>
+                <span>الحسابات والصلاحيات</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
@@ -374,7 +374,7 @@ export default function HeaderActions() {
                 className="cursor-pointer justify-end gap-2"
               >
                 <Users className="h-4 w-4" />
-                <span>إدارة المناطق والأقسام والمخافر</span>
+                <span>إدارة الجهات</span>
               </DropdownMenuItem>
             </>
           )}

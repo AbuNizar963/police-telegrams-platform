@@ -15,6 +15,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   Archive,
   Activity,
+  Building2,
   FileSpreadsheet,
   History,
   LayoutDashboard,
@@ -36,7 +37,12 @@ import { BrandMark } from "./BrandMark";
 import HeaderActions from "./HeaderActions";
 
 const menuItems = [
-  { key: "dashboard", icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
+  {
+    key: "dashboard",
+    icon: LayoutDashboard,
+    label: "لوحة المتابعة",
+    path: "/",
+  },
   {
     key: "audit-log",
     icon: History,
@@ -47,39 +53,46 @@ const menuItems = [
   {
     key: "create-telegram",
     icon: Plus,
-    label: "إنشاء برقية",
+    label: "البرقيات · إنشاء",
     action: "open-telegram-composer",
   },
   {
     key: "telegram-excel-tools",
     icon: FileSpreadsheet,
-    label: "استيراد وتصدير السجل",
+    label: "التقارير والتصدير",
     action: "open-telegram-excel-tools",
   },
   {
     key: "accounts",
     icon: Users,
-    label: "إدارة المستخدمين",
+    label: "الحسابات والصلاحيات",
     action: "open-owner-user-management",
+    adminOnly: true,
+  },
+  {
+    key: "organizations",
+    icon: Building2,
+    label: "إدارة الجهات",
+    action: "open-owner-organization-management",
     adminOnly: true,
   },
   {
     key: "locations",
     icon: MapPinned,
-    label: "خريطة البلاغات والمواقع الجغرافية",
+    label: "مركز العمليات والمواقع",
     tab: "locations",
   },
-  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
+  { key: "units", icon: Users, label: "الوحدات والإحالات", tab: "units" },
   {
     key: "resources",
     icon: Activity,
-    label: "إدارة الموارد",
+    label: "متابعة توزيع العمل",
     tab: "resources",
   },
   {
     key: "archive",
     icon: Archive,
-    label: "الأرشيف والسجلات المغلقة",
+    label: "أرشيف البرقيات",
     tab: "archive",
   },
 ];
@@ -385,7 +398,9 @@ function DashboardLayoutContent({
     user?.role === "admin" ||
     organizationContext.data?.isOwner === true ||
     (organizationContext.data?.isActive === true &&
-      organizationContext.data?.role === "system_admin");
+      ["system_admin", "auditor"].includes(
+        organizationContext.data?.role ?? ""
+      ));
   const [location, setLocation] = useLocation();
   const { state, setOpen, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";

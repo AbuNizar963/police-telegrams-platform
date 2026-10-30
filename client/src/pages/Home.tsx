@@ -3007,6 +3007,17 @@ function TelegramDetail({
   const platformDocumentSettings = documentSettingsQuery.data;
   const documentSettingsUnavailable =
     !platformDocumentSettings || documentSettingsQuery.isError;
+  const recordDocumentOutput =
+    trpc.telegrams.recordDocumentOutput.useMutation();
+  const auditDocumentOutput = (
+    operation: "print" | "download",
+    format: "pdf" | "png"
+  ) =>
+    recordDocumentOutput.mutateAsync({
+      id: telegram.id,
+      operation,
+      format,
+    });
   const loadExportSettings = () =>
     loadDocumentSettingsForExport(() =>
       utils.platformDocumentSettings.get.fetch(undefined, { staleTime: 0 })
@@ -3064,6 +3075,28 @@ function TelegramDetail({
     toast.info(
       "انتهت مهلة تعديل وحذف البرقية البالغة 48 ساعة. يرجى التواصل مع مسؤول الجهة إذا كان هناك خطأ."
     );
+  const requestPermanentDelete = () => {
+    if (managementExpired) {
+      notifyManagementExpired();
+      return;
+    }
+    const reason = window.prompt(
+      "اكتب سبب الحذف النهائي (3 أحرف على الأقل). سيظهر السبب في سجل الإجراءات غير القابل للتعديل:"
+    );
+    if (reason === null) return;
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length < 3) {
+      toast.error("سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف");
+      return;
+    }
+    if (
+      window.confirm(
+        `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+      )
+    ) {
+      deleteTelegram.mutate({ id: telegram.id, reason: normalizedReason });
+    }
+  };
   const transition = trpc.telegrams.transition.useMutation({
     onSuccess: async () => {
       toast.success("تم تسجيل انتقال البرقية وتحديث سجل التدقيق");
@@ -4100,6 +4133,7 @@ function TelegramDetail({
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
 
+      await auditDocumentOutput("print", "pdf");
       window.addEventListener("afterprint", cleanup, { once: true });
       window.print();
 
@@ -4119,6 +4153,7 @@ function TelegramDetail({
     setExporting("image");
 
     try {
+      await auditDocumentOutput("download", "png");
       const blob = await imageBlob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -4140,6 +4175,7 @@ function TelegramDetail({
     setExporting("image-share");
 
     try {
+      await auditDocumentOutput("download", "png");
       const blob = await imageBlob();
       const file = new File(
         [blob],
@@ -4185,6 +4221,7 @@ function TelegramDetail({
     setExporting(share ? "share" : "pdf");
 
     try {
+      await auditDocumentOutput("download", "pdf");
       const blob = await renderOfficialDocument("pdf");
       const file = new File(
         [blob],
@@ -4652,18 +4689,7 @@ function TelegramDetail({
               ) : null}
               {canManageContent && (
                 <Button
-                  onClick={() => {
-                    if (managementExpired) {
-                      notifyManagementExpired();
-                      return;
-                    }
-                    if (
-                      window.confirm(
-                        `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
-                      )
-                    )
-                      deleteTelegram.mutate({ id: telegram.id });
-                  }}
+                  onClick={requestPermanentDelete}
                   disabled={deleteTelegram.isPending}
                   variant="destructive"
                   className={`h-10 flex-1 rounded-lg sm:flex-none ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
@@ -4706,19 +4732,7 @@ function TelegramDetail({
               )}
               {canManageContent && (
                 <Button
-                  onClick={() => {
-                    if (managementExpired) {
-                      notifyManagementExpired();
-                      return;
-                    }
-                    if (
-                      window.confirm(
-                        `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
-                      )
-                    ) {
-                      deleteTelegram.mutate({ id: telegram.id });
-                    }
-                  }}
+                  onClick={requestPermanentDelete}
                   disabled={deleteTelegram.isPending}
                   variant="destructive"
                   className={`h-10 rounded-lg ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}

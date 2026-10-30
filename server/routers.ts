@@ -55,6 +55,7 @@ import {
   getTelegramByIdempotencyKey,
   getTelegramReport,
   listAuditLogs,
+  searchAuditLogs,
   listTelegramActions,
   listTelegramAttachments,
   listTelegrams,
@@ -509,6 +510,57 @@ async function assertOwnerOrganizationScope(
   }
 }
 
+async function getAuditLogAccessScope(user: TelegramScopeUser): Promise<{
+  organizationId?: string;
+}> {
+  const membership = await getUserOrganizationMembership(user.id);
+  const hasSystemAuditAccess =
+    isPlatformOwner(user) ||
+    user.role === "admin" ||
+    (membership?.isActive === true && membership.role === "system_admin");
+  if (hasSystemAuditAccess) return {};
+
+  // An organization auditor can inspect only events explicitly attributed to
+  // the active organization. Platform-wide security events remain restricted.
+  if (membership?.isActive === true && membership.role === "auditor") {
+    return { organizationId: membership.organizationId };
+  }
+
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "لا تملك صلاحية عرض سجل الإجراءات",
+  });
+}
+
+function telegramAuditSnapshot(telegram: Record<string, unknown>) {
+  const fields = [
+    "id",
+    "serialNumber",
+    "serialCode",
+    "originalSerial",
+    "subject",
+    "recipient",
+    "body",
+    "classification",
+    "priority",
+    "category",
+    "status",
+    "organizationId",
+    "currentOrganizationId",
+    "createdByUserId",
+    "creatorName",
+    "creatorBadgeId",
+    "attachmentManifest",
+    "gpsLatitude",
+    "gpsLongitude",
+    "createdAt",
+    "updatedAt",
+  ];
+  return Object.fromEntries(
+    fields.map(field => [field, telegram[field] ?? null])
+  );
+}
+
 export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
@@ -516,21 +568,27 @@ export const appRouter = router({
 
   auditLogs: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      const membership = await getUserOrganizationMembership(ctx.user.id);
-      const canReadAuditLogs =
-        isPlatformOwner(ctx.user) ||
-        ctx.user.role === "admin" ||
-        (membership?.isActive === true && membership.role === "system_admin");
-
-      if (!canReadAuditLogs) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "لا تملك صلاحية عرض سجل الإجراءات",
-        });
-      }
-
-      return listAuditLogs();
+      return listAuditLogs(await getAuditLogAccessScope(ctx.user));
     }),
+    search: protectedProcedure
+      .input(
+        z.object({
+          actorUserId: z.number().int().positive().optional(),
+          action: z.string().trim().max(80).optional(),
+          resourceId: z.string().trim().max(80).optional(),
+          search: z.string().trim().max(120).optional(),
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+          page: z.number().int().min(1).max(100000).default(1),
+          pageSize: z.number().int().min(10).max(100).default(25),
+        })
+      )
+      .query(async ({ ctx, input }) =>
+        searchAuditLogs({
+          ...input,
+          ...(await getAuditLogAccessScope(ctx.user)),
+        })
+      ),
   }),
 
   auth: router({
@@ -1704,6 +1762,7 @@ export const appRouter = router({
             fileName: input.fileName,
             contentType: input.contentType,
             size: bytes.byteLength,
+            sha256: sha256Hex(bytes),
           }),
         });
 
@@ -1805,6 +1864,42 @@ export const appRouter = router({
           fileName: attachment.originalName,
           mimeType: attachment.mimeType,
         };
+      }),
+    recordDocumentOutput: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          operation: z.enum(["print", "download"]),
+          format: z.enum(["pdf", "png"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.id);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية إخراج هذه البرقية"
+        );
+        await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: `telegram.document.${input.operation}`,
+          entityType: "telegram",
+          entityId: String(telegram.id),
+          metadata: JSON.stringify({
+            serialNumber: telegram.serialNumber,
+            serialCode: telegram.serialCode,
+            format: input.format,
+          }),
+        });
+        return { success: true as const };
       }),
     incomingRoutes: protectedProcedure
       .input(z.object({ telegramId: z.number().int().positive() }))
@@ -1923,6 +2018,18 @@ export const appRouter = router({
           1000
         );
         const settings = await getOrCreateSettings(ctx.user.id);
+        await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "telegram.export.rows",
+          entityType: "telegram_collection",
+          entityId: String(rows.length),
+          metadata: JSON.stringify({
+            rowCount: rows.length,
+            filters: input ?? {},
+          }),
+        });
         return rows.map(row => ({
           ...row,
           ...formatTelegramWorkbookDateTime(
@@ -1954,10 +2061,25 @@ export const appRouter = router({
           password: z.string().max(128).optional(),
         })
       )
-      .mutation(async ({ input }) => ({
-        base64: await buildTelegramWorkbook(input),
-        fileName: `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      })),
+      .mutation(async ({ ctx, input }) => {
+        const base64 = await buildTelegramWorkbook(input);
+        await writeAuditLog({
+          ...getRequestAuditContext(ctx.req),
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+          action: "telegram.export.workbook",
+          entityType: "telegram_collection",
+          entityId: String(input.rows.length),
+          metadata: JSON.stringify({
+            rowCount: input.rows.length,
+            passwordProtected: Boolean(input.password),
+          }),
+        });
+        return {
+          base64,
+          fileName: `سجل-البرقيات-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        };
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
@@ -2033,6 +2155,10 @@ export const appRouter = router({
           });
         }
 
+        const beforeState = telegramAuditSnapshot(
+          existing as unknown as Record<string, unknown>
+        );
+
         const organizationSettings = existing.organizationId
           ? await getOrganizationSettings(existing.organizationId)
           : undefined;
@@ -2055,6 +2181,24 @@ export const appRouter = router({
             : {}),
         });
 
+        const afterState = telegramAuditSnapshot(
+          updated as unknown as Record<string, unknown>
+        );
+        await recordTelegramVersion({
+          telegramId: updated.id,
+          changedByUserId: ctx.user.id,
+          changeReason: "تعديل محتوى البرقية",
+          snapshot: {
+            subject: updated.subject,
+            recipient: updated.recipient,
+            body: updated.body,
+            classification: updated.classification,
+            priority: updated.priority,
+            category: updated.category,
+            status: updated.status,
+          },
+        });
+
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
@@ -2066,13 +2210,20 @@ export const appRouter = router({
             serialNumber: existing.serialNumber,
             createdByUserId: existing.createdByUserId,
           }),
+          beforeState: JSON.stringify(beforeState),
+          afterState: JSON.stringify(afterState),
         });
 
         return updated;
       }),
 
     delete: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(3).max(1000),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         const existing = await getTelegramById(input.id);
         if (!existing) {
@@ -2094,6 +2245,10 @@ export const appRouter = router({
               "انتهت مهلة حذف البرقية (48 ساعة)؛ الصلاحية الدائمة للمالك فقط",
           });
         }
+
+        const beforeState = telegramAuditSnapshot(
+          existing as unknown as Record<string, unknown>
+        );
 
         const purged = await purgeTelegramPermanently(existing.id);
         if (!purged) {
@@ -2138,9 +2293,9 @@ export const appRouter = router({
             creatorBadgeId: existing.creatorBadgeId ?? null,
             deletedAttachmentCount: purged.attachmentStorageKeys.length,
             pendingStorageCleanup: failedStorageKeys,
-            reason:
-              "حذف نهائي من حساب المالك أو المدير دون الاحتفاظ بسجل البرقية",
           }),
+          reason: input.reason,
+          beforeState: JSON.stringify(beforeState),
         });
 
         return {
@@ -3011,6 +3166,11 @@ export const appRouter = router({
             serialNumber,
             classification: input.classification,
           }),
+          afterState: JSON.stringify(
+            telegramAuditSnapshot(
+              telegram as unknown as Record<string, unknown>
+            )
+          ),
         });
 
         await recordTelegramAction({

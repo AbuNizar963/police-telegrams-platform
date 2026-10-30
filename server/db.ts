@@ -1401,32 +1401,158 @@ export async function purgeTelegramPermanently(
   };
 }
 
-export async function listAuditLogs() {
-  const { data, error } = await getSupabaseAdmin()
-    .from("audit_logs")
-    .select(
-      "id, actorUserId, actorName, action, entityType, entityId, metadata, ipAddress, deviceType, createdAt"
-    )
-    .order("createdAt", { ascending: false })
-    .limit(200);
+const AUDIT_LOG_SELECT =
+  "id, actorUserId, actorName, actorRank, actorRole, organizationId, action, entityType, entityId, metadata, reason, beforeState, afterState, ipAddress, userAgent, deviceType, previousHash, entryHash, createdAt";
 
+export type AuditLogSearchInput = {
+  actorUserId?: number;
+  action?: string;
+  resourceId?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  organizationId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+function applyAuditLogFilters(query: any, input: AuditLogSearchInput): any {
+  let filtered = query;
+  if (input.actorUserId) {
+    filtered = filtered.eq("actorUserId", input.actorUserId);
+  }
+  if (input.action) {
+    filtered = filtered.eq("action", input.action);
+  }
+  if (input.resourceId) {
+    filtered = filtered.eq("entityId", input.resourceId);
+  }
+  if (input.organizationId) {
+    filtered = filtered.eq("organizationId", input.organizationId);
+  }
+  if (input.from) {
+    filtered = filtered.gte("createdAt", input.from);
+  }
+  if (input.to) {
+    filtered = filtered.lte("createdAt", input.to);
+  }
+
+  // PostgREST filter syntax is not a general search language. Keep only a
+  // deliberately small set of characters before composing an `or` predicate.
+  const search = input.search
+    ?.replace(/[^\w\s.\-\u0600-\u06ff]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  if (search) {
+    filtered = filtered.or(
+      [
+        `actorName.ilike.%${search}%`,
+        `action.ilike.%${search}%`,
+        `entityType.ilike.%${search}%`,
+        `entityId.ilike.%${search}%`,
+        `metadata.ilike.%${search}%`,
+      ].join(",")
+    );
+  }
+  return filtered;
+}
+
+export async function listAuditLogs(
+  input: Pick<AuditLogSearchInput, "organizationId"> = {}
+) {
+  const query = applyAuditLogFilters(
+    getSupabaseAdmin()
+      .from("audit_logs")
+      .select(AUDIT_LOG_SELECT)
+      .order("createdAt", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(200),
+    input
+  );
+  const { data, error } = await query;
   throwIfError(error, "Failed to list audit logs");
   return data ?? [];
 }
 
-export async function writeAuditLog(
-  input: Omit<
-    AuditLog,
-    "id" | "createdAt" | "ipAddress" | "userAgent" | "deviceType"
-  > &
-    Partial<Pick<AuditLog, "ipAddress" | "userAgent" | "deviceType">>
-): Promise<void> {
-  const { error } = await getSupabaseAdmin()
-    .from("audit_logs")
-    .insert({
-      ...input,
-      deviceType: input.deviceType ?? "unknown",
-    });
+export async function searchAuditLogs(input: AuditLogSearchInput) {
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(100, Math.max(10, input.pageSize ?? 25));
+  const query = applyAuditLogFilters(
+    getSupabaseAdmin()
+      .from("audit_logs")
+      .select(AUDIT_LOG_SELECT, { count: "exact" })
+      .order("createdAt", { ascending: false })
+      .order("id", { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1),
+    input
+  );
+  const { data, error, count } = await query;
+  throwIfError(error, "Failed to search audit logs");
+  return {
+    items: data ?? [],
+    total: count ?? 0,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
+  };
+}
+
+type WriteAuditLogInput = Omit<
+  AuditLog,
+  | "id"
+  | "createdAt"
+  | "ipAddress"
+  | "userAgent"
+  | "deviceType"
+  | "actorRank"
+  | "actorRole"
+  | "organizationId"
+  | "reason"
+  | "beforeState"
+  | "afterState"
+  | "previousHash"
+  | "entryHash"
+> &
+  Partial<
+    Pick<
+      AuditLog,
+      | "ipAddress"
+      | "userAgent"
+      | "deviceType"
+      | "actorRank"
+      | "actorRole"
+      | "organizationId"
+      | "reason"
+      | "beforeState"
+      | "afterState"
+    >
+  >;
+
+export async function writeAuditLog(input: WriteAuditLogInput): Promise<void> {
+  const client = getSupabaseAdmin();
+  const { data: actor, error: actorError } = await client
+    .from("users")
+    .select("rank, role, organizationId")
+    .eq("id", input.actorUserId)
+    .maybeSingle();
+  throwIfError(actorError, "Failed to snapshot audit actor");
+
+  // A membership role is more precise than the broad account role. If the
+  // membership is unavailable, retain the account role rather than inventing
+  // a permission snapshot.
+  const membership = await getUserOrganizationMembership(input.actorUserId);
+  const { error } = await client.from("audit_logs").insert({
+    ...input,
+    actorRank: input.actorRank ?? actor?.rank ?? null,
+    actorRole: input.actorRole ?? membership?.role ?? actor?.role ?? null,
+    organizationId:
+      input.organizationId ??
+      membership?.organizationId ??
+      actor?.organizationId ??
+      null,
+    deviceType: input.deviceType ?? "unknown",
+  });
   throwIfError(error, "Failed to write audit log");
 }
 export type NotificationRecord = {

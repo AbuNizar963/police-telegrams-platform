@@ -594,6 +594,16 @@ export const auditLogs = pgTable(
     deviceType: varchar("deviceType", { length: 16 })
       .default("unknown")
       .notNull(),
+    actorRank: varchar("actorRank", { length: 120 }),
+    actorRole: varchar("actorRole", { length: 80 }),
+    // Deliberately no FK: an immutable historical event must outlive a later
+    // organization archival or lifecycle change.
+    organizationId: uuid("organizationId"),
+    reason: text("reason"),
+    beforeState: text("beforeState"),
+    afterState: text("afterState"),
+    previousHash: varchar("previousHash", { length: 64 }),
+    entryHash: varchar("entryHash", { length: 64 }),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -601,6 +611,17 @@ export const auditLogs = pgTable(
   table => [
     index("audit_actor_idx").on(table.actorUserId),
     index("audit_created_at_idx").on(table.createdAt),
+    index("audit_actor_created_at_idx").on(table.actorUserId, table.createdAt),
+    index("audit_action_created_at_idx").on(table.action, table.createdAt),
+    index("audit_entity_created_at_idx").on(
+      table.entityType,
+      table.entityId,
+      table.createdAt
+    ),
+    index("audit_organization_created_at_idx").on(
+      table.organizationId,
+      table.createdAt
+    ),
   ]
 );
 

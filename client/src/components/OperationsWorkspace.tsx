@@ -248,13 +248,8 @@ function LocationsPanel({
             <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground sm:min-h-64">
               جارٍ تحميل مواقع البرقيات...
             </div>
-          ) : markers.length > 0 && import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
-            <MapView markers={markers} className="h-72 sm:h-[420px]" />
           ) : markers.length > 0 ? (
-            <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm leading-6 text-muted-foreground sm:min-h-64">
-              الإحداثيات محفوظة. افتح أحد المواقع من «سجل المواقع» لعرضه على
-              خرائط Google.
-            </div>
+            <MapView markers={markers} className="h-72 sm:h-[420px]" />
           ) : (
             <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-6 text-center sm:min-h-64">
               <MapPinned className="h-8 w-8 text-[#9b7c3d]" />

@@ -24,6 +24,7 @@ const mocked = vi.hoisted(() => ({
   createLocalOwnerUser: vi.fn(),
   getUserByUsername: vi.fn(),
   recordTelegramAction: vi.fn(),
+  recordTelegramVersion: vi.fn(),
 }));
 const organizationMocks = vi.hoisted(() => ({
   getUserOrganizationMembership: vi.fn(),
@@ -204,6 +205,30 @@ describe("telegram administration permissions", () => {
     );
   });
 
+  it("records a permitted official-document print command", async () => {
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: telegram.organizationId,
+      role: "member",
+      isActive: true,
+    });
+    const caller = appRouter.createCaller(contextFor("user"));
+
+    await expect(
+      caller.telegrams.recordDocumentOutput({
+        id: telegram.id,
+        operation: "print",
+        format: "pdf",
+      })
+    ).resolves.toEqual({ success: true });
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "telegram.document.print",
+        entityType: "telegram",
+        entityId: String(telegram.id),
+      })
+    );
+  });
+
   it("rejects lifecycle status changes through content updates", async () => {
     const caller = appRouter.createCaller(contextFor("admin"));
 
@@ -352,7 +377,9 @@ describe("telegram administration permissions", () => {
     mocked.getUserOrganizationId.mockResolvedValue(telegram.organizationId);
     const caller = appRouter.createCaller(contextFor("user"));
 
-    await expect(caller.telegrams.delete({ id: 7 })).resolves.toMatchObject({
+    await expect(
+      caller.telegrams.delete({ id: 7, reason: "تصحيح سجل خاطئ" })
+    ).resolves.toMatchObject({
       success: true,
     });
     expect(mocked.purgeTelegramPermanently).toHaveBeenCalledWith(7);
@@ -560,7 +587,9 @@ describe("telegram administration permissions", () => {
     await expect(caller.telegrams.update(updateInput)).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
-    await expect(caller.telegrams.delete({ id: 7 })).rejects.toMatchObject({
+    await expect(
+      caller.telegrams.delete({ id: 7, reason: "تصحيح سجل خاطئ" })
+    ).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
 
@@ -620,7 +649,10 @@ describe("telegram administration permissions", () => {
 
   it("permanently removes a telegram for administrators and records its original identity", async () => {
     const caller = appRouter.createCaller(contextFor("admin"));
-    const result = await caller.telegrams.delete({ id: 7 });
+    const result = await caller.telegrams.delete({
+      id: 7,
+      reason: "تصحيح سجل خاطئ",
+    });
 
     expect(result).toEqual({
       success: true,
@@ -655,7 +687,10 @@ describe("telegram administration permissions", () => {
       ],
     });
     const caller = appRouter.createCaller(contextFor("admin"));
-    const result = await caller.telegrams.delete({ id: 7 });
+    const result = await caller.telegrams.delete({
+      id: 7,
+      reason: "تصحيح سجل خاطئ",
+    });
 
     expect(storageMocks.storageDelete).toHaveBeenCalledTimes(2);
     expect(storageMocks.storageDelete).toHaveBeenCalledWith(
@@ -677,7 +712,10 @@ describe("telegram administration permissions", () => {
       new Error("Storage provider does not support cleanup")
     );
     const caller = appRouter.createCaller(contextFor("admin"));
-    const result = await caller.telegrams.delete({ id: 7 });
+    const result = await caller.telegrams.delete({
+      id: 7,
+      reason: "تصحيح سجل خاطئ",
+    });
 
     expect(result.success).toBe(true);
     expect(result.deletedAttachmentCount).toBe(2);
@@ -695,7 +733,9 @@ describe("telegram administration permissions", () => {
     mocked.purgeTelegramPermanently.mockResolvedValue(undefined);
     const caller = appRouter.createCaller(contextFor("admin"));
 
-    await expect(caller.telegrams.delete({ id: 7 })).rejects.toMatchObject({
+    await expect(
+      caller.telegrams.delete({ id: 7, reason: "تصحيح سجل خاطئ" })
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(mocked.writeAuditLog).not.toHaveBeenCalled();

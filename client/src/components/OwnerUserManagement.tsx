@@ -233,12 +233,16 @@ export default function OwnerUserManagement() {
 
   const visibleGroups = useMemo(() => {
     const query = userSearch.trim().toLocaleLowerCase("ar");
-    return userGroups
-      .map(group => ({
-        ...group,
-        users: group.users.filter(user => matchesUserSearch(user, query)),
-      }))
-      .filter(group => group.users.length > 0 || !query);
+    return (
+      userGroups
+        .map(group => ({
+          ...group,
+          users: group.users.filter(user => matchesUserSearch(user, query)),
+        }))
+        // The server already paginates users. Showing every organization with no
+        // user in this page turned a focused search into a long, misleading tree.
+        .filter(group => group.users.length > 0)
+    );
   }, [userGroups, userSearch]);
 
   const selectedOrganization = organizationById.get(selectedOrganizationId);

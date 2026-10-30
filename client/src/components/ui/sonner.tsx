@@ -74,8 +74,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       expand
       gap={10}
       visibleToasts={4}
-      offset="18px"
-      mobileOffset="12px"
+      offset="calc(env(safe-area-inset-top, 0px) + 14px)"
+      mobileOffset="calc(env(safe-area-inset-top, 0px) + 10px)"
       className="toaster group"
       toastOptions={{
         duration: 4500,

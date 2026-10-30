@@ -4516,7 +4516,10 @@ function TelegramDetail({
                         `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
                       )
                     )
-                      deleteTelegram.mutate({ id: telegram.id });
+                      deleteTelegram.mutate({
+                        id: telegram.id,
+                        reason: "حذف نهائي من واجهة متوافقة",
+                      });
                   }}
                   disabled={deleteTelegram.isPending}
                   variant="destructive"
@@ -4570,7 +4573,10 @@ function TelegramDetail({
                         `سيتم حذف البرقية ${getTelegramDisplayNumber(telegram.serialCode)} حذفًا نهائيًا مع مرفقاتها وسجل مسارها، ولن تبقى في قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
                       )
                     ) {
-                      deleteTelegram.mutate({ id: telegram.id });
+                      deleteTelegram.mutate({
+                        id: telegram.id,
+                        reason: "حذف نهائي من واجهة متوافقة",
+                      });
                     }
                   }}
                   disabled={deleteTelegram.isPending}

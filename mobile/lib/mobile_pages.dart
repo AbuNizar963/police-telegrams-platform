@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -612,7 +613,14 @@ class _AuditLogPageState extends State<AuditLogPage> {
   bool loading = true;
   String? error;
   List<dynamic> entries = const [];
+  int total = 0;
+  int page = 1;
   String search = '';
+  String resourceId = '';
+  String action = '';
+  DateTime? from;
+  DateTime? to;
+  Timer? _refreshTimer;
 
   static const actionLabels = <String, String>{
     'organization.settings.update': 'تحديث إعدادات الجهة',
@@ -628,6 +636,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
     'telegram.route.receive': 'تأكيد استلام إحالة',
     'telegram.status.transition': 'تغيير حالة برقية',
     'telegram.create': 'إنشاء برقية',
+    'telegram.document.print': 'طباعة وثيقة برقية',
+    'telegram.document.download': 'تنزيل أو مشاركة وثيقة برقية',
+    'telegram.export.rows': 'تجهيز تصدير سجل البرقيات',
+    'telegram.export.workbook': 'تصدير سجل البرقيات إلى Excel',
     'telegram.import.excel': 'استيراد برقيات من Excel',
     'telegram.broadcast': 'توزيع برقية على جهات',
     'telegram.broadcast.atomic_failure': 'فشل توزيع البرقية',
@@ -643,18 +655,47 @@ class _AuditLogPageState extends State<AuditLogPage> {
   void initState() {
     super.initState();
     load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => load(showLoading: false),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> load({bool showLoading = true}) async {
     if (showLoading && mounted) setState(() => loading = true);
     try {
       final result = await widget.api.call(
-        'auditLogs.list',
+        'auditLogs.search',
         allowOfflineCache: false,
+        input: {
+          'page': page,
+          'pageSize': 50,
+          if (search.trim().isNotEmpty) 'search': search.trim(),
+          if (resourceId.trim().isNotEmpty) 'resourceId': resourceId.trim(),
+          if (action.isNotEmpty) 'action': action,
+          if (from != null) 'from': from!.toUtc().toIso8601String(),
+          if (to != null)
+            'to': DateTime(
+              to!.year,
+              to!.month,
+              to!.day + 1,
+            ).toUtc().toIso8601String(),
+        },
       );
       if (!mounted) return;
       setState(() {
-        entries = result is List ? result : const [];
+        entries = result is Map && result['items'] is List
+            ? result['items'] as List
+            : const [];
+        total = result is Map && result['total'] is num
+            ? (result['total'] as num).toInt()
+            : entries.length;
         error = null;
       });
     } catch (exception) {
@@ -684,26 +725,52 @@ class _AuditLogPageState extends State<AuditLogPage> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredEntries {
-    final query = search.trim().toLowerCase();
-    final rows = entries.whereType<Map>().map(
+  List<Map<String, dynamic>> get _rows => entries.whereType<Map>().map(
       (item) => Map<String, dynamic>.from(item),
+    ).toList();
+
+  bool get _hasFilters =>
+      search.trim().isNotEmpty ||
+      resourceId.trim().isNotEmpty ||
+      action.isNotEmpty ||
+      from != null ||
+      to != null;
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: (isFrom ? from : to) ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      helpText: isFrom ? 'تاريخ بداية السجل' : 'تاريخ نهاية السجل',
     );
-    if (query.isEmpty) return rows.toList();
-    return rows.where((entry) {
-      final searchable = [
-        entry['actorName'],
-        entry['actorUserId'],
-        entry['action'],
-        actionLabels['${entry['action']}'],
-        entry['entityType'],
-        entry['entityId'],
-        entry['ipAddress'],
-        entry['deviceType'],
-        entry['metadata'],
-      ].map((value) => _stringValue(value, '')).join(' ').toLowerCase();
-      return searchable.contains(query);
-    }).toList();
+    if (selected == null || !mounted) return;
+    setState(() {
+      if (isFrom) {
+        from = selected;
+      } else {
+        to = selected;
+      }
+      page = 1;
+    });
+    await load(showLoading: false);
+  }
+
+  void _applyFilters() {
+    setState(() => page = 1);
+    load(showLoading: false);
+  }
+
+  void _clearFilters() {
+    setState(() {
+      search = '';
+      resourceId = '';
+      action = '';
+      from = null;
+      to = null;
+      page = 1;
+    });
+    load(showLoading: false);
   }
 
   @override
@@ -748,7 +815,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${entries.length} إجراء محمّل · أحدث 200 إجراء · قراءة فقط',
+                                  '$total نتيجة · قراءة فقط · يتحدث تلقائياً كل 5 ثوانٍ',
                                   style: const TextStyle(
                                     color: Colors.black54,
                                     fontSize: 12,
@@ -763,22 +830,109 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: TextField(
-                      onChanged: (value) => setState(() => search = value),
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: 'بحث بالمستخدم أو الإجراء أو المعرّف',
-                      ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          onChanged: (value) => search = value,
+                          onSubmitted: (_) => _applyFilters(),
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            hintText: 'الموظف أو الإجراء أو رقم البرقية',
+                            suffixIcon: IconButton(
+                              tooltip: 'تطبيق البحث',
+                              onPressed: _applyFilters,
+                              icon: const Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                onChanged: (value) => resourceId = value,
+                                onSubmitted: (_) => _applyFilters(),
+                                decoration: const InputDecoration(
+                                  labelText: 'معرّف المورد أو رقم البرقية',
+                                  prefixIcon: Icon(Icons.tag_outlined),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: action,
+                                decoration: const InputDecoration(
+                                  labelText: 'نوع الإجراء',
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: '',
+                                    child: Text('كل الإجراءات'),
+                                  ),
+                                  ...actionLabels.entries.map(
+                                    (entry) => DropdownMenuItem(
+                                      value: entry.key,
+                                      child: Text(
+                                        entry.value,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    action = value ?? '';
+                                    page = 1;
+                                  });
+                                  load(showLoading: false);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _pickDate(isFrom: true),
+                              icon: const Icon(Icons.calendar_today_outlined),
+                              label: Text(
+                                from == null
+                                    ? 'من التاريخ'
+                                    : '${from!.year}/${from!.month}/${from!.day}',
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _pickDate(isFrom: false),
+                              icon: const Icon(Icons.event_outlined),
+                              label: Text(
+                                to == null
+                                    ? 'إلى التاريخ'
+                                    : '${to!.year}/${to!.month}/${to!.day}',
+                              ),
+                            ),
+                            if (_hasFilters)
+                              TextButton.icon(
+                                onPressed: _clearFilters,
+                                icon: const Icon(Icons.filter_alt_off_outlined),
+                                label: const Text('مسح المرشحات'),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   if (error != null) _ErrorCard(message: error!),
-                  if (error == null && _filteredEntries.isEmpty)
+                  if (error == null && _rows.isEmpty)
                     _EmptyCard(
-                      message: search.trim().isEmpty
+                      message: !_hasFilters
                           ? 'لا توجد إجراءات مسجلة بعد.'
                           : 'لا توجد نتائج مطابقة للبحث.',
                     ),
-                  ..._filteredEntries.map((entry) {
+                  ..._rows.map((entry) {
                     final action = _stringValue(entry['action'], 'إجراء');
                     final actionLabel = actionLabels[action] ?? action;
                     final metadata = _metadata(entry['metadata']);
@@ -788,6 +942,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                       entry['ipAddress'],
                       'غير متوفر',
                     );
+                    final beforeState = _metadata(entry['beforeState']);
+                    final afterState = _metadata(entry['afterState']);
+                    final reason = _stringValue(entry['reason'], '');
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(14),
@@ -837,7 +994,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             _AuditDetail(
                               label: 'منفّذ الإجراء',
                               value:
-                                  '${_stringValue(entry['actorName'])} · المستخدم رقم ${_stringValue(entry['actorUserId'])}',
+                                  '${_stringValue(entry['actorName'])} · المستخدم رقم ${_stringValue(entry['actorUserId'])}\n${_stringValue(entry['actorRank'], 'بدون رتبة')} · ${_stringValue(entry['actorRole'], 'بدون دور')}',
                             ),
                             const SizedBox(height: 8),
                             _AuditDetail(
@@ -851,6 +1008,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
                               label: 'عنوان الشبكة',
                               value: ipAddress,
                             ),
+                            if (reason.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              _AuditDetail(label: 'سبب الإجراء', value: reason),
+                            ],
                             if (metadata.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               ExpansionTile(
@@ -876,11 +1037,69 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 ],
                               ),
                             ],
+                            if (beforeState.isNotEmpty || afterState.isNotEmpty)
+                              ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                title: const Text(
+                                  'مقارنة قبل / بعد',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                children: [
+                                  if (beforeState.isNotEmpty)
+                                    _AuditDetail(
+                                      label: 'قبل',
+                                      value: beforeState,
+                                    ),
+                                  if (afterState.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: _AuditDetail(
+                                        label: 'بعد',
+                                        value: afterState,
+                                      ),
+                                    ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
                     );
                   }),
+                  if (total > 50)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('الصفحة $page'),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: page <= 1
+                                    ? null
+                                    : () {
+                                        setState(() => page -= 1);
+                                        load(showLoading: false);
+                                      },
+                                child: const Text('الأحدث'),
+                              ),
+                              TextButton(
+                                onPressed: page * 50 >= total
+                                    ? null
+                                    : () {
+                                        setState(() => page += 1);
+                                        load(showLoading: false);
+                                      },
+                                child: const Text('الأقدم'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

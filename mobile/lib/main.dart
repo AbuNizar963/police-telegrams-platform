@@ -1972,7 +1972,8 @@ class _DashboardPageState extends State<DashboardPage>
   bool get _canViewAuditLogs =>
       _account['role'] == 'admin' ||
       _isPlatformOwner ||
-      (activeOrganizationIsActive && activeOrganizationRole == 'system_admin');
+      (activeOrganizationIsActive &&
+          {'system_admin', 'auditor'}.contains(activeOrganizationRole));
 
   bool get _canManageUsers => hasMobileUserManagementAccess(
     accountRole: _account['role']?.toString(),
@@ -2581,14 +2582,14 @@ class _DashboardPageState extends State<DashboardPage>
                   value: 'users',
                   child: _AccountMenuItem(
                     icon: Icons.manage_accounts_outlined,
-                    title: 'إدارة المستخدمين وإضافة الحسابات',
+                    title: 'الحسابات والصلاحيات',
                   ),
                 ),
                 const PopupMenuItem(
                   value: 'organizations',
                   child: _AccountMenuItem(
                     icon: Icons.account_tree_outlined,
-                    title: 'إدارة المناطق والأقسام والمخافر',
+                    title: 'إدارة الجهات',
                   ),
                 ),
               ],
@@ -2709,7 +2710,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.layoutDashboard),
-                  title: const Text('لوحة التحكم'),
+                  title: const Text('لوحة المتابعة'),
                   onTap: () {
                     Navigator.pop(context);
                     setState(() {
@@ -2721,7 +2722,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.plus),
-                  title: const Text('إنشاء برقية'),
+                  title: const Text('البرقيات · إنشاء'),
                   onTap: () {
                     Navigator.pop(context);
                     create();
@@ -2729,7 +2730,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.fileSpreadsheet),
-                  title: const Text('استيراد وتصدير السجل'),
+                  title: const Text('التقارير والتصدير'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2743,7 +2744,7 @@ class _DashboardPageState extends State<DashboardPage>
                 if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),
-                    title: const Text('إدارة المستخدمين'),
+                    title: const Text('الحسابات والصلاحيات'),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -2753,6 +2754,15 @@ class _DashboardPageState extends State<DashboardPage>
                               NativeUserManagementPage(api: widget.api),
                         ),
                       );
+                    },
+                  ),
+                if (_canManageUsers)
+                  ListTile(
+                    leading: const Icon(LucideIcons.building2),
+                    title: const Text('إدارة الجهات'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _handleAccountAction('organizations');
                     },
                   ),
                 if (_canViewAuditLogs)
@@ -2768,7 +2778,7 @@ class _DashboardPageState extends State<DashboardPage>
                 const Divider(color: Color(0xFF29415E)),
                 ListTile(
                   leading: const Icon(LucideIcons.mapPinned),
-                  title: const Text('خريطة البلاغات والمواقع الجغرافية'),
+                  title: const Text('مركز العمليات والمواقع'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2784,7 +2794,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.users),
-                  title: const Text('الوحدات الميدانية'),
+                  title: const Text('الوحدات والإحالات'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2800,7 +2810,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.activity),
-                  title: const Text('إدارة الموارد'),
+                  title: const Text('متابعة توزيع العمل'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2816,7 +2826,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.archive),
-                  title: const Text('الأرشيف والسجلات المغلقة'),
+                  title: const Text('أرشيف البرقيات'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -4272,38 +4282,70 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       );
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final reasonController = TextEditingController();
+    String? reasonError;
+    final reason = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: const Text('حذف البرقية نهائياً'),
-          content: const Text(
-            'سيتم حذف البرقية وسجلها والمرفقات المرتبطة بها نهائياً. '
-            'لا يمكن التراجع عن هذا الإجراء.',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('حذف البرقية نهائياً'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'سيتم حذف البرقية وسجلها والمرفقات المرتبطة بها نهائياً. '
+                  'لا يمكن التراجع عن هذا الإجراء.',
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: reasonController,
+                  minLines: 2,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'سبب الحذف',
+                    hintText: 'اكتب سبباً واضحاً (3 أحرف على الأقل)',
+                    errorText: reasonError,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () {
+                  final value = reasonController.text.trim();
+                  if (value.length < 3) {
+                    setDialogState(
+                      () => reasonError = 'سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف.',
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                child: const Text('حذف نهائي'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('حذف نهائي'),
-            ),
-          ],
         ),
       ),
     );
-    if (confirmed != true || !mounted) return;
+    reasonController.dispose();
+    if (reason == null || !mounted) return;
 
     try {
       await widget.api.call(
         'telegrams.delete',
         mutation: true,
-        input: {'id': widget.telegramId},
+        input: {'id': widget.telegramId, 'reason': reason},
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (exception) {

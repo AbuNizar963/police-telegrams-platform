@@ -131,7 +131,13 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
       'api': '1',
       'query': '$lat,$lng',
     });
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+    final openedGoogle = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final fallback = Uri.https('www.openstreetmap.org', '/', {
+      'mlat': '$lat',
+      'mlon': '$lng',
+    }).replace(fragment: 'map=16/$lat/$lng');
+    if (!openedGoogle &&
+        !await launchUrl(fallback, mode: LaunchMode.externalApplication) &&
         mounted) {
       Toast.error(context, 'تعذر فتح الموقع في خرائط Google.');
     }

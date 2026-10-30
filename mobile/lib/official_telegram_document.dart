@@ -402,6 +402,19 @@ class _OfficialTelegramDocumentPageState
   String get _displaySerial =>
       getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
+  Future<void> _recordDocumentOutput(String operation, String format) async {
+    await widget.api.call(
+      'telegrams.recordDocumentOutput',
+      mutation: true,
+      allowOfflineCache: false,
+      input: {
+        'id': widget.telegramId,
+        'operation': operation,
+        'format': format,
+      },
+    );
+  }
+
   Future<void> _perform(Future<void> Function() action) async {
     if (busy) return;
     setState(() => busy = true);
@@ -419,6 +432,7 @@ class _OfficialTelegramDocumentPageState
   }
 
   Future<void> _printPdf() => _perform(() async {
+    await _recordDocumentOutput('print', 'pdf');
     final bytes = await _getPdfBytes();
     await Printing.layoutPdf(
       name: '$_fileBaseName.pdf',
@@ -427,6 +441,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _savePdf() => _perform(() async {
+    await _recordDocumentOutput('download', 'pdf');
     final bytes = await _getPdfBytes();
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ الوثيقة الرسمية',
@@ -444,11 +459,13 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _sharePdf() => _perform(() async {
+    await _recordDocumentOutput('download', 'pdf');
     final bytes = await _getPdfBytes();
     await Printing.sharePdf(bytes: bytes, filename: '$_fileBaseName.pdf');
   });
 
   Future<void> _shareImage() => _perform(() async {
+    await _recordDocumentOutput('download', 'png');
     final bytes = await _getHighResolutionImage();
     await SharePlus.instance.share(
       ShareParams(
@@ -466,6 +483,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _saveImage() => _perform(() async {
+    await _recordDocumentOutput('download', 'png');
     final bytes = await _getHighResolutionImage();
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',

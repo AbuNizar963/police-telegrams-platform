@@ -4,12 +4,14 @@ import { appRouter } from "./routers";
 
 const mocked = vi.hoisted(() => ({
   listAuditLogs: vi.fn(),
+  searchAuditLogs: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => ({
   ...(await importOriginal<typeof import("./db")>()),
   listAuditLogs: mocked.listAuditLogs,
+  searchAuditLogs: mocked.searchAuditLogs,
 }));
 
 vi.mock("./organization", async importOriginal => ({
@@ -48,6 +50,13 @@ describe("audit log access control", () => {
       isActive: true,
     });
     mocked.listAuditLogs.mockResolvedValue([]);
+    mocked.searchAuditLogs.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 25,
+      totalPages: 1,
+    });
   });
 
   it("allows system administrators to read the audit log", async () => {
@@ -90,5 +99,28 @@ describe("audit log access control", () => {
       code: "FORBIDDEN",
     });
     expect(mocked.listAuditLogs).not.toHaveBeenCalled();
+  });
+
+  it("scopes an active organization auditor to its own organization", async () => {
+    mocked.getUserOrganizationMembership.mockResolvedValue({
+      organizationId: "00000000-0000-4000-8000-000000000099",
+      role: "auditor",
+      isActive: true,
+    });
+    const caller = appRouter.createCaller(contextFor("user"));
+
+    await expect(
+      caller.auditLogs.search({
+        page: 1,
+        pageSize: 25,
+        action: "telegram.update",
+      })
+    ).resolves.toMatchObject({ total: 0 });
+    expect(mocked.searchAuditLogs).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 25,
+      action: "telegram.update",
+      organizationId: "00000000-0000-4000-8000-000000000099",
+    });
   });
 });

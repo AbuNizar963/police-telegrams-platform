@@ -2390,9 +2390,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 IconButton(
                   tooltip: 'مزامنة الآن',
-                  onPressed: _outboxSyncInProgress
-                      ? null
-                      : () => _syncOutbox(),
+                  onPressed: _outboxSyncInProgress ? null : () => _syncOutbox(),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                   constraints: const BoxConstraints.tightFor(

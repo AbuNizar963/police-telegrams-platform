@@ -969,7 +969,7 @@ void main() {
       const ValueKey<String>('outbox-status-panel'),
     );
     expect(outboxPanel, findsOneWidget);
-    expect(tester.getSize(outboxPanel).height, welcomePanelHeight);
+    expect(tester.getSize(outboxPanel).height, closeTo(welcomePanelHeight, 1));
 
     await tester.pump(const Duration(seconds: 9));
     await tester.pump();

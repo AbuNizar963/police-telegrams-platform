@@ -115,14 +115,19 @@ void main() {
     expect(html, isNot(contains('border-top:1px dotted #7b8493')));
     expect(
       html,
-      matches(
-        RegExp(
-          r'<p class="footer-date">تاريخ إنشاء الوثيقة: \d{4}/\d{2}/\d{2} - \d{2}:\d{2}:\d{2}(?: [صم])?</p>',
-        ),
+      contains(
+        '<p class="footer-creator">منشئ البرقية: مستخدم الاختبار</p>',
       ),
     );
+    expect(
+      html,
+      contains(
+        '<p class="footer-date">تاريخ ووقت إنشاء البرقية: 2026/10/15 - 12:00:00 ص</p>',
+      ),
+    );
+    expect(html, isNot(contains('تم إنشاء هذه الوثيقة بواسطة:')));
     expect(html, contains('الوقت والتاريخ:</strong>'));
-    expect(html, contains('تاريخ إنشاء الوثيقة:'));
+    expect(html, contains('تاريخ ووقت إنشاء البرقية:'));
     expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
   });
 

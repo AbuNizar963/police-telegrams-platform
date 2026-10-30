@@ -914,7 +914,10 @@ String buildOfficialTelegramHtml({
       .join();
 
   final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
-  final createdAt = _formatConfiguredHeaderDateTime(DateTime.now(), settings);
+  final documentCreatedAt = _formatConfiguredHeaderDateTime(
+    telegram['createdAt'],
+    settings,
+  );
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
     telegramDate,
     settings,
@@ -1078,9 +1081,9 @@ $watermark
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
 </section></main>
 <footer class="document-footer">
-<p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
+<p class="footer-creator">منشئ البرقية: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">تاريخ إنشاء الوثيقة: ${_escapeHtml(createdAt)}</p>
+<p class="footer-date">تاريخ ووقت إنشاء البرقية: ${_escapeHtml(documentCreatedAt)}</p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

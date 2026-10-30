@@ -219,7 +219,10 @@ describe("telegram administration permissions", () => {
         operation: "print",
         format: "pdf",
       })
-    ).resolves.toEqual({ success: true });
+    ).resolves.toMatchObject({
+      success: true,
+      occurredAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+    });
     expect(mocked.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "telegram.document.print",

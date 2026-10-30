@@ -3743,9 +3743,9 @@ function TelegramDetail({
           </section>
         </main>
         <footer class="document-footer">
-          <p class="footer-creator">تم إنشاء هذه الوثيقة بواسطة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
+          <p class="footer-creator">منشئ البرقية: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</p>
           <p class="footer-location">الموقع: ${escapeHtml(location)}</p>
-          <p class="footer-date">تاريخ ووقت إنشاء الوثيقة: ${escapeHtml(documentCreatedAt)}</p>
+          <p class="footer-date">تاريخ ووقت إنشاء البرقية: ${escapeHtml(documentCreatedAt)}</p>
         </footer>
       </article>`;
 

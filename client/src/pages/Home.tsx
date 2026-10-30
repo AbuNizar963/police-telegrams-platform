@@ -3698,22 +3698,21 @@ function TelegramDetail({
           font-size: 12px;
         }
         .telegram-export-page .document-footer {
-          display: flex;
-          flex-wrap: nowrap;
-          justify-content: flex-start;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr) minmax(0, 1.35fr);
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           margin-top: 16px;
           color: #667085;
-          font-size: 10px;
+          font-size: 11px;
           direction: rtl;
           white-space: nowrap;
         }
         .telegram-export-page .document-footer p {
           display: flex;
-          flex: 0 1 auto;
           align-items: center;
           gap: 2px;
+          width: 100%;
           min-width: 0;
           margin: 0;
           white-space: nowrap;

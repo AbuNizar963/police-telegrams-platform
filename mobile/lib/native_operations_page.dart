@@ -131,7 +131,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
       'api': '1',
       'query': '$lat,$lng',
     });
-    final openedGoogle = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final openedGoogle = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
     final fallback = Uri.https('www.openstreetmap.org', '/', {
       'mlat': '$lat',
       'mlon': '$lng',

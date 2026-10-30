@@ -725,9 +725,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
     }
   }
 
-  List<Map<String, dynamic>> get _rows => entries.whereType<Map>().map(
-      (item) => Map<String, dynamic>.from(item),
-    ).toList();
+  List<Map<String, dynamic>> get _rows => entries
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
 
   bool get _hasFilters =>
       search.trim().isNotEmpty ||
@@ -861,7 +862,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: action,
+                                initialValue: action,
                                 decoration: const InputDecoration(
                                   labelText: 'نوع الإجراء',
                                 ),

@@ -4325,7 +4325,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                   final value = reasonController.text.trim();
                   if (value.length < 3) {
                     setDialogState(
-                      () => reasonError = 'سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف.',
+                      () => reasonError =
+                          'سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف.',
                     );
                     return;
                   }

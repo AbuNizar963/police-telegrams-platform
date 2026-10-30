@@ -27,6 +27,7 @@ import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 import 'telegram_outbox.dart';
 import 'telegram_outbox_page.dart';
+import 'toast.dart';
 
 const navy = Color(0xFF10233F);
 const gold = Color(0xFFD8C38E);
@@ -76,8 +77,12 @@ class PoliceTelegramsApp extends StatelessWidget {
     valueListenable: _themeMode,
     builder: (context, mode, _) => MaterialApp(
       debugShowCheckedModeBanner: false,
-      builder: (context, child) =>
-          AppLockOverlayHost(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => AppLockOverlayHost(
+        child: ToastOverlayHost(
+          key: Toast.hostKey,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       title: 'برقيات الشرطة',
       theme: ThemeData(
         useMaterial3: true,
@@ -1195,12 +1200,9 @@ class _DashboardPageState extends State<DashboardPage>
         final details = result.permanentErrorMessages.isEmpty
             ? 'تحقق أو صلاحيات'
             : result.permanentErrorMessages.join('، ');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'تم رفض ${result.permanentFailures} عملية من الخادم: $details',
-            ),
-          ),
+        Toast.error(
+          context,
+          'تم رفض ${result.permanentFailures} عملية من الخادم: $details',
         );
       }
     } catch (_) {
@@ -1248,9 +1250,7 @@ class _DashboardPageState extends State<DashboardPage>
         _pushTokenRegistration.clear();
         if (mounted) {
           setState(() => _pushEnabled = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم إيقاف إشعارات هذا الجهاز')),
-          );
+          Toast.success(context, 'تم إيقاف إشعارات هذا الجهاز');
         }
       } else {
         final enabled = await push.enableNotifications(
@@ -1258,14 +1258,11 @@ class _DashboardPageState extends State<DashboardPage>
         );
         if (mounted) {
           setState(() => _pushEnabled = enabled);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                enabled
-                    ? 'تم تفعيل إشعارات البرقيات على هذا الجهاز'
-                    : 'اسمح بالإشعارات من إعدادات الجهاز ثم أعد المحاولة',
-              ),
-            ),
+          Toast.success(
+            context,
+            enabled
+                ? 'تم تفعيل إشعارات البرقيات على هذا الجهاز'
+                : 'اسمح بالإشعارات من إعدادات الجهاز ثم أعد المحاولة',
           );
         }
         if (enabled) {
@@ -1274,9 +1271,7 @@ class _DashboardPageState extends State<DashboardPage>
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحديث إعداد الإشعارات الآن')),
-        );
+        Toast.error(context, 'تعذر تحديث إعداد الإشعارات الآن');
       }
     } finally {
       if (mounted) setState(() => _pushBusy = false);
@@ -4236,18 +4231,13 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     if (!mounted) return;
     final currentTelegram = telegram;
     if (currentTelegram == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'تعذر تحميل بيانات البرقية للتعديل.')),
-      );
+      Toast.error(context, error ?? 'تعذر تحميل بيانات البرقية للتعديل.');
       return;
     }
     if (_managementExpired) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'انتهت مهلة تعديل البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
-          ),
-        ),
+      Toast.error(
+        context,
+        'انتهت مهلة تعديل البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
       );
       return;
     }
@@ -4265,26 +4255,20 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     if (saved != true || !mounted) return;
     await load();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('تم حفظ تعديلات البرقية.')));
+    Toast.success(context, 'تم حفظ تعديلات البرقية.');
   }
 
   Future<void> _deleteTelegram() async {
     if (telegram == null) await load();
     if (!mounted) return;
     if (telegram == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'تعذر تحميل بيانات البرقية للحذف.')),
-      );
+      Toast.error(context, error ?? 'تعذر تحميل بيانات البرقية للحذف.');
       return;
     }
     if (_managementExpired) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'انتهت مهلة حذف البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
-          ),
-        ),
+      Toast.error(
+        context,
+        'انتهت مهلة حذف البرقية البالغة 48 ساعة؛ الصلاحية الدائمة للمالك فقط.',
       );
       return;
     }
@@ -4324,11 +4308,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (exception) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(exception.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
+      Toast.info(context, exception.toString().replaceFirst('Exception: ', ''));
     }
   }
 

@@ -14,6 +14,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'api.dart';
 import 'telegram_display.dart';
 import 'telegram_report_labels.dart';
+import 'toast.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
@@ -408,10 +409,9 @@ class _OfficialTelegramDocumentPageState
       await action();
     } catch (exception) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(exception.toString().replaceFirst('Exception: ', '')),
-        ),
+      Toast.error(
+        context,
+        exception.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       if (mounted) setState(() => busy = false);
@@ -436,11 +436,11 @@ class _OfficialTelegramDocumentPageState
       bytes: bytes,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(path == null ? 'تم إلغاء حفظ الملف.' : 'تم حفظ الوثيقة.'),
-      ),
-    );
+    if (path == null) {
+      Toast.info(context, 'تم إلغاء حفظ الملف.');
+    } else {
+      Toast.success(context, 'تم حفظ الوثيقة.');
+    }
   });
 
   Future<void> _sharePdf() => _perform(() async {
@@ -475,11 +475,11 @@ class _OfficialTelegramDocumentPageState
       bytes: bytes,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(path == null ? 'تم إلغاء حفظ الصورة.' : 'تم حفظ الصورة.'),
-      ),
-    );
+    if (path == null) {
+      Toast.info(context, 'تم إلغاء حفظ الصورة.');
+    } else {
+      Toast.success(context, 'تم حفظ الصورة.');
+    }
   });
 
   Future<void> _attachFile() => _perform(() async {
@@ -518,9 +518,7 @@ class _OfficialTelegramDocumentPageState
       },
     );
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إرفاق الملف بالبرقية.')));
+      Toast.success(context, 'تم إرفاق الملف بالبرقية.');
     }
   });
 

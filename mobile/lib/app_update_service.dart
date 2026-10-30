@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'toast.dart';
+
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
@@ -356,7 +358,6 @@ Future<void> _downloadAndInstall(
   BuildContext context,
   _MobileRelease release,
 ) async {
-  final messenger = ScaffoldMessenger.maybeOf(context);
   try {
     try {
       await _installerChannel.invokeMethod<bool>(
@@ -383,14 +384,10 @@ Future<void> _downloadAndInstall(
     }
     if (!context.mounted) return;
 
-    messenger?.showSnackBar(
-      const SnackBar(
-        duration: Duration(seconds: 8),
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          'بدأ تنزيل التحديث بواسطة Android. سيستمر التنزيل عند مغادرة التطبيق، ويمكنك متابعة تقدمه من شريط الإشعارات.',
-        ),
-      ),
+    Toast.info(
+      context,
+      'بدأ تنزيل التحديث بواسطة Android. سيستمر التنزيل عند مغادرة التطبيق، ويمكنك متابعة تقدمه من شريط الإشعارات.',
+      duration: const Duration(seconds: 8),
     );
 
     await _watchBackgroundDownload(
@@ -401,7 +398,7 @@ Future<void> _downloadAndInstall(
     );
   } catch (error) {
     if (context.mounted) {
-      messenger?.hideCurrentSnackBar();
+      Toast.dismiss();
       _showUpdateMessage(context, _updateErrorMessage(error));
     }
   }
@@ -413,7 +410,6 @@ Future<void> _watchBackgroundDownload(
   required int expectedSize,
   required String expectedSha256,
 }) async {
-  final messenger = ScaffoldMessenger.maybeOf(context);
   try {
     // DownloadManager owns the transfer and retains it when this process exits.
     while (context.mounted) {
@@ -454,7 +450,7 @@ Future<void> _watchBackgroundDownload(
         throw Exception('مسار ملف التحديث الذي أعاده Android غير صالح.');
       }
 
-      messenger?.hideCurrentSnackBar();
+      Toast.dismiss();
       if (!context.mounted) return;
       final result = await _installerChannel.invokeMethod<String>(
         'installApk',
@@ -472,7 +468,7 @@ Future<void> _watchBackgroundDownload(
       await _installerChannel.invokeMethod<void>('clearPendingUpdate');
     }
     if (context.mounted) {
-      messenger?.hideCurrentSnackBar();
+      Toast.dismiss();
       _showUpdateMessage(context, _updateErrorMessage(error));
     }
   }
@@ -564,9 +560,7 @@ String _updateErrorMessage(Object error) {
 }
 
 void _showUpdateMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-  );
+  Toast.info(context, message);
 }
 
 Future<bool> _resumePendingUpdate(

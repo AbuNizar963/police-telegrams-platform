@@ -9,6 +9,7 @@ import 'app_lock.dart';
 import 'api.dart';
 import 'telegram_report_date_formatter.dart';
 import 'telegram_report_labels.dart';
+import 'toast.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -71,8 +72,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       await load();
     } catch (exception) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(_errorMessage(exception))));
+        Toast.error(context, _errorMessage(exception));
       }
     }
   }
@@ -295,9 +295,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _exportCsv() async {
     final raw = report?['rows'] ?? report?['items'] ?? report?['telegrams'];
     if (raw is! List || raw.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('لا توجد سجلات لتصديرها.')));
+      Toast.warning(context, 'لا توجد سجلات لتصديرها.');
       return;
     }
 
@@ -346,11 +344,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
     } catch (exception) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('تعذر تصدير التقرير: ${_errorMessage(exception)}'),
-          ),
-        );
+        Toast.error(context, 'تعذر تصدير التقرير: ${_errorMessage(exception)}');
       }
     }
   }
@@ -1020,8 +1014,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       );
       widget.onProfileUpdated({'name': name.text.trim()});
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('تم حفظ الملف الشخصي')));
+        Toast.success(context, 'تم حفظ الملف الشخصي');
       }
     } catch (exception) {
       if (mounted) setState(() => error = _errorMessage(exception));
@@ -1061,9 +1054,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         'mustChangePassword': false,
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور')));
+        Toast.success(context, 'تم تغيير كلمة المرور');
       }
     } catch (exception) {
       if (mounted) setState(() => error = _errorMessage(exception));
@@ -1588,8 +1579,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           }
         });
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم حفظ إعدادات الجهة.')));
+      Toast.success(context, 'تم حفظ إعدادات الجهة.');
     } catch (exception) {
       if (mounted) {
         setState(
@@ -1661,9 +1651,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         // the server returns the authorized signed URL.
         _pendingLogoPreviewBytes = Uint8List.fromList(bytes);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم رفع الشعار. اضغط حفظ لاعتماده.')),
-      );
+      Toast.success(context, 'تم رفع الشعار. اضغط حفظ لاعتماده.');
     } catch (exception) {
       if (mounted) {
         setState(
@@ -2087,9 +2075,7 @@ class _PlatformDocumentSettingsPageState
             .toLowerCase();
         _colorController.text = _headerDividerColor;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ إعدادات وثائق النظام.')),
-      );
+      Toast.success(context, 'تم حفظ إعدادات وثائق النظام.');
     } catch (exception) {
       if (mounted) setState(() => _error = _errorMessage(exception));
     } finally {

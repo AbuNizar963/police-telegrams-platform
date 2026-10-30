@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'toast.dart';
 
 const _userGold = Color(0xFFD8C38E);
 
@@ -171,7 +172,9 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
 
   Future<void> _createUser() async {
     if (_organizations.isEmpty) {
-      _showMessage('لا توجد جهات متاحة لإنشاء حساب.');
+      if (mounted) {
+        Toast.warning(context, 'لا توجد جهات متاحة لإنشاء حساب.');
+      }
       return;
     }
     final form = await showDialog<Map<String, dynamic>>(
@@ -311,8 +314,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    Toast.success(context, message);
   }
 
   @override

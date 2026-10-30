@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'api.dart';
+import 'toast.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -197,7 +198,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         .where((row) => row['isSelectable'] == true)
         .toList();
     if (targets.isEmpty) {
-      _show('لا توجد جهات متاحة للإحالة من جهة العمل الحالية.');
+      _show(
+        'لا توجد جهات متاحة للإحالة من جهة العمل الحالية.',
+        kind: ToastKind.warning,
+      );
       return null;
     }
     var query = '';
@@ -326,16 +330,16 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     final file = result.files.single;
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
-      _show('تعذر قراءة الملف المحدد.');
+      _show('تعذر قراءة الملف المحدد.', kind: ToastKind.error);
       return;
     }
     final contentType = _contentType(file.extension);
     if (contentType == null) {
-      _show('نوع الملف غير مدعوم');
+      _show('نوع الملف غير مدعوم', kind: ToastKind.warning);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      _show('حجم المرفق يتجاوز 10 ميغابايت');
+      _show('حجم المرفق يتجاوز 10 ميغابايت', kind: ToastKind.warning);
       return;
     }
     await _run(() async {
@@ -350,14 +354,14 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         },
       );
       await load();
-      _show('تم رفع المرفق بنجاح');
+      _show('تم رفع المرفق بنجاح', kind: ToastKind.success);
     });
   }
 
   Future<void> viewAttachment(Map<String, dynamic> attachment) async {
     final id = int.tryParse('${attachment['id']}');
     if (id == null) {
-      _show('معرّف المرفق غير صالح.');
+      _show('معرّف المرفق غير صالح.', kind: ToastKind.error);
       return;
     }
 
@@ -492,7 +496,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         bytes: response.bodyBytes,
       );
       if (mounted) {
-        _show(savedPath == null ? 'تم إلغاء حفظ المرفق.' : 'تم حفظ المرفق.');
+        _show(
+          savedPath == null ? 'تم إلغاء حفظ المرفق.' : 'تم حفظ المرفق.',
+          kind: savedPath == null ? ToastKind.info : ToastKind.success,
+        );
       }
     });
   }
@@ -508,7 +515,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     } catch (exception) {
       if (mounted) {
         setState(() => error = _actionError(exception));
-        _show(_actionError(exception));
+        _show(_actionError(exception), kind: ToastKind.error);
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -772,10 +779,20 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     );
   }
 
-  void _show(String message) {
+  void _show(String message, {ToastKind kind = ToastKind.info}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    switch (kind) {
+      case ToastKind.success:
+        Toast.success(context, message);
+      case ToastKind.error:
+        Toast.error(context, message);
+      case ToastKind.warning:
+        Toast.warning(context, message);
+      case ToastKind.info:
+        Toast.info(context, message);
+      case ToastKind.loading:
+        Toast.loading(context, message);
+    }
   }
 
   String? _contentType(String? extension) {

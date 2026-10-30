@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
+import 'toast.dart';
+
 class AppLockService {
   AppLockService._();
 
@@ -910,17 +912,14 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
               FilledButton(
                 onPressed: () {
                   if (!RegExp(r'^\d{4}$').hasMatch(controller.text)) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('يجب أن يتكون الرمز من 4 أرقام بالضبط.'),
-                      ),
+                    Toast.warning(
+                      dialogContext,
+                      'يجب أن يتكون الرمز من 4 أرقام بالضبط.',
                     );
                     return;
                   }
                   if (controller.text != confirmController.text) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(content: Text('تأكيد الرمز غير مطابق.')),
-                    );
+                    Toast.warning(dialogContext, 'تأكيد الرمز غير مطابق.');
                     return;
                   }
                   Navigator.pop(dialogContext, controller.text);
@@ -949,9 +948,7 @@ class _AppLockSettingsSectionState extends State<AppLockSettingsSection> {
       await _load();
       await _refreshOverlay();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ رمز PIN وتفعيل قفل التطبيق.')),
-        );
+        Toast.success(context, 'تم حفظ رمز PIN وتفعيل قفل التطبيق.');
       }
     } catch (_) {
       if (mounted) {

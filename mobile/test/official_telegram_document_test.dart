@@ -76,7 +76,16 @@ void main() {
       expect(html, isNot(contains('class="official-logo"')));
       expect(html, isNot(contains('class="official-seal"')));
       expect(html, contains('رمز QR للتحقق من أصالة البرقية'));
-      expect(html, contains('<svg'));
+      expect(
+        html,
+        contains(
+          '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">',
+        ),
+      );
+      expect(
+        html,
+        contains('<svg xmlns="http://www.w3.org/2000/svg" width="'),
+      );
       expect(html, contains('<path d="M'));
       expect(html, contains('اسم المسؤول'));
       expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
@@ -128,7 +137,12 @@ void main() {
     expect(html, contains('data-icon="person" aria-hidden="true"'));
     expect(html, contains('data-icon="location" aria-hidden="true"'));
     expect(html, contains('data-icon="calendar" aria-hidden="true"'));
-    expect(html, contains('flex-wrap: nowrap;'));
+    expect(
+      html,
+      contains(
+        'grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr) minmax(0, 1.35fr);',
+      ),
+    );
     expect(html, contains('gap: 2px;'));
     expect(html, contains('white-space: nowrap;'));
     expect(html, isNot(contains('تم إنشاء هذه الوثيقة بواسطة:')));
@@ -148,7 +162,8 @@ void main() {
     );
 
     expect(html, isNot(contains('class="routing-qr"')));
-    expect(html, isNot(contains('<svg')));
+    expect(html, isNot(contains('رمز QR للتحقق من أصالة البرقية')));
+    expect(html, contains('data-icon="person"'));
     expect(html, contains('موضوع رسمي'));
     expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
   });
@@ -228,7 +243,7 @@ void main() {
       expect(html, contains('opacity:0.35'));
       expect(html, contains('border-bottom:3px solid #2457A6'));
       expect(html, isNot(contains('class="routing-qr"')));
-      expect(html, isNot(contains('<svg')));
+      expect(html, contains('data-icon="person"'));
       // The official heading is separate from the repeated watermark option.
       expect(
         html,

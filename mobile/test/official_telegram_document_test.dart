@@ -116,18 +116,18 @@ void main() {
     expect(
       html,
       contains(
-        '<p class="footer-creator">منشئ البرقية: مستخدم الاختبار</p>',
+        '<p class="footer-creator">منشئ الوثيقة: مستخدم الاختبار</p>',
       ),
     );
     expect(
       html,
       contains(
-        '<p class="footer-date">تاريخ ووقت إنشاء البرقية: 2026/10/15 - 12:00:00 ص</p>',
+        '<p class="footer-date">تاريخ ووقت إنشاء الوثيقة: 2026/10/15 - 12:00:00 ص</p>',
       ),
     );
     expect(html, isNot(contains('تم إنشاء هذه الوثيقة بواسطة:')));
     expect(html, contains('الوقت والتاريخ:</strong>'));
-    expect(html, contains('تاريخ ووقت إنشاء البرقية:'));
+    expect(html, contains('تاريخ ووقت إنشاء الوثيقة:'));
     expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
   });
 

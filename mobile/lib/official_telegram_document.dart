@@ -1081,9 +1081,9 @@ $watermark
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
 </section></main>
 <footer class="document-footer">
-<p class="footer-creator">منشئ البرقية: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
+<p class="footer-creator">منشئ الوثيقة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</p>
 <p class="footer-location">الموقع: ${_escapeHtml(location)}</p>
-<p class="footer-date">تاريخ ووقت إنشاء البرقية: ${_escapeHtml(documentCreatedAt)}</p>
+<p class="footer-date">تاريخ ووقت إنشاء الوثيقة: ${_escapeHtml(documentCreatedAt)}</p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

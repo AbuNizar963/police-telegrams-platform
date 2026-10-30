@@ -82,10 +82,7 @@ void main() {
           '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">',
         ),
       );
-      expect(
-        html,
-        contains('<svg xmlns="http://www.w3.org/2000/svg" width="'),
-      );
+      expect(html, contains('<svg xmlns="http://www.w3.org/2000/svg" width="'));
       expect(html, contains('<path d="M'));
       expect(html, contains('اسم المسؤول'));
       expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));

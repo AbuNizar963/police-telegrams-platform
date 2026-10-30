@@ -235,6 +235,7 @@ class _ToastCard extends StatelessWidget {
               ),
             ),
             Semantics(
+              container: true,
               label: 'إغلاق الإشعار',
               button: true,
               child: IconButton(

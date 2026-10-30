@@ -142,14 +142,15 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
                             ? Duration.zero
                             : const Duration(milliseconds: 180),
                         opacity: _visible ? 1 : 0,
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 520),
-                            child: _ToastCard(
-                              message: _message!,
-                              kind: _kind,
-                              onClose: dismiss,
-                            ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 520,
+                            maxHeight: 160,
+                          ),
+                          child: _ToastCard(
+                            message: _message!,
+                            kind: _kind,
+                            onClose: dismiss,
                           ),
                         ),
                       ),
@@ -223,6 +224,8 @@ class _ToastCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   child: Text(
                     message,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
                       height: 1.45,
@@ -306,11 +309,9 @@ class _FallbackToastView extends StatelessWidget {
           color: Colors.transparent,
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: _ToastCard(message: message, kind: kind, onClose: close),
-              ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 160),
+              child: _ToastCard(message: message, kind: kind, onClose: close),
             ),
           ),
         ),

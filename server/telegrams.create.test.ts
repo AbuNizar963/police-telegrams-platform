@@ -12,6 +12,7 @@ const mocked = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
   getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
+  getOrganizationSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
   updateDepartmentSettings: vi.fn(),
@@ -86,6 +87,7 @@ describe("telegrams.create", () => {
       role: "member",
       isActive: true,
     });
+    mocked.getOrganizationSettings.mockResolvedValue(undefined);
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "OUT",
       incomingSerialPrefix: "IN",
@@ -110,6 +112,45 @@ describe("telegrams.create", () => {
       copies: [],
     });
     mocked.hasTelegramRoute.mockResolvedValue(false);
+  });
+
+  it("captures the issuing organization's immutable logo key in the first version snapshot", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000001";
+    const logoKey = `department/logos/${organizationId}/00000000-0000-4000-8000-000000000099-letterhead.png`;
+    mocked.getUserOrganizationId.mockResolvedValue(organizationId);
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValue({
+      logoKey: `/api/storage/${logoKey}`,
+      logoUrl: `/api/storage/${logoKey}`,
+    });
+
+    const caller = appRouter.createCaller(createContext());
+    await caller.telegrams.create({
+      subject: "تجربة حفظ الشعار",
+      recipient: "غرفة العمليات",
+      body: "محتوى البرقية للاختبار",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+    });
+
+    expect(mocked.recordTelegramVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshot: expect.objectContaining({
+          schemaVersion: 1,
+          organizationId,
+          letterhead: {
+            organizationId,
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          },
+        }),
+      })
+    );
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {

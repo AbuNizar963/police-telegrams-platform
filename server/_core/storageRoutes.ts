@@ -142,7 +142,7 @@ export function registerStorageRoutes(app: Express): void {
           fileName.includes("\\") ||
           fileName === "." ||
           fileName === ".." ||
-          !/^[^/]+\.(?:png|jpe?g)$/i.test(fileName) ||
+          !/^[^/]+\.(?:png|jpe?g|webp)$/i.test(fileName) ||
           letterhead?.organizationId !== telegram.organizationId
         ) {
           throw new StorageAccessDeniedError();

@@ -547,6 +547,9 @@ async function buildTelegramVersionSnapshot(telegram: {
   serialCode: string;
   originalSerial?: string | null;
   organizationId: string;
+  currentOrganizationId?: string;
+  organizationSerialNumber?: number | null;
+  organizationSerialCode?: string | null;
   subject: string;
   recipient: string;
   body: string;
@@ -554,6 +557,11 @@ async function buildTelegramVersionSnapshot(telegram: {
   priority: string;
   category: string;
   status: string;
+  workflowReason?: string | null;
+  importNotes?: string | null;
+  importDirection?: string | null;
+  attachmentManifest?: string | null;
+  senderOrganizationName?: string | null;
   createdAt?: Date | string | null;
   telegramDate?: Date | string | null;
   creatorName: string;
@@ -579,6 +587,15 @@ async function buildTelegramVersionSnapshot(telegram: {
     serialCode: telegram.serialCode,
     originalSerial: telegram.originalSerial ?? null,
     organizationId: telegram.organizationId,
+    currentOrganizationId:
+      telegram.currentOrganizationId ?? telegram.organizationId,
+    organizationSerialNumber: telegram.organizationSerialNumber ?? null,
+    organizationSerialCode: telegram.organizationSerialCode ?? null,
+    senderOrganizationName: telegram.senderOrganizationName ?? null,
+    workflowReason: telegram.workflowReason ?? null,
+    importNotes: telegram.importNotes ?? null,
+    importDirection: telegram.importDirection ?? null,
+    attachmentManifest: telegram.attachmentManifest ?? null,
     createdAt: toSnapshotIsoDate(telegram.createdAt),
     telegramDate: toSnapshotIsoDate(telegram.telegramDate),
     creatorName: telegram.creatorName || "غير محدد",

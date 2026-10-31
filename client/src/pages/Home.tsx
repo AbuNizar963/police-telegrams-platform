@@ -2717,7 +2717,7 @@ function TelegramComposer({
  * but image decoding is not guaranteed to have completed when HTML is
  * serialized.
  */
-const OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS = 20_000;
+const OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS = 45_000;
 const OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS = 12_000;
 
 /** Prevent a stalled network/image decoder from leaving the document UI loading forever. */
@@ -3283,6 +3283,20 @@ function TelegramDetail({
     text: string;
   } | null>(null);
   const [documentPreparing, setDocumentPreparing] = useState(true);
+  const [exportProgress, setExportProgress] = useState(0);
+  useEffect(() => {
+    if (!exporting) {
+      setExportProgress(0);
+      return;
+    }
+    setExportProgress(4);
+    const timer = window.setInterval(() => {
+      setExportProgress(current =>
+        Math.min(92, current + Math.max(1, Math.round((92 - current) * 0.12)))
+      );
+    }, 350);
+    return () => window.clearInterval(timer);
+  }, [exporting]);
   const [attachmentPreview, setAttachmentPreview] = useState<{
     name: string;
     mimeType: string;
@@ -4156,6 +4170,7 @@ function TelegramDetail({
 `;
 
   const printTelegram = async () => {
+    setExporting("pdf");
     let exportWrapper: HTMLDivElement;
     try {
       const [documentSettings, exportSettings] = await Promise.all([
@@ -4168,6 +4183,7 @@ function TelegramDetail({
       toast.error(
         error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR
       );
+      setExporting(null);
       return;
     }
     const printRoot = document.createElement("div");
@@ -4219,6 +4235,7 @@ function TelegramDetail({
       );
       window.addEventListener("afterprint", cleanup, { once: true });
       window.print();
+      setExporting(null);
 
       // Some mobile browsers do not reliably dispatch afterprint.
       window.setTimeout(cleanup, 30000);
@@ -4227,6 +4244,7 @@ function TelegramDetail({
       toast.error(
         error instanceof Error ? error.message : "تعذر تجهيز الطباعة"
       );
+      setExporting(null);
     }
   };
 
@@ -4580,43 +4598,80 @@ function TelegramDetail({
           </div>
         </div>
       )}
-      {actions.data && actions.data.length > 0 && (
-        <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
-          <summary className="cursor-pointer text-xs font-bold">
-            سجل التدقيق والإجراءات ({actions.data.length})
-          </summary>
-          <div className="mt-3 grid gap-2">
-            {actions.data.map(action => (
-              <div
-                key={action.id}
-                className="rounded-lg border bg-background px-3 py-2 text-xs"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold">
-                    {action.action === "status.transition"
-                      ? "تغيير حالة البرقية"
-                      : action.action === "attachment.upload"
-                        ? "رفع مرفق"
-                        : action.action}
-                  </span>
-                  <time
-                    className="text-[10px] text-muted-foreground"
-                    dateTime={new Date(action.createdAt).toISOString()}
-                  >
-                    {new Date(action.createdAt).toLocaleString("ar-SY")}
-                  </time>
-                </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">
-                  المستخدم رقم {action.actorUserId}
-                  {action.fromStatus || action.toStatus
-                    ? ` · ${action.fromStatus ?? "—"} ← ${action.toStatus ?? "—"}`
-                    : ""}
-                  {action.reason ? ` · السبب: ${action.reason}` : ""}
-                </p>
-              </div>
-            ))}
+      {exporting ? (
+        <div
+          className="mt-4 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-3 text-[#6e531e] print:hidden"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
+            <span>
+              {exporting === "pdf"
+                ? "جارٍ تجهيز ملف PDF"
+                : exporting === "image"
+                  ? "جارٍ تجهيز الصورة عالية الدقة"
+                  : exporting === "share" || exporting === "image-share"
+                    ? "جارٍ تجهيز الملف للمشاركة"
+                    : "جارٍ تنفيذ الإجراء"}
+            </span>
+            <span dir="ltr" className="tabular-nums">
+              {exportProgress}%
+            </span>
           </div>
-        </details>
+          <div
+            className="h-2 overflow-hidden rounded-full bg-[#b49a55]/20"
+            role="progressbar"
+            aria-label="نسبة تقدم تجهيز الوثيقة"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={exportProgress}
+          >
+            <div
+              className="h-full rounded-full bg-[#b49a55] transition-[width] duration-300"
+              style={{ width: `${exportProgress}%` }}
+            />
+          </div>
+        </div>
+      ) : (
+        actions.data &&
+        actions.data.length > 0 && (
+          <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+            <summary className="cursor-pointer text-xs font-bold">
+              سجل التدقيق والإجراءات ({actions.data.length})
+            </summary>
+            <div className="mt-3 grid gap-2">
+              {actions.data.map(action => (
+                <div
+                  key={action.id}
+                  className="rounded-lg border bg-background px-3 py-2 text-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      {action.action === "status.transition"
+                        ? "تغيير حالة البرقية"
+                        : action.action === "attachment.upload"
+                          ? "رفع مرفق"
+                          : action.action}
+                    </span>
+                    <time
+                      className="text-[10px] text-muted-foreground"
+                      dateTime={new Date(action.createdAt).toISOString()}
+                    >
+                      {new Date(action.createdAt).toLocaleString("ar-SY")}
+                    </time>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    المستخدم رقم {action.actorUserId}
+                    {action.fromStatus || action.toStatus
+                      ? ` · ${action.fromStatus ?? "—"} ← ${action.toStatus ?? "—"}`
+                      : ""}
+                    {action.reason ? ` · السبب: ${action.reason}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </details>
+        )
       )}
       {attachmentPreview && (
         <AttachmentPreviewModal

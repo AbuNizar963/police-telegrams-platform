@@ -589,11 +589,13 @@ async function buildTelegramVersionSnapshot(telegram: {
     letterhead: {
       organizationId: telegram.organizationId,
       logoStorageKey,
-      logoContentType: logoStorageKey
-        ? logoStorageKey.toLowerCase().endsWith(".png")
+      logoContentType: !logoStorageKey
+        ? null
+        : logoStorageKey.toLowerCase().endsWith(".png")
           ? "image/png"
-          : "image/jpeg"
-        : null,
+          : logoStorageKey.toLowerCase().endsWith(".webp")
+            ? "image/webp"
+            : "image/jpeg",
     },
   };
 }

@@ -223,11 +223,13 @@ class _OfficialTelegramDocumentPageState
       );
 
       List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
+      var versionHistoryAvailable = false;
       try {
         final versionResult = await widget.api.call(
           'telegrams.versions',
           input: {'telegramId': widget.telegramId},
         );
+        versionHistoryAvailable = true;
         if (versionResult is List) {
           versionsData = versionResult
               .whereType<Map>()
@@ -235,14 +237,23 @@ class _OfficialTelegramDocumentPageState
               .toList();
         }
       } catch (_) {
-        // Older/offline servers may not expose version history yet.
+        // A first-time legacy preview may still use the verified current logo.
       }
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
-      final activeVersion = versionsData.firstWhere(
-        (item) => item['versionNumber'] == requestedVersionNumber,
-        orElse: () =>
-            versionsData.isNotEmpty ? versionsData.last : <String, dynamic>{},
-      );
+      if (requestedVersionNumber != null &&
+          (!versionHistoryAvailable ||
+              !versionsData.any(
+                (item) => item['versionNumber'] == requestedVersionNumber,
+              ))) {
+        throw Exception('تعذر تحميل الإصدار التاريخي المطلوب؛ أعد المحاولة.');
+      }
+      final activeVersion = requestedVersionNumber == null
+          ? (versionsData.isNotEmpty
+                ? versionsData.last
+                : <String, dynamic>{})
+          : versionsData.firstWhere(
+              (item) => item['versionNumber'] == requestedVersionNumber,
+            );
       final hasSelectedVersion = activeVersion.isNotEmpty;
       if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
         telegramData.addAll(

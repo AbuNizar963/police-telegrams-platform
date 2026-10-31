@@ -232,6 +232,46 @@ describe("telegrams.create", () => {
     expect(mocked.allocateOrganizationSerialNumber).not.toHaveBeenCalled();
   });
 
+  it("requires a saved organization logo before creating a reissue version", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    mocked.getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      serialNumber: 55,
+      serialCode: "OUT-2026-10-31-00055",
+      organizationId,
+      currentOrganizationId: organizationId,
+      subject: "تعميم إداري",
+      recipient: "غرفة العمليات",
+      body: "النص الأصلي للبرقية",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+      status: "approved",
+      createdAt: new Date(),
+      creatorName: "موظف",
+      verificationToken: "verify-token",
+    });
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: null,
+      logoUrl: null,
+    });
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.reissue({
+        id: 7,
+        reason: "إعادة إصدار بعد تحديث الشعار",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
+  });
+
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
     const caller = appRouter.createCaller(createContext());
     const result = await caller.telegrams.create({

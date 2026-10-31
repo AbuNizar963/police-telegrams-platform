@@ -2277,6 +2277,111 @@ export const appRouter = router({
         return updated;
       }),
 
+    reissue: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(5).max(1000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.id);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية إعادة إصدار هذه البرقية"
+        );
+        if (!canManageTelegramContent(ctx.user, telegram.createdAt)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "انتهت مهلة إعادة إصدار البرقية (48 ساعة)؛ الصلاحية الدائمة للمالك فقط",
+          });
+        }
+
+        const snapshot = await buildTelegramVersionSnapshot(telegram);
+        const versionNumber = await recordTelegramVersion({
+          telegramId: telegram.id,
+          changedByUserId: ctx.user.id,
+          changeReason: `إعادة إصدار البرقية بنفس رقمها الرسمي: ${input.reason}`,
+          snapshot: {
+            ...snapshot,
+            issuance: {
+              type: "reissue",
+              reason: input.reason,
+              officialSerialCode: telegram.serialCode,
+            },
+          },
+        });
+
+        let actionLogRecorded = true;
+        try {
+          await recordTelegramAction({
+            telegramId: telegram.id,
+            actorUserId: ctx.user.id,
+            action: "telegram.reissue",
+            reason: input.reason,
+            metadata: {
+              versionNumber,
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+            },
+          });
+        } catch (error) {
+          actionLogRecorded = false;
+          console.error("[Telegram] Reissue action log failed", error);
+        }
+
+        let auditLogRecorded = true;
+        try {
+          await writeAuditLog({
+            ...getRequestAuditContext(ctx.req),
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+            action: "telegram.reissue",
+            entityType: "telegram",
+            entityId: String(telegram.id),
+            metadata: JSON.stringify({
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+              versionNumber,
+              organizationId: telegram.organizationId,
+            }),
+            reason: input.reason,
+            beforeState: JSON.stringify(
+              telegramAuditSnapshot(
+                telegram as unknown as Record<string, unknown>
+              )
+            ),
+            afterState: JSON.stringify({
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+              versionNumber,
+              organizationId: telegram.organizationId,
+            }),
+          });
+        } catch (error) {
+          auditLogRecorded = false;
+          console.error("[Telegram] Reissue audit log failed", error);
+        }
+
+        return {
+          success: true as const,
+          telegramId: telegram.id,
+          serialNumber: telegram.serialNumber,
+          serialCode: telegram.serialCode,
+          versionNumber,
+          actionLogRecorded,
+          auditLogRecorded,
+        };
+      }),
+
     delete: protectedProcedure
       .input(
         z.object({

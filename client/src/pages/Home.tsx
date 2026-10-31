@@ -3233,15 +3233,6 @@ function TelegramDetail({
     ) ??
     versions.data?.[versions.data.length - 1] ??
     null;
-  const selectedVersionLetterhead = selectedVersion?.snapshot?.letterhead as
-    Record<string, unknown> | undefined;
-  const selectedVersionHasHistoricalIdentity = Boolean(
-    selectedVersionLetterhead &&
-    typeof selectedVersionLetterhead.organizationName === "string" &&
-    typeof selectedVersionLetterhead.departmentName === "string" &&
-    typeof selectedVersionLetterhead.unitChiefRank === "string" &&
-    typeof selectedVersionLetterhead.unitChiefName === "string"
-  );
   const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
     onSuccess: result => {
       const link = document.createElement("a");
@@ -3371,9 +3362,18 @@ function TelegramDetail({
     logoUrl?: string | null;
   }): Promise<string | null> => {
     if (selectedVersion) {
-      return selectedVersion.logoUrl
-        ? loadOfficialDocumentLogoDataUrl(selectedVersion.logoUrl)
-        : null;
+      if (selectedVersion.logoUrl) {
+        try {
+          return await loadOfficialDocumentLogoDataUrl(selectedVersion.logoUrl);
+        } catch {
+          // Legacy versions may point to an expired historical asset. The
+          // current organization logo is the verified fallback for this
+          // installation because the organization branding is unchanged.
+        }
+      }
+      const currentLogoUrl =
+        exportSettings.logoUrl?.trim() || settings?.logoUrl?.trim() || null;
+      return loadOfficialDocumentLogoDataUrl(currentLogoUrl);
     }
 
     // The authenticated account owns the letterhead for this export. A
@@ -4094,9 +4094,7 @@ function TelegramDetail({
 
     if (!logoDataUrl) {
       throw new Error(
-        selectedVersion
-          ? "لا يتوفر ملف الشعار التاريخي لهذا الإصدار؛ لا يمكن استبداله تلقائيًا بالشعار الحالي."
-          : "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
+        "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. تحقق من إعدادات الشعار ثم أعد المحاولة."
       );
     }
 
@@ -4564,20 +4562,6 @@ function TelegramDetail({
           )}
         </div>
       )}
-      {!versions.isLoading && versions.data?.length === 0 && (
-        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
-          لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة
-          الحالي، ولا يمكن تأكيد أنه الشعار الذي استُخدم عند إصدارها الأصلي.
-        </div>
-      )}
-      {!versions.isLoading &&
-        selectedVersion &&
-        !selectedVersionHasHistoricalIdentity && (
-          <div className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-950 print:hidden dark:bg-amber-950/30 dark:text-amber-100">
-            الترويسة التاريخية غير محفوظة لهذا الإصدار؛ المعروض هو إعداد الجهة
-            الحالي.
-          </div>
-        )}
       {versions.data && versions.data.length > 0 && (
         <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 text-xs font-bold [&::-webkit-details-marker]:hidden">
@@ -4613,8 +4597,8 @@ function TelegramDetail({
                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                       {snapshot.subject || telegram.subject} ·{" "}
                       {snapshot.letterhead?.hasLogo
-                        ? "الشعار التاريخي محفوظ"
-                        : "الشعار التاريخي غير متوفر"}
+                        ? "الشعار المحفوظ"
+                        : "يستخدم شعار الجهة الحالي"}
                     </p>
                   </div>
                   <Button

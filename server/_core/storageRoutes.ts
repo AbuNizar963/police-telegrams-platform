@@ -155,7 +155,8 @@ export function registerStorageRoutes(app: Express): void {
         if (
           asset.body.length === 0 ||
           (actualContentType !== "image/png" &&
-            actualContentType !== "image/jpeg")
+            actualContentType !== "image/jpeg" &&
+            actualContentType !== "image/webp")
         ) {
           throw new StorageAccessDeniedError();
         }

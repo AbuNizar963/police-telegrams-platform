@@ -3907,6 +3907,13 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host || versions.isLoading) return;
+    if (versions.isError) {
+      setDocumentPreparing(false);
+      toast.error(
+        "تعذر تحميل سجل إصدارات البرقية؛ لا يمكن تأكيد الشعار التاريخي الآن."
+      );
+      return;
+    }
 
     // React Query can expose equivalent telegram/settings objects with new
     // references during background refreshes. Do not cancel a valid document
@@ -4044,7 +4051,13 @@ function TelegramDetail({
       host.replaceChildren();
       host.style.height = "";
     };
-  }, [telegram.id, versions.isLoading, versions.data, selectedVersionNumber]);
+  }, [
+    telegram.id,
+    versions.isLoading,
+    versions.isError,
+    versions.data,
+    selectedVersionNumber,
+  ]);
 
   const renderOfficialDocument = async (
     format: "pdf" | "png",
@@ -4523,6 +4536,11 @@ function TelegramDetail({
               إعادة المحاولة
             </Button>
           )}
+        </div>
+      )}
+      {!versions.isLoading && versions.data?.length === 0 && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
+          لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الذي استُخدم عند إصدارها الأصلي.
         </div>
       )}
       {versions.data && versions.data.length > 0 && (

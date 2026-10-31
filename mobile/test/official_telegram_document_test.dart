@@ -126,6 +126,43 @@ void main() {
     expect(html, isNot(contains('اسم الجهة بعد التغيير')));
   });
 
+  test('keeps the complete organization hierarchy in the official header', () {
+    final source = telegram()
+      ..remove('senderOrganizationName')
+      ..['organizationId'] = 'station-1'
+      ..['currentOrganizationId'] = 'station-1';
+    final html = buildOfficialTelegramHtml(
+      telegram: source,
+      settings: const {'numberSystem': 'latin'},
+      routingDirectory: const [
+        {
+          'id': 'ministry',
+          'name': 'وزارة الداخلية',
+          'parentOrganizationId': null,
+        },
+        {
+          'id': 'command',
+          'name': 'قيادة الأمن الداخلي في المحافظة',
+          'parentOrganizationId': 'ministry',
+        },
+        {
+          'id': 'station-1',
+          'name': 'قسم الشرطة',
+          'parentOrganizationId': 'command',
+        },
+      ],
+      verificationUrl: 'https://example.test/verify/verify-token',
+      fontDataUrls: fonts,
+    );
+
+    expect(
+      html,
+      contains('<p>قيادة الأمن الداخلي في المحافظة</p><p>قسم الشرطة</p>'),
+    );
+    expect(html, isNot(contains('<p>وزارة الداخلية</p>')));
+    expect(html, contains('<p><strong>من:</strong> قسم الشرطة</p>'));
+  });
+
   test('preserves the imported serial while hiding incomplete original-record notes', () {
     final source = telegram()
       ..['originalSerial'] = 'ب ص ٠٠٦'

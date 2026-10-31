@@ -1416,29 +1416,38 @@ String buildOfficialTelegramHtml({
     ),
     numberSystem,
   );
-  final senderOrganizationName = _localizeDigits(
-    _value(telegram['senderOrganizationName'], fallback: 'الجهة المرسلة'),
-    numberSystem,
-  );
   final hierarchyById = <String, Map<String, dynamic>>{
     for (final organization in routingDirectory)
       _value(organization['id'], fallback: ''): organization,
   };
-  final hierarchyNames = <String>[
-    if (historicalOrganizationName.isNotEmpty) historicalOrganizationName,
-  ];
-  var hierarchyId = _value(
-    telegram['currentOrganizationId'] ?? telegram['organizationId'],
+  final hierarchyNames = <String>[];
+  final historicalOrganizationId = _value(
+    letterhead['organizationId'],
     fallback: '',
   );
+  final sourceOrganizationId = _value(telegram['organizationId'], fallback: '');
+  final currentOrganizationId = _value(
+    telegram['currentOrganizationId'],
+    fallback: '',
+  );
+  var hierarchyId = historicalOrganizationId.isNotEmpty
+      ? historicalOrganizationId
+      : sourceOrganizationId.isNotEmpty
+      ? sourceOrganizationId
+      : currentOrganizationId;
   final visited = <String>{};
-  while (historicalOrganizationName.isEmpty &&
-      hierarchyId.isNotEmpty &&
-      visited.add(hierarchyId)) {
+  while (hierarchyId.isNotEmpty && visited.add(hierarchyId)) {
     final organization = hierarchyById[hierarchyId];
     if (organization == null) break;
     hierarchyNames.insert(0, _value(organization['name']));
     hierarchyId = _value(organization['parentOrganizationId'], fallback: '');
+  }
+  if (historicalOrganizationName.isNotEmpty) {
+    if (hierarchyNames.isNotEmpty) {
+      hierarchyNames[hierarchyNames.length - 1] = historicalOrganizationName;
+    } else {
+      hierarchyNames.add(historicalOrganizationName);
+    }
   }
   final hierarchyCandidates = hierarchyNames.isNotEmpty
       ? [...hierarchyNames]
@@ -1449,15 +1458,18 @@ String buildOfficialTelegramHtml({
           ),
           _value(settings['departmentName'], fallback: 'قسم العمليات'),
         ];
-  if (!hierarchyCandidates.any(
-    (name) =>
-        _localizeDigits(name, numberSystem).trim() ==
-        senderOrganizationName.trim(),
-  )) {
-    hierarchyCandidates.add(
-      _value(telegram['senderOrganizationName'], fallback: ''),
-    );
-  }
+  final senderOrganizationName = _localizeDigits(
+    _value(
+      telegram['senderOrganizationName'],
+      fallback:
+          _value(hierarchyById[sourceOrganizationId]?['name']).trim().isNotEmpty
+          ? _value(hierarchyById[sourceOrganizationId]?['name'])
+          : hierarchyCandidates.isNotEmpty
+          ? hierarchyCandidates.last
+          : 'الجهة المرسلة',
+    ),
+    numberSystem,
+  );
   const fixedHeaderNames = {'الجمهورية العربية السورية', 'وزارة الداخلية'};
   final organizationHierarchy = hierarchyCandidates
       .where(

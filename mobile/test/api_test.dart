@@ -450,7 +450,6 @@ void main() {
     expect(secondClientRequests, 2);
   });
 
-
   test('returns a disk-cached organization logo before network refresh completes', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
       'police-telegrams-logo-stale-test-',

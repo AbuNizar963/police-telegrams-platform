@@ -1912,6 +1912,11 @@ export const appRouter = router({
             !logoFileName.includes("\\") &&
             /^[^/]+\.(?:png|jpe?g|webp)$/i.test(logoFileName);
 
+          const {
+            logoStorageKey: _privateLogoStorageKey,
+            ...publicLetterhead
+          } = letterhead ?? {};
+
           return {
             id: version.id,
             telegramId: version.telegramId,
@@ -1922,6 +1927,7 @@ export const appRouter = router({
             snapshot: {
               ...version.snapshot,
               letterhead: {
+                ...publicLetterhead,
                 organizationId: telegram.organizationId,
                 logoContentType:
                   typeof letterhead?.logoContentType === "string"

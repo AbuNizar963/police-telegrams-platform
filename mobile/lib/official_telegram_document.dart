@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -163,6 +164,8 @@ class _OfficialTelegramDocumentPageState
     extends State<OfficialTelegramDocumentPage> {
   bool loading = true;
   bool busy = false;
+  double _progress = 0;
+  Timer? _progressTimer;
   String? error;
   Uint8List? preview;
   Map<String, dynamic>? telegram;
@@ -457,7 +460,20 @@ class _OfficialTelegramDocumentPageState
 
   Future<void> _perform(Future<void> Function() action) async {
     if (busy) return;
-    setState(() => busy = true);
+    setState(() {
+      busy = true;
+      _progress = 3;
+    });
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 350), (_) {
+      if (mounted && busy) {
+        setState(() {
+          _progress = (_progress + (100 - _progress) * .12)
+              .clamp(3, 92)
+              .toDouble();
+        });
+      }
+    });
     try {
       await action();
     } catch (exception) {
@@ -467,8 +483,19 @@ class _OfficialTelegramDocumentPageState
         exception.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      if (mounted) setState(() => busy = false);
+      _progressTimer?.cancel();
+      if (mounted) {
+        setState(() => _progress = 100);
+        await Future<void>.delayed(const Duration(milliseconds: 650));
+        if (mounted) setState(() => busy = false);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _progressTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _printPdf() => _perform(() async {
@@ -774,6 +801,45 @@ class _OfficialTelegramDocumentPageState
                     ),
                   ),
                 ),
+                if (busy)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 2),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'جارٍ تجهيز الوثيقة',
+                                style: TextStyle(
+                                  color: _navy,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${_progress.round()}%',
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(
+                                color: _navy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: _progress / 100,
+                            minHeight: 7,
+                            backgroundColor: const Color(0xFFE8E1D1),
+                            color: const Color(0xFFD8C38E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 SafeArea(
                   top: false,
                   minimum: const EdgeInsets.fromLTRB(12, 7, 12, 8),

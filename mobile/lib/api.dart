@@ -223,7 +223,7 @@ class PoliceApi {
               'json': {'username': username, 'password': password},
             }),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
     } on TimeoutException {
       throw const NetworkException(
         'استغرق الاتصال بالخادم وقتًا أطول من المتوقع',

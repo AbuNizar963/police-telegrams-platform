@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -39,6 +40,8 @@ class TelegramActionsPanel extends StatefulWidget {
 
 class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   bool busy = false;
+  double _progress = 0;
+  Timer? _progressTimer;
   String? error;
   List<dynamic> routes = const [];
   List<dynamic> attachments = const [];
@@ -506,9 +509,20 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (busy) return;
+    _progressTimer?.cancel();
     setState(() {
       busy = true;
+      _progress = 3;
       error = null;
+    });
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 300), (_) {
+      if (mounted && busy) {
+        setState(() {
+          _progress = (_progress + (100 - _progress) * .12)
+              .clamp(3, 92)
+              .toDouble();
+        });
+      }
     });
     try {
       await action();
@@ -518,8 +532,18 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         _show(_actionError(exception), kind: ToastKind.error);
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      _progressTimer?.cancel();
+      if (mounted) {
+        setState(() => _progress = 100);
+        await Future<void>.delayed(const Duration(milliseconds: 650));
+        if (mounted) setState(() => busy = false);
+      }
     }
+  }
+  @override
+  void dispose() {
+    _progressTimer?.cancel();
+    super.dispose();
   }
 
   List<Widget> _transitionButtons() {
@@ -674,13 +698,44 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             ),
             ...routes.map(_routeTile),
           ],
-          if (actions.isNotEmpty) ...[
+          if (busy || actions.isNotEmpty) ...[
             const Divider(height: 28),
-            const Text(
-              'سجل التدقيق والإجراءات',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            ...actions.map(_actionTile),
+            if (busy) ...[
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'جارٍ تنفيذ الإجراء',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Text(
+                    '${_progress.round()}%',
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: _progress / 100,
+                  minHeight: 7,
+                  backgroundColor: const Color(0xFFE8E1D1),
+                  color: _gold,
+                ),
+              ),
+            ] else ...[
+              Text(
+                  'سجل التدقيق والإجراءات (${actions.length})',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ...actions.map(_actionTile),
+            ],
           ],
           const Divider(height: 28),
           const Text('المرفقات', style: TextStyle(fontWeight: FontWeight.w800)),

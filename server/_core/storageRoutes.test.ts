@@ -191,6 +191,39 @@ describe("storage route", () => {
     );
   });
 
+  it("serves historical WebP logos with the correct content type", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const key = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-badge.webp`;
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey: key,
+          logoContentType: "image/webp",
+        },
+      },
+    });
+    storageDownload.mockResolvedValueOnce({
+      body: Buffer.from("RIFF"),
+      contentType: "image/webp",
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
+
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
+
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/webp");
+  });
+
   it("denies historical logo reads outside the user's telegram scope", async () => {
     getTelegramById.mockResolvedValueOnce({
       id: 7,

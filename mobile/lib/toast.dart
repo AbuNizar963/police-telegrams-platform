@@ -202,13 +202,13 @@ class _ToastCard extends StatelessWidget {
             _color.withValues(alpha: 0.1),
             Theme.of(context).colorScheme.surface,
           ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _color.withValues(alpha: 0.58)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _color, width: 1.5),
           boxShadow: const [
             BoxShadow(
               color: Color(0x1F0D1B2A),
-              blurRadius: 14,
-              offset: Offset(0, 5),
+              blurRadius: 20,
+              offset: Offset(0, 7),
             ),
           ],
         ),
@@ -217,13 +217,10 @@ class _ToastCard extends StatelessWidget {
           children: [
             const SizedBox(width: 14),
             Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: _color.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(_icon, color: _color, size: 20),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
+              child: Icon(_icon, color: Colors.white, size: 21),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -249,7 +246,7 @@ class _ToastCard extends StatelessWidget {
               child: IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed: onClose,
-                icon: Icon(Icons.close_rounded, color: _color, size: 19),
+                icon: Icon(Icons.close_rounded, color: _color, size: 21),
               ),
             ),
             const SizedBox(width: 4),

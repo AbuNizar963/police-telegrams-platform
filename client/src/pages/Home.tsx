@@ -29,6 +29,7 @@ import {
   Inbox,
   Filter,
   ListFilter,
+  LoaderCircle,
   LocateFixed,
   LockKeyhole,
   Menu,
@@ -3394,7 +3395,7 @@ function TelegramDetail({
       try {
         organizationLogo = await utils.organizations.logoForExport.fetch(
           { organizationId: logoOrganizationId },
-          { staleTime: 0 }
+          { staleTime: 30_000 }
         );
       } catch (error) {
         // The fallback resolver permits settings only when they belong to the
@@ -4517,7 +4518,14 @@ function TelegramDetail({
           aria-live="polite"
           className="mb-3 flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-6 text-center text-sm text-[#6e531e] dark:bg-[#2d281b] dark:text-[#e7cc8c]"
         >
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#b49a55]/30 border-t-[#b49a55]" />
+          <div className="relative grid h-20 w-20 animate-spin place-items-center rounded-full bg-[conic-gradient(from_0deg,#b49a55,#10233f,#b49a55)] p-1 shadow-[0_10px_28px_rgba(16,35,63,0.16)]">
+            <div className="grid h-full w-full place-items-center rounded-full bg-[#fffaf0] dark:bg-[#2d281b]">
+              <LoaderCircle
+                className="h-7 w-7 text-[#b49a55]"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
           <div>
             <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
             <p className="mt-1 text-xs opacity-80">
@@ -4565,23 +4573,22 @@ function TelegramDetail({
       {!versions.isLoading &&
         selectedVersion &&
         !selectedVersionHasHistoricalIdentity && (
-          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
-            هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد
-            اسم الجهة أو اسم ورتبة رئيسها كما كانت وقت الإصدار؛ المعروض في هذه
-            الحقول هو الإعداد الحالي.
+          <div className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-950 print:hidden dark:bg-amber-950/30 dark:text-amber-100">
+            الترويسة التاريخية غير محفوظة لهذا الإصدار؛ المعروض هو إعداد الجهة
+            الحالي.
           </div>
         )}
       {versions.data && versions.data.length > 0 && (
-        <section className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-bold">
-              إصدارات الوثيقة ({versions.data.length})
-            </p>
-            <span className="text-[11px] text-muted-foreground">
-              المعاينة الحالية: الإصدار {selectedVersion?.versionNumber}
+        <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 text-xs font-bold [&::-webkit-details-marker]:hidden">
+            <span>إصدارات الوثيقة ({versions.data.length})</span>
+            <span className="font-normal text-muted-foreground">
+              {selectedVersion
+                ? `المعاينة الحالية: الإصدار ${selectedVersion.versionNumber}`
+                : "اضغط لعرض الإصدارات"}
             </span>
-          </div>
-          <div className="mt-2 grid gap-2">
+          </summary>
+          <div className="mt-3 grid gap-2">
             {versions.data.map(version => {
               const snapshot = version.snapshot as {
                 subject?: string;
@@ -4624,7 +4631,7 @@ function TelegramDetail({
               );
             })}
           </div>
-        </section>
+        </details>
       )}
       {incomingRoutes.data && incomingRoutes.data.length > 0 && (
         <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 print:hidden">
@@ -4974,7 +4981,7 @@ function TelegramDetail({
                   onClick={requestReissue}
                   disabled={reissueTelegram.isPending || managementExpired}
                   variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                  className="order-last col-span-2 h-10 w-full rounded-lg"
                 >
                   {reissueTelegram.isPending
                     ? "جارٍ إنشاء الإصدار..."
@@ -5095,7 +5102,7 @@ function TelegramDetail({
                   onClick={requestReissue}
                   disabled={reissueTelegram.isPending || managementExpired}
                   variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                  className="order-last col-span-2 h-10 w-full rounded-lg"
                 >
                   {reissueTelegram.isPending
                     ? "جارٍ إنشاء الإصدار..."

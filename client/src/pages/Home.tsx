@@ -3904,8 +3904,9 @@ function TelegramDetail({
     // React Query can expose equivalent telegram/settings objects with new
     // references during background refreshes. Do not cancel a valid document
     // preparation and restart the logo request for the same documentTelegram.
-    if (preparedTelegramIdRef.current === documentTelegram.id) return;
-    preparedTelegramIdRef.current = documentTelegram.id;
+    const preparationKey = `${telegram.id}:${selectedVersion?.versionNumber ?? "current"}`;
+    if (preparedTelegramIdRef.current === preparationKey) return;
+    preparedTelegramIdRef.current = preparationKey;
 
     setDocumentPreparing(true);
 
@@ -4036,7 +4037,7 @@ function TelegramDetail({
       host.replaceChildren();
       host.style.height = "";
     };
-  }, [documentTelegram.id]);
+  }, [telegram.id, versions.isLoading, versions.data, selectedVersionNumber]);
 
   const renderOfficialDocument = async (
     format: "pdf" | "png",

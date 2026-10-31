@@ -1201,8 +1201,16 @@ String buildOfficialTelegramHtml({
       RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(requestedDividerColor)
       ? requestedDividerColor
       : '#b49a55';
+  final letterhead = telegram['letterhead'] is Map
+      ? Map<String, dynamic>.from(telegram['letterhead'] as Map)
+      : <String, dynamic>{};
+  final historicalOrganizationName =
+      _value(letterhead['organizationName'], fallback: '').trim();
   final departmentName = _localizeDigits(
-    _value(settings['departmentName'], fallback: 'قسم العمليات'),
+    _value(
+      letterhead['departmentName'] ?? settings['departmentName'],
+      fallback: 'قسم العمليات',
+    ),
     numberSystem,
   );
   final senderOrganizationName = _localizeDigits(
@@ -1213,13 +1221,19 @@ String buildOfficialTelegramHtml({
     for (final organization in routingDirectory)
       _value(organization['id'], fallback: ''): organization,
   };
-  final hierarchyNames = <String>[];
+  final hierarchyNames = <String>[
+    if (historicalOrganizationName.isNotEmpty) historicalOrganizationName,
+  ];
   var hierarchyId = _value(
     telegram['currentOrganizationId'] ?? telegram['organizationId'],
     fallback: '',
   );
   final visited = <String>{};
-  while (hierarchyId.isNotEmpty && visited.add(hierarchyId)) {
+  while (
+    historicalOrganizationName.isEmpty &&
+    hierarchyId.isNotEmpty &&
+    visited.add(hierarchyId)
+  ) {
     final organization = hierarchyById[hierarchyId];
     if (organization == null) break;
     hierarchyNames.insert(0, _value(organization['name']));
@@ -1228,7 +1242,10 @@ String buildOfficialTelegramHtml({
   final hierarchyCandidates = hierarchyNames.isNotEmpty
       ? [...hierarchyNames]
       : [
-          _value(settings['unitName'], fallback: 'قيادة الأمن الداخلي'),
+          _value(
+            letterhead['unitName'] ?? settings['unitName'],
+            fallback: 'قيادة الأمن الداخلي',
+          ),
           _value(settings['departmentName'], fallback: 'قسم العمليات'),
         ];
   if (!hierarchyCandidates.any(
@@ -1461,7 +1478,7 @@ $watermark
 <h2 class="body-heading">نص البرقية</h2>
 <div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
 <section class="signature">
-<p><strong>${_escapeHtml(_localizeDigits(_value(settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
+<p><strong>${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefRank'] ?? settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefName'] ?? settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
 </section></main>
 <footer class="document-footer">

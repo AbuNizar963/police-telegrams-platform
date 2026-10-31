@@ -11,28 +11,25 @@ const oldLetterhead = {
 };
 
 describe("getIssuedLetterheadForContentEdit", () => {
-  it(
-    "keeps the first issuer when later content snapshots contain current settings",
-    () => {
-      const versions = [
-        { snapshot: { letterhead: oldLetterhead } },
-        {
-          snapshot: {
-            letterhead: {
-              ...oldLetterhead,
-              unitChiefRank: "العقيد",
-              unitChiefName: "الرئيس الجديد",
-              logoStorageKey: "department/logos/org-1/new-logo.png",
-            },
+  it("keeps the first issuer when later content snapshots contain current settings", () => {
+    const versions = [
+      { snapshot: { letterhead: oldLetterhead } },
+      {
+        snapshot: {
+          letterhead: {
+            ...oldLetterhead,
+            unitChiefRank: "العقيد",
+            unitChiefName: "الرئيس الجديد",
+            logoStorageKey: "department/logos/org-1/new-logo.png",
           },
         },
-      ];
+      },
+    ];
 
-      expect(getIssuedLetterheadForContentEdit(versions, "org-1")).toEqual(
-        oldLetterhead
-      );
-    }
-  );
+    expect(getIssuedLetterheadForContentEdit(versions, "org-1")).toEqual(
+      oldLetterhead
+    );
+  });
 
   it("uses the most recent reissue identity as the new issuance anchor", () => {
     const reissuedLetterhead = {
@@ -64,17 +61,14 @@ describe("getIssuedLetterheadForContentEdit", () => {
     );
   });
 
-  it(
-    "does not invent a historical signer when no saved issuance snapshot exists",
-    () => {
-      expect(
-        getIssuedLetterheadForContentEdit(
-          [{ snapshot: { subject: "برقية قديمة بلا لقطة تاريخية" } }],
-          "org-1"
-        )
-      ).toBeNull();
-    }
-  );
+  it("does not invent a historical signer when no saved issuance snapshot exists", () => {
+    expect(
+      getIssuedLetterheadForContentEdit(
+        [{ snapshot: { subject: "برقية قديمة بلا لقطة تاريخية" } }],
+        "org-1"
+      )
+    ).toBeNull();
+  });
 
   it("rejects a letterhead belonging to another organization", () => {
     expect(

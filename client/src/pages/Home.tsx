@@ -3346,19 +3346,20 @@ function TelegramDetail({
   } | null>(null);
   const [documentPreparing, setDocumentPreparing] = useState(true);
   const [exportProgress, setExportProgress] = useState(0);
+  const [exportProgressMessage, setExportProgressMessage] = useState(
+    "بانتظار بدء العملية"
+  );
   useEffect(() => {
     if (!exporting) {
       setExportProgress(0);
+      setExportProgressMessage("بانتظار بدء العملية");
       return;
     }
-    setExportProgress(4);
-    const timer = window.setInterval(() => {
-      setExportProgress(current =>
-        Math.min(92, current + Math.max(1, Math.round((92 - current) * 0.12)))
-      );
-    }, 350);
-    return () => window.clearInterval(timer);
   }, [exporting]);
+  const reportExportProgress = (value: number, message: string) => {
+    setExportProgress(Math.min(100, Math.max(0, value)));
+    setExportProgressMessage(message);
+  };
   const [attachmentPreview, setAttachmentPreview] = useState<{
     name: string;
     mimeType: string;
@@ -3465,12 +3466,10 @@ function TelegramDetail({
   // Preview and export share the same authenticated, deduplicated in-memory
   // logo loader. Passing its data URL into the preview avoids a second image
   // request and decode after the export preparation path has already loaded it.
-  const resolveTelegramPreviewLogoUrl = (
-    exportSettings: {
-      organizationId?: string | null;
-      logoUrl?: string | null;
-    }
-  ): Promise<string | null> => resolveTelegramLogoDataUrl(exportSettings);
+  const resolveTelegramPreviewLogoUrl = (exportSettings: {
+    organizationId?: string | null;
+    logoUrl?: string | null;
+  }): Promise<string | null> => resolveTelegramLogoDataUrl(exportSettings);
   const documentTelegram = selectedVersion
     ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
     : telegram;
@@ -4073,6 +4072,7 @@ function TelegramDetail({
       OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
       "استغرق تحميل خطوط الوثيقة الرسمية وقتًا أطول من المتوقع. أعد المحاولة."
     );
+    reportExportProgress(10, "اكتمل تحميل خطوط الوثيقة");
 
     const [documentSettings, exportSettings] = await withPreparationTimeout(
       Promise.all([
@@ -4082,12 +4082,14 @@ function TelegramDetail({
       OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
       "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
     );
+    reportExportProgress(25, "اكتملت قراءة إعدادات الجهة والوثيقة");
 
     const logoDataUrl = await withPreparationTimeout(
       resolveTelegramLogoDataUrl(exportSettings),
       OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
       "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
     );
+    reportExportProgress(40, "تم تحميل شعار الجهة المعتمد");
 
     if (!logoDataUrl) {
       throw new Error(
@@ -4104,12 +4106,14 @@ function TelegramDetail({
     );
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
+    reportExportProgress(50, "اكتمل تجهيز قالب الوثيقة الرسمية");
 
     await withPreparationTimeout(
       waitForOfficialDocumentImages(paper),
       OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
       "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
     );
+    reportExportProgress(65, "اكتمل تحميل الشعار والعلامة المائية");
 
     // Chromium renders this document from about:blank with all network
     // requests disabled. Inline the same bundled Cairo fonts used by the
@@ -4170,6 +4174,7 @@ function TelegramDetail({
     ) {
       throw new Error("تعذر تضمين خطوط العربية في الوثيقة");
     }
+    reportExportProgress(82, "اكتمل تضمين الخطوط العربية");
 
     const html = `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -4205,7 +4210,9 @@ function TelegramDetail({
         payload?.error || "تعذر إنشاء الوثيقة الرسمية حاليًا. أعد المحاولة."
       );
     }
-    return response.blob();
+    const renderedDocument = await response.blob();
+    reportExportProgress(100, "اكتمل إنشاء ملف الوثيقة");
+    return renderedDocument;
   };
 
   const getPrintStyles = () => `
@@ -4269,7 +4276,9 @@ function TelegramDetail({
         loadExportSettings(),
         utils.settings.get.fetch(undefined, { staleTime: 0 }),
       ]);
+      reportExportProgress(25, "اكتملت قراءة إعدادات الجهة والوثيقة");
       const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+      reportExportProgress(40, "تم تحميل شعار الجهة المعتمد");
       exportWrapper = createExportPaper(documentSettings, logoDataUrl);
     } catch (error) {
       toast.error(
@@ -4305,17 +4314,20 @@ function TelegramDetail({
 
     try {
       await waitForOfficialDocumentImages(printRoot);
+      reportExportProgress(65, "اكتمل تحميل الشعار والعلامة المائية");
       // Wait for the exact font faces used by the official document before
       // opening the native print dialog; this keeps Arabic shaping and line
       // wrapping stable instead of printing with a fallback font. Logo bytes
       // were already decoded before the paper was created, so a temporary
       // storage failure cannot stop the print action at this stage.
       await document.fonts.ready;
+      reportExportProgress(80, "اكتمل تحميل خطوط الوثيقة");
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
 
       const outputTimestamp = await auditDocumentOutput("print", "pdf");
+      reportExportProgress(90, "اكتمل توثيق عملية الطباعة");
       const footerTimestamp =
         exportWrapper.querySelector<HTMLElement>(".footer-date-value");
       if (!footerTimestamp) {
@@ -4327,6 +4339,7 @@ function TelegramDetail({
       );
       window.addEventListener("afterprint", cleanup, { once: true });
       window.print();
+      reportExportProgress(100, "اكتمل تجهيز نافذة الطباعة");
       setExporting(null);
 
       // Some mobile browsers do not reliably dispatch afterprint.
@@ -4762,12 +4775,13 @@ function TelegramDetail({
       )}
       {exporting ? (
         <div
-          className="mt-4 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-3 text-[#6e531e] print:hidden"
+          dir="rtl"
+          className="mt-4 overflow-hidden rounded-[2rem] border border-[#202124] bg-[#050607] px-5 py-6 text-white shadow-sm print:hidden sm:px-8 sm:py-7"
           role="status"
           aria-live="polite"
         >
-          <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
-            <span>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <span className="text-lg font-bold sm:text-2xl">
               {exporting === "pdf"
                 ? "جارٍ تجهيز ملف PDF"
                 : exporting === "image"
@@ -4776,12 +4790,15 @@ function TelegramDetail({
                     ? "جارٍ تجهيز الملف للمشاركة"
                     : "جارٍ تنفيذ الإجراء"}
             </span>
-            <span dir="ltr" className="tabular-nums">
+            <span
+              dir="ltr"
+              className="text-5xl font-bold tabular-nums text-[#08b65b] sm:text-6xl"
+            >
               {exportProgress}%
             </span>
           </div>
           <div
-            className="h-2 overflow-hidden rounded-full bg-[#b49a55]/20"
+            className="relative h-7 overflow-hidden rounded-full bg-[#292a2d] sm:h-9"
             role="progressbar"
             aria-label="نسبة تقدم تجهيز الوثيقة"
             aria-valuemin={0}
@@ -4789,9 +4806,17 @@ function TelegramDetail({
             aria-valuenow={exportProgress}
           >
             <div
-              className="h-full rounded-full bg-[#b49a55] transition-[width] duration-300"
+              className="absolute inset-y-0 right-0 rounded-full bg-[#08a94f] transition-[width] duration-500 ease-out"
               style={{ width: `${exportProgress}%` }}
             />
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <span className="shrink-0 rounded-full bg-[#003c26] px-5 py-2 text-sm font-semibold text-[#18c66c]">
+              قيد التنفيذ
+            </span>
+            <span className="text-sm text-[#b9bbbf] sm:text-base">
+              {exportProgressMessage}
+            </span>
           </div>
         </div>
       ) : (

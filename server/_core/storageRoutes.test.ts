@@ -70,13 +70,15 @@ type FakeResponse = {
   redirect: ReturnType<typeof vi.fn>;
 };
 
+type StorageRouteHandler = (
+  req: any,
+  res: FakeResponse
+) => Promise<void>;
+
 function createRouteHarness() {
-  const handlers = new Map<
-    string,
-    ((req: any, res: FakeResponse) => Promise<void>) | undefined
-  >();
+  const handlers = new Map<string, StorageRouteHandler>();
   const app = {
-    get: vi.fn((path: string, routeHandler: (typeof handlers extends Map<string, infer T> ? T : never)) => {
+    get: vi.fn((path: string, routeHandler: StorageRouteHandler) => {
       handlers.set(path, routeHandler);
     }),
   };

@@ -1879,7 +1879,7 @@ export const appRouter = router({
             Boolean(logoFileName) &&
             !logoFileName.includes("/") &&
             !logoFileName.includes("\\") &&
-            /^[^/]+\\.(?:png|jpe?g|webp)$/i.test(logoFileName);
+            /^[^/]+\.(?:png|jpe?g|webp)$/i.test(logoFileName);
 
           return {
             id: version.id,

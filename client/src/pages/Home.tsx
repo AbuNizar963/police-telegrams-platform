@@ -4518,17 +4518,19 @@ function TelegramDetail({
         <div
           role="status"
           aria-live="polite"
-          className="mb-3 flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-50 px-3 py-4 text-center text-sm text-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-200"
+          className="mb-3 flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-2xl border border-transparent bg-transparent px-3 py-4 text-center text-sm text-black dark:border-transparent dark:bg-transparent dark:text-black"
         >
-          <div className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-emerald-500/10">
+          <div className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-transparent">
             <LoaderCircle
-              className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-300"
+              className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-600"
               aria-hidden="true"
             />
           </div>
           <div className="min-w-0 leading-5">
-            <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
-            <p className="text-xs opacity-80">
+            <p className="font-bold text-black dark:text-black">
+              جارٍ تجهيز الوثيقة الرسمية
+            </p>
+            <p className="text-xs text-black dark:text-black">
               يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
             </p>
           </div>

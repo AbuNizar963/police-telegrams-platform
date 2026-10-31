@@ -957,14 +957,28 @@ class _OfficialTelegramDocumentPageState
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'برقية رقم : $_displaySerial',
-              style: const TextStyle(
-                fontFamily: 'Cairo',
-                color: Color(0xFF6B7280),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'برقية رقم : ',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: Color(0xFF6B7280),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  _displaySerial,
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    color: Color(0xFF6B7280),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
             Text(
               _value(telegram?['subject'], fallback: 'عرض البرقية'),

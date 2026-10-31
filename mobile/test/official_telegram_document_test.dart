@@ -165,9 +165,7 @@ void main() {
 
     expect(
       html,
-      contains(
-        '<span class="footer-output-time">2026/10/30 - 12:34:56</span>',
-      ),
+      contains('<span class="footer-output-time">2026/10/30 - 12:34:56</span>'),
     );
     expect(html, isNot(contains('2026/10/15')));
   });

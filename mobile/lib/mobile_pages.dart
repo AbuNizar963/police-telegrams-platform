@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -925,7 +926,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     final afterFields = readableAuditFields(
                       entry['afterState'],
                     );
-                    final rawBeforeState = rawAuditDetails(entry['beforeState']);
+                    final rawBeforeState = rawAuditDetails(
+                      entry['beforeState'],
+                    );
                     final rawAfterState = rawAuditDetails(entry['afterState']);
                     final reason = _stringValue(entry['reason'], '');
                     final actorSummary = [
@@ -1041,7 +1044,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 ],
                               ),
                             ],
-                            if (beforeFields.isNotEmpty || afterFields.isNotEmpty)
+                            if (beforeFields.isNotEmpty ||
+                                afterFields.isNotEmpty)
                               ExpansionTile(
                                 tilePadding: EdgeInsets.zero,
                                 title: const Text(
@@ -1157,7 +1161,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                     'غير متاح',
                                   ),
                                 ),
-                                if (_stringValue(entry['userAgent'], '').isNotEmpty)
+                                if (_stringValue(
+                                  entry['userAgent'],
+                                  '',
+                                ).isNotEmpty)
                                   ExpansionTile(
                                     tilePadding: EdgeInsets.zero,
                                     title: const Text(

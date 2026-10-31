@@ -12,10 +12,7 @@ void main() {
     test('shows a human-readable resource reference without UUIDs', () {
       expect(auditEntitySummary('telegram', '93'), 'البرقية رقم 93');
       expect(
-        auditEntitySummary(
-          'telegram',
-          '550e8400-e29b-41d4-a716-446655440000',
-        ),
+        auditEntitySummary('telegram', '550e8400-e29b-41d4-a716-446655440000'),
         'البرقية',
       );
     });

@@ -237,7 +237,12 @@ List<AuditLogField> readableAuditFields(dynamic value) {
   final record = _recordFrom(value);
   if (record == null) {
     if (value is String && value.trim().isNotEmpty) {
-      return [AuditLogField(label: 'ملاحظة', value: _displayFieldValue('note', value))];
+      return [
+        AuditLogField(
+          label: 'ملاحظة',
+          value: _displayFieldValue('note', value),
+        ),
+      ];
     }
     return const [];
   }
@@ -298,7 +303,10 @@ String _labelForKey(String key) {
   final label = _fieldLabels[key];
   if (label != null) return label;
   final words = key
-      .replaceAllMapped(RegExp(r'([a-z0-9])([A-Z])'), (match) => '${match[1]} ${match[2]}')
+      .replaceAllMapped(
+        RegExp(r'([a-z0-9])([A-Z])'),
+        (match) => '${match[1]} ${match[2]}',
+      )
       .replaceAll(RegExp(r'[._-]+'), ' ')
       .toLowerCase()
       .split(RegExp(r'\s+'))
@@ -319,7 +327,10 @@ String _displayFieldValue(String key, dynamic value) {
     if (RegExp(r'ids?$', caseSensitive: false).hasMatch(key)) {
       return '${value.length} عناصر مرتبطة';
     }
-    return value.take(5).map((item) => _displayFieldValue(key, item)).join('، ');
+    return value
+        .take(5)
+        .map((item) => _displayFieldValue(key, item))
+        .join('، ');
   }
   if (value is Map) {
     return value.isEmpty ? 'لا توجد تفاصيل' : 'تفاصيل إضافية (${value.length})';
@@ -338,7 +349,8 @@ String _displayFieldValue(String key, dynamic value) {
     }
   }
   final normalized = text.toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
-  final translated = _tokenLabels['$key:$normalized'] ?? _tokenLabels[normalized];
+  final translated =
+      _tokenLabels['$key:$normalized'] ?? _tokenLabels[normalized];
   if (translated != null) return translated;
   if (RegExp(r'^[a-z0-9_.-]{1,64}$', caseSensitive: false).hasMatch(text)) {
     return 'قيمة مسجلة';

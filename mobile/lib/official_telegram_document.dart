@@ -419,10 +419,7 @@ class _OfficialTelegramDocumentPageState
     );
   }
 
-  Future<Uint8List> _renderOutputPdf(
-    String operation,
-    String format,
-  ) async {
+  Future<Uint8List> _renderOutputPdf(String operation, String format) async {
     final occurredAt = await _recordDocumentOutput(operation, format);
     final bytes = await _renderer.renderPdf(
       _htmlWithOutputTimestamp(occurredAt),

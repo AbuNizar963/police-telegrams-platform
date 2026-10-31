@@ -622,6 +622,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     final label = switch (value) {
       'status.transition' => 'تغيير حالة البرقية',
       'attachment.upload' => 'رفع مرفق',
+      'telegram.reissue' => 'إعادة إصدار البرقية',
       _ => value,
     };
     final statuses = [

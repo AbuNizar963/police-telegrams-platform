@@ -238,7 +238,9 @@ class _OfficialTelegramDocumentPageState
               .toList();
         }
       } catch (_) {
-        // A first-time legacy preview may still use the verified current logo.
+        throw Exception(
+          'تعذر تحميل سجل إصدارات البرقية؛ تحقق من الاتصال وأعد المحاولة.',
+        );
       }
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
       if (requestedVersionNumber != null &&
@@ -984,6 +986,26 @@ class _OfficialTelegramDocumentPageState
                                 _selectVersion(value);
                               }
                             },
+                    ),
+                  ),
+                if (versions.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Text(
+                          'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
                     ),
                   ),
                 Expanded(

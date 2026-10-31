@@ -177,7 +177,6 @@ class _OfficialTelegramDocumentPageState
   Map<String, dynamic>? settings;
   List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
   int? selectedVersionNumber;
-  bool historicalIdentityUnavailable = false;
   String? documentHtml;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
@@ -202,7 +201,6 @@ class _OfficialTelegramDocumentPageState
         loading = true;
         error = null;
         preview = null;
-        historicalIdentityUnavailable = false;
       });
     }
     try {
@@ -261,15 +259,6 @@ class _OfficialTelegramDocumentPageState
               (item) => item['versionNumber'] == requestedVersionNumber,
             );
       final hasSelectedVersion = activeVersion.isNotEmpty;
-      final snapshotLetterhead = activeVersion['snapshot'] is Map
-          ? (activeVersion['snapshot'] as Map)['letterhead']
-          : null;
-      final hasHistoricalIdentity =
-          snapshotLetterhead is Map &&
-          snapshotLetterhead['organizationName'] is String &&
-          snapshotLetterhead['departmentName'] is String &&
-          snapshotLetterhead['unitChiefRank'] is String &&
-          snapshotLetterhead['unitChiefName'] is String;
       if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
         telegramData.addAll(
           Map<String, dynamic>.from(activeVersion['snapshot'] as Map),
@@ -324,6 +313,29 @@ class _OfficialTelegramDocumentPageState
           }
         }
       }
+      if (hasSelectedVersion && logoOrganizationId.isNotEmpty) {
+        try {
+          final organizationSettings = await widget.api.call(
+            'organizations.logo',
+            input: {'organizationId': logoOrganizationId},
+          );
+          if (organizationSettings is Map &&
+              resolveOrganizationLogoId(
+                    accountOrganizationId:
+                        organizationSettings['organizationId'],
+                  ) ==
+                  logoOrganizationId) {
+            final currentLogo = organizationSettings['logoUrl']
+                ?.toString()
+                .trim();
+            if (currentLogo != null && currentLogo.isNotEmpty) {
+              settingsData['logoUrl'] = currentLogo;
+            }
+          }
+        } catch (_) {
+          // The account settings logo remains the fallback when available.
+        }
+      }
 
       final routingDirectory = results[2] is List
           ? (results[2] as List)
@@ -339,7 +351,8 @@ class _OfficialTelegramDocumentPageState
         hasSelectedVersion
             ? _loadHistoricalLogoDataUrl(
                 activeVersion,
-                _value(telegramData['organizationId']),
+                logoOrganizationId,
+                fallbackUrl: _value(settingsData['logoUrl']),
               )
             : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
@@ -395,8 +408,6 @@ class _OfficialTelegramDocumentPageState
         selectedVersionNumber = hasSelectedVersion
             ? activeVersion['versionNumber'] as int?
             : null;
-        historicalIdentityUnavailable =
-            hasSelectedVersion && !hasHistoricalIdentity;
         documentHtml = html;
         preview = image;
         loading = false;
@@ -427,22 +438,29 @@ class _OfficialTelegramDocumentPageState
 
   Future<String?> _loadHistoricalLogoDataUrl(
     Map<String, dynamic> version,
-    String organizationId,
-  ) async {
+    String organizationId, {
+    String? fallbackUrl,
+  }) async {
     final url = _value(version['logoUrl'], fallback: '');
-    if (url.isEmpty || organizationId.isEmpty) return null;
+    if (url.isEmpty || organizationId.isEmpty) {
+      return _loadLogoDataUrl(fallbackUrl, organizationId);
+    }
     final cacheKey = '$organizationId\n$url';
     final cached = _officialLogoDataUrlCache[cacheKey];
     if (cached != null) return cached;
 
-    final bytes = await widget.api.fetchImageAsset(url);
-    if (bytes == null || bytes.isEmpty) {
-      throw Exception('تعذر تحميل شعار الإصدار التاريخي للبرقية.');
+    try {
+      final bytes = await widget.api.fetchImageAsset(url);
+      if (bytes == null || bytes.isEmpty) throw StateError('empty logo');
+      final normalized = await normalizeOfficialDocumentLogo(bytes);
+      final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+      _officialLogoDataUrlCache[cacheKey] = dataUrl;
+      return dataUrl;
+    } catch (_) {
+      // A legacy historical asset can be missing or expired. Use the current
+      // verified organization logo instead of blocking document export.
+      return _loadLogoDataUrl(fallbackUrl, organizationId);
     }
-    final normalized = await normalizeOfficialDocumentLogo(bytes);
-    final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
-    _officialLogoDataUrlCache[cacheKey] = dataUrl;
-    return dataUrl;
   }
 
   Future<String?> _loadLogoDataUrl(
@@ -1039,28 +1057,6 @@ class _OfficialTelegramDocumentPageState
                                 _selectVersion(value);
                               }
                             },
-                    ),
-                  ),
-                if (versions.isEmpty || historicalIdentityUnavailable)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Text(
-                          versions.isEmpty
-                              ? 'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.'
-                              : 'هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد اسم الجهة أو رتبة واسم رئيسها وقت الإصدار؛ المعروض هو الإعداد الحالي.',
-                          textDirection: TextDirection.rtl,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ),
                     ),
                   ),
                 Expanded(

@@ -1,7 +1,11 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 import { getAuthenticatedUserFromRequest } from "./auth";
-import { getTelegramAttachmentByStorageKey, getTelegramById } from "../db";
+import {
+  getTelegramAttachmentByStorageKey,
+  getTelegramById,
+  getTelegramVersion,
+} from "../db";
 import { canAccessTelegramScope } from "../telegramAccess";
 import {
   getOrganizationSettings,
@@ -83,6 +87,93 @@ async function assertDepartmentLogoAccess(
 }
 
 export function registerStorageRoutes(app: Express): void {
+  app.get(
+    "/api/telegrams/:telegramId/versions/:versionNumber/logo",
+    async (req, res) => {
+      const telegramId = Number(req.params.telegramId);
+      const versionNumber = Number(req.params.versionNumber);
+      if (
+        !Number.isSafeInteger(telegramId) ||
+        telegramId < 1 ||
+        !Number.isSafeInteger(versionNumber) ||
+        versionNumber < 1
+      ) {
+        res.status(400).send("Invalid telegram version reference");
+        return;
+      }
+
+      const user = await getAuthenticatedUserFromRequest(req);
+      if (!user) {
+        res.status(401).send("Authentication required");
+        return;
+      }
+
+      try {
+        const telegram = await getTelegramById(telegramId);
+        if (!telegram) {
+          res.status(404).send("Telegram not found");
+          return;
+        }
+        if (!(await canAccessTelegramScope(user, telegram))) {
+          throw new StorageAccessDeniedError();
+        }
+
+        const version = await getTelegramVersion(telegramId, versionNumber);
+        if (!version) {
+          res.status(404).send("Telegram version not found");
+          return;
+        }
+        const letterhead =
+          version.snapshot.letterhead &&
+          typeof version.snapshot.letterhead === "object"
+            ? (version.snapshot.letterhead as Record<string, unknown>)
+            : null;
+        const key =
+          typeof letterhead?.logoStorageKey === "string"
+            ? letterhead.logoStorageKey
+            : "";
+        const expectedPrefix = `department/logos/${telegram.organizationId}/`;
+        const fileName = key.startsWith(expectedPrefix)
+          ? key.slice(expectedPrefix.length)
+          : "";
+        if (
+          !fileName ||
+          fileName.includes("/") ||
+          fileName.includes("\\") ||
+          fileName === "." ||
+          fileName === ".." ||
+          !/^[^/]+\.(?:png|jpe?g)$/i.test(fileName) ||
+          letterhead?.organizationId !== telegram.organizationId
+        ) {
+          throw new StorageAccessDeniedError();
+        }
+
+        const asset = await storageDownload(key);
+        const actualContentType = asset.contentType.toLowerCase().split(";")[0]?.trim();
+        if (
+          asset.body.length === 0 ||
+          (actualContentType !== "image/png" &&
+            actualContentType !== "image/jpeg")
+        ) {
+          throw new StorageAccessDeniedError();
+        }
+
+        res.set("Cache-Control", "private, no-store");
+        res.set("Vary", "Cookie");
+        res.set("Content-Type", actualContentType);
+        res.set("X-Content-Type-Options", "nosniff");
+        res.send(asset.body);
+      } catch (error) {
+        if (error instanceof StorageAccessDeniedError) {
+          res.status(403).send("Storage access denied");
+          return;
+        }
+        console.error("[Storage] Historical telegram logo retrieval failed", error);
+        res.status(502).send("Storage backend error");
+      }
+    }
+  );
+
   app.get("/api/storage/*key", async (req, res) => {
     const rawKey = req.params.key;
     const key = Array.isArray(rawKey) ? rawKey.join("/") : rawKey;

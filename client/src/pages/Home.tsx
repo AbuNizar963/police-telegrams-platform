@@ -3501,6 +3501,17 @@ function TelegramDetail({
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
 
+    const historicalLetterhead = (
+      documentTelegram as typeof telegram & {
+        letterhead?: {
+          organizationName?: string | null;
+          departmentName?: string | null;
+          unitName?: string | null;
+          unitChiefRank?: string | null;
+          unitChiefName?: string | null;
+        };
+      }
+    ).letterhead;
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
     // Match the working application branch: keep both watermark layers
@@ -3513,7 +3524,9 @@ function TelegramDetail({
       ? requestedHeaderDividerColor
       : "#b49a55";
     const departmentName = localizeDigits(
-      settings?.departmentName ?? "قسم العمليات",
+      historicalLetterhead?.departmentName ??
+        settings?.departmentName ??
+        "قسم العمليات",
       numberSystem
     );
     const senderOrganizationName = localizeDigits(
@@ -3522,17 +3535,25 @@ function TelegramDetail({
     );
     const documentType = isOutgoing ? "برقية صادرة" : "برقية واردة";
     const unitName = localizeDigits(
-      settings?.unitName ?? "قيادة الأمن الداخلي",
+      historicalLetterhead?.unitName ??
+        settings?.unitName ??
+        "قيادة الأمن الداخلي",
       numberSystem
     );
     const organizationById = new Map(
       routingDirectory.map(organization => [organization.id, organization])
     );
-    const hierarchyNames: string[] = [];
+    const hierarchyNames: string[] = historicalLetterhead?.organizationName
+      ? [historicalLetterhead.organizationName]
+      : [];
     let hierarchyId =
       documentTelegram.currentOrganizationId ?? documentTelegram.organizationId;
     const visited = new Set<string>();
-    while (hierarchyId && !visited.has(hierarchyId)) {
+    while (
+      !historicalLetterhead?.organizationName &&
+      hierarchyId &&
+      !visited.has(hierarchyId)
+    ) {
       const organization = organizationById.get(hierarchyId);
       if (!organization) break;
       hierarchyNames.unshift(organization.name);
@@ -3881,7 +3902,7 @@ function TelegramDetail({
           <h2 class="body-heading">نص البرقية</h2>
           <div class="telegram-body">${escapeHtml(localizeDigits(documentTelegram.body, numberSystem))}</div>
           <section class="signature">
-            <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
+            <p><strong>${escapeHtml(localizeDigits(historicalLetterhead?.unitChiefRank ?? settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(historicalLetterhead?.unitChiefName ?? settings?.unitChiefName ?? "", numberSystem))}</strong></p>
             <p><strong>رئيس ${escapeHtml(departmentName)}</strong></p>
           </section>
         </main>

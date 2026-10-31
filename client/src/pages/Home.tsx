@@ -2996,7 +2996,7 @@ function TelegramDetail({
   close: () => void;
 }) {
   const paperRef = useRef<HTMLDivElement>(null);
-  const preparedTelegramIdRef = useRef<number | null>(null);
+  const preparedTelegramIdRef = useRef<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
@@ -3035,6 +3035,25 @@ function TelegramDetail({
       ]);
     },
     onError: error => toast.error(error.message || "تعذر تعديل البرقية"),
+  });
+  const reissueTelegram = trpc.telegrams.reissue.useMutation({
+    onSuccess: async result => {
+      setSelectedVersionNumber(result.versionNumber);
+      toast.success(
+        `تم إنشاء الإصدار ${result.versionNumber} مع الاحتفاظ بالرقم الرسمي ${getTelegramDisplayNumber(result.serialCode)}`
+      );
+      if (!result.actionLogRecorded || !result.auditLogRecorded) {
+        toast.warning(
+          "تم حفظ الإصدار، لكن تعذر تسجيل أحد سجلات التدقيق الثانوية"
+        );
+      }
+      await Promise.all([
+        utils.telegrams.versions.invalidate({ telegramId: telegram.id }),
+        utils.telegrams.actions.invalidate({ telegramId: telegram.id }),
+        utils.telegrams.get.invalidate({ id: telegram.id }),
+      ]);
+    },
+    onError: error => toast.error(error.message || "تعذرت إعادة إصدار البرقية"),
   });
   const deleteTelegram = trpc.telegrams.delete.useMutation({
     onSuccess: async result => {
@@ -3098,6 +3117,28 @@ function TelegramDetail({
     ) {
       deleteTelegram.mutate({ id: telegram.id, reason: normalizedReason });
     }
+  };
+  const requestReissue = () => {
+    if (managementExpired) {
+      notifyManagementExpired();
+      return;
+    }
+    const reason = window
+      .prompt("اكتب سبب إعادة الإصدار (5 أحرف على الأقل):")
+      ?.trim();
+    if (!reason) return;
+    if (reason.length < 5) {
+      toast.error("سبب إعادة الإصدار مطلوب ويجب ألا يقل عن 5 أحرف");
+      return;
+    }
+    if (
+      !window.confirm(
+        `سيتم إنشاء إصدار جديد للبرقية ${getTelegramDisplayNumber(telegram.serialCode)} بالشعار الحالي للجهة، مع الاحتفاظ بالرقم الرسمي والنسخ السابقة. هل تريد المتابعة؟`
+      )
+    ) {
+      return;
+    }
+    reissueTelegram.mutate({ id: telegram.id, reason });
   };
   const transition = trpc.telegrams.transition.useMutation({
     onSuccess: async () => {
@@ -3179,6 +3220,18 @@ function TelegramDetail({
   const actions = trpc.telegrams.actions.useQuery({
     telegramId: telegram.id,
   });
+  const versions = trpc.telegrams.versions.useQuery({
+    telegramId: telegram.id,
+  });
+  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
+    number | null
+  >(null);
+  const selectedVersion =
+    versions.data?.find(
+      version => version.versionNumber === selectedVersionNumber
+    ) ??
+    versions.data?.[versions.data.length - 1] ??
+    null;
   const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
     onSuccess: result => {
       const link = document.createElement("a");
@@ -3306,6 +3359,12 @@ function TelegramDetail({
     organizationId?: string | null;
     logoUrl?: string | null;
   }): Promise<string | null> => {
+    if (selectedVersion) {
+      return selectedVersion.logoUrl
+        ? loadOfficialDocumentLogoDataUrl(selectedVersion.logoUrl)
+        : null;
+    }
+
     // The authenticated account owns the letterhead for this export. A
     // telegram can have been routed to another organization after creation;
     // only ownerless legacy accounts fall back to the telegram's IDs.
@@ -3398,6 +3457,8 @@ function TelegramDetail({
     organizationId?: string | null;
     logoUrl?: string | null;
   }): Promise<string | null> => {
+    if (selectedVersion) return selectedVersion.logoUrl;
+
     const logoOrganizationId = resolveTelegramExportOrganizationId({
       accountOrganizationId: exportSettings.organizationId,
       currentOrganizationId: telegram.currentOrganizationId,
@@ -3424,6 +3485,9 @@ function TelegramDetail({
     }
     return logoUrl;
   };
+  const documentTelegram = selectedVersion
+    ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
+    : telegram;
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
     logoUrl: string | null = settings?.logoUrl ?? null,
@@ -3453,7 +3517,7 @@ function TelegramDetail({
       numberSystem
     );
     const senderOrganizationName = localizeDigits(
-      telegram.senderOrganizationName?.trim() || "الجهة المرسلة",
+      documentTelegram.senderOrganizationName?.trim() || "الجهة المرسلة",
       numberSystem
     );
     const documentType = isOutgoing ? "برقية صادرة" : "برقية واردة";
@@ -3465,7 +3529,7 @@ function TelegramDetail({
       routingDirectory.map(organization => [organization.id, organization])
     );
     const hierarchyNames: string[] = [];
-    let hierarchyId = telegram.currentOrganizationId ?? telegram.organizationId;
+    let hierarchyId = documentTelegram.currentOrganizationId ?? documentTelegram.organizationId;
     const visited = new Set<string>();
     while (hierarchyId && !visited.has(hierarchyId)) {
       const organization = organizationById.get(hierarchyId);
@@ -3480,7 +3544,7 @@ function TelegramDetail({
     const hierarchyCandidates = hierarchyNames.length
       ? [...hierarchyNames]
       : [unitName, departmentName];
-    const senderOrganizationNameRaw = telegram.senderOrganizationName?.trim();
+    const senderOrganizationNameRaw = documentTelegram.senderOrganizationName?.trim();
     if (
       senderOrganizationNameRaw &&
       !hierarchyCandidates.some(
@@ -3500,7 +3564,7 @@ function TelegramDetail({
     const organizationHierarchy = hierarchyCandidates.filter(
       name => !fixedHeaderNames.has(name.trim())
     );
-    const telegramDate = telegram.telegramDate ?? telegram.createdAt;
+    const telegramDate = documentTelegram.telegramDate ?? documentTelegram.createdAt;
     const documentOutputAt = outputTimestamp
       ? formatConfiguredHeaderDateTime(outputTimestamp, settings)
       : "يُحدَّد عند الإخراج";
@@ -3509,8 +3573,8 @@ function TelegramDetail({
       settings
     );
     const location = localizeDigits(
-      telegram.gpsLatitude != null && telegram.gpsLongitude != null
-        ? `${telegram.gpsLatitude}, ${telegram.gpsLongitude}`
+      documentTelegram.gpsLatitude != null && documentTelegram.gpsLongitude != null
+        ? `${documentTelegram.gpsLatitude}, ${documentTelegram.gpsLongitude}`
         : "غير محدد",
       numberSystem
     );
@@ -3528,7 +3592,7 @@ function TelegramDetail({
         <path d="M16 3v4M8 3v4M3.5 10h17" />
       </svg>`,
     };
-    const displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+    const displaySerial = getTelegramDisplaySerial(documentTelegram, numberSystem);
     // The supplied URL is already resolved for this document. Do not
     // reintroduce a remote settings URL when normalization explicitly failed:
     // the server-side renderer blocks external network resources.
@@ -3537,7 +3601,7 @@ function TelegramDetail({
       ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
       : "";
     const verificationUrl = new URL(
-      `/verify/${encodeURIComponent(telegram.verificationToken)}`,
+      `/verify/${encodeURIComponent(documentTelegram.verificationToken)}`,
       window.location.origin
     ).toString();
     const qrPayload = verificationUrl;
@@ -3787,28 +3851,28 @@ function TelegramDetail({
           <div class="header-metadata">
             <p><strong>رقم البرقية:</strong> ${escapeHtml(displaySerial)}</p>
             <p class="header-date-row"><strong>الوقت والتاريخ:</strong> <span class="header-date-value" dir="ltr">${escapeHtml(headerCreatedAt)}</span></p>
-            <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[telegram.classification])}</p>
-            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[telegram.priority])}</p>
+            <p><strong>درجة السرية:</strong> ${escapeHtml(classificationLabels[documentTelegram.classification])}</p>
+            <p><strong>درجة الأسبقية:</strong> ${escapeHtml(priorityLabels[documentTelegram.priority])}</p>
           </div>
         </header>
         <section class="classification">
           <span><strong>نوع الوثيقة:</strong> <span class="classification-value">${escapeHtml(documentType)}</span></span>
-          <span><strong>التصنيف:</strong> <span class="classification-value">${escapeHtml(categoryLabels[telegram.category])}</span></span>
-          <span><strong>الحالة:</strong> <span class="classification-value">${escapeHtml(statusLabels[telegram.status])}</span></span>
+          <span><strong>التصنيف:</strong> <span class="classification-value">${escapeHtml(categoryLabels[documentTelegram.category])}</span></span>
+          <span><strong>الحالة:</strong> <span class="classification-value">${escapeHtml(statusLabels[documentTelegram.status])}</span></span>
         </section>
         <main class="telegram-content">
           <section class="routing">
             <div class="routing-layout">
               <div class="routing-details">
                 <p><strong>من:</strong> ${escapeHtml(senderOrganizationName)}</p>
-                <p><strong>إلى:</strong> ${escapeHtml(localizeDigits(telegram.recipient, numberSystem))}</p>
-                <p><strong>الموضوع:</strong> ${escapeHtml(localizeDigits(telegram.subject, numberSystem))}</p>
+                <p><strong>إلى:</strong> ${escapeHtml(localizeDigits(documentTelegram.recipient, numberSystem))}</p>
+                <p><strong>الموضوع:</strong> ${escapeHtml(localizeDigits(documentTelegram.subject, numberSystem))}</p>
               </div>
               ${showVerificationQr ? `<div class="routing-qr" role="img" aria-label="رمز QR لبيانات البرقية">${qrSvg}</div>` : ""}
             </div>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
-          <div class="telegram-body">${escapeHtml(localizeDigits(telegram.body, numberSystem))}</div>
+          <div class="telegram-body">${escapeHtml(localizeDigits(documentTelegram.body, numberSystem))}</div>
           <section class="signature">
             <p><strong>${escapeHtml(localizeDigits(settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(settings?.unitChiefName ?? "", numberSystem))}</strong></p>
             <p><strong>رئيس ${escapeHtml(departmentName)}</strong></p>
@@ -3817,7 +3881,7 @@ function TelegramDetail({
         <footer class="document-footer">
           <p class="footer-creator">
             ${documentFooterIcons.person}
-            <span class="footer-text">منشئ الوثيقة: ${escapeHtml(localizeDigits(telegram.creatorName, numberSystem))}</span>
+            <span class="footer-text">منشئ الوثيقة: ${escapeHtml(localizeDigits(documentTelegram.creatorName, numberSystem))}</span>
           </p>
           <p class="footer-location">
             ${documentFooterIcons.location}
@@ -3835,13 +3899,13 @@ function TelegramDetail({
 
   useEffect(() => {
     const host = paperRef.current;
-    if (!host) return;
+    if (!host || versions.isLoading) return;
 
     // React Query can expose equivalent telegram/settings objects with new
     // references during background refreshes. Do not cancel a valid document
-    // preparation and restart the logo request for the same telegram.
-    if (preparedTelegramIdRef.current === telegram.id) return;
-    preparedTelegramIdRef.current = telegram.id;
+    // preparation and restart the logo request for the same documentTelegram.
+    if (preparedTelegramIdRef.current === documentTelegram.id) return;
+    preparedTelegramIdRef.current = documentTelegram.id;
 
     setDocumentPreparing(true);
 
@@ -3972,7 +4036,7 @@ function TelegramDetail({
       host.replaceChildren();
       host.style.height = "";
     };
-  }, [telegram.id]);
+  }, [documentTelegram.id]);
 
   const renderOfficialDocument = async (
     format: "pdf" | "png",
@@ -4001,7 +4065,9 @@ function TelegramDetail({
 
     if (!logoDataUrl) {
       throw new Error(
-        "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
+        selectedVersion
+          ? "لا يتوفر ملف الشعار التاريخي لهذا الإصدار؛ لا يمكن استبداله تلقائيًا بالشعار الحالي."
+          : "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. أضف الشعار ثم أعد المحاولة."
       );
     }
 
@@ -4399,7 +4465,7 @@ function TelegramDetail({
 
   return (
     <Modal
-      title={telegram.subject}
+      title={documentTelegram.subject}
       subtitle={getTelegramDisplaySerial(
         telegram,
         settings?.numberSystem ?? "latin"
@@ -4450,6 +4516,61 @@ function TelegramDetail({
             </Button>
           )}
         </div>
+      )}
+      {versions.data && versions.data.length > 0 && (
+        <section className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-bold">
+              إصدارات الوثيقة ({versions.data.length})
+            </p>
+            <span className="text-[11px] text-muted-foreground">
+              المعاينة الحالية: الإصدار {selectedVersion?.versionNumber}
+            </span>
+          </div>
+          <div className="mt-2 grid gap-2">
+            {versions.data.map(version => {
+              const snapshot = version.snapshot as {
+                subject?: string;
+                letterhead?: { hasLogo?: boolean };
+              };
+              const isSelected =
+                selectedVersion?.versionNumber === version.versionNumber;
+              return (
+                <div
+                  key={version.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 text-xs"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      الإصدار {version.versionNumber}
+                      {isSelected ? " · المعروض" : ""}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {version.changeReason} ·{" "}
+                      {new Date(version.createdAt).toLocaleString("ar-SY")}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {snapshot.subject || telegram.subject} ·{" "}
+                      {snapshot.letterhead?.hasLogo
+                        ? "الشعار التاريخي محفوظ"
+                        : "الشعار التاريخي غير متوفر"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isSelected ? "default" : "outline"}
+                    onClick={() =>
+                      setSelectedVersionNumber(version.versionNumber)
+                    }
+                  >
+                    {isSelected ? "الإصدار المعروض" : "عرض الإصدار"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
       {incomingRoutes.data && incomingRoutes.data.length > 0 && (
         <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 print:hidden">
@@ -4780,6 +4901,18 @@ function TelegramDetail({
                   تعديل البرقية
                 </Button>
               )}
+              {canManageContent && (
+                <Button
+                  onClick={requestReissue}
+                  disabled={reissueTelegram.isPending || managementExpired}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  {reissueTelegram.isPending
+                    ? "جارٍ إنشاء الإصدار..."
+                    : "إعادة إصدار بنفس الرقم"}
+                </Button>
+              )}
               {telegram.status === "draft" && (
                 <Button
                   onClick={() => requestTransition("submitted")}
@@ -4889,6 +5022,18 @@ function TelegramDetail({
           )}
           {!isAdmin && (
             <>
+              {canManageContent && (
+                <Button
+                  onClick={requestReissue}
+                  disabled={reissueTelegram.isPending || managementExpired}
+                  variant="outline"
+                  className="h-10 flex-1 rounded-lg sm:flex-none"
+                >
+                  {reissueTelegram.isPending
+                    ? "جارٍ إنشاء الإصدار..."
+                    : "إعادة إصدار بنفس الرقم"}
+                </Button>
+              )}
               {canManageContent && (
                 <Button
                   onClick={() =>

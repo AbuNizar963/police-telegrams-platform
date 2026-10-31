@@ -3927,7 +3927,16 @@ function TelegramDetail({
 
   useEffect(() => {
     const host = paperRef.current;
-    if (!host || versions.isLoading) return;
+    if (!host) return;
+    if (versions.isLoading) {
+      const historyTimeout = window.setTimeout(() => {
+        setDocumentPreparing(false);
+        toast.error(
+          "استغرق تحميل سجل إصدارات البرقية وقتًا طويلًا. تحقق من الاتصال ثم أعد المحاولة."
+        );
+      }, 20_000);
+      return () => window.clearTimeout(historyTimeout);
+    }
     if (versions.isError) {
       const historyErrorKey = `${telegram.id}:history-error`;
       if (preparedTelegramIdRef.current !== historyErrorKey) {
@@ -4014,45 +4023,32 @@ function TelegramDetail({
           OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
           "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
         );
-        if (!cancelled) setDocumentPreparing(false);
-
-        // Upgrade the already-visible paper using the authenticated same-origin
-        // image URL. The preview should render the image directly instead of
-        // depending on a large inline-data conversion succeeding first.
-        try {
-          const exportSettings = await withPreparationTimeout(
-            utils.settings.get.fetch(undefined, { staleTime: 0 }),
-            OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-            "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
+        // Keep the preparation screen visible until the authenticated,
+        // organization-scoped logo has loaded and decoded in the final preview.
+        const exportSettings = await withPreparationTimeout(
+          utils.settings.get.fetch(undefined, { staleTime: 0 }),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
+        );
+        const logoUrl = await withPreparationTimeout(
+          resolveTelegramPreviewLogoUrl(exportSettings),
+          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
+          "استغرق تحميل رابط شعار الجهة وقتًا أطول من المتوقع."
+        );
+        if (!cancelled && logoUrl) {
+          renderPreview(documentSettings, logoUrl);
+          const logoPaper = host.querySelector<HTMLElement>(
+            ".telegram-export-page"
           );
-          const logoUrl = await withPreparationTimeout(
-            resolveTelegramPreviewLogoUrl(exportSettings),
-            OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-            "استغرق تحميل رابط شعار الجهة وقتًا أطول من المتوقع."
-          );
-          if (!cancelled && logoUrl) {
-            renderPreview(documentSettings, logoUrl);
-            const logoPaper = host.querySelector<HTMLElement>(
-              ".telegram-export-page"
-            );
-            if (logoPaper) {
-              await withPreparationTimeout(
-                waitForOfficialDocumentImages(logoPaper),
-                OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-                "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
-              );
-            }
-          }
-        } catch (error) {
-          if (!cancelled) {
-            console.warn(
-              "تعذر تحديث شعار معاينة البرقية؛ استُبقيت المعاينة الحالية:",
-              {
-                error: error instanceof Error ? error.message : String(error),
-              }
+          if (logoPaper) {
+            await withPreparationTimeout(
+              waitForOfficialDocumentImages(logoPaper),
+              OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+              "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
             );
           }
         }
+        if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);

@@ -56,6 +56,7 @@ import {
   listAuditLogs,
   searchAuditLogs,
   listTelegramActions,
+  listTelegramVersions,
   listTelegramAttachments,
   listTelegrams,
   purgeTelegramPermanently,
@@ -1795,6 +1796,64 @@ export const appRouter = router({
           "لا تملك صلاحية عرض سجل إجراءات هذه البرقية"
         );
         return listTelegramActions(input.telegramId);
+      }),
+
+    versions: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض إصدارات هذه البرقية"
+        );
+
+        const versions = await listTelegramVersions(input.telegramId);
+        return versions.map(version => {
+          const letterhead =
+            version.snapshot.letterhead &&
+            typeof version.snapshot.letterhead === "object"
+              ? (version.snapshot.letterhead as Record<string, unknown>)
+              : null;
+          const storedLogoKey =
+            typeof letterhead?.logoStorageKey === "string"
+              ? letterhead.logoStorageKey
+              : null;
+          const expectedLogoPrefix =
+            `department/logos/${telegram.organizationId}/`;
+          const hasHistoricalLogo =
+            Boolean(storedLogoKey) &&
+            storedLogoKey!.startsWith(expectedLogoPrefix);
+
+          return {
+            id: version.id,
+            telegramId: version.telegramId,
+            versionNumber: version.versionNumber,
+            changedByUserId: version.changedByUserId,
+            changeReason: version.changeReason,
+            createdAt: version.createdAt,
+            snapshot: {
+              ...version.snapshot,
+              letterhead: {
+                organizationId: telegram.organizationId,
+                logoContentType:
+                  typeof letterhead?.logoContentType === "string"
+                    ? letterhead.logoContentType
+                    : null,
+                hasLogo: hasHistoricalLogo,
+              },
+            },
+            logoUrl: hasHistoricalLogo
+              ? `/api/telegrams/${telegram.id}/versions/${version.versionNumber}/logo`
+              : null,
+          };
+        });
       }),
     downloadAttachment: protectedProcedure
       .input(z.object({ attachmentId: z.number().int().positive() }))

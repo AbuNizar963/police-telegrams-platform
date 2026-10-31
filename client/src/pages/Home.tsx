@@ -3491,6 +3491,7 @@ function TelegramDetail({
     const historicalLetterhead = (
       documentTelegram as typeof telegram & {
         letterhead?: {
+          organizationId?: string | null;
           organizationName?: string | null;
           departmentName?: string | null;
           unitName?: string | null;
@@ -3516,10 +3517,6 @@ function TelegramDetail({
         "قسم العمليات",
       numberSystem
     );
-    const senderOrganizationName = localizeDigits(
-      documentTelegram.senderOrganizationName?.trim() || "الجهة المرسلة",
-      numberSystem
-    );
     const documentType = isOutgoing ? "برقية صادرة" : "برقية واردة";
     const unitName = localizeDigits(
       historicalLetterhead?.unitName ??
@@ -3530,22 +3527,28 @@ function TelegramDetail({
     const organizationById = new Map(
       routingDirectory.map(organization => [organization.id, organization])
     );
-    const hierarchyNames: string[] = historicalLetterhead?.organizationName
-      ? [historicalLetterhead.organizationName]
-      : [];
-    let hierarchyId =
-      documentTelegram.currentOrganizationId ?? documentTelegram.organizationId;
+    const hierarchyNames: string[] = [];
+    let hierarchyId: string | null =
+      historicalLetterhead?.organizationId?.trim() ||
+      documentTelegram.organizationId?.trim() ||
+      documentTelegram.currentOrganizationId?.trim() ||
+      "";
     const visited = new Set<string>();
-    while (
-      !historicalLetterhead?.organizationName &&
-      hierarchyId &&
-      !visited.has(hierarchyId)
-    ) {
+    while (hierarchyId && !visited.has(hierarchyId)) {
       const organization = organizationById.get(hierarchyId);
       if (!organization) break;
       hierarchyNames.unshift(organization.name);
       visited.add(hierarchyId);
       hierarchyId = organization.parentOrganizationId;
+    }
+    const historicalOrganizationName =
+      historicalLetterhead?.organizationName?.trim();
+    if (historicalOrganizationName) {
+      if (hierarchyNames.length > 0) {
+        hierarchyNames[hierarchyNames.length - 1] = historicalOrganizationName;
+      } else {
+        hierarchyNames.push(historicalOrganizationName);
+      }
     }
     // The first two header lines are fixed institutional headings. Some
     // organization trees include "وزارة الداخلية" as a parent node, so omit
@@ -3553,20 +3556,17 @@ function TelegramDetail({
     const hierarchyCandidates = hierarchyNames.length
       ? [...hierarchyNames]
       : [unitName, departmentName];
-    const senderOrganizationNameRaw =
-      documentTelegram.senderOrganizationName?.trim();
-    if (
-      senderOrganizationNameRaw &&
-      !hierarchyCandidates.some(
-        name =>
-          localizeDigits(name, numberSystem).trim() ===
-          senderOrganizationName.trim()
-      )
-    ) {
-      // The hierarchy above ends at the current command in some telegram
-      // records. Include the actual sending unit as the final header line.
-      hierarchyCandidates.push(senderOrganizationNameRaw);
-    }
+    const sourceOrganizationId =
+      documentTelegram.organizationId?.trim() ||
+      documentTelegram.currentOrganizationId?.trim() ||
+      "";
+    const senderOrganizationName = localizeDigits(
+      documentTelegram.senderOrganizationName?.trim() ||
+        organizationById.get(sourceOrganizationId ?? "")?.name?.trim() ||
+        hierarchyCandidates[hierarchyCandidates.length - 1] ||
+        "الجهة المرسلة",
+      numberSystem
+    );
     const fixedHeaderNames = new Set([
       "الجمهورية العربية السورية",
       "وزارة الداخلية",

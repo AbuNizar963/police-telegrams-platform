@@ -228,6 +228,7 @@ class _OfficialTelegramDocumentPageState
         final versionResult = await widget.api.call(
           'telegrams.versions',
           input: {'telegramId': widget.telegramId},
+          allowOfflineCache: false,
         );
         versionHistoryAvailable = true;
         if (versionResult is List) {
@@ -654,6 +655,14 @@ class _OfficialTelegramDocumentPageState
         context,
         'تم إنشاء الإصدار $newVersionNumber مع الاحتفاظ بالرقم الرسمي.',
       );
+      if (result is Map &&
+          (result['actionLogRecorded'] == false ||
+              result['auditLogRecorded'] == false)) {
+        Toast.warning(
+          context,
+          'تم حفظ الإصدار، لكن تعذر تسجيل أحد سجلات التدقيق الثانوية.',
+        );
+      }
     } catch (exception) {
       if (!mounted) return;
       Toast.error(

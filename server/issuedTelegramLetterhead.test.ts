@@ -11,7 +11,9 @@ const oldLetterhead = {
 };
 
 describe("getIssuedLetterheadForContentEdit", () => {
-  it("keeps the first issuer when later content snapshots contain current settings", () => {
+  it(
+    "keeps the first issuer when later content snapshots contain current settings",
+    () => {
     const versions = [
       { snapshot: { letterhead: oldLetterhead } },
       {
@@ -61,7 +63,9 @@ describe("getIssuedLetterheadForContentEdit", () => {
     );
   });
 
-  it("does not invent a historical signer when no saved issuance snapshot exists", () => {
+  it(
+    "does not invent a historical signer when no saved issuance snapshot exists",
+    () => {
     expect(
       getIssuedLetterheadForContentEdit(
         [{ snapshot: { subject: "برقية قديمة بلا لقطة تاريخية" } }],
@@ -73,7 +77,13 @@ describe("getIssuedLetterheadForContentEdit", () => {
   it("rejects a letterhead belonging to another organization", () => {
     expect(
       getIssuedLetterheadForContentEdit(
-        [{ snapshot: { letterhead: { ...oldLetterhead, organizationId: "org-2" } } }],
+        [
+          {
+            snapshot: {
+              letterhead: { ...oldLetterhead, organizationId: "org-2" },
+            },
+          },
+        ],
         "org-1"
       )
     ).toBeNull();

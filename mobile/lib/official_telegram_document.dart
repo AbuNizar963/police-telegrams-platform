@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -167,7 +166,9 @@ class _OfficialTelegramDocumentPageState
   bool loading = true;
   bool busy = false;
   double _progress = 0;
-  Timer? _progressTimer;
+  String _progressTitle = 'جارٍ تنفيذ الإجراء';
+  String _progressMessage = 'بدء التنفيذ';
+  bool _hasMeasuredProgress = false;
   String? error;
   Uint8List? preview;
   Map<String, dynamic>? telegram;
@@ -477,6 +478,23 @@ class _OfficialTelegramDocumentPageState
   String get _displaySerial =>
       getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
+  void _updateProgress(double value, String message) {
+    if (!mounted) return;
+    setState(() {
+      _progress = value.clamp(0, 100).toDouble();
+      _progressMessage = message;
+      _hasMeasuredProgress = true;
+    });
+  }
+
+  void _beginIndeterminateProgress(String message) {
+    if (!mounted) return;
+    setState(() {
+      _progressMessage = message;
+      _hasMeasuredProgress = false;
+    });
+  }
+
   Future<String> _recordDocumentOutput(String operation, String format) async {
     final result = await widget.api.call(
       'telegrams.recordDocumentOutput',
@@ -491,6 +509,7 @@ class _OfficialTelegramDocumentPageState
     if (result is Map) {
       final occurredAt = result['occurredAt']?.toString().trim();
       if (occurredAt != null && DateTime.tryParse(occurredAt) != null) {
+        _updateProgress(15, 'تم تسجيل عملية الإخراج');
         return occurredAt;
       }
     }
@@ -517,18 +536,23 @@ class _OfficialTelegramDocumentPageState
 
   Future<Uint8List> _renderOutputPdf(String operation, String format) async {
     final occurredAt = await _recordDocumentOutput(operation, format);
-    final bytes = await _renderer.renderPdf(
-      _htmlWithOutputTimestamp(occurredAt),
-    );
+    final html = _htmlWithOutputTimestamp(occurredAt);
+    _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
+    _beginIndeterminateProgress('جارٍ إنشاء ملف PDF');
+    final bytes = await _renderer.renderPdf(html);
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
     }
+    _updateProgress(82, 'اكتمل إنشاء ملف PDF');
     if (mounted) {
       try {
+        _beginIndeterminateProgress('جارٍ تحديث معاينة الوثيقة');
         final updatedPreview = await _renderer.renderPreview(bytes);
         if (mounted) setState(() => preview = updatedPreview);
+        _updateProgress(92, 'تم تحديث معاينة الوثيقة');
       } catch (_) {
         // A preview refresh must not cancel a valid export or print request.
+        _updateProgress(90, 'ملف PDF جاهز للإخراج');
       }
     }
     return bytes;
@@ -536,31 +560,31 @@ class _OfficialTelegramDocumentPageState
 
   Future<Uint8List> _renderOutputImage() async {
     final pdfBytes = await _renderOutputPdf('download', 'png');
+    _beginIndeterminateProgress('جارٍ تحويل الوثيقة إلى صورة عالية الدقة');
     final image = await _renderer.renderHighResolutionImage(pdfBytes);
     if (image.isEmpty) {
       throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
     }
+    _updateProgress(96, 'اكتمل تجهيز صورة الوثيقة');
     return image;
   }
 
-  Future<void> _perform(Future<void> Function() action) async {
+  Future<void> _perform(
+    Future<void> Function() action, {
+    String title = 'جارٍ تنفيذ الإجراء',
+  }) async {
     if (busy) return;
     setState(() {
       busy = true;
-      _progress = 3;
+      _progress = 0;
+      _progressTitle = title;
+      _progressMessage = 'بدء التنفيذ';
+      _hasMeasuredProgress = false;
     });
-    _progressTimer?.cancel();
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 350), (_) {
-      if (mounted && busy) {
-        setState(() {
-          _progress = (_progress + (100 - _progress) * .12)
-              .clamp(3, 92)
-              .toDouble();
-        });
-      }
-    });
+    var completed = false;
     try {
       await action();
+      completed = true;
     } catch (exception) {
       if (!mounted) return;
       Toast.error(
@@ -568,10 +592,15 @@ class _OfficialTelegramDocumentPageState
         exception.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      _progressTimer?.cancel();
       if (mounted) {
-        setState(() => _progress = 100);
-        await Future<void>.delayed(const Duration(milliseconds: 650));
+        if (completed) {
+          setState(() {
+            _progress = 100;
+            _progressMessage = 'اكتمل العمل';
+            _hasMeasuredProgress = true;
+          });
+          await Future<void>.delayed(const Duration(milliseconds: 450));
+        }
         if (mounted) setState(() => busy = false);
       }
     }
@@ -579,7 +608,6 @@ class _OfficialTelegramDocumentPageState
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
     super.dispose();
   }
 
@@ -693,10 +721,11 @@ class _OfficialTelegramDocumentPageState
       name: '$_fileBaseName.pdf',
       onLayout: (_) async => bytes,
     );
-  });
+  }, title: 'تصدير PDF للطباعة');
 
   Future<void> _savePdf() => _perform(() async {
     final bytes = await _renderOutputPdf('download', 'pdf');
+    _updateProgress(95, 'ملف PDF جاهز للحفظ');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ الوثيقة الرسمية',
       fileName: '$_fileBaseName.pdf',
@@ -710,15 +739,17 @@ class _OfficialTelegramDocumentPageState
     } else {
       Toast.success(context, 'تم حفظ الوثيقة.');
     }
-  });
+  }, title: 'حفظ وثيقة PDF');
 
   Future<void> _sharePdf() => _perform(() async {
     final bytes = await _renderOutputPdf('download', 'pdf');
+    _updateProgress(95, 'ملف PDF جاهز للمشاركة');
     await Printing.sharePdf(bytes: bytes, filename: '$_fileBaseName.pdf');
-  });
+  }, title: 'مشاركة وثيقة PDF');
 
   Future<void> _shareImage() => _perform(() async {
     final bytes = await _renderOutputImage();
+    _updateProgress(98, 'الصورة جاهزة للمشاركة');
     await SharePlus.instance.share(
       ShareParams(
         files: [
@@ -732,10 +763,11 @@ class _OfficialTelegramDocumentPageState
         text: _value(telegram?['subject'], fallback: ''),
       ),
     );
-  });
+  }, title: 'مشاركة صورة الوثيقة');
 
   Future<void> _saveImage() => _perform(() async {
     final bytes = await _renderOutputImage();
+    _updateProgress(98, 'الصورة جاهزة للحفظ');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',
       fileName: '$_fileBaseName.png',
@@ -749,7 +781,7 @@ class _OfficialTelegramDocumentPageState
     } else {
       Toast.success(context, 'تم حفظ الصورة.');
     }
-  });
+  }, title: 'حفظ صورة الوثيقة');
 
   Future<void> _attachFile() => _perform(() async {
     final result = await FilePicker.pickFiles(
@@ -1047,41 +1079,105 @@ class _OfficialTelegramDocumentPageState
                 ),
                 if (busy)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 2),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'جارٍ تجهيز الوثيقة',
-                                style: TextStyle(
-                                  color: Color(0xFF101C35),
-                                  fontWeight: FontWeight.w800,
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF050607),
+                        border: Border.all(color: const Color(0xFF202124)),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _progressTitle,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: 'Cairo',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              '${_progress.round()}%',
-                              textDirection: TextDirection.ltr,
-                              style: const TextStyle(
-                                color: Color(0xFF101C35),
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: _progress / 100,
-                            minHeight: 7,
-                            backgroundColor: const Color(0xFFE8E1D1),
-                            color: const Color(0xFFD8C38E),
+                              if (_hasMeasuredProgress) ...[
+                                const SizedBox(width: 10),
+                                Text(
+                                  '${_progress.round()}%',
+                                  textDirection: TextDirection.ltr,
+                                  style: const TextStyle(
+                                    color: Color(0xFF08B65B),
+                                    fontFamily: 'Cairo',
+                                    fontSize: 34,
+                                    height: 1,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: _hasMeasuredProgress
+                                  ? _progress / 100
+                                  : null,
+                              minHeight: 14,
+                              backgroundColor: const Color(0xFF292A2D),
+                              color: const Color(0xFF08A94F),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _progressMessage,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFB9BBBF),
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF003C26),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    'قيد التنفيذ',
+                                    style: TextStyle(
+                                      color: Color(0xFF18C66C),
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 SafeArea(

@@ -261,7 +261,8 @@ class _OfficialTelegramDocumentPageState
       final snapshotLetterhead = activeVersion['snapshot'] is Map
           ? (activeVersion['snapshot'] as Map)['letterhead']
           : null;
-      final hasHistoricalIdentity = snapshotLetterhead is Map &&
+      final hasHistoricalIdentity =
+          snapshotLetterhead is Map &&
           snapshotLetterhead['organizationName'] is String &&
           snapshotLetterhead['departmentName'] is String &&
           snapshotLetterhead['unitChiefRank'] is String &&
@@ -1008,14 +1009,14 @@ class _OfficialTelegramDocumentPageState
                             .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
                         child: Text(
                           versions.isEmpty
                               ? 'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.'
                               : 'هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد اسم الجهة أو رتبة واسم رئيسها وقت الإصدار؛ المعروض هو الإعداد الحالي.',
                           textDirection: TextDirection.rtl,
-                          style: TextStyle(fontSize: 11),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                     ),
@@ -1218,8 +1219,10 @@ String buildOfficialTelegramHtml({
   final letterhead = telegram['letterhead'] is Map
       ? Map<String, dynamic>.from(telegram['letterhead'] as Map)
       : <String, dynamic>{};
-  final historicalOrganizationName =
-      _value(letterhead['organizationName'], fallback: '').trim();
+  final historicalOrganizationName = _value(
+    letterhead['organizationName'],
+    fallback: '',
+  ).trim();
   final departmentName = _localizeDigits(
     _value(
       letterhead['departmentName'] ?? settings['departmentName'],
@@ -1243,11 +1246,9 @@ String buildOfficialTelegramHtml({
     fallback: '',
   );
   final visited = <String>{};
-  while (
-    historicalOrganizationName.isEmpty &&
-    hierarchyId.isNotEmpty &&
-    visited.add(hierarchyId)
-  ) {
+  while (historicalOrganizationName.isEmpty &&
+      hierarchyId.isNotEmpty &&
+      visited.add(hierarchyId)) {
     final organization = hierarchyById[hierarchyId];
     if (organization == null) break;
     hierarchyNames.insert(0, _value(organization['name']));

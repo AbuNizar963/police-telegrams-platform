@@ -692,6 +692,10 @@ void main() {
       // session after biometric authentication has already succeeded.
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
 
       expect(find.text('protected content'), findsOneWidget);
       expect(find.text('قم بإدخال رمز PIN'), findsNothing);

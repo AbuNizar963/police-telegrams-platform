@@ -128,7 +128,20 @@ class _MandatoryPinSetupDialogState extends State<_MandatoryPinSetupDialog> {
   final _pinController = TextEditingController();
   final _confirmationController = TextEditingController();
   bool _saving = false;
+  bool _biometricAvailable = false;
+  bool _enableBiometric = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricAvailability();
+  }
+
+  Future<void> _loadBiometricAvailability() async {
+    final available = await AppLockService.canUseBiometrics();
+    if (mounted) setState(() => _biometricAvailable = available);
+  }
 
   @override
   void dispose() {
@@ -154,6 +167,14 @@ class _MandatoryPinSetupDialogState extends State<_MandatoryPinSetupDialog> {
     });
     try {
       await AppLockService.savePin(pin);
+      if (_enableBiometric) {
+        try {
+          await AppLockService.setBiometricEnabled(true);
+        } catch (_) {
+          // PIN setup remains successful if the optional biometric prompt is
+          // cancelled; it can be enabled later from settings.
+        }
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
       if (mounted) {
@@ -196,6 +217,21 @@ class _MandatoryPinSetupDialogState extends State<_MandatoryPinSetupDialog> {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(labelText: 'تأكيد رمز PIN'),
             ),
+            if (_biometricAvailable)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _enableBiometric,
+                onChanged: _saving
+                    ? null
+                    : (value) => setState(
+                          () => _enableBiometric = value ?? false,
+                        ),
+                title: const Text('تفعيل البصمة عند فتح التطبيق'),
+                subtitle: const Text(
+                  'يمكن تغيير هذا الخيار لاحقًا من الإعدادات.',
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -374,26 +410,13 @@ class _AppLockOverlayState extends State<AppLockOverlay>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // The native biometric prompt can briefly pause/resume the activity. Do
-    // not interpret those transitions as the user leaving the app.
-    if (_biometricInProgress || _ignoreLifecycleUntilNextFrame) return;
-
-    // Android may briefly report inactive while showing system UI. Relocking
-    // then can erase the PIN during entry; only background transitions relock.
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
-      if (_enabled && AppLockRuntime.sessionActive.value && mounted) {
-        setState(() {
-          _locked = true;
-          _pin = '';
-          _pinController.clear();
-          _error = null;
-        });
-      }
-    } else if (state == AppLifecycleState.resumed) {
-      // Background transitions already relock the overlay. Resuming alone
-      // must not relock after a biometric prompt, whose final lifecycle event
-      // can arrive after the authentication future has completed.
+    // Keep the unlock state for the lifetime of the running application. A
+    // short background/paused/hidden transition is not an app close and must
+    // not ask for the fingerprint again. AppLockRuntime starts locked again
+    // when the process is created after the application is opened anew.
+    if (state == AppLifecycleState.resumed &&
+        !_biometricInProgress &&
+        !_ignoreLifecycleUntilNextFrame) {
       _loadSettings();
     }
   }

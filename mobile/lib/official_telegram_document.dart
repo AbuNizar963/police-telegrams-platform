@@ -45,6 +45,8 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
 // process cache avoids decoding the same organization logo again when an
 // officer opens several telegrams during one session.
 final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
+final Map<String, Future<String?>> _officialLogoRequests =
+    <String, Future<String?>>{};
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
@@ -452,21 +454,29 @@ class _OfficialTelegramDocumentPageState
     final cacheKey = '$organizationId\n$url';
     final cached = _officialLogoDataUrlCache[cacheKey];
     if (cached != null) return cached;
-    try {
-      final bytes = await widget.api.fetchOrganizationLogo(
-        organizationId: organizationId,
-        source: url,
-      );
-      if (bytes == null || bytes.isEmpty) return null;
-      final normalized = await normalizeOfficialDocumentLogo(bytes);
-      final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
-      _officialLogoDataUrlCache[cacheKey] = dataUrl;
-      return dataUrl;
-    } catch (_) {
-      // A missing or unreadable organization logo must remain absent; never
-      // substitute a default seal or watermark.
-      return null;
-    }
+    final pending = _officialLogoRequests[cacheKey];
+    if (pending != null) return pending;
+    final request = () async {
+      try {
+        final bytes = await widget.api.fetchOrganizationLogo(
+          organizationId: organizationId,
+          source: url,
+        );
+        if (bytes == null || bytes.isEmpty) return null;
+        final normalized = await normalizeOfficialDocumentLogo(bytes);
+        final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+        _officialLogoDataUrlCache[cacheKey] = dataUrl;
+        return dataUrl;
+      } catch (_) {
+        // A missing or unreadable organization logo must remain absent; never
+        // substitute a default seal or watermark.
+        return null;
+      } finally {
+        _officialLogoRequests.remove(cacheKey);
+      }
+    }();
+    _officialLogoRequests[cacheKey] = request;
+    return request;
   }
 
   String get _fileBaseName {

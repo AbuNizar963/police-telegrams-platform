@@ -310,8 +310,7 @@ jobs:
       - build-ios
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/flutter-mobile-app' &&
-      needs.build-android-apk.outputs.notification_client_state == 'configured'
+      github.ref == 'refs/heads/flutter-mobile-app'
     permissions:
       contents: write
     steps:

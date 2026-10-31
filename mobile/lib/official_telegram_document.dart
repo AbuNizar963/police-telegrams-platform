@@ -812,7 +812,7 @@ class _OfficialTelegramDocumentPageState
                               child: Text(
                                 'جارٍ تجهيز الوثيقة',
                                 style: TextStyle(
-                                  color: _navy,
+                                  color: Color(0xFF101C35),
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -821,7 +821,7 @@ class _OfficialTelegramDocumentPageState
                               '${_progress.round()}%',
                               textDirection: TextDirection.ltr,
                               style: const TextStyle(
-                                color: _navy,
+                                color: Color(0xFF101C35),
                                 fontWeight: FontWeight.w800,
                               ),
                             ),

@@ -540,6 +540,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       }
     }
   }
+
   @override
   void dispose() {
     _progressTimer?.cancel();
@@ -731,9 +732,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               ),
             ] else ...[
               Text(
-                  'سجل التدقيق والإجراءات (${actions.length})',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
+                'سجل التدقيق والإجراءات (${actions.length})',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               ...actions.map(_actionTile),
             ],
           ],

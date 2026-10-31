@@ -51,6 +51,7 @@ class PoliceApi {
 
   static final http.Client _sharedHttpClient = http.Client();
   static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
+  static const _organizationLogoMemoryTtl = Duration(minutes: 10);
 
   final String baseUrl;
   final http.Client _httpClient;

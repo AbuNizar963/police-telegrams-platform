@@ -955,9 +955,11 @@ class _OfficialTelegramDocumentPageState
         surfaceTintColor: Colors.transparent,
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Row(
+              textDirection: TextDirection.rtl,
+              mainAxisAlignment: MainAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
@@ -984,6 +986,7 @@ class _OfficialTelegramDocumentPageState
               _value(telegram?['subject'], fallback: 'عرض البرقية'),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
               style: const TextStyle(
                 fontFamily: 'Cairo',
                 color: Color(0xFF111827),
@@ -1005,20 +1008,58 @@ class _OfficialTelegramDocumentPageState
       ),
       body: loading
           ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox.square(
-                    dimension: 38,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: Color(0xFF16A34A),
-                      backgroundColor: Color(0x2216A34A),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE9FFF4),
+                  border: Border.all(color: const Color(0x5534D399)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox.square(
+                      dimension: 38,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: const Color(0xFF16A34A),
+                        backgroundColor: const Color(0x2216A34A),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Text('جارٍ تجهيز معاينة الوثيقة الرسمية...'),
-                ],
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'جارٍ تجهيز الوثيقة الرسمية',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF166534),
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF4D7C5B),
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : error != null

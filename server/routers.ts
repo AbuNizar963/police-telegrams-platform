@@ -570,7 +570,10 @@ async function buildTelegramVersionSnapshot(telegram: {
   gpsLatitude?: string | null;
   gpsLongitude?: string | null;
 }) {
-  const settings = await getOrganizationSettings(telegram.organizationId);
+  const [settings, organization] = await Promise.all([
+    getOrganizationSettings(telegram.organizationId),
+    getOrganizationById(telegram.organizationId),
+  ]);
   const candidateLogoKey = departmentLogoKeyFromStoredValue(
     settings?.logoKey || settings?.logoUrl
   );
@@ -581,7 +584,7 @@ async function buildTelegramVersionSnapshot(telegram: {
       : null;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     telegramId: telegram.id,
     serialNumber: telegram.serialNumber,
     serialCode: telegram.serialCode,
@@ -612,6 +615,17 @@ async function buildTelegramVersionSnapshot(telegram: {
     status: telegram.status,
     letterhead: {
       organizationId: telegram.organizationId,
+      organizationName:
+        organization?.name?.trim() ||
+        settings?.departmentName?.trim() ||
+        null,
+      departmentName:
+        settings?.departmentName?.trim() ||
+        organization?.name?.trim() ||
+        null,
+      unitName: settings?.unitName?.trim() || null,
+      unitChiefRank: settings?.unitChiefRank?.trim() || null,
+      unitChiefName: settings?.unitChiefName?.trim() || null,
       logoStorageKey,
       logoContentType: !logoStorageKey
         ? null

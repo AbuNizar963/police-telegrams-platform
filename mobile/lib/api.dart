@@ -473,10 +473,14 @@ class PoliceApi {
   }) {
     final normalizedOrganizationId = organizationId.trim();
     final identity = organizationLogoCacheIdentity(source);
-    if (normalizedOrganizationId.isEmpty || identity.isEmpty) {
+    if (normalizedOrganizationId.isEmpty) {
       return Future.value(null);
     }
-    final requestKey = '$normalizedOrganizationId\n$identity';
+    // The authenticated export endpoint is the authoritative fallback. Some
+    // deployments omit logoUrl from organization settings, so an empty source
+    // must not prevent that fallback from being attempted.
+    final cacheIdentity = identity.isEmpty ? 'api-export' : identity;
+    final requestKey = '$normalizedOrganizationId\n$cacheIdentity';
     final memoryEntry = _organizationLogoMemory[requestKey];
     if (memoryEntry != null) {
       if (DateTime.now().difference(memoryEntry.cachedAt) <
@@ -487,7 +491,7 @@ class PoliceApi {
         requestKey: requestKey,
         organizationId: normalizedOrganizationId,
         source: source,
-        identity: identity,
+        identity: cacheIdentity,
         generation: _logoCacheGeneration,
       );
       return Future.value(memoryEntry.bytes);
@@ -498,7 +502,7 @@ class PoliceApi {
       requestKey: requestKey,
       organizationId: normalizedOrganizationId,
       source: source,
-      identity: identity,
+      identity: cacheIdentity,
       generation: _logoCacheGeneration,
     );
     _organizationLogoRequests[requestKey] = request;

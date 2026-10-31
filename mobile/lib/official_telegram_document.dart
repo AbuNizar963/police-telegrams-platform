@@ -483,8 +483,10 @@ class _OfficialTelegramDocumentPageState
     String organizationId,
   ) async {
     final url = _value(source, fallback: '');
-    if (url.isEmpty || organizationId.isEmpty) return null;
-    final cacheKey = '$organizationId\n$url';
+    if (organizationId.isEmpty) return null;
+    // The API fallback can return the authenticated organization's logo bytes
+    // even when settings.get has no public/storage URL.
+    final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';
     final cached = _officialLogoDataUrlCache[cacheKey];
     if (cached != null) return cached;
     final pending = _officialLogoRequests[cacheKey];

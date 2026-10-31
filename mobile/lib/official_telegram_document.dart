@@ -217,7 +217,8 @@ class _OfficialTelegramDocumentPageState
 
       // Match web export behavior: use the authenticated account's active
       // organization first, then fall back to telegram routing metadata.
-      final logoOrganizationId = resolveOrganizationLogoId(
+      final logoOrganizationId =
+          resolveOrganizationLogoId(
             accountOrganizationId: settingsData['organizationId'],
             currentOrganizationId: telegramData['currentOrganizationId'],
             ownerOrganizationId: telegramData['organizationId'],

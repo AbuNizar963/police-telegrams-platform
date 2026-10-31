@@ -3462,38 +3462,15 @@ function TelegramDetail({
     const legacyLogoUrl = settingsLogoUrl || settings?.logoUrl?.trim() || null;
     return loadOfficialDocumentLogoDataUrl(legacyLogoUrl);
   };
-  const resolveTelegramPreviewLogoUrl = async (exportSettings: {
-    organizationId?: string | null;
-    logoUrl?: string | null;
-  }): Promise<string | null> => {
-    if (selectedVersion) return selectedVersion.logoUrl;
-
-    const logoOrganizationId = resolveTelegramExportOrganizationId({
-      accountOrganizationId: exportSettings.organizationId,
-      currentOrganizationId: telegram.currentOrganizationId,
-      ownerOrganizationId: telegram.organizationId,
-    });
-    let organizationLogo: OrganizationLogoView | null = null;
-    if (logoOrganizationId) {
-      organizationLogo = await utils.organizations.logo.fetch(
-        { organizationId: logoOrganizationId },
-        { staleTime: 0 }
-      );
+  // Preview and export share the same authenticated, deduplicated in-memory
+  // logo loader. Passing its data URL into the preview avoids a second image
+  // request and decode after the export preparation path has already loaded it.
+  const resolveTelegramPreviewLogoUrl = (
+    exportSettings: {
+      organizationId?: string | null;
+      logoUrl?: string | null;
     }
-    const logoUrl = resolveTelegramExportLogo({
-      exportOrganizationId: logoOrganizationId,
-      organizationLogo:
-        organizationLogo?.organizationId === logoOrganizationId
-          ? organizationLogo
-          : null,
-      settingsOrganizationId: exportSettings.organizationId,
-      settingsLogoUrl: exportSettings.logoUrl?.trim() || null,
-    });
-    if (logoOrganizationId && !logoUrl) {
-      throw new Error("تعذر تحديد شعار الجهة المطابق لهذه البرقية.");
-    }
-    return logoUrl;
-  };
+  ): Promise<string | null> => resolveTelegramLogoDataUrl(exportSettings);
   const documentTelegram = selectedVersion
     ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
     : telegram;
@@ -4027,11 +4004,9 @@ function TelegramDetail({
         if (!paper) {
           throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
         }
-        await withPreparationTimeout(
-          waitForOfficialDocumentImages(paper),
-          OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-          "استغرق تحميل صور الوثيقة وقتًا أطول من المتوقع. أعد المحاولة."
-        );
+        // The first render has no remote logo yet. Do not wait for its image
+        // pipeline; resolve and decode the authenticated logo once below, then
+        // wait for the final document preview before hiding the preparation UI.
         // Keep the preparation screen visible until the authenticated,
         // organization-scoped logo has loaded and decoded in the final preview.
         const exportSettings = await withPreparationTimeout(

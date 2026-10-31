@@ -1008,26 +1008,107 @@ export async function recordTelegramVersion(input: {
   changedByUserId: number;
   changeReason: string;
   snapshot: Record<string, unknown>;
-}): Promise<void> {
-  const { data: latest, error: latestError } = await getSupabaseAdmin()
-    .from("telegram_versions")
-    .select("versionNumber")
-    .eq("telegramId", input.telegramId)
-    .order("versionNumber", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  throwIfError(latestError, "Failed to load telegram version");
+}): Promise<number> {
+  const client = getSupabaseAdmin();
 
-  const { error } = await getSupabaseAdmin()
-    .from("telegram_versions")
-    .insert({
+  // The unique (telegramId, versionNumber) index is the final concurrency
+  // guard. If two writers observe the same latest version, retry the loser
+  // after the winning insert becomes visible.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data: latest, error: latestError } = await client
+      .from("telegram_versions")
+      .select("versionNumber")
+      .eq("telegramId", input.telegramId)
+      .order("versionNumber", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    throwIfError(latestError, "Failed to load telegram version");
+
+    const versionNumber = Number(latest?.versionNumber ?? 0) + 1;
+    const { error } = await client.from("telegram_versions").insert({
       telegramId: input.telegramId,
-      versionNumber: Number(latest?.versionNumber ?? 0) + 1,
+      versionNumber,
       changedByUserId: input.changedByUserId,
       changeReason: input.changeReason.trim(),
       snapshot: JSON.stringify(input.snapshot),
     });
-  throwIfError(error, "Failed to record telegram version");
+
+    if (!error) return versionNumber;
+    if ((error as { code?: string }).code === "23505" && attempt < 4) {
+      continue;
+    }
+    throwIfError(error, "Failed to record telegram version");
+  }
+
+  throw new Error("Failed to allocate a unique telegram version number");
+}
+
+export type TelegramVersionRecord = {
+  id: number;
+  telegramId: number;
+  versionNumber: number;
+  changedByUserId: number;
+  changeReason: string;
+  snapshot: Record<string, unknown>;
+  createdAt: Date;
+};
+
+function mapTelegramVersion(
+  row: Record<string, unknown>
+): TelegramVersionRecord {
+  let snapshot: unknown = row.snapshot;
+  if (typeof snapshot === "string") {
+    try {
+      snapshot = JSON.parse(snapshot);
+    } catch {
+      throw new Error("Telegram version snapshot contains invalid JSON");
+    }
+  }
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("Telegram version snapshot has an invalid structure");
+  }
+
+  return {
+    id: Number(row.id),
+    telegramId: Number(row.telegramId),
+    versionNumber: Number(row.versionNumber),
+    changedByUserId: Number(row.changedByUserId),
+    changeReason: String(row.changeReason ?? ""),
+    snapshot: snapshot as Record<string, unknown>,
+    createdAt: asDate(row.createdAt),
+  };
+}
+
+export async function listTelegramVersions(
+  telegramId: number
+): Promise<TelegramVersionRecord[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_versions")
+    .select(
+      "id, telegramId, versionNumber, changedByUserId, changeReason, snapshot, createdAt"
+    )
+    .eq("telegramId", telegramId)
+    .order("versionNumber", { ascending: true });
+  throwIfError(error, "Failed to list telegram versions");
+  return (data ?? []).map(row =>
+    mapTelegramVersion(row as Record<string, unknown>)
+  );
+}
+
+export async function getTelegramVersion(
+  telegramId: number,
+  versionNumber: number
+): Promise<TelegramVersionRecord | undefined> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("telegram_versions")
+    .select(
+      "id, telegramId, versionNumber, changedByUserId, changeReason, snapshot, createdAt"
+    )
+    .eq("telegramId", telegramId)
+    .eq("versionNumber", versionNumber)
+    .maybeSingle();
+  throwIfError(error, "Failed to load telegram version");
+  return data ? mapTelegramVersion(data as Record<string, unknown>) : undefined;
 }
 
 export async function recordTelegramAction(input: {

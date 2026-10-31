@@ -11,6 +11,7 @@ const {
   storageCreateSignedUrl,
   getTelegramAttachmentByStorageKey,
   getTelegramById,
+  getTelegramVersion,
   canAccessTelegramScope,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
@@ -23,6 +24,7 @@ const {
   storageCreateSignedUrl: vi.fn(),
   getTelegramAttachmentByStorageKey: vi.fn(),
   getTelegramById: vi.fn(),
+  getTelegramVersion: vi.fn(),
   canAccessTelegramScope: vi.fn(),
 }));
 
@@ -53,6 +55,7 @@ vi.mock("../db", async importOriginal => {
     isDepartmentLogoExclusiveToOrganization,
     getTelegramAttachmentByStorageKey,
     getTelegramById,
+    getTelegramVersion,
   };
 });
 vi.mock("../telegramAccess", () => ({ canAccessTelegramScope }));
@@ -67,15 +70,23 @@ type FakeResponse = {
   redirect: ReturnType<typeof vi.fn>;
 };
 
+type StorageRouteHandler = (req: any, res: FakeResponse) => Promise<void>;
+
 function createRouteHarness() {
-  let handler: ((req: any, res: FakeResponse) => Promise<void>) | undefined;
+  const handlers = new Map<string, StorageRouteHandler>();
   const app = {
-    get: vi.fn((_path: string, routeHandler: typeof handler) => {
-      handler = routeHandler;
+    get: vi.fn((path: string, routeHandler: StorageRouteHandler) => {
+      handlers.set(path, routeHandler);
     }),
   };
   registerStorageRoutes(app as any);
-  if (!handler) throw new Error("Storage route was not registered");
+  const handler = handlers.get("/api/storage/*key");
+  const historicalLogoHandler = handlers.get(
+    "/api/telegrams/:telegramId/versions/:versionNumber/logo"
+  );
+  if (!handler || !historicalLogoHandler) {
+    throw new Error("Storage routes were not registered");
+  }
 
   const res: FakeResponse = {
     status: vi.fn().mockReturnThis(),
@@ -84,7 +95,7 @@ function createRouteHarness() {
     redirect: vi.fn().mockReturnThis(),
   };
 
-  return { handler, res };
+  return { handler, historicalLogoHandler, res };
 }
 
 describe("storage key authorization", () => {
@@ -137,7 +148,127 @@ describe("storage route", () => {
     );
     getTelegramAttachmentByStorageKey.mockResolvedValue(null);
     getTelegramById.mockResolvedValue(null);
+    getTelegramVersion.mockResolvedValue(undefined);
     canAccessTelegramScope.mockResolvedValue(false);
+  });
+
+  it("serves a historical logo only after authorizing access to its telegram", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const telegram = {
+      id: 7,
+      organizationId,
+      currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
+    };
+    const key = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-badge.png`;
+    getTelegramById.mockResolvedValueOnce(telegram);
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey: key,
+          logoContentType: "image/png",
+        },
+      },
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
+
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "2" } },
+      res
+    );
+
+    expect(canAccessTelegramScope).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7 }),
+      telegram
+    );
+    expect(getTelegramVersion).toHaveBeenCalledWith(7, 2);
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/png");
+    expect(res.send).toHaveBeenCalledWith(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    );
+  });
+
+  it("serves historical WebP logos with the correct content type", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const key = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-badge.webp`;
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey: key,
+          logoContentType: "image/webp",
+        },
+      },
+    });
+    storageDownload.mockResolvedValueOnce({
+      body: Buffer.from("RIFF"),
+      contentType: "image/webp",
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
+
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
+
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/webp");
+  });
+
+  it("denies historical logo reads outside the user's telegram scope", async () => {
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(false);
+    const { historicalLogoHandler, res } = createRouteHarness();
+
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(getTelegramVersion).not.toHaveBeenCalled();
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
+
+  it("rejects a historical logo key that does not belong to the telegram's source organization", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey:
+            "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png",
+        },
+      },
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
+
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
   });
 
   it("requires authentication", async () => {

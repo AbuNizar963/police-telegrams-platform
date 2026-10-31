@@ -22,6 +22,7 @@ import {
 } from "./telegramAccess";
 import { canManageTelegramContent as canManageTelegramContentByTime } from "@shared/telegramPermissions";
 import { z } from "zod";
+import { getIssuedLetterheadForContentEdit } from "./issuedTelegramLetterhead";
 import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
 import {
@@ -57,6 +58,7 @@ import {
   listAuditLogs,
   searchAuditLogs,
   listTelegramActions,
+  listTelegramVersions,
   listTelegramAttachments,
   listTelegrams,
   purgeTelegramPermanently,
@@ -357,34 +359,6 @@ function assertOrganizationLogoScope(
   }
 }
 
-async function cleanupReplacedDepartmentLogo(
-  previousValue: unknown,
-  nextValue: unknown,
-  organizationId: string | null
-): Promise<void> {
-  const previousKey = departmentLogoKeyFromStoredValue(previousValue);
-  const nextKey = departmentLogoKeyFromStoredValue(nextValue);
-  if (!organizationId || !previousKey || previousKey === nextKey) return;
-
-  // Never delete a legacy unscoped/shared object: another organization may
-  // still reference it. Only remove a file owned by this exact organization.
-  const scopedMatch = previousKey.match(
-    /^department\/logos\/([0-9a-f-]{36})\//i
-  );
-  if (
-    !scopedMatch ||
-    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
-  ) {
-    return;
-  }
-
-  try {
-    await storageDelete(previousKey);
-  } catch (error) {
-    console.error("[Storage] Replaced department logo cleanup failed", error);
-  }
-}
-
 function assertLogoBelongsToOrganization(
   logoValue: string | null | undefined,
   organizationId: string | null,
@@ -559,6 +533,107 @@ function telegramAuditSnapshot(telegram: Record<string, unknown>) {
   return Object.fromEntries(
     fields.map(field => [field, telegram[field] ?? null])
   );
+}
+
+function toSnapshotIsoDate(
+  value: Date | string | null | undefined
+): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+async function buildTelegramVersionSnapshot(telegram: {
+  id: number;
+  serialNumber: number;
+  serialCode: string;
+  originalSerial?: string | null;
+  organizationId: string;
+  currentOrganizationId?: string;
+  organizationSerialNumber?: number | null;
+  organizationSerialCode?: string | null;
+  subject: string;
+  recipient: string;
+  body: string;
+  classification: string;
+  priority: string;
+  category: string;
+  status: string;
+  workflowReason?: string | null;
+  importNotes?: string | null;
+  importDirection?: string | null;
+  attachmentManifest?: string | null;
+  senderOrganizationName?: string | null;
+  createdAt?: Date | string | null;
+  telegramDate?: Date | string | null;
+  creatorName: string;
+  creatorBadgeId?: string | null;
+  verificationToken: string;
+  gpsLatitude?: string | null;
+  gpsLongitude?: string | null;
+}) {
+  const [settings, organization] = await Promise.all([
+    getOrganizationSettings(telegram.organizationId),
+    getOrganizationById(telegram.organizationId),
+  ]);
+  const candidateLogoKey = departmentLogoKeyFromStoredValue(
+    settings?.logoKey || settings?.logoUrl
+  );
+  const organizationLogoPrefix = `department/logos/${telegram.organizationId}/`;
+  const logoStorageKey =
+    candidateLogoKey?.startsWith(organizationLogoPrefix) === true
+      ? candidateLogoKey
+      : null;
+
+  return {
+    schemaVersion: 2,
+    telegramId: telegram.id,
+    serialNumber: telegram.serialNumber,
+    serialCode: telegram.serialCode,
+    originalSerial: telegram.originalSerial ?? null,
+    organizationId: telegram.organizationId,
+    currentOrganizationId:
+      telegram.currentOrganizationId ?? telegram.organizationId,
+    organizationSerialNumber: telegram.organizationSerialNumber ?? null,
+    organizationSerialCode: telegram.organizationSerialCode ?? null,
+    senderOrganizationName: telegram.senderOrganizationName ?? null,
+    workflowReason: telegram.workflowReason ?? null,
+    importNotes: telegram.importNotes ?? null,
+    importDirection: telegram.importDirection ?? null,
+    attachmentManifest: telegram.attachmentManifest ?? null,
+    createdAt: toSnapshotIsoDate(telegram.createdAt),
+    telegramDate: toSnapshotIsoDate(telegram.telegramDate),
+    creatorName: telegram.creatorName || "غير محدد",
+    creatorBadgeId: telegram.creatorBadgeId ?? null,
+    verificationToken: telegram.verificationToken || "",
+    gpsLatitude: telegram.gpsLatitude ?? null,
+    gpsLongitude: telegram.gpsLongitude ?? null,
+    subject: telegram.subject,
+    recipient: telegram.recipient,
+    body: telegram.body,
+    classification: telegram.classification,
+    priority: telegram.priority,
+    category: telegram.category,
+    status: telegram.status,
+    letterhead: {
+      organizationId: telegram.organizationId,
+      organizationName:
+        organization?.name?.trim() || settings?.departmentName?.trim() || null,
+      departmentName:
+        settings?.departmentName?.trim() || organization?.name?.trim() || null,
+      unitName: settings?.unitName?.trim() || null,
+      unitChiefRank: settings?.unitChiefRank?.trim() || null,
+      unitChiefName: settings?.unitChiefName?.trim() || null,
+      logoStorageKey,
+      logoContentType: !logoStorageKey
+        ? null
+        : logoStorageKey.toLowerCase().endsWith(".png")
+          ? "image/png"
+          : logoStorageKey.toLowerCase().endsWith(".webp")
+            ? "image/webp"
+            : "image/jpeg",
+    },
+  };
 }
 
 export const appRouter = router({
@@ -1028,12 +1103,6 @@ export const appRouter = router({
               logoUrl: input.logoUrl,
               updatedByUserId: ctx.user.id,
             }
-          );
-
-          await cleanupReplacedDepartmentLogo(
-            previousSettings?.logoKey ?? previousSettings?.logoUrl,
-            input.logoUrl,
-            organization.id
           );
 
           await writeAuditLog({
@@ -1607,12 +1676,6 @@ export const appRouter = router({
           updatedByUserId: ctx.user.id,
         });
 
-        await cleanupReplacedDepartmentLogo(
-          previousLogoValue,
-          input.logoUrl,
-          dbSettings.organizationId
-        );
-
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),
           actorUserId: ctx.user.id,
@@ -1806,6 +1869,75 @@ export const appRouter = router({
           "لا تملك صلاحية عرض سجل إجراءات هذه البرقية"
         );
         return listTelegramActions(input.telegramId);
+      }),
+
+    versions: protectedProcedure
+      .input(z.object({ telegramId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.telegramId);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية عرض إصدارات هذه البرقية"
+        );
+
+        const versions = await listTelegramVersions(input.telegramId);
+        return versions.map(version => {
+          const letterhead =
+            version.snapshot.letterhead &&
+            typeof version.snapshot.letterhead === "object"
+              ? (version.snapshot.letterhead as Record<string, unknown>)
+              : null;
+          const storedLogoKey =
+            typeof letterhead?.logoStorageKey === "string"
+              ? letterhead.logoStorageKey
+              : null;
+          const expectedLogoPrefix = `department/logos/${telegram.organizationId}/`;
+          const logoFileName = storedLogoKey?.startsWith(expectedLogoPrefix)
+            ? storedLogoKey.slice(expectedLogoPrefix.length)
+            : "";
+          const hasHistoricalLogo =
+            letterhead?.organizationId === telegram.organizationId &&
+            Boolean(logoFileName) &&
+            !logoFileName.includes("/") &&
+            !logoFileName.includes("\\") &&
+            /^[^/]+\.(?:png|jpe?g|webp)$/i.test(logoFileName);
+
+          const {
+            logoStorageKey: _privateLogoStorageKey,
+            ...publicLetterhead
+          } = letterhead ?? {};
+
+          return {
+            id: version.id,
+            telegramId: version.telegramId,
+            versionNumber: version.versionNumber,
+            changedByUserId: version.changedByUserId,
+            changeReason: version.changeReason,
+            createdAt: version.createdAt,
+            snapshot: {
+              ...version.snapshot,
+              letterhead: {
+                ...publicLetterhead,
+                organizationId: telegram.organizationId,
+                logoContentType:
+                  typeof letterhead?.logoContentType === "string"
+                    ? letterhead.logoContentType
+                    : null,
+                hasLogo: hasHistoricalLogo,
+              },
+            },
+            logoUrl: hasHistoricalLogo
+              ? `/api/telegrams/${telegram.id}/versions/${version.versionNumber}/logo`
+              : null,
+          };
+        });
       }),
     downloadAttachment: protectedProcedure
       .input(z.object({ attachmentId: z.number().int().positive() }))
@@ -2186,19 +2318,35 @@ export const appRouter = router({
         const afterState = telegramAuditSnapshot(
           updated as unknown as Record<string, unknown>
         );
+        const previousVersions = await listTelegramVersions(existing.id);
+        const issuedLetterhead = getIssuedLetterheadForContentEdit(
+          previousVersions,
+          existing.organizationId
+        );
+        const versionSnapshot = await buildTelegramVersionSnapshot(updated);
+        if (issuedLetterhead) {
+          versionSnapshot.letterhead = {
+            ...issuedLetterhead,
+          } as typeof versionSnapshot.letterhead;
+        } else {
+          // Legacy telegrams without a verifiable issuance snapshot must not
+          // be attributed to the current organization leader retroactively.
+          versionSnapshot.letterhead = {
+            ...versionSnapshot.letterhead,
+            organizationName: null,
+            departmentName: null,
+            unitName: null,
+            unitChiefRank: null,
+            unitChiefName: null,
+            logoStorageKey: null,
+            logoContentType: null,
+          };
+        }
         await recordTelegramVersion({
           telegramId: updated.id,
           changedByUserId: ctx.user.id,
           changeReason: "تعديل محتوى البرقية",
-          snapshot: {
-            subject: updated.subject,
-            recipient: updated.recipient,
-            body: updated.body,
-            classification: updated.classification,
-            priority: updated.priority,
-            category: updated.category,
-            status: updated.status,
-          },
+          snapshot: versionSnapshot,
         });
 
         await writeAuditLog({
@@ -2217,6 +2365,121 @@ export const appRouter = router({
         });
 
         return updated;
+      }),
+
+    reissue: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(5).max(1000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const telegram = await getTelegramById(input.id);
+        if (!telegram) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "البرقية غير موجودة",
+          });
+        }
+        await assertTelegramOrganizationScope(
+          ctx.user,
+          telegram,
+          "لا تملك صلاحية إعادة إصدار هذه البرقية"
+        );
+        if (!canManageTelegramContent(ctx.user, telegram.createdAt)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "انتهت مهلة إعادة إصدار البرقية (48 ساعة)؛ الصلاحية الدائمة للمالك فقط",
+          });
+        }
+
+        const snapshot = await buildTelegramVersionSnapshot(telegram);
+        const letterhead = snapshot.letterhead as {
+          logoStorageKey: string | null;
+        };
+        if (!letterhead.logoStorageKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "لا يوجد شعار محفوظ حاليًا لهذه الجهة؛ ارفع الشعار أولًا ثم أعد إصدار البرقية.",
+          });
+        }
+        const versionNumber = await recordTelegramVersion({
+          telegramId: telegram.id,
+          changedByUserId: ctx.user.id,
+          changeReason: `إعادة إصدار البرقية بنفس رقمها الرسمي: ${input.reason}`,
+          snapshot: {
+            ...snapshot,
+            issuance: {
+              type: "reissue",
+              reason: input.reason,
+              officialSerialCode: telegram.serialCode,
+            },
+          },
+        });
+
+        let actionLogRecorded = true;
+        try {
+          await recordTelegramAction({
+            telegramId: telegram.id,
+            actorUserId: ctx.user.id,
+            action: "telegram.reissue",
+            reason: input.reason,
+            metadata: {
+              versionNumber,
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+            },
+          });
+        } catch (error) {
+          actionLogRecorded = false;
+          console.error("[Telegram] Reissue action log failed", error);
+        }
+
+        let auditLogRecorded = true;
+        try {
+          await writeAuditLog({
+            ...getRequestAuditContext(ctx.req),
+            actorUserId: ctx.user.id,
+            actorName: ctx.user.name ?? ctx.user.email ?? "Officer",
+            action: "telegram.reissue",
+            entityType: "telegram",
+            entityId: String(telegram.id),
+            metadata: JSON.stringify({
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+              versionNumber,
+              organizationId: telegram.organizationId,
+            }),
+            reason: input.reason,
+            beforeState: JSON.stringify(
+              telegramAuditSnapshot(
+                telegram as unknown as Record<string, unknown>
+              )
+            ),
+            afterState: JSON.stringify({
+              serialNumber: telegram.serialNumber,
+              serialCode: telegram.serialCode,
+              versionNumber,
+              organizationId: telegram.organizationId,
+            }),
+          });
+        } catch (error) {
+          auditLogRecorded = false;
+          console.error("[Telegram] Reissue audit log failed", error);
+        }
+
+        return {
+          success: true as const,
+          telegramId: telegram.id,
+          serialNumber: telegram.serialNumber,
+          serialCode: telegram.serialCode,
+          versionNumber,
+          actionLogRecorded,
+          auditLogRecorded,
+        };
       }),
 
     delete: protectedProcedure
@@ -3186,15 +3449,7 @@ export const appRouter = router({
           telegramId: telegram.id,
           changedByUserId: ctx.user.id,
           changeReason: "الإصدار الأول عند إنشاء البرقية",
-          snapshot: {
-            subject: telegram.subject,
-            recipient: telegram.recipient,
-            body: telegram.body,
-            classification: telegram.classification,
-            priority: telegram.priority,
-            category: telegram.category,
-            status: telegram.status,
-          },
+          snapshot: await buildTelegramVersionSnapshot(telegram),
         });
 
         try {
@@ -3434,15 +3689,7 @@ export const appRouter = router({
               telegramId: telegram.id,
               changedByUserId: ctx.user.id,
               changeReason: "استيراد السجل من ملف Excel",
-              snapshot: {
-                subject: telegram.subject,
-                recipient: telegram.recipient,
-                body: telegram.body,
-                classification: telegram.classification,
-                priority: telegram.priority,
-                category: telegram.category,
-                status: telegram.status,
-              },
+              snapshot: await buildTelegramVersionSnapshot(telegram),
             });
             created += 1;
             existingSerialKeys.add(

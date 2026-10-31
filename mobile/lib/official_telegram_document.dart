@@ -958,11 +958,11 @@ class _OfficialTelegramDocumentPageState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _displaySerial,
+              'برقية رقم : $_displaySerial',
               style: const TextStyle(
                 fontFamily: 'Cairo',
                 color: Color(0xFF6B7280),
-                fontSize: 11,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -973,7 +973,7 @@ class _OfficialTelegramDocumentPageState
               style: const TextStyle(
                 fontFamily: 'Cairo',
                 color: Color(0xFF111827),
-                fontSize: 20,
+                fontSize: 16,
                 height: 1.2,
                 fontWeight: FontWeight.w900,
               ),
@@ -990,12 +990,19 @@ class _OfficialTelegramDocumentPageState
         ],
       ),
       body: loading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 14),
+                  SizedBox.square(
+                    dimension: 38,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: Color(0xFF16A34A),
+                      backgroundColor: Color(0x2216A34A),
+                    ),
+                  ),
+                  SizedBox(height: 8),
                   Text('جارٍ تجهيز معاينة الوثيقة الرسمية...'),
                 ],
               ),
@@ -1034,7 +1041,8 @@ class _OfficialTelegramDocumentPageState
                       initialValue: selectedVersionNumber,
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: 'الإصدار المعروض',
+                        labelText: 'إصدارات الوثيقة',
+                        suffixIcon: Icon(Icons.keyboard_arrow_down_rounded),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -1089,15 +1097,15 @@ class _OfficialTelegramDocumentPageState
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 16,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         border: Border.all(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
-                        borderRadius: BorderRadius.circular(28),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1114,7 +1122,7 @@ class _OfficialTelegramDocumentPageState
                                         .colorScheme
                                         .onSurface,
                                     fontFamily: 'Cairo',
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -1131,7 +1139,7 @@ class _OfficialTelegramDocumentPageState
                                         ? const Color(0xFF4ADE80)
                                         : const Color(0xFF15803D),
                                     fontFamily: 'Cairo',
-                                    fontSize: 34,
+                                    fontSize: 24,
                                     height: 1,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -1139,14 +1147,14 @@ class _OfficialTelegramDocumentPageState
                               ],
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(999),
                             child: LinearProgressIndicator(
                               value: _hasMeasuredProgress
                                   ? _progress / 100
                                   : null,
-                              minHeight: 14,
+                              minHeight: 38,
                               backgroundColor: Theme.of(context)
                                   .colorScheme
                                   .surfaceContainerHighest,
@@ -1157,7 +1165,7 @@ class _OfficialTelegramDocumentPageState
                                   : const Color(0xFF15803D),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 6),
                           Row(
                             children: [
                               Expanded(
@@ -1184,7 +1192,7 @@ class _OfficialTelegramDocumentPageState
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
-                                    vertical: 8,
+                                    vertical: 3,
                                   ),
                                   child: Text(
                                     'قيد التنفيذ',

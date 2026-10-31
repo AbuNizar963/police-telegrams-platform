@@ -4776,7 +4776,7 @@ function TelegramDetail({
       {exporting ? (
         <div
           dir="rtl"
-          className="mt-4 overflow-hidden rounded-[2rem] border border-[#202124] bg-[#050607] px-5 py-6 text-white shadow-sm print:hidden sm:px-8 sm:py-7"
+          className="mt-4 overflow-hidden rounded-[2rem] border border-border bg-transparent px-5 py-6 text-foreground shadow-sm print:hidden sm:px-8 sm:py-7"
           role="status"
           aria-live="polite"
         >
@@ -4792,13 +4792,13 @@ function TelegramDetail({
             </span>
             <span
               dir="ltr"
-              className="text-5xl font-bold tabular-nums text-[#08b65b] sm:text-6xl"
+              className="text-5xl font-bold tabular-nums text-emerald-700 sm:text-6xl dark:text-emerald-400"
             >
               {exportProgress}%
             </span>
           </div>
           <div
-            className="relative h-7 overflow-hidden rounded-full bg-[#292a2d] sm:h-9"
+            className="relative h-7 overflow-hidden rounded-full bg-muted sm:h-9"
             role="progressbar"
             aria-label="نسبة تقدم تجهيز الوثيقة"
             aria-valuemin={0}
@@ -4806,15 +4806,15 @@ function TelegramDetail({
             aria-valuenow={exportProgress}
           >
             <div
-              className="absolute inset-y-0 right-0 rounded-full bg-[#08a94f] transition-[width] duration-500 ease-out"
+              className="absolute inset-y-0 right-0 rounded-full bg-emerald-600 transition-[width] duration-500 ease-out dark:bg-emerald-400"
               style={{ width: `${exportProgress}%` }}
             />
           </div>
           <div className="mt-5 flex items-center justify-between gap-4">
-            <span className="shrink-0 rounded-full bg-[#003c26] px-5 py-2 text-sm font-semibold text-[#18c66c]">
+            <span className="shrink-0 rounded-full bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               قيد التنفيذ
             </span>
-            <span className="text-sm text-[#b9bbbf] sm:text-base">
+            <span className="text-sm text-muted-foreground sm:text-base">
               {exportProgressMessage}
             </span>
           </div>

@@ -152,101 +152,91 @@ describe("storage route", () => {
     canAccessTelegramScope.mockResolvedValue(false);
   });
 
-  it(
-    "serves a historical logo only after authorizing access to its telegram",
-    async () => {
-      const organizationId = "550e8400-e29b-41d4-a716-446655440000";
-      const telegram = {
-        id: 7,
-        organizationId,
-        currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
-      };
-      const key =
-        `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-badge.png`;
-      getTelegramById.mockResolvedValueOnce(telegram);
-      canAccessTelegramScope.mockResolvedValueOnce(true);
-      getTelegramVersion.mockResolvedValueOnce({
-        snapshot: {
-          letterhead: {
-            organizationId,
-            logoStorageKey: key,
-            logoContentType: "image/png",
-          },
+  it("serves a historical logo only after authorizing access to its telegram", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const telegram = {
+      id: 7,
+      organizationId,
+      currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
+    };
+    const key = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-badge.png`;
+    getTelegramById.mockResolvedValueOnce(telegram);
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey: key,
+          logoContentType: "image/png",
         },
-      });
-      const { historicalLogoHandler, res } = createRouteHarness();
+      },
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
 
-      await historicalLogoHandler(
-        { params: { telegramId: "7", versionNumber: "2" } },
-        res
-      );
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "2" } },
+      res
+    );
 
-      expect(canAccessTelegramScope).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 7 }),
-        telegram
-      );
-      expect(getTelegramVersion).toHaveBeenCalledWith(7, 2);
-      expect(storageDownload).toHaveBeenCalledWith(key);
-      expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
-      expect(res.set).toHaveBeenCalledWith("Content-Type", "image/png");
-      expect(res.send).toHaveBeenCalledWith(
-        Buffer.from([0x89, 0x50, 0x4e, 0x47])
-      );
-    }
-  );
+    expect(canAccessTelegramScope).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7 }),
+      telegram
+    );
+    expect(getTelegramVersion).toHaveBeenCalledWith(7, 2);
+    expect(storageDownload).toHaveBeenCalledWith(key);
+    expect(res.set).toHaveBeenCalledWith("Cache-Control", "private, no-store");
+    expect(res.set).toHaveBeenCalledWith("Content-Type", "image/png");
+    expect(res.send).toHaveBeenCalledWith(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    );
+  });
 
-  it(
-    "denies historical logo reads outside the user's telegram scope",
-    async () => {
-      getTelegramById.mockResolvedValueOnce({
-        id: 7,
-        organizationId: "550e8400-e29b-41d4-a716-446655440000",
-        currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
-      });
-      canAccessTelegramScope.mockResolvedValueOnce(false);
-      const { historicalLogoHandler, res } = createRouteHarness();
+  it("denies historical logo reads outside the user's telegram scope", async () => {
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId: "550e8400-e29b-41d4-a716-446655440000",
+      currentOrganizationId: "550e8400-e29b-41d4-a716-446655440099",
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(false);
+    const { historicalLogoHandler, res } = createRouteHarness();
 
-      await historicalLogoHandler(
-        { params: { telegramId: "7", versionNumber: "1" } },
-        res
-      );
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
 
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(getTelegramVersion).not.toHaveBeenCalled();
-      expect(storageDownload).not.toHaveBeenCalled();
-    }
-  );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(getTelegramVersion).not.toHaveBeenCalled();
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
 
-  it(
-    "rejects a historical logo key that does not belong to the telegram's source organization",
-    async () => {
-      const organizationId = "550e8400-e29b-41d4-a716-446655440000";
-      getTelegramById.mockResolvedValueOnce({
-        id: 7,
-        organizationId,
-        currentOrganizationId: organizationId,
-      });
-      canAccessTelegramScope.mockResolvedValueOnce(true);
-      getTelegramVersion.mockResolvedValueOnce({
-        snapshot: {
-          letterhead: {
-            organizationId,
-            logoStorageKey:
-              "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png",
-          },
+  it("rejects a historical logo key that does not belong to the telegram's source organization", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+    });
+    canAccessTelegramScope.mockResolvedValueOnce(true);
+    getTelegramVersion.mockResolvedValueOnce({
+      snapshot: {
+        letterhead: {
+          organizationId,
+          logoStorageKey:
+            "department/logos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/550e8400-e29b-41d4-a716-446655440001-badge.png",
         },
-      });
-      const { historicalLogoHandler, res } = createRouteHarness();
+      },
+    });
+    const { historicalLogoHandler, res } = createRouteHarness();
 
-      await historicalLogoHandler(
-        { params: { telegramId: "7", versionNumber: "1" } },
-        res
-      );
+    await historicalLogoHandler(
+      { params: { telegramId: "7", versionNumber: "1" } },
+      res
+    );
 
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(storageDownload).not.toHaveBeenCalled();
-    }
-  );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(storageDownload).not.toHaveBeenCalled();
+  });
 
   it("requires authentication", async () => {
     getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);

@@ -70,7 +70,10 @@ type FakeResponse = {
   redirect: ReturnType<typeof vi.fn>;
 };
 
-type StorageRouteHandler = (req: any, res: FakeResponse) => Promise<void>;
+type StorageRouteHandler = (
+  req: any,
+  res: FakeResponse
+) => Promise<void>;
 
 function createRouteHarness() {
   const handlers = new Map<string, StorageRouteHandler>();
@@ -152,9 +155,7 @@ describe("storage route", () => {
     canAccessTelegramScope.mockResolvedValue(false);
   });
 
-  it(
-    "serves a historical logo only after authorizing access to its telegram",
-    async () => {
+  it("serves a historical logo only after authorizing access to its telegram", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     const telegram = {
       id: 7,
@@ -194,9 +195,7 @@ describe("storage route", () => {
     );
   });
 
-  it(
-    "denies historical logo reads outside the user's telegram scope",
-    async () => {
+  it("denies historical logo reads outside the user's telegram scope", async () => {
     getTelegramById.mockResolvedValueOnce({
       id: 7,
       organizationId: "550e8400-e29b-41d4-a716-446655440000",
@@ -215,9 +214,7 @@ describe("storage route", () => {
     expect(storageDownload).not.toHaveBeenCalled();
   });
 
-  it(
-    "rejects a historical logo key that does not belong to the telegram's source organization",
-    async () => {
+  it("rejects a historical logo key that does not belong to the telegram's source organization", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     getTelegramById.mockResolvedValueOnce({
       id: 7,

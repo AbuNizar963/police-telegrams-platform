@@ -200,6 +200,7 @@
     max-height: 100%;
   }
 
+  /* Production toast-card redesign marker: 2026-11-01 */
   [data-sonner-toaster].toaster {
     font-family: "Cairo", sans-serif;
     --width: min(420px, calc(100vw - 24px));

@@ -616,13 +616,9 @@ async function buildTelegramVersionSnapshot(telegram: {
     letterhead: {
       organizationId: telegram.organizationId,
       organizationName:
-        organization?.name?.trim() ||
-        settings?.departmentName?.trim() ||
-        null,
+        organization?.name?.trim() || settings?.departmentName?.trim() || null,
       departmentName:
-        settings?.departmentName?.trim() ||
-        organization?.name?.trim() ||
-        null,
+        settings?.departmentName?.trim() || organization?.name?.trim() || null,
       unitName: settings?.unitName?.trim() || null,
       unitChiefRank: settings?.unitChiefRank?.trim() || null,
       unitChiefName: settings?.unitChiefName?.trim() || null,

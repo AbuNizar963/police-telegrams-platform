@@ -20,6 +20,7 @@ const mocked = vi.hoisted(() => ({
   getTelegramByIdempotencyKey: vi.fn(),
   recordTelegramAction: vi.fn(),
   recordTelegramVersion: vi.fn(),
+  listTelegramVersions: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
   listRoutingTargets: vi.fn(),
   listOrganizationDescendants: vi.fn(),
@@ -113,6 +114,7 @@ describe("telegrams.create", () => {
     mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
     mocked.recordTelegramAction.mockResolvedValue(undefined);
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
+    mocked.listTelegramVersions.mockResolvedValue([]);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
     mocked.listRoutingTargets.mockResolvedValue([]);
     mocked.listOrganizationDescendants.mockResolvedValue([]);
@@ -169,6 +171,59 @@ describe("telegrams.create", () => {
         }),
       })
     );
+  });
+
+  it("returns frozen letterhead metadata without exposing the private logo storage key", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000001";
+    const logoKey = `department/logos/${organizationId}/00000000-0000-4000-8000-000000000099-letterhead.png`;
+    mocked.getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+      createdAt: new Date(),
+    });
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.listTelegramVersions.mockResolvedValueOnce([
+      {
+        id: 1,
+        telegramId: 7,
+        versionNumber: 1,
+        changedByUserId: 42,
+        changeReason: "الإصدار الأول",
+        createdAt: new Date(),
+        snapshot: {
+          schemaVersion: 2,
+          letterhead: {
+            organizationId,
+            organizationName: "قسم شرطة الشهباء",
+            departmentName: "قسم شرطة الشهباء",
+            unitName: "قيادة الأمن الداخلي في محافظة حلب",
+            unitChiefRank: "المقدم",
+            unitChiefName: "غسان صالح كنو",
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          },
+        },
+      },
+    ]);
+
+    const caller = appRouter.createCaller(createContext());
+    const result = await caller.telegrams.versions({ telegramId: 7 });
+    const letterhead = result[0].snapshot.letterhead as Record<string, unknown>;
+
+    expect(letterhead).toMatchObject({
+      organizationName: "قسم شرطة الشهباء",
+      departmentName: "قسم شرطة الشهباء",
+      unitName: "قيادة الأمن الداخلي في محافظة حلب",
+      unitChiefRank: "المقدم",
+      unitChiefName: "غسان صالح كنو",
+      hasLogo: true,
+    });
+    expect(letterhead).not.toHaveProperty("logoStorageKey");
   });
 
   it("reissues a telegram under the same official number and records a new version", async () => {

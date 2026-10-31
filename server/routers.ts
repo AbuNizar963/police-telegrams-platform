@@ -1825,8 +1825,7 @@ export const appRouter = router({
             typeof letterhead?.logoStorageKey === "string"
               ? letterhead.logoStorageKey
               : null;
-          const expectedLogoPrefix =
-            `department/logos/${telegram.organizationId}/`;
+          const expectedLogoPrefix = `department/logos/${telegram.organizationId}/`;
           const hasHistoricalLogo =
             Boolean(storedLogoKey) &&
             storedLogoKey!.startsWith(expectedLogoPrefix);

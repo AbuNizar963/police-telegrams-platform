@@ -12,6 +12,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'api.dart';
+import 'organization_logo_resolution.dart';
 import 'telegram_display.dart';
 import 'telegram_report_labels.dart';
 import 'toast.dart';
@@ -214,16 +215,20 @@ class _OfficialTelegramDocumentPageState
         results[3] as Map,
       );
 
-      // Resolve the logo against the telegram's organization, not merely
-      // whichever account settings happen to be cached on this device.
-      final logoOrganizationId = _value(
-        telegramData['currentOrganizationId'] ?? telegramData['organizationId'],
-        fallback: '',
-      );
-      final settingsOrganizationId = _value(
-        settingsData['organizationId'],
-        fallback: '',
-      );
+      // Match web export behavior: use the authenticated account's active
+      // organization first, then fall back to telegram routing metadata.
+      final logoOrganizationId =
+          resolveOrganizationLogoId(
+            accountOrganizationId: settingsData['organizationId'],
+            currentOrganizationId: telegramData['currentOrganizationId'],
+            ownerOrganizationId: telegramData['organizationId'],
+          ) ??
+          '';
+      final settingsOrganizationId =
+          resolveOrganizationLogoId(
+            accountOrganizationId: settingsData['organizationId'],
+          ) ??
+          '';
       final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
       settingsData['logoUrl'] =
           logoOrganizationId.isNotEmpty &&
@@ -243,7 +248,10 @@ class _OfficialTelegramDocumentPageState
             input: {'organizationId': logoOrganizationId},
           );
           if (organizationSettings is Map &&
-              organizationSettings['organizationId']?.toString() ==
+              resolveOrganizationLogoId(
+                    accountOrganizationId:
+                        organizationSettings['organizationId'],
+                  ) ==
                   logoOrganizationId) {
             final scopedLogo = organizationSettings['logoUrl']
                 ?.toString()

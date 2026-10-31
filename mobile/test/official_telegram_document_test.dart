@@ -128,7 +128,7 @@ void main() {
     expect(
       html,
       contains(
-        '<span class="footer-text">تاريخ ووقت إنشاء الوثيقة: 2026/10/15 - 12:00:00 ص</span>',
+        '<span class="footer-text"><span class="footer-date-label">تاريخ ووقت إخراج النسخة:</span> <span class="footer-output-time">يُحدَّد عند الإخراج</span></span>',
       ),
     );
     expect(html, contains('data-icon="person" aria-hidden="true"'));
@@ -144,8 +144,30 @@ void main() {
     expect(html, contains('white-space: nowrap;'));
     expect(html, isNot(contains('تم إنشاء هذه الوثيقة بواسطة:')));
     expect(html, contains('الوقت والتاريخ:</strong>'));
-    expect(html, contains('تاريخ ووقت إنشاء الوثيقة:'));
+    expect(html, contains('تاريخ ووقت إخراج النسخة:'));
+    expect(html, isNot(contains('2026/10/15')));
     expect(html, isNot(contains('<p class="footer-date">الوقت والتاريخ:')));
+  });
+
+  test('stamps each exported document with the supplied server event time', () {
+    final html = buildOfficialTelegramHtml(
+      telegram: telegram(),
+      settings: const {
+        'timezone': 'UTC',
+        'dateFormat': 'yyyy/MM/dd HH:mm:ss',
+        'numberSystem': 'latin',
+      },
+      routingDirectory: const [],
+      verificationUrl: 'https://example.test/verify/verify-token',
+      fontDataUrls: fonts,
+      outputTimestamp: '2026-10-30T12:34:56.000Z',
+    );
+
+    expect(
+      html,
+      contains('<span class="footer-output-time">2026/10/30 - 12:34:56</span>'),
+    );
+    expect(html, contains('2026/10/15'));
   });
 
   test('omits the QR from the document when platform settings disable it', () {

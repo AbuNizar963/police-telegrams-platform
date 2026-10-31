@@ -164,11 +164,9 @@ class _OfficialTelegramDocumentPageState
   bool busy = false;
   String? error;
   Uint8List? preview;
-  Uint8List? highResolutionImage;
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
   String? documentHtml;
-  Uint8List? cachedPdf;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
 
@@ -192,8 +190,6 @@ class _OfficialTelegramDocumentPageState
         loading = true;
         error = null;
         preview = null;
-        highResolutionImage = null;
-        cachedPdf = null;
       });
     }
     try {
@@ -323,7 +319,6 @@ class _OfficialTelegramDocumentPageState
         telegram = telegramData;
         settings = settingsData;
         documentHtml = html;
-        cachedPdf = pdfBytes;
         preview = image;
         loading = false;
       });
@@ -377,34 +372,6 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
-  Future<Uint8List> _getPdfBytes() async {
-    final cached = cachedPdf;
-    if (cached != null) return cached;
-    final html = documentHtml;
-    if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
-    // Fallback for callers that reach PDF export before initial rendering
-    // has populated the cache. Conversion stays entirely on the device.
-    final bytes = await _renderer.renderPdf(html);
-    if (bytes.isEmpty) {
-      throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
-    }
-    if (mounted) setState(() => cachedPdf = bytes);
-    return bytes;
-  }
-
-  Future<Uint8List> _getHighResolutionImage() async {
-    final cached = highResolutionImage;
-    if (cached != null) return cached;
-    final image = await _renderer.renderHighResolutionImage(
-      await _getPdfBytes(),
-    );
-    if (image.isEmpty) {
-      throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
-    }
-    if (mounted) setState(() => highResolutionImage = image);
-    return image;
-  }
-
   String get _fileBaseName {
     final serial = _displaySerial == '—' ? 'telegram' : _displaySerial;
     final safe = serial.replaceAll(RegExp(r'[\\/:*?"<>|\u0000-\u001f]'), '-');
@@ -414,8 +381,8 @@ class _OfficialTelegramDocumentPageState
   String get _displaySerial =>
       getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
-  Future<void> _recordDocumentOutput(String operation, String format) async {
-    await widget.api.call(
+  Future<String> _recordDocumentOutput(String operation, String format) async {
+    final result = await widget.api.call(
       'telegrams.recordDocumentOutput',
       mutation: true,
       allowOfflineCache: false,
@@ -425,6 +392,59 @@ class _OfficialTelegramDocumentPageState
         'format': format,
       },
     );
+    if (result is Map) {
+      final occurredAt = result['occurredAt']?.toString().trim();
+      if (occurredAt != null && DateTime.tryParse(occurredAt) != null) {
+        return occurredAt;
+      }
+    }
+    throw Exception('لم يصل وقت الإخراج من الخادم. أعد المحاولة.');
+  }
+
+  String _htmlWithOutputTimestamp(String occurredAt) {
+    final html = documentHtml;
+    if (html == null) throw Exception('تعذر تجهيز قالب الوثيقة.');
+    const placeholder =
+        '<span class="footer-output-time">يُحدَّد عند الإخراج</span>';
+    if (!html.contains(placeholder)) {
+      throw Exception('تعذر تحديث وقت إخراج الوثيقة. أعد فتحها ثم حاول.');
+    }
+    final formatted = _formatConfiguredHeaderDateTime(
+      occurredAt,
+      settings ?? const <String, dynamic>{},
+    );
+    return html.replaceFirst(
+      placeholder,
+      '<span class="footer-output-time">${_escapeHtml(formatted)}</span>',
+    );
+  }
+
+  Future<Uint8List> _renderOutputPdf(String operation, String format) async {
+    final occurredAt = await _recordDocumentOutput(operation, format);
+    final bytes = await _renderer.renderPdf(
+      _htmlWithOutputTimestamp(occurredAt),
+    );
+    if (bytes.isEmpty) {
+      throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
+    }
+    if (mounted) {
+      try {
+        final updatedPreview = await _renderer.renderPreview(bytes);
+        if (mounted) setState(() => preview = updatedPreview);
+      } catch (_) {
+        // A preview refresh must not cancel a valid export or print request.
+      }
+    }
+    return bytes;
+  }
+
+  Future<Uint8List> _renderOutputImage() async {
+    final pdfBytes = await _renderOutputPdf('download', 'png');
+    final image = await _renderer.renderHighResolutionImage(pdfBytes);
+    if (image.isEmpty) {
+      throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
+    }
+    return image;
   }
 
   Future<void> _perform(Future<void> Function() action) async {
@@ -444,8 +464,7 @@ class _OfficialTelegramDocumentPageState
   }
 
   Future<void> _printPdf() => _perform(() async {
-    await _recordDocumentOutput('print', 'pdf');
-    final bytes = await _getPdfBytes();
+    final bytes = await _renderOutputPdf('print', 'pdf');
     await Printing.layoutPdf(
       name: '$_fileBaseName.pdf',
       onLayout: (_) async => bytes,
@@ -453,8 +472,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _savePdf() => _perform(() async {
-    await _recordDocumentOutput('download', 'pdf');
-    final bytes = await _getPdfBytes();
+    final bytes = await _renderOutputPdf('download', 'pdf');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ الوثيقة الرسمية',
       fileName: '$_fileBaseName.pdf',
@@ -471,14 +489,12 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _sharePdf() => _perform(() async {
-    await _recordDocumentOutput('download', 'pdf');
-    final bytes = await _getPdfBytes();
+    final bytes = await _renderOutputPdf('download', 'pdf');
     await Printing.sharePdf(bytes: bytes, filename: '$_fileBaseName.pdf');
   });
 
   Future<void> _shareImage() => _perform(() async {
-    await _recordDocumentOutput('download', 'png');
-    final bytes = await _getHighResolutionImage();
+    final bytes = await _renderOutputImage();
     await SharePlus.instance.share(
       ShareParams(
         files: [
@@ -495,8 +511,7 @@ class _OfficialTelegramDocumentPageState
   });
 
   Future<void> _saveImage() => _perform(() async {
-    await _recordDocumentOutput('download', 'png');
-    final bytes = await _getHighResolutionImage();
+    final bytes = await _renderOutputImage();
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',
       fileName: '$_fileBaseName.png',
@@ -859,6 +874,7 @@ String buildOfficialTelegramHtml({
   List<Map<String, dynamic>> referenceLinks = const [],
   required Map<int, String> fontDataUrls,
   String? logoDataUrl,
+  String? outputTimestamp,
 }) {
   final numberSystem = settings['numberSystem'];
   final showVerificationQr =
@@ -926,10 +942,9 @@ String buildOfficialTelegramHtml({
       .join();
 
   final telegramDate = telegram['telegramDate'] ?? telegram['createdAt'];
-  final documentCreatedAt = _formatConfiguredHeaderDateTime(
-    telegram['createdAt'],
-    settings,
-  );
+  final documentOutputAt = outputTimestamp == null
+      ? 'يُحدَّد عند الإخراج'
+      : _formatConfiguredHeaderDateTime(outputTimestamp, settings);
   final headerCreatedAt = _formatConfiguredHeaderDateTime(
     telegramDate,
     settings,
@@ -1142,7 +1157,7 @@ $watermark
 <footer class="document-footer">
 <p class="footer-creator">$_documentFooterPersonIcon<span class="footer-text">منشئ الوثيقة: ${_escapeHtml(_localizeDigits(_value(telegram['creatorName']), numberSystem))}</span></p>
 <p class="footer-location">$_documentFooterLocationIcon<span class="footer-text">الموقع: ${_escapeHtml(location)}</span></p>
-<p class="footer-date">$_documentFooterCalendarIcon<span class="footer-text">تاريخ ووقت إنشاء الوثيقة: ${_escapeHtml(documentCreatedAt)}</span></p>
+<p class="footer-date">$_documentFooterCalendarIcon<span class="footer-text"><span class="footer-date-label">تاريخ ووقت إخراج النسخة:</span> <span class="footer-output-time">${_escapeHtml(documentOutputAt)}</span></span></p>
 </footer>
 $importNotesMarkup
 </article></body></html>''';

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'app_lock.dart';
 
 import 'api.dart';
+import 'audit_log_presentation.dart';
 import 'telegram_report_date_formatter.dart';
 import 'telegram_report_labels.dart';
 import 'toast.dart';
@@ -622,35 +623,6 @@ class _AuditLogPageState extends State<AuditLogPage> {
   DateTime? to;
   Timer? _refreshTimer;
 
-  static const actionLabels = <String, String>{
-    'organization.settings.update': 'تحديث إعدادات الجهة',
-    'organization.create': 'إنشاء جهة',
-    'organization.update': 'تعديل جهة',
-    'settings.update': 'تحديث الإعدادات',
-    'platform.document_settings.update': 'تحديث إعدادات الوثائق',
-    'attachment.upload': 'رفع مرفق',
-    'attachment.download': 'تنزيل مرفق',
-    'telegram.update': 'تعديل برقية',
-    'telegram.delete': 'حذف برقية',
-    'telegram.route': 'إحالة برقية',
-    'telegram.route.receive': 'تأكيد استلام إحالة',
-    'telegram.status.transition': 'تغيير حالة برقية',
-    'telegram.create': 'إنشاء برقية',
-    'telegram.document.print': 'طباعة وثيقة برقية',
-    'telegram.document.download': 'تنزيل أو مشاركة وثيقة برقية',
-    'telegram.export.rows': 'تجهيز تصدير سجل البرقيات',
-    'telegram.export.workbook': 'تصدير سجل البرقيات إلى Excel',
-    'telegram.import.excel': 'استيراد برقيات من Excel',
-    'telegram.broadcast': 'توزيع برقية على جهات',
-    'telegram.broadcast.atomic_failure': 'فشل توزيع البرقية',
-    'user.create': 'إنشاء مستخدم',
-    'user.update': 'تعديل بيانات مستخدم',
-    'user.disable': 'تعطيل مستخدم',
-    'user.enable': 'تفعيل مستخدم',
-    'user.delete': 'حذف مستخدم',
-    'platform.owner_workplace.switch': 'تغيير جهة عمل المالك',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -714,15 +686,6 @@ class _AuditLogPageState extends State<AuditLogPage> {
     final formattedTime = MaterialLocalizations.of(context)
         .formatTimeOfDay(TimeOfDay.fromDateTime(localDate));
     return '$formattedDate · $formattedTime';
-  }
-
-  String _metadata(dynamic value) {
-    if (value is! String || value.trim().isEmpty) return '';
-    try {
-      return const JsonEncoder.withIndent('  ').convert(jsonDecode(value));
-    } catch (_) {
-      return value;
-    }
   }
 
   List<Map<String, dynamic>> get _rows => entries
@@ -822,6 +785,14 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                     fontSize: 12,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'تُعرض الإجراءات والتفاصيل بالعربية؛ أما بيانات الشبكة والمعرّفات الفنية فهي اختيارية للمختصين.',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -871,7 +842,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                     value: '',
                                     child: Text('كل الإجراءات'),
                                   ),
-                                  ...actionLabels.entries.map(
+                                  ...auditActionLabels.entries.map(
                                     (entry) => DropdownMenuItem(
                                       value: entry.key,
                                       child: Text(
@@ -934,18 +905,37 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           : 'لا توجد نتائج مطابقة للبحث.',
                     ),
                   ..._rows.map((entry) {
-                    final action = _stringValue(entry['action'], 'إجراء');
-                    final actionLabel = actionLabels[action] ?? action;
-                    final metadata = _metadata(entry['metadata']);
-                    final entity = _stringValue(entry['entityType']);
-                    final entityId = _stringValue(entry['entityId'], '');
+                    final actionLabel = auditActionLabel(entry['action']);
+                    final deviceLabel = auditDeviceLabel(entry['deviceType']);
+                    final userAgent = auditUserAgentSummary(entry['userAgent']);
+                    final metadataFields = readableAuditFields(
+                      entry['metadata'],
+                    );
+                    final rawMetadata = rawAuditDetails(entry['metadata']);
+                    final entitySummary = auditEntitySummary(
+                      entry['entityType'],
+                      entry['entityId'],
+                    );
                     final ipAddress = _stringValue(
                       entry['ipAddress'],
-                      'غير متوفر',
+                      'غير متاح',
                     );
-                    final beforeState = _metadata(entry['beforeState']);
-                    final afterState = _metadata(entry['afterState']);
+                    final beforeFields = readableAuditFields(
+                      entry['beforeState'],
+                    );
+                    final afterFields = readableAuditFields(
+                      entry['afterState'],
+                    );
+                    final rawBeforeState = rawAuditDetails(
+                      entry['beforeState'],
+                    );
+                    final rawAfterState = rawAuditDetails(entry['afterState']);
                     final reason = _stringValue(entry['reason'], '');
+                    final actorSummary = [
+                      _stringValue(entry['actorName'], 'مستخدم غير معروف'),
+                      _stringValue(entry['actorRank'], 'الرتبة غير محددة'),
+                      auditRoleLabel(entry['actorRole']),
+                    ].join(' · ');
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(14),
@@ -973,7 +963,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        _formatDate(entry['createdAt']),
+                                        'وقت تسجيل الإجراء: ${_formatDate(entry['createdAt'])}',
                                         style: const TextStyle(
                                           fontSize: 11,
                                           color: Colors.black54,
@@ -983,7 +973,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                   ),
                                 ),
                                 Text(
-                                  _stringValue(entry['deviceType'], 'unknown'),
+                                  deviceLabel,
                                   style: const TextStyle(
                                     fontSize: 10,
                                     color: Colors.black54,
@@ -994,26 +984,23 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             const Divider(height: 24),
                             _AuditDetail(
                               label: 'منفّذ الإجراء',
-                              value:
-                                  '${_stringValue(entry['actorName'])} · المستخدم رقم ${_stringValue(entry['actorUserId'])}\n${_stringValue(entry['actorRank'], 'بدون رتبة')} · ${_stringValue(entry['actorRole'], 'بدون دور')}',
+                              value: actorSummary,
                             ),
                             const SizedBox(height: 8),
                             _AuditDetail(
-                              label: 'العنصر المتأثر',
-                              value: entityId.isEmpty
-                                  ? entity
-                                  : '$entity · $entityId',
+                              label: 'السجل المعني',
+                              value: entitySummary,
                             ),
                             const SizedBox(height: 8),
                             _AuditDetail(
-                              label: 'عنوان الشبكة',
-                              value: ipAddress,
+                              label: 'الجهاز المستخدم',
+                              value: '$deviceLabel · $userAgent',
                             ),
                             if (reason.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               _AuditDetail(label: 'سبب الإجراء', value: reason),
                             ],
-                            if (metadata.isNotEmpty) ...[
+                            if (metadataFields.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               ExpansionTile(
                                 tilePadding: EdgeInsets.zero,
@@ -1021,49 +1008,178 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                   bottom: 8,
                                 ),
                                 title: const Text(
-                                  'تفاصيل الإجراء',
+                                  'تفاصيل العملية بلغة واضحة',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 children: [
-                                  SelectableText(
-                                    metadata,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 11,
+                                  ...metadataFields.map(
+                                    (field) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: _AuditDetail(
+                                        label: field.label,
+                                        value: field.value,
+                                      ),
                                     ),
                                   ),
+                                  if (rawMetadata.isNotEmpty)
+                                    ExpansionTile(
+                                      tilePadding: EdgeInsets.zero,
+                                      title: const Text(
+                                        'البيانات الأصلية للمختصين',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      children: [
+                                        SelectableText(
+                                          rawMetadata,
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ],
-                            if (beforeState.isNotEmpty || afterState.isNotEmpty)
+                            if (beforeFields.isNotEmpty ||
+                                afterFields.isNotEmpty)
                               ExpansionTile(
                                 tilePadding: EdgeInsets.zero,
                                 title: const Text(
-                                  'مقارنة قبل / بعد',
+                                  'التغييرات المسجلة قبل الإجراء وبعده',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 children: [
-                                  if (beforeState.isNotEmpty)
-                                    _AuditDetail(
-                                      label: 'قبل',
-                                      value: beforeState,
-                                    ),
-                                  if (afterState.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: _AuditDetail(
-                                        label: 'بعد',
-                                        value: afterState,
+                                  if (beforeFields.isNotEmpty) ...[
+                                    const Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        'قبل التعديل',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                                     ),
+                                    ...beforeFields.map(
+                                      (field) => _AuditDetail(
+                                        label: field.label,
+                                        value: field.value,
+                                      ),
+                                    ),
+                                    if (rawBeforeState.isNotEmpty)
+                                      ExpansionTile(
+                                        tilePadding: EdgeInsets.zero,
+                                        title: const Text(
+                                          'البيانات الأصلية للمختصين',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        children: [
+                                          SelectableText(
+                                            rawBeforeState,
+                                            style: const TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                  if (afterFields.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: const Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          'بعد التعديل',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    ...afterFields.map(
+                                      (field) => _AuditDetail(
+                                        label: field.label,
+                                        value: field.value,
+                                      ),
+                                    ),
+                                    if (rawAfterState.isNotEmpty)
+                                      ExpansionTile(
+                                        tilePadding: EdgeInsets.zero,
+                                        title: const Text(
+                                          'البيانات الأصلية للمختصين',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        children: [
+                                          SelectableText(
+                                            rawAfterState,
+                                            style: const TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
                                 ],
                               ),
+                            ExpansionTile(
+                              tilePadding: EdgeInsets.zero,
+                              title: const Text(
+                                'معلومات فنية للمختصين',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              children: [
+                                _AuditDetail(
+                                  label: 'عنوان الشبكة (IP)',
+                                  value: ipAddress,
+                                ),
+                                _AuditDetail(
+                                  label: 'المتصفح ونظام الجهاز',
+                                  value: userAgent,
+                                ),
+                                _AuditDetail(
+                                  label: 'بصمة نزاهة السجل',
+                                  value: _stringValue(
+                                    entry['entryHash'],
+                                    'غير متاحة',
+                                  ),
+                                ),
+                                _AuditDetail(
+                                  label: 'معرّف منفّذ الإجراء',
+                                  value: _stringValue(
+                                    entry['actorUserId'],
+                                    'غير متاح',
+                                  ),
+                                ),
+                                if (_stringValue(
+                                  entry['userAgent'],
+                                  '',
+                                ).isNotEmpty)
+                                  ExpansionTile(
+                                    tilePadding: EdgeInsets.zero,
+                                    title: const Text(
+                                      'بيانات المتصفح الأصلية',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    children: [
+                                      SelectableText(
+                                        _stringValue(entry['userAgent']),
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

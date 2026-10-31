@@ -2958,6 +2958,19 @@ function TelegramDetail({
   const platformDocumentSettings = documentSettingsQuery.data;
   const documentSettingsUnavailable =
     !platformDocumentSettings || documentSettingsQuery.isError;
+  const recordDocumentOutput =
+    trpc.telegrams.recordDocumentOutput.useMutation();
+  const auditDocumentOutput = async (
+    operation: "print" | "download",
+    format: "pdf" | "png"
+  ) => {
+    const result = await recordDocumentOutput.mutateAsync({
+      id: telegram.id,
+      operation,
+      format,
+    });
+    return result.occurredAt;
+  };
   const loadExportSettings = () =>
     loadDocumentSettingsForExport(() =>
       utils.platformDocumentSettings.get.fetch(undefined, { staleTime: 0 })
@@ -3247,7 +3260,8 @@ function TelegramDetail({
   };
   const createExportPaper = (
     documentSettings: PlatformDocumentSettings,
-    logoUrl: string | null = settings?.logoUrl ?? null
+    logoUrl: string | null = settings?.logoUrl ?? null,
+    outputTimestamp?: string
   ) => {
     const escapeHtml = (value: unknown) =>
       String(value ?? "")
@@ -3321,10 +3335,9 @@ function TelegramDetail({
       name => !fixedHeaderNames.has(name.trim())
     );
     const telegramDate = telegram.telegramDate ?? telegram.createdAt;
-    const documentCreatedAt = formatConfiguredHeaderDateTime(
-      telegram.createdAt,
-      settings
-    );
+    const documentOutputAt = outputTimestamp
+      ? formatConfiguredHeaderDateTime(outputTimestamp, settings)
+      : "يُحدَّد عند الإخراج";
     const headerCreatedAt = formatConfiguredHeaderDateTime(
       telegramDate,
       settings
@@ -3646,7 +3659,7 @@ function TelegramDetail({
           </p>
           <p class="footer-date">
             ${documentFooterIcons.calendar}
-            <span class="footer-text">تاريخ ووقت إنشاء الوثيقة: ${escapeHtml(documentCreatedAt)}</span>
+            <span class="footer-text"><span class="footer-date-label">تاريخ ووقت إخراج النسخة:</span> <span class="footer-date-value" dir="ltr">${escapeHtml(documentOutputAt)}</span></span>
           </p>
         </footer>
       </article>`;
@@ -3786,7 +3799,10 @@ function TelegramDetail({
     };
   }, [telegram.id]);
 
-  const renderOfficialDocument = async (format: "pdf" | "png") => {
+  const renderOfficialDocument = async (
+    format: "pdf" | "png",
+    outputTimestamp: string
+  ) => {
     await withPreparationTimeout(
       document.fonts.ready,
       OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
@@ -3814,7 +3830,11 @@ function TelegramDetail({
       );
     }
 
-    const wrapper = createExportPaper(documentSettings, logoDataUrl);
+    const wrapper = createExportPaper(
+      documentSettings,
+      logoDataUrl,
+      outputTimestamp
+    );
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
     if (!paper) throw new Error("تعذر تجهيز قالب البرقية للتصدير");
 
@@ -4012,6 +4032,16 @@ function TelegramDetail({
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
 
+      const outputTimestamp = await auditDocumentOutput("print", "pdf");
+      const footerTimestamp =
+        exportWrapper.querySelector<HTMLElement>(".footer-date-value");
+      if (!footerTimestamp) {
+        throw new Error("تعذر إدراج وقت الطباعة في الوثيقة.");
+      }
+      footerTimestamp.textContent = formatConfiguredHeaderDateTime(
+        outputTimestamp,
+        settings
+      );
       window.addEventListener("afterprint", cleanup, { once: true });
       window.print();
 
@@ -4025,13 +4055,15 @@ function TelegramDetail({
     }
   };
 
-  const imageBlob = async (): Promise<Blob> => renderOfficialDocument("png");
+  const imageBlob = async (outputTimestamp: string): Promise<Blob> =>
+    renderOfficialDocument("png", outputTimestamp);
 
   const downloadImage = async () => {
     setExporting("image");
 
     try {
-      const blob = await imageBlob();
+      const outputTimestamp = await auditDocumentOutput("download", "png");
+      const blob = await imageBlob(outputTimestamp);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
 
@@ -4052,7 +4084,8 @@ function TelegramDetail({
     setExporting("image-share");
 
     try {
-      const blob = await imageBlob();
+      const outputTimestamp = await auditDocumentOutput("download", "png");
+      const blob = await imageBlob(outputTimestamp);
       const file = new File(
         [blob],
         `${getTelegramExportFileBaseName(telegram)}.png`,
@@ -4097,7 +4130,8 @@ function TelegramDetail({
     setExporting(share ? "share" : "pdf");
 
     try {
-      const blob = await renderOfficialDocument("pdf");
+      const outputTimestamp = await auditDocumentOutput("download", "pdf");
+      const blob = await renderOfficialDocument("pdf", outputTimestamp);
       const file = new File(
         [blob],
         `${getTelegramExportFileBaseName(telegram)}.pdf`,

@@ -879,12 +879,12 @@ class _OfficialTelegramDocumentPageState
                             onPressed: busy ? null : () => _attachFile(),
                           ),
                           _documentAction(
-                            label: 'صورة عالية الدقة',
+                            label: 'تنزيل كصورة',
                             icon: Icons.image_outlined,
                             onPressed: busy ? null : () => _saveImage(),
                           ),
                           _documentAction(
-                            label: 'PDF مطابق للطباعة',
+                            label: 'تنزيل PDF',
                             icon: Icons.picture_as_pdf_outlined,
                             onPressed: busy ? null : () => _savePdf(),
                           ),

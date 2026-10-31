@@ -1039,8 +1039,8 @@ void main() {
     expect(find.text(_telegramSubject), findsOneWidget);
     expect(find.text('طباعة'), findsOneWidget);
     expect(find.text('إرفاق ملف'), findsOneWidget);
-    expect(find.text('صورة عالية الدقة'), findsOneWidget);
-    expect(find.text('PDF مطابق للطباعة'), findsOneWidget);
+    expect(find.text('تنزيل كصورة'), findsOneWidget);
+    expect(find.text('تنزيل PDF'), findsOneWidget);
     expect(find.text('مشاركة صورة'), findsOneWidget);
     expect(find.text('مشاركة PDF'), findsOneWidget);
     expect(find.text('تعديل البرقية'), findsOneWidget);

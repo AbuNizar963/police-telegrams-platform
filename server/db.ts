@@ -1008,26 +1008,42 @@ export async function recordTelegramVersion(input: {
   changedByUserId: number;
   changeReason: string;
   snapshot: Record<string, unknown>;
-}): Promise<void> {
-  const { data: latest, error: latestError } = await getSupabaseAdmin()
-    .from("telegram_versions")
-    .select("versionNumber")
-    .eq("telegramId", input.telegramId)
-    .order("versionNumber", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  throwIfError(latestError, "Failed to load telegram version");
+}): Promise<number> {
+  const client = getSupabaseAdmin();
 
-  const { error } = await getSupabaseAdmin()
-    .from("telegram_versions")
-    .insert({
+  // The unique (telegramId, versionNumber) index is the final concurrency
+  // guard. If two writers observe the same latest version, retry the loser
+  // after the winning insert becomes visible.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data: latest, error: latestError } = await client
+      .from("telegram_versions")
+      .select("versionNumber")
+      .eq("telegramId", input.telegramId)
+      .order("versionNumber", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    throwIfError(latestError, "Failed to load telegram version");
+
+    const versionNumber = Number(latest?.versionNumber ?? 0) + 1;
+    const { error } = await client.from("telegram_versions").insert({
       telegramId: input.telegramId,
-      versionNumber: Number(latest?.versionNumber ?? 0) + 1,
+      versionNumber,
       changedByUserId: input.changedByUserId,
       changeReason: input.changeReason.trim(),
       snapshot: JSON.stringify(input.snapshot),
     });
-  throwIfError(error, "Failed to record telegram version");
+
+    if (!error) return versionNumber;
+    if (
+      (error as { code?: string }).code === "23505" &&
+      attempt < 4
+    ) {
+      continue;
+    }
+    throwIfError(error, "Failed to record telegram version");
+  }
+
+  throw new Error("Failed to allocate a unique telegram version number");
 }
 
 export type TelegramVersionRecord = {

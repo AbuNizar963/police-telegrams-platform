@@ -151,10 +151,10 @@ describe("official PNG resolution metadata", () => {
     const physicalChunk = result.indexOf(Buffer.from("pHYs", "ascii"));
     expect(physicalChunk).toBeGreaterThan(0);
     expect(result.readUInt32BE(physicalChunk + 4)).toBe(
-      Math.round((4 * 96) / 0.0254)
+      Math.round((2 * 96) / 0.0254)
     );
     expect(result.readUInt32BE(physicalChunk + 8)).toBe(
-      Math.round((4 * 96) / 0.0254)
+      Math.round((2 * 96) / 0.0254)
     );
     expect(result[physicalChunk + 12]).toBe(1);
     expect(result.readUInt32BE(16)).toBe(1);

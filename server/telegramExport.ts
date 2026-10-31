@@ -5,9 +5,9 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
 const MAX_HTML_BYTES = 3_900_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
-// Keep the export in the high-quality print range while avoiding the very
-// large Chromium surface that can fail in serverless memory limits.
-const PNG_DEVICE_SCALE_FACTOR = 4;
+// 192 DPI remains clear for sharing and printing while keeping PNG renders
+// within serverless Chromium memory and response-size limits.
+const PNG_DEVICE_SCALE_FACTOR = 2;
 const PNG_DPI = PNG_DEVICE_SCALE_FACTOR * 96;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 

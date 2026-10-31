@@ -3275,6 +3275,13 @@ function TelegramDetail({
   const [exporting, setExporting] = useState<
     "pdf" | "image" | "share" | "image-share" | null
   >(null);
+  const [preparedShare, setPreparedShare] = useState<{
+    format: "pdf" | "png";
+    telegramId: number;
+    file: File;
+    title: string;
+    text: string;
+  } | null>(null);
   const [documentPreparing, setDocumentPreparing] = useState(true);
   const [attachmentPreview, setAttachmentPreview] = useState<{
     name: string;
@@ -4226,6 +4233,15 @@ function TelegramDetail({
   const imageBlob = async (outputTimestamp: string): Promise<Blob> =>
     renderOfficialDocument("png", outputTimestamp);
 
+  const downloadExportFile = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = file.name;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const downloadImage = async () => {
     setExporting("image");
 
@@ -4248,54 +4264,101 @@ function TelegramDetail({
     }
   };
 
-  const shareImage = async () => {
-    setExporting("image-share");
+  const sharePreparedExport = (format: "pdf" | "png") => {
+    const prepared = preparedShare;
+    if (
+      !prepared ||
+      prepared.format !== format ||
+      prepared.telegramId !== telegram.id
+    ) {
+      return false;
+    }
+
+    if (!navigator.share || !navigator.canShare?.({ files: [prepared.file] })) {
+      setPreparedShare(null);
+      downloadExportFile(prepared.file);
+      toast.info("تعذرت المشاركة المباشرة في هذا المتصفح؛ تم تنزيل الملف");
+      return true;
+    }
+
+    const handleShareError = (error: unknown) => {
+      const errorName = (error as DOMException | undefined)?.name;
+      if (errorName === "AbortError") return;
+      if (errorName === "NotAllowedError") {
+        downloadExportFile(prepared.file);
+        toast.info("رفض المتصفح المشاركة؛ تم تنزيل الملف بدلاً من ذلك");
+        return;
+      }
+      toast.error(
+        error instanceof Error ? error.message : "تعذرت مشاركة الوثيقة"
+      );
+    };
 
     try {
-      const outputTimestamp = await auditDocumentOutput("download", "png");
-      const blob = await imageBlob(outputTimestamp);
+      // This is deliberately called before any await in the click handler: the
+      // browser requires a fresh user gesture for Navigator.share().
+      const shareRequest = navigator.share({
+        title: prepared.title,
+        text: prepared.text,
+        files: [prepared.file],
+      });
+      setPreparedShare(null);
+      void shareRequest
+        .then(() => toast.success("تم فتح خيارات المشاركة"))
+        .catch(handleShareError);
+    } catch (error) {
+      setPreparedShare(null);
+      handleShareError(error);
+    }
+    return true;
+  };
+
+  const prepareDocumentShare = async (format: "pdf" | "png") => {
+    // If the file was prepared by the previous tap, share it immediately in
+    // this tap while the browser's transient activation is still available.
+    if (sharePreparedExport(format)) return;
+
+    setPreparedShare(null);
+    setExporting(format === "pdf" ? "share" : "image-share");
+    try {
+      const outputTimestamp = await auditDocumentOutput("download", format);
+      const blob = await renderOfficialDocument(format, outputTimestamp);
+      const isPdf = format === "pdf";
       const file = new File(
         [blob],
-        `${getTelegramExportFileBaseName(telegram)}.png`,
-        {
-          type: "image/png",
-        }
+        `${getTelegramExportFileBaseName(telegram)}.${isPdf ? "pdf" : "png"}`,
+        { type: isPdf ? "application/pdf" : "image/png" }
       );
 
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
+      if (navigator.canShare?.({ files: [file] })) {
+        setPreparedShare({
+          format,
+          telegramId: telegram.id,
+          file,
           title: `برقية ${getTelegramDisplaySerial(
             telegram,
             settings?.numberSystem ?? "latin"
           )}`,
           text: telegram.subject,
-          files: [file],
         });
-        toast.success("تم فتح خيارات مشاركة الصورة");
+        toast.info(
+          "تم تجهيز الملف؛ اضغط زر المشاركة مرة أخرى لفتح خيارات المشاركة."
+        );
       } else {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-
-        anchor.href = url;
-        anchor.download = file.name;
-        anchor.click();
-
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.info("المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل الصورة");
+        downloadExportFile(file);
+        toast.info("المتصفح لا يدعم مشاركة الملفات مباشرة؛ تم تنزيل الملف");
       }
     } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") {
-        toast.error(
-          error instanceof Error ? error.message : "تعذر مشاركة الصورة"
-        );
-      }
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تجهيز الوثيقة للمشاركة"
+      );
     } finally {
       setExporting(null);
     }
   };
 
-  const exportPdf = async (share = false) => {
-    setExporting(share ? "share" : "pdf");
+  const exportPdf = async () => {
+    setExporting("pdf");
 
     try {
       const outputTimestamp = await auditDocumentOutput("download", "pdf");
@@ -4303,40 +4366,14 @@ function TelegramDetail({
       const file = new File(
         [blob],
         `${getTelegramExportFileBaseName(telegram)}.pdf`,
-        {
-          type: "application/pdf",
-        }
+        { type: "application/pdf" }
       );
-
-      if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `برقية ${getTelegramDisplaySerial(
-            telegram,
-            settings?.numberSystem ?? "latin"
-          )}`,
-          text: telegram.subject,
-          files: [file],
-        });
-        toast.success("تم فتح خيارات مشاركة البرقية");
-      } else {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = file.name;
-        anchor.click();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.success(
-          share
-            ? "المتصفح لا يدعم المشاركة المباشرة؛ تم تنزيل ملف PDF"
-            : "تم تنزيل البرقية بصيغة PDF مطابقة للطباعة"
-        );
-      }
+      downloadExportFile(file);
+      toast.success("تم تنزيل البرقية بصيغة PDF مطابقة للطباعة");
     } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") {
-        toast.error(
-          error instanceof Error ? error.message : "تعذر تصدير البرقية"
-        );
-      }
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تصدير البرقية"
+      );
     } finally {
       setExporting(null);
     }
@@ -4611,7 +4648,7 @@ function TelegramDetail({
             طباعة
           </Button>
           <Button
-            onClick={() => exportPdf(false)}
+            onClick={exportPdf}
             disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
@@ -4629,22 +4666,32 @@ function TelegramDetail({
             {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
           </Button>
           <Button
-            onClick={() => exportPdf(true)}
+            onClick={() => void prepareDocumentShare("pdf")}
             disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
             <Share2 className="ml-2 h-4 w-4" />
-            {exporting === "share" ? "جارٍ التحضير..." : "مشاركة PDF"}
+            {exporting === "share"
+              ? "جارٍ التحضير..."
+              : preparedShare?.telegramId === telegram.id &&
+                  preparedShare.format === "pdf"
+                ? "اضغط مرة أخرى للمشاركة"
+                : "مشاركة PDF"}
           </Button>
           <Button
-            onClick={shareImage}
+            onClick={() => void prepareDocumentShare("png")}
             disabled={!!exporting || documentSettingsUnavailable}
             variant="outline"
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
             <Share2 className="ml-2 h-4 w-4" />
-            {exporting === "image-share" ? "جارٍ التحضير..." : "مشاركة صورة"}
+            {exporting === "image-share"
+              ? "جارٍ التحضير..."
+              : preparedShare?.telegramId === telegram.id &&
+                  preparedShare.format === "png"
+                ? "اضغط مرة أخرى للمشاركة"
+                : "مشاركة صورة"}
           </Button>
           <Button
             onClick={() =>

@@ -3529,7 +3529,8 @@ function TelegramDetail({
       routingDirectory.map(organization => [organization.id, organization])
     );
     const hierarchyNames: string[] = [];
-    let hierarchyId = documentTelegram.currentOrganizationId ?? documentTelegram.organizationId;
+    let hierarchyId =
+      documentTelegram.currentOrganizationId ?? documentTelegram.organizationId;
     const visited = new Set<string>();
     while (hierarchyId && !visited.has(hierarchyId)) {
       const organization = organizationById.get(hierarchyId);
@@ -3544,7 +3545,8 @@ function TelegramDetail({
     const hierarchyCandidates = hierarchyNames.length
       ? [...hierarchyNames]
       : [unitName, departmentName];
-    const senderOrganizationNameRaw = documentTelegram.senderOrganizationName?.trim();
+    const senderOrganizationNameRaw =
+      documentTelegram.senderOrganizationName?.trim();
     if (
       senderOrganizationNameRaw &&
       !hierarchyCandidates.some(
@@ -3564,7 +3566,8 @@ function TelegramDetail({
     const organizationHierarchy = hierarchyCandidates.filter(
       name => !fixedHeaderNames.has(name.trim())
     );
-    const telegramDate = documentTelegram.telegramDate ?? documentTelegram.createdAt;
+    const telegramDate =
+      documentTelegram.telegramDate ?? documentTelegram.createdAt;
     const documentOutputAt = outputTimestamp
       ? formatConfiguredHeaderDateTime(outputTimestamp, settings)
       : "يُحدَّد عند الإخراج";
@@ -3573,7 +3576,8 @@ function TelegramDetail({
       settings
     );
     const location = localizeDigits(
-      documentTelegram.gpsLatitude != null && documentTelegram.gpsLongitude != null
+      documentTelegram.gpsLatitude != null &&
+        documentTelegram.gpsLongitude != null
         ? `${documentTelegram.gpsLatitude}, ${documentTelegram.gpsLongitude}`
         : "غير محدد",
       numberSystem
@@ -3592,7 +3596,10 @@ function TelegramDetail({
         <path d="M16 3v4M8 3v4M3.5 10h17" />
       </svg>`,
     };
-    const displaySerial = getTelegramDisplaySerial(documentTelegram, numberSystem);
+    const displaySerial = getTelegramDisplaySerial(
+      documentTelegram,
+      numberSystem
+    );
     // The supplied URL is already resolved for this document. Do not
     // reintroduce a remote settings URL when normalization explicitly failed:
     // the server-side renderer blocks external network resources.

@@ -538,6 +538,7 @@ async function buildTelegramVersionSnapshot(telegram: {
   id: number;
   serialNumber: number;
   serialCode: string;
+  originalSerial?: string | null;
   organizationId: string;
   subject: string;
   recipient: string;
@@ -546,6 +547,13 @@ async function buildTelegramVersionSnapshot(telegram: {
   priority: string;
   category: string;
   status: string;
+  createdAt: Date;
+  telegramDate?: Date | null;
+  creatorName: string;
+  creatorBadgeId?: string | null;
+  verificationToken: string;
+  gpsLatitude?: string | null;
+  gpsLongitude?: string | null;
 }) {
   const settings = await getOrganizationSettings(telegram.organizationId);
   const candidateLogoKey = departmentLogoKeyFromStoredValue(
@@ -562,7 +570,15 @@ async function buildTelegramVersionSnapshot(telegram: {
     telegramId: telegram.id,
     serialNumber: telegram.serialNumber,
     serialCode: telegram.serialCode,
+    originalSerial: telegram.originalSerial ?? null,
     organizationId: telegram.organizationId,
+    createdAt: telegram.createdAt.toISOString(),
+    telegramDate: telegram.telegramDate?.toISOString() ?? null,
+    creatorName: telegram.creatorName,
+    creatorBadgeId: telegram.creatorBadgeId ?? null,
+    verificationToken: telegram.verificationToken,
+    gpsLatitude: telegram.gpsLatitude ?? null,
+    gpsLongitude: telegram.gpsLongitude ?? null,
     subject: telegram.subject,
     recipient: telegram.recipient,
     body: telegram.body,

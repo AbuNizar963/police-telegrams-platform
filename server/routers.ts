@@ -22,6 +22,7 @@ import {
 } from "./telegramAccess";
 import { canManageTelegramContent as canManageTelegramContentByTime } from "@shared/telegramPermissions";
 import { z } from "zod";
+import { getIssuedLetterheadForContentEdit } from "./issuedTelegramLetterhead";
 import { getRequestAuditContext } from "./auditContext";
 import { localizeDigits, normalizeNumberSystem } from "@shared/numberSystem";
 import {
@@ -2298,11 +2299,35 @@ export const appRouter = router({
         const afterState = telegramAuditSnapshot(
           updated as unknown as Record<string, unknown>
         );
+        const previousVersions = await listTelegramVersions(existing.id);
+        const issuedLetterhead = getIssuedLetterheadForContentEdit(
+          previousVersions,
+          existing.organizationId
+        );
+        const versionSnapshot = await buildTelegramVersionSnapshot(updated);
+        if (issuedLetterhead) {
+          versionSnapshot.letterhead = {
+            ...issuedLetterhead,
+          } as typeof versionSnapshot.letterhead;
+        } else {
+          // Legacy telegrams without a verifiable issuance snapshot must not
+          // be attributed to the current organization leader retroactively.
+          versionSnapshot.letterhead = {
+            ...versionSnapshot.letterhead,
+            organizationName: null,
+            departmentName: null,
+            unitName: null,
+            unitChiefRank: null,
+            unitChiefName: null,
+            logoStorageKey: null,
+            logoContentType: null,
+          };
+        }
         await recordTelegramVersion({
           telegramId: updated.id,
           changedByUserId: ctx.user.id,
           changeReason: "تعديل محتوى البرقية",
-          snapshot: await buildTelegramVersionSnapshot(updated),
+          snapshot: versionSnapshot,
         });
 
         await writeAuditLog({

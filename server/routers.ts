@@ -533,6 +533,14 @@ function telegramAuditSnapshot(telegram: Record<string, unknown>) {
   );
 }
 
+function toSnapshotIsoDate(
+  value: Date | string | null | undefined
+): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 async function buildTelegramVersionSnapshot(telegram: {
   id: number;
   serialNumber: number;
@@ -546,8 +554,8 @@ async function buildTelegramVersionSnapshot(telegram: {
   priority: string;
   category: string;
   status: string;
-  createdAt: Date;
-  telegramDate?: Date | null;
+  createdAt?: Date | string | null;
+  telegramDate?: Date | string | null;
   creatorName: string;
   creatorBadgeId?: string | null;
   verificationToken: string;
@@ -571,11 +579,11 @@ async function buildTelegramVersionSnapshot(telegram: {
     serialCode: telegram.serialCode,
     originalSerial: telegram.originalSerial ?? null,
     organizationId: telegram.organizationId,
-    createdAt: telegram.createdAt.toISOString(),
-    telegramDate: telegram.telegramDate?.toISOString() ?? null,
-    creatorName: telegram.creatorName,
+    createdAt: toSnapshotIsoDate(telegram.createdAt),
+    telegramDate: toSnapshotIsoDate(telegram.telegramDate),
+    creatorName: telegram.creatorName || "غير محدد",
     creatorBadgeId: telegram.creatorBadgeId ?? null,
-    verificationToken: telegram.verificationToken,
+    verificationToken: telegram.verificationToken || "",
     gpsLatitude: telegram.gpsLatitude ?? null,
     gpsLongitude: telegram.gpsLongitude ?? null,
     subject: telegram.subject,

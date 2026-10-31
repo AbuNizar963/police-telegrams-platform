@@ -231,6 +231,12 @@ void main() {
       expect(html, contains('object-fit:contain;opacity:0.16'));
       expect(html, contains('overflow:hidden;opacity:0.16'));
       expect(html, contains('border-bottom:3px solid #b49a55'));
+      expect(
+        html,
+        contains(
+          '.telegram-export-page .header-government p,.telegram-export-page .header-metadata p{margin:0;font-size:15pt;font-weight:700;line-height:1.5;',
+        ),
+      );
       expect(html, contains('object-fit:contain'));
       expect(html, contains('z-index:0'));
       expect(html, contains('z-index:1'));

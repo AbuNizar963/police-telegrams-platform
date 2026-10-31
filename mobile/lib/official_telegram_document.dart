@@ -1136,10 +1136,10 @@ $fontFaces
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:2}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid $headerDividerColor;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}
-.telegram-export-page .header-government p,.telegram-export-page .header-metadata p{margin:0;font-size:15pt;font-weight:700;line-height:1.25;white-space:nowrap;letter-spacing:-.12px;transform:scaleX(.86);transform-origin:left center}
+.telegram-export-page .header-government p,.telegram-export-page .header-metadata p{margin:0;font-size:15pt;font-weight:700;line-height:1.5;white-space:nowrap;letter-spacing:-.12px;transform:scaleX(.86);transform-origin:left center}
 .telegram-export-page .header-government p{transform-origin:right center}.telegram-export-page .header-date-row{transform:translateX(1ch) scaleX(.86)}
 .telegram-export-page .header-date-value{display:inline-block;direction:ltr;unicode-bidi:isolate;font-size:13pt;letter-spacing:0;white-space:nowrap}
-.telegram-export-page .government-name,.telegram-export-page .government-subtitle{font-size:15pt;font-weight:700;white-space:nowrap}.telegram-export-page .header-metadata{font-size:15pt;font-weight:700;line-height:1.25;white-space:nowrap}
+.telegram-export-page .government-name,.telegram-export-page .government-subtitle{font-size:15pt;font-weight:700;white-space:nowrap}.telegram-export-page .header-metadata{font-size:15pt;font-weight:700;line-height:1.5;white-space:nowrap}
 .telegram-export-page .header-logo-cell{display:flex;align-items:center;justify-content:center;min-width:0}.telegram-export-page .official-logo{display:block;width:120px;height:120px;margin:0 auto;object-fit:contain}
 .telegram-export-page .classification{display:flex;justify-content:space-between;gap:16px;margin:18px 0;padding:10px 14px;border:1px solid #d8dee8;background:#f8fafc;font-size:13px}.telegram-export-page .classification-value{font-weight:500}
 .telegram-export-page .telegram-content{min-height:570px;padding:22px 24px;border:1.5px solid #253247;display:flex;flex-direction:column}

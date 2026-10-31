@@ -251,9 +251,7 @@ class _OfficialTelegramDocumentPageState
         throw Exception('تعذر تحميل الإصدار التاريخي المطلوب؛ أعد المحاولة.');
       }
       final activeVersion = requestedVersionNumber == null
-          ? (versionsData.isNotEmpty
-                ? versionsData.last
-                : <String, dynamic>{})
+          ? (versionsData.isNotEmpty ? versionsData.last : <String, dynamic>{})
           : versionsData.firstWhere(
               (item) => item['versionNumber'] == requestedVersionNumber,
             );

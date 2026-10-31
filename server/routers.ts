@@ -532,6 +532,54 @@ function telegramAuditSnapshot(telegram: Record<string, unknown>) {
   );
 }
 
+async function buildTelegramVersionSnapshot(telegram: {
+  id: number;
+  serialNumber: number;
+  serialCode: string;
+  organizationId: string;
+  subject: string;
+  recipient: string;
+  body: string;
+  classification: string;
+  priority: string;
+  category: string;
+  status: string;
+}) {
+  const settings = await getOrganizationSettings(telegram.organizationId);
+  const candidateLogoKey = departmentLogoKeyFromStoredValue(
+    settings?.logoKey || settings?.logoUrl
+  );
+  const organizationLogoPrefix = `department/logos/${telegram.organizationId}/`;
+  const logoStorageKey =
+    candidateLogoKey?.startsWith(organizationLogoPrefix) === true
+      ? candidateLogoKey
+      : null;
+
+  return {
+    schemaVersion: 1,
+    telegramId: telegram.id,
+    serialNumber: telegram.serialNumber,
+    serialCode: telegram.serialCode,
+    organizationId: telegram.organizationId,
+    subject: telegram.subject,
+    recipient: telegram.recipient,
+    body: telegram.body,
+    classification: telegram.classification,
+    priority: telegram.priority,
+    category: telegram.category,
+    status: telegram.status,
+    letterhead: {
+      organizationId: telegram.organizationId,
+      logoStorageKey,
+      logoContentType: logoStorageKey
+        ? logoStorageKey.toLowerCase().endsWith(".png")
+          ? "image/png"
+          : "image/jpeg"
+        : null,
+    },
+  };
+}
+
 export const appRouter = router({
   system: systemRouter,
   profile: profileRouter,
@@ -2131,15 +2179,7 @@ export const appRouter = router({
           telegramId: updated.id,
           changedByUserId: ctx.user.id,
           changeReason: "تعديل محتوى البرقية",
-          snapshot: {
-            subject: updated.subject,
-            recipient: updated.recipient,
-            body: updated.body,
-            classification: updated.classification,
-            priority: updated.priority,
-            category: updated.category,
-            status: updated.status,
-          },
+          snapshot: await buildTelegramVersionSnapshot(updated),
         });
 
         await writeAuditLog({
@@ -3127,15 +3167,7 @@ export const appRouter = router({
           telegramId: telegram.id,
           changedByUserId: ctx.user.id,
           changeReason: "الإصدار الأول عند إنشاء البرقية",
-          snapshot: {
-            subject: telegram.subject,
-            recipient: telegram.recipient,
-            body: telegram.body,
-            classification: telegram.classification,
-            priority: telegram.priority,
-            category: telegram.category,
-            status: telegram.status,
-          },
+          snapshot: await buildTelegramVersionSnapshot(telegram),
         });
 
         try {
@@ -3375,15 +3407,7 @@ export const appRouter = router({
               telegramId: telegram.id,
               changedByUserId: ctx.user.id,
               changeReason: "استيراد السجل من ملف Excel",
-              snapshot: {
-                subject: telegram.subject,
-                recipient: telegram.recipient,
-                body: telegram.body,
-                classification: telegram.classification,
-                priority: telegram.priority,
-                category: telegram.category,
-                status: telegram.status,
-              },
+              snapshot: await buildTelegramVersionSnapshot(telegram),
             });
             created += 1;
             existingSerialKeys.add(

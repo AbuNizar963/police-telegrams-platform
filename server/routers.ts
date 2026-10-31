@@ -2332,6 +2332,16 @@ export const appRouter = router({
         }
 
         const snapshot = await buildTelegramVersionSnapshot(telegram);
+        const letterhead = snapshot.letterhead as {
+          logoStorageKey: string | null;
+        };
+        if (!letterhead.logoStorageKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "لا يوجد شعار محفوظ حاليًا لهذه الجهة؛ ارفع الشعار أولًا ثم أعد إصدار البرقية.",
+          });
+        }
         const versionNumber = await recordTelegramVersion({
           telegramId: telegram.id,
           changedByUserId: ctx.user.id,

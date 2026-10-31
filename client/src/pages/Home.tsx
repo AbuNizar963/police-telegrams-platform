@@ -19,6 +19,7 @@ import {
   ArrowUpLeft,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   Clock3,
   FileDown,
@@ -4504,29 +4505,30 @@ function TelegramDetail({
   return (
     <Modal
       title={documentTelegram.subject}
-      subtitle={getTelegramDisplaySerial(
+      subtitle={`برقية رقم : ${getTelegramDisplaySerial(
         telegram,
         settings?.numberSystem ?? "latin"
-      )}
+      )}`}
+      titleClassName="text-base font-semibold"
+      subtitleClassName="text-base font-semibold text-foreground"
+      headerClassName="text-left"
       close={close}
     >
       {documentPreparing && (
         <div
           role="status"
           aria-live="polite"
-          className="mb-3 flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-[#b49a55]/35 bg-[#fffaf0] p-6 text-center text-sm text-[#6e531e] dark:bg-[#2d281b] dark:text-[#e7cc8c]"
+          className="mb-3 flex min-h-[38px] items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-200"
         >
-          <div className="relative grid h-20 w-20 animate-spin place-items-center rounded-full bg-[conic-gradient(from_0deg,#b49a55,#10233f,#b49a55)] p-1 shadow-[0_10px_28px_rgba(16,35,63,0.16)]">
-            <div className="grid h-full w-full place-items-center rounded-full bg-[#fffaf0] dark:bg-[#2d281b]">
-              <LoaderCircle
-                className="h-7 w-7 text-[#b49a55]"
-                aria-hidden="true"
-              />
-            </div>
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10">
+            <LoaderCircle
+              className="h-6 w-6 animate-spin text-emerald-600 dark:text-emerald-300"
+              aria-hidden="true"
+            />
           </div>
-          <div>
+          <div className="min-w-0 leading-5">
             <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
-            <p className="mt-1 text-xs opacity-80">
+            <p className="truncate text-xs opacity-80">
               يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
             </p>
           </div>
@@ -4563,9 +4565,15 @@ function TelegramDetail({
         </div>
       )}
       {versions.data && versions.data.length > 0 && (
-        <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+        <details className="group mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 text-xs font-bold [&::-webkit-details-marker]:hidden">
-            <span>إصدارات الوثيقة ({versions.data.length})</span>
+            <span className="inline-flex items-center gap-1.5">
+              <ChevronDown
+                className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+              إصدارات الوثيقة ({versions.data.length})
+            </span>
             <span className="font-normal text-muted-foreground">
               {selectedVersion
                 ? `المعاينة الحالية: الإصدار ${selectedVersion.versionNumber}`
@@ -4767,12 +4775,12 @@ function TelegramDetail({
       {exporting ? (
         <div
           dir="rtl"
-          className="mt-4 overflow-hidden rounded-[2rem] border border-border bg-transparent px-5 py-6 text-foreground shadow-sm print:hidden sm:px-8 sm:py-7"
+          className="mt-4 overflow-hidden rounded-2xl border border-border bg-transparent px-3 py-3 text-foreground shadow-sm print:hidden sm:px-4"
           role="status"
           aria-live="polite"
         >
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <span className="text-lg font-bold sm:text-2xl">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="text-base font-bold sm:text-lg">
               {exporting === "pdf"
                 ? "جارٍ تجهيز ملف PDF"
                 : exporting === "image"
@@ -4783,13 +4791,13 @@ function TelegramDetail({
             </span>
             <span
               dir="ltr"
-              className="text-5xl font-bold tabular-nums text-emerald-700 sm:text-6xl dark:text-emerald-400"
+              className="text-2xl font-bold tabular-nums text-emerald-700 sm:text-3xl dark:text-emerald-400"
             >
               {exportProgress}%
             </span>
           </div>
           <div
-            className="relative h-7 overflow-hidden rounded-full bg-muted sm:h-9"
+            className="relative h-[1cm] overflow-hidden rounded-full bg-muted"
             role="progressbar"
             aria-label="نسبة تقدم تجهيز الوثيقة"
             aria-valuemin={0}
@@ -4801,11 +4809,11 @@ function TelegramDetail({
               style={{ width: `${exportProgress}%` }}
             />
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4">
-            <span className="shrink-0 rounded-full bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
               قيد التنفيذ
             </span>
-            <span className="text-sm text-muted-foreground sm:text-base">
+            <span className="truncate text-xs text-muted-foreground sm:text-sm">
               {exportProgressMessage}
             </span>
           </div>
@@ -5462,6 +5470,9 @@ function AttachmentPreviewModal({
 function Modal({
   title,
   subtitle,
+  titleClassName,
+  subtitleClassName,
+  headerClassName,
   close,
   children,
   fullScreenOnMobile = false,
@@ -5470,6 +5481,9 @@ function Modal({
 }: {
   title: string;
   subtitle?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
+  headerClassName?: string;
   close: () => void;
   children: React.ReactNode;
   fullScreenOnMobile?: boolean;
@@ -5480,14 +5494,19 @@ function Modal({
     <div className="telegram-print-modal app-modal-overlay overflow-x-hidden overflow-y-auto sm:overflow-hidden sm:p-6">
       <div dir="rtl" className="app-modal-shell p-3 sm:p-7">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+          <div className={`min-w-0 flex-1 ${headerClassName ?? ""}`}>
             {subtitle && (
-              <p className="font-mono text-xs font-semibold text-muted-foreground">
+              <p
+                className={
+                  subtitleClassName ??
+                  "font-mono text-xs font-semibold text-muted-foreground"
+                }
+              >
                 {subtitle}
               </p>
             )}
             <h2
-              className={`${subtitle ? "mt-1" : ""} break-words text-xl font-bold`}
+              className={`${subtitle ? "mt-1" : ""} break-words text-xl font-bold ${titleClassName ?? ""}`}
             >
               {title}
             </h2>

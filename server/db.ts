@@ -1034,10 +1034,7 @@ export async function recordTelegramVersion(input: {
     });
 
     if (!error) return versionNumber;
-    if (
-      (error as { code?: string }).code === "23505" &&
-      attempt < 4
-    ) {
+    if ((error as { code?: string }).code === "23505" && attempt < 4) {
       continue;
     }
     throwIfError(error, "Failed to record telegram version");

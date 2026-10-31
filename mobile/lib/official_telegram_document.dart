@@ -147,6 +147,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
     this.onEdit,
     this.onDelete,
     this.onSubmitForReview,
+    this.canReissue = false,
   });
 
   final PoliceApi api;
@@ -154,6 +155,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
   final Future<void> Function()? onEdit;
   final Future<void> Function()? onDelete;
   final Future<void> Function()? onSubmitForReview;
+  final bool canReissue;
 
   @override
   State<OfficialTelegramDocumentPage> createState() =>
@@ -170,6 +172,8 @@ class _OfficialTelegramDocumentPageState
   Uint8List? preview;
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
+  List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
+  int? selectedVersionNumber;
   String? documentHtml;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
@@ -188,7 +192,7 @@ class _OfficialTelegramDocumentPageState
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load({int? versionNumber}) async {
     if (mounted) {
       setState(() {
         loading = true;
@@ -218,8 +222,35 @@ class _OfficialTelegramDocumentPageState
         results[3] as Map,
       );
 
-      // Match web export behavior: use the authenticated account's active
-      // organization first, then fall back to telegram routing metadata.
+      List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
+      try {
+        final versionResult = await widget.api.call(
+          'telegrams.versions',
+          input: {'telegramId': widget.telegramId},
+        );
+        if (versionResult is List) {
+          versionsData = versionResult
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+        }
+      } catch (_) {
+        // Older/offline servers may not expose version history yet.
+      }
+      final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
+      final activeVersion = versionsData.firstWhere(
+        (item) => item['versionNumber'] == requestedVersionNumber,
+        orElse: () => versionsData.isNotEmpty
+            ? versionsData.last
+            : <String, dynamic>{},
+      );
+      final hasSelectedVersion = activeVersion.isNotEmpty;
+      if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
+        telegramData.addAll(
+          Map<String, dynamic>.from(activeVersion['snapshot'] as Map),
+        );
+      }
+
       final logoOrganizationId =
           resolveOrganizationLogoId(
             accountOrganizationId: settingsData['organizationId'],
@@ -227,44 +258,48 @@ class _OfficialTelegramDocumentPageState
             ownerOrganizationId: telegramData['organizationId'],
           ) ??
           '';
-      final settingsOrganizationId =
-          resolveOrganizationLogoId(
-            accountOrganizationId: settingsData['organizationId'],
-          ) ??
-          '';
-      final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
-      settingsData['logoUrl'] =
-          logoOrganizationId.isNotEmpty &&
-              settingsOrganizationId == logoOrganizationId &&
-              savedSettingsLogo.isNotEmpty
-          ? savedSettingsLogo
-          : null;
+      if (!hasSelectedVersion) {
+        // Legacy telegrams without a saved version keep the verified current
+        // organization logo fallback. A version with no historical logo must
+        // remain logo-less rather than borrowing today's logo.
+        final settingsOrganizationId =
+            resolveOrganizationLogoId(
+              accountOrganizationId: settingsData['organizationId'],
+            ) ??
+            '';
+        final savedSettingsLogo = _value(
+          settingsData['logoUrl'],
+          fallback: '',
+        );
+        settingsData['logoUrl'] =
+            logoOrganizationId.isNotEmpty &&
+                settingsOrganizationId == logoOrganizationId &&
+                savedSettingsLogo.isNotEmpty
+            ? savedSettingsLogo
+            : null;
 
-      // Prefer the organization-scoped logo used by the web interface. If
-      // this endpoint is unavailable to a non-owner account, retain the
-      // account-settings logo only when its organization ID matches the
-      // telegram's organization; never display a logo from another unit.
-      if (logoOrganizationId.isNotEmpty) {
-        try {
-          final organizationSettings = await widget.api.call(
-            'organizations.logo',
-            input: {'organizationId': logoOrganizationId},
-          );
-          if (organizationSettings is Map &&
-              resolveOrganizationLogoId(
-                    accountOrganizationId:
-                        organizationSettings['organizationId'],
-                  ) ==
-                  logoOrganizationId) {
-            final scopedLogo = organizationSettings['logoUrl']
-                ?.toString()
-                .trim();
-            if (scopedLogo != null && scopedLogo.isNotEmpty) {
-              settingsData['logoUrl'] = scopedLogo;
+        if (logoOrganizationId.isNotEmpty) {
+          try {
+            final organizationSettings = await widget.api.call(
+              'organizations.logo',
+              input: {'organizationId': logoOrganizationId},
+            );
+            if (organizationSettings is Map &&
+                resolveOrganizationLogoId(
+                      accountOrganizationId:
+                          organizationSettings['organizationId'],
+                    ) ==
+                    logoOrganizationId) {
+              final scopedLogo = organizationSettings['logoUrl']
+                  ?.toString()
+                  .trim();
+              if (scopedLogo != null && scopedLogo.isNotEmpty) {
+                settingsData['logoUrl'] = scopedLogo;
+              }
             }
+          } catch (_) {
+            // Keep the verified account-settings fallback when available.
           }
-        } catch (_) {
-          // Keep the verified account-settings fallback when available.
         }
       }
 
@@ -279,7 +314,12 @@ class _OfficialTelegramDocumentPageState
       // Load them together so preview generation does not wait for them in series.
       final resources = await Future.wait<Object?>([
         _loadFontDataUrls(),
-        _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
+        hasSelectedVersion
+            ? _loadHistoricalLogoDataUrl(
+                activeVersion,
+                _value(telegramData['organizationId']),
+              )
+            : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
       final logoDataUrl = resources[1] as String?;
@@ -329,6 +369,10 @@ class _OfficialTelegramDocumentPageState
       setState(() {
         telegram = telegramData;
         settings = settingsData;
+        versions = versionsData;
+        selectedVersionNumber = hasSelectedVersion
+            ? activeVersion['versionNumber'] as int?
+            : null;
         documentHtml = html;
         preview = image;
         loading = false;
@@ -355,6 +399,26 @@ class _OfficialTelegramDocumentPageState
       }),
     );
     return Map<int, String>.fromEntries(entries);
+  }
+
+  Future<String?> _loadHistoricalLogoDataUrl(
+    Map<String, dynamic> version,
+    String organizationId,
+  ) async {
+    final url = _value(version['logoUrl'], fallback: '');
+    if (url.isEmpty || organizationId.isEmpty) return null;
+    final cacheKey = '$organizationId\n$url';
+    final cached = _officialLogoDataUrlCache[cacheKey];
+    if (cached != null) return cached;
+
+    final bytes = await widget.api.fetchImageAsset(url);
+    if (bytes == null || bytes.isEmpty) {
+      throw Exception('تعذر تحميل شعار الإصدار التاريخي للبرقية.');
+    }
+    final normalized = await normalizeOfficialDocumentLogo(bytes);
+    final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+    _officialLogoDataUrlCache[cacheKey] = dataUrl;
+    return dataUrl;
   }
 
   Future<String?> _loadLogoDataUrl(
@@ -496,6 +560,102 @@ class _OfficialTelegramDocumentPageState
   void dispose() {
     _progressTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _selectVersion(int versionNumber) async {
+    if (versionNumber == selectedVersionNumber) return;
+    setState(() => selectedVersionNumber = versionNumber);
+    await load(versionNumber: versionNumber);
+  }
+
+  Future<void> _reissue() async {
+    if (!widget.canReissue || busy) return;
+    final reasonController = TextEditingController();
+    String? reasonError;
+    final reason = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('إعادة إصدار البرقية'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'سيُنشأ إصدار موثق جديد بالشعار الحالي، مع الاحتفاظ بنفس الرقم الرسمي والنسخ السابقة.',
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: reasonController,
+                  minLines: 2,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'سبب إعادة الإصدار',
+                    hintText: 'اكتب سبباً واضحاً (5 أحرف على الأقل)',
+                    errorText: reasonError,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = reasonController.text.trim();
+                  if (value.length < 5) {
+                    setDialogState(
+                      () => reasonError =
+                          'سبب إعادة الإصدار مطلوب ويجب ألا يقل عن 5 أحرف.',
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                child: const Text('تأكيد إعادة الإصدار'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    reasonController.dispose();
+    if (reason == null || !mounted) return;
+
+    setState(() => busy = true);
+    try {
+      final result = await widget.api.call(
+        'telegrams.reissue',
+        mutation: true,
+        input: {'id': widget.telegramId, 'reason': reason},
+      );
+      final newVersionNumber = result is Map
+          ? result['versionNumber'] as int?
+          : null;
+      if (newVersionNumber == null) {
+        throw Exception('لم يُرجع الخادم رقم الإصدار الجديد.');
+      }
+      await load(versionNumber: newVersionNumber);
+      if (!mounted) return;
+      Toast.success(
+        context,
+        'تم إنشاء الإصدار $newVersionNumber مع الاحتفاظ بالرقم الرسمي.',
+      );
+    } catch (exception) {
+      if (!mounted) return;
+      Toast.error(
+        context,
+        exception.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> _printPdf() => _perform(() async {
@@ -777,6 +937,38 @@ class _OfficialTelegramDocumentPageState
             )
           : Column(
               children: [
+                if (versions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                    child: DropdownButtonFormField<int>(
+                      value: selectedVersionNumber,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'الإصدار المعروض',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: versions
+                          .map(
+                            (version) => DropdownMenuItem<int>(
+                              value: version['versionNumber'] as int,
+                              child: Text(
+                                'الإصدار ${version['versionNumber']} · ${version['changeReason'] ?? ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: busy || loading
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                _selectVersion(value);
+                              }
+                            },
+                    ),
+                  ),
                 Expanded(
                   child: Container(
                     color: const Color(0xFFF8F8F6),
@@ -867,6 +1059,13 @@ class _OfficialTelegramDocumentPageState
                         mainAxisSpacing: 8,
                         childAspectRatio: 3.25,
                         children: [
+                          if (widget.canReissue)
+                            _documentAction(
+                              label: busy ? 'جارٍ التجهيز...' : 'إعادة إصدار',
+                              icon: Icons.history_edu_outlined,
+                              primary: false,
+                              onPressed: busy ? null : _reissue,
+                            ),
                           _documentAction(
                             label: busy ? 'جارٍ التجهيز...' : 'طباعة',
                             icon: Icons.print_outlined,

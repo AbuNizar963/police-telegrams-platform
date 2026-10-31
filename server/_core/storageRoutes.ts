@@ -149,7 +149,10 @@ export function registerStorageRoutes(app: Express): void {
         }
 
         const asset = await storageDownload(key);
-        const actualContentType = asset.contentType.toLowerCase().split(";")[0]?.trim();
+        const actualContentType = asset.contentType
+          .toLowerCase()
+          .split(";")[0]
+          ?.trim();
         if (
           asset.body.length === 0 ||
           (actualContentType !== "image/png" &&
@@ -168,7 +171,10 @@ export function registerStorageRoutes(app: Express): void {
           res.status(403).send("Storage access denied");
           return;
         }
-        console.error("[Storage] Historical telegram logo retrieval failed", error);
+        console.error(
+          "[Storage] Historical telegram logo retrieval failed",
+          error
+        );
         res.status(502).send("Storage backend error");
       }
     }

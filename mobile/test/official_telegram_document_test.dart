@@ -90,6 +90,42 @@ void main() {
     },
   );
 
+  test('renders the frozen organization and chief identity from the selected version', () {
+    final source = telegram()
+      ..['letterhead'] = {
+        'organizationName': 'قسم شرطة الشهباء',
+        'departmentName': 'قسم شرطة الشهباء',
+        'unitName': 'قيادة الأمن الداخلي في محافظة حلب',
+        'unitChiefRank': 'المقدم',
+        'unitChiefName': 'غسان صالح كنو',
+      };
+    final html = buildOfficialTelegramHtml(
+      telegram: source,
+      settings: const {
+        'departmentName': 'اسم جهة جديد',
+        'unitChiefRank': 'رتبة جديدة',
+        'unitChiefName': 'رئيس جديد',
+        'numberSystem': 'latin',
+      },
+      routingDirectory: const [
+        {
+          'id': 'unit-1',
+          'name': 'اسم الجهة بعد التغيير',
+          'parentOrganizationId': null,
+        },
+      ],
+      verificationUrl: 'https://example.test/verify/verify-token',
+      fontDataUrls: fonts,
+    );
+
+    expect(html, contains('قسم شرطة الشهباء'));
+    expect(html, contains('المقدم غسان صالح كنو'));
+    expect(html, contains('رئيس قسم شرطة الشهباء'));
+    expect(html, isNot(contains('اسم جهة جديد')));
+    expect(html, isNot(contains('رئيس جديد')));
+    expect(html, isNot(contains('اسم الجهة بعد التغيير')));
+  });
+
   test('preserves the imported serial while hiding incomplete original-record notes', () {
     final source = telegram()
       ..['originalSerial'] = 'ب ص ٠٠٦'

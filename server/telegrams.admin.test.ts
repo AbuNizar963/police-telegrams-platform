@@ -16,6 +16,7 @@ const mocked = vi.hoisted(() => ({
   getTelegramById: vi.fn(),
   getTelegramAttachmentById: vi.fn(),
   listTelegrams: vi.fn(),
+  listTelegramVersions: vi.fn(),
   getTelegramReport: vi.fn(),
   getUserOrganizationId: vi.fn(),
   listUserNotifications: vi.fn(),
@@ -153,6 +154,7 @@ describe("telegram administration permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocked.getTelegramById.mockResolvedValue(telegram);
+    mocked.listTelegramVersions.mockResolvedValue([]);
     mocked.getTelegramAttachmentById.mockResolvedValue(null);
     mocked.getOrganizationSettings.mockResolvedValue(undefined);
     organizationMocks.getUserOrganizationMembership.mockResolvedValue({

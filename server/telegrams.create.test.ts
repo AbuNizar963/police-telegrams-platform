@@ -12,6 +12,7 @@ const mocked = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
   getMaxSerialNumber: vi.fn(),
   getOrCreateSettings: vi.fn(),
+  getOrganizationSettings: vi.fn(),
   getTelegramById: vi.fn(),
   listTelegrams: vi.fn(),
   updateDepartmentSettings: vi.fn(),
@@ -19,6 +20,7 @@ const mocked = vi.hoisted(() => ({
   getTelegramByIdempotencyKey: vi.fn(),
   recordTelegramAction: vi.fn(),
   recordTelegramVersion: vi.fn(),
+  listTelegramVersions: vi.fn(),
   getConfiguredTelegramDestination: vi.fn(),
   listRoutingTargets: vi.fn(),
   listOrganizationDescendants: vi.fn(),
@@ -28,6 +30,7 @@ const mocked = vi.hoisted(() => ({
 }));
 const organizationMocks = vi.hoisted(() => ({
   getUserOrganizationMembership: vi.fn(),
+  getOrganizationById: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -43,6 +46,7 @@ vi.mock("./organization", async importOriginal => {
     hasTelegramRoute: mocked.hasTelegramRoute,
     getUserOrganizationMembership:
       organizationMocks.getUserOrganizationMembership,
+    getOrganizationById: organizationMocks.getOrganizationById,
   };
 });
 
@@ -86,6 +90,15 @@ describe("telegrams.create", () => {
       role: "member",
       isActive: true,
     });
+    organizationMocks.getOrganizationById.mockImplementation(async id => ({
+      id,
+      name: "قسم شرطة الشهباء",
+      type: "department",
+      code: "SHAHBA",
+      isActive: true,
+      parentOrganizationId: null,
+    }));
+    mocked.getOrganizationSettings.mockResolvedValue(undefined);
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "OUT",
       incomingSerialPrefix: "IN",
@@ -101,6 +114,7 @@ describe("telegrams.create", () => {
     mocked.getTelegramByIdempotencyKey.mockResolvedValue(undefined);
     mocked.recordTelegramAction.mockResolvedValue(undefined);
     mocked.recordTelegramVersion.mockResolvedValue(undefined);
+    mocked.listTelegramVersions.mockResolvedValue([]);
     mocked.getConfiguredTelegramDestination.mockResolvedValue(null);
     mocked.listRoutingTargets.mockResolvedValue([]);
     mocked.listOrganizationDescendants.mockResolvedValue([]);
@@ -110,6 +124,225 @@ describe("telegrams.create", () => {
       copies: [],
     });
     mocked.hasTelegramRoute.mockResolvedValue(false);
+  });
+
+  it("captures the issuing organization's immutable logo key in the first version snapshot", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000001";
+    const logoKey = `department/logos/${organizationId}/00000000-0000-4000-8000-000000000099-letterhead.png`;
+    mocked.getUserOrganizationId.mockResolvedValue(organizationId);
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValue({
+      departmentName: "قسم شرطة الشهباء",
+      unitName: "قسم شرطة الشهباء",
+      unitChiefRank: "المقدم",
+      unitChiefName: "غسان صالح كنو",
+      logoKey: `/api/storage/${logoKey}`,
+      logoUrl: `/api/storage/${logoKey}`,
+    });
+
+    const caller = appRouter.createCaller(createContext());
+    await caller.telegrams.create({
+      subject: "تجربة حفظ الشعار",
+      recipient: "غرفة العمليات",
+      body: "محتوى البرقية للاختبار",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+    });
+
+    expect(mocked.recordTelegramVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshot: expect.objectContaining({
+          schemaVersion: 2,
+          organizationId,
+          letterhead: expect.objectContaining({
+            organizationId,
+            organizationName: "قسم شرطة الشهباء",
+            departmentName: "قسم شرطة الشهباء",
+            unitChiefRank: "المقدم",
+            unitChiefName: "غسان صالح كنو",
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          }),
+        }),
+      })
+    );
+  });
+
+  it("returns frozen letterhead metadata without exposing the private logo storage key", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000001";
+    const logoKey = `department/logos/${organizationId}/00000000-0000-4000-8000-000000000099-letterhead.png`;
+    mocked.getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      organizationId,
+      currentOrganizationId: organizationId,
+      createdAt: new Date(),
+    });
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.listTelegramVersions.mockResolvedValueOnce([
+      {
+        id: 1,
+        telegramId: 7,
+        versionNumber: 1,
+        changedByUserId: 42,
+        changeReason: "الإصدار الأول",
+        createdAt: new Date(),
+        snapshot: {
+          schemaVersion: 2,
+          letterhead: {
+            organizationId,
+            organizationName: "قسم شرطة الشهباء",
+            departmentName: "قسم شرطة الشهباء",
+            unitName: "قيادة الأمن الداخلي في محافظة حلب",
+            unitChiefRank: "المقدم",
+            unitChiefName: "غسان صالح كنو",
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          },
+        },
+      },
+    ]);
+
+    const caller = appRouter.createCaller(createContext());
+    const result = await caller.telegrams.versions({ telegramId: 7 });
+    const letterhead = result[0].snapshot.letterhead as Record<string, unknown>;
+
+    expect(letterhead).toMatchObject({
+      organizationName: "قسم شرطة الشهباء",
+      departmentName: "قسم شرطة الشهباء",
+      unitName: "قيادة الأمن الداخلي في محافظة حلب",
+      unitChiefRank: "المقدم",
+      unitChiefName: "غسان صالح كنو",
+      hasLogo: true,
+    });
+    expect(letterhead).not.toHaveProperty("logoStorageKey");
+  });
+
+  it("reissues a telegram under the same official number and records a new version", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const logoKey = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-letterhead.png`;
+    const telegram = {
+      id: 7,
+      serialNumber: 55,
+      serialCode: "OUT-2026-10-31-00055",
+      organizationId,
+      currentOrganizationId: organizationId,
+      subject: "تعميم إداري",
+      recipient: "غرفة العمليات",
+      body: "النص الأصلي للبرقية",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+      status: "approved",
+      createdAt: new Date(),
+    };
+    mocked.getTelegramById.mockResolvedValueOnce(telegram);
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: `/api/storage/${logoKey}`,
+      logoUrl: `/api/storage/${logoKey}`,
+    });
+    mocked.recordTelegramVersion.mockResolvedValueOnce(3);
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.reissue({
+        id: telegram.id,
+        reason: "تحديث الشعار الرسمي للجهة",
+      })
+    ).resolves.toEqual({
+      success: true,
+      telegramId: telegram.id,
+      serialNumber: telegram.serialNumber,
+      serialCode: telegram.serialCode,
+      versionNumber: 3,
+      actionLogRecorded: true,
+      auditLogRecorded: true,
+    });
+
+    expect(mocked.recordTelegramVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: telegram.id,
+        changedByUserId: 42,
+        changeReason: expect.stringContaining("تحديث الشعار الرسمي للجهة"),
+        snapshot: expect.objectContaining({
+          serialNumber: telegram.serialNumber,
+          serialCode: telegram.serialCode,
+          letterhead: expect.objectContaining({
+            organizationId,
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          }),
+          issuance: expect.objectContaining({
+            type: "reissue",
+            officialSerialCode: telegram.serialCode,
+          }),
+        }),
+      })
+    );
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: telegram.id,
+        actorUserId: 42,
+        action: "telegram.reissue",
+        reason: "تحديث الشعار الرسمي للجهة",
+        metadata: expect.objectContaining({ versionNumber: 3 }),
+      })
+    );
+    expect(mocked.allocateSerialNumber).not.toHaveBeenCalled();
+    expect(mocked.allocateOrganizationSerialNumber).not.toHaveBeenCalled();
+  });
+
+  it("requires a saved organization logo before creating a reissue version", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    mocked.getTelegramById.mockResolvedValueOnce({
+      id: 7,
+      serialNumber: 55,
+      serialCode: "OUT-2026-10-31-00055",
+      organizationId,
+      currentOrganizationId: organizationId,
+      subject: "تعميم إداري",
+      recipient: "غرفة العمليات",
+      body: "النص الأصلي للبرقية",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+      status: "approved",
+      createdAt: new Date(),
+      creatorName: "موظف",
+      verificationToken: "verify-token",
+    });
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: null,
+      logoUrl: null,
+    });
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.reissue({
+        id: 7,
+        reason: "إعادة إصدار بعد تحديث الشعار",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mocked.recordTelegramVersion).not.toHaveBeenCalled();
   });
 
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {

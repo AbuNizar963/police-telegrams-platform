@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -40,8 +39,6 @@ class TelegramActionsPanel extends StatefulWidget {
 
 class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   bool busy = false;
-  double _progress = 0;
-  Timer? _progressTimer;
   String? error;
   List<dynamic> routes = const [];
   List<dynamic> attachments = const [];
@@ -509,20 +506,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (busy) return;
-    _progressTimer?.cancel();
     setState(() {
       busy = true;
-      _progress = 3;
       error = null;
-    });
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 300), (_) {
-      if (mounted && busy) {
-        setState(() {
-          _progress = (_progress + (100 - _progress) * .12)
-              .clamp(3, 92)
-              .toDouble();
-        });
-      }
     });
     try {
       await action();
@@ -532,18 +518,12 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         _show(_actionError(exception), kind: ToastKind.error);
       }
     } finally {
-      _progressTimer?.cancel();
-      if (mounted) {
-        setState(() => _progress = 100);
-        await Future<void>.delayed(const Duration(milliseconds: 650));
-        if (mounted) setState(() => busy = false);
-      }
+      if (mounted) setState(() => busy = false);
     }
   }
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
     super.dispose();
   }
 
@@ -622,6 +602,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     final label = switch (value) {
       'status.transition' => 'تغيير حالة البرقية',
       'attachment.upload' => 'رفع مرفق',
+      'telegram.reissue' => 'إعادة إصدار البرقية',
       _ => value,
     };
     final statuses = [
@@ -687,10 +668,6 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               ),
             ],
           ),
-          if (busy) ...[
-            const SizedBox(height: 10),
-            const LinearProgressIndicator(),
-          ],
           if (routes.isNotEmpty) ...[
             const Divider(height: 28),
             const Text(
@@ -702,32 +679,86 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           if (busy || actions.isNotEmpty) ...[
             const Divider(height: 28),
             if (busy) ...[
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
                       'جارٍ تنفيذ الإجراء',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${_progress.round()}%',
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: _navy,
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 14,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFF15803D),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 9),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: _progress / 100,
-                  minHeight: 7,
-                  backgroundColor: const Color(0xFFE8E1D1),
-                  color: _gold,
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'جارٍ تنفيذ الطلب',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF16A34A)
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Text(
+                              'قيد التنفيذ',
+                              style: TextStyle(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? const Color(0xFF4ADE80)
+                                    : const Color(0xFF15803D),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ] else ...[

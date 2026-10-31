@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -147,6 +146,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
     this.onEdit,
     this.onDelete,
     this.onSubmitForReview,
+    this.canReissue = false,
   });
 
   final PoliceApi api;
@@ -154,6 +154,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
   final Future<void> Function()? onEdit;
   final Future<void> Function()? onDelete;
   final Future<void> Function()? onSubmitForReview;
+  final bool canReissue;
 
   @override
   State<OfficialTelegramDocumentPage> createState() =>
@@ -165,11 +166,16 @@ class _OfficialTelegramDocumentPageState
   bool loading = true;
   bool busy = false;
   double _progress = 0;
-  Timer? _progressTimer;
+  String _progressTitle = 'جارٍ تنفيذ الإجراء';
+  String _progressMessage = 'بدء التنفيذ';
+  bool _hasMeasuredProgress = false;
   String? error;
   Uint8List? preview;
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
+  List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
+  int? selectedVersionNumber;
+  bool historicalIdentityUnavailable = false;
   String? documentHtml;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
@@ -188,12 +194,13 @@ class _OfficialTelegramDocumentPageState
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load({int? versionNumber}) async {
     if (mounted) {
       setState(() {
         loading = true;
         error = null;
         preview = null;
+        historicalIdentityUnavailable = false;
       });
     }
     try {
@@ -218,8 +225,55 @@ class _OfficialTelegramDocumentPageState
         results[3] as Map,
       );
 
-      // Match web export behavior: use the authenticated account's active
-      // organization first, then fall back to telegram routing metadata.
+      List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
+      var versionHistoryAvailable = false;
+      try {
+        final versionResult = await widget.api.call(
+          'telegrams.versions',
+          input: {'telegramId': widget.telegramId},
+          allowOfflineCache: false,
+        );
+        versionHistoryAvailable = true;
+        if (versionResult is List) {
+          versionsData = versionResult
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+        }
+      } catch (_) {
+        throw Exception(
+          'تعذر تحميل سجل إصدارات البرقية؛ تحقق من الاتصال وأعد المحاولة.',
+        );
+      }
+      final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
+      if (requestedVersionNumber != null &&
+          (!versionHistoryAvailable ||
+              !versionsData.any(
+                (item) => item['versionNumber'] == requestedVersionNumber,
+              ))) {
+        throw Exception('تعذر تحميل الإصدار التاريخي المطلوب؛ أعد المحاولة.');
+      }
+      final activeVersion = requestedVersionNumber == null
+          ? (versionsData.isNotEmpty ? versionsData.last : <String, dynamic>{})
+          : versionsData.firstWhere(
+              (item) => item['versionNumber'] == requestedVersionNumber,
+            );
+      final hasSelectedVersion = activeVersion.isNotEmpty;
+      final snapshotLetterhead = activeVersion['snapshot'] is Map
+          ? (activeVersion['snapshot'] as Map)['letterhead']
+          : null;
+      final hasHistoricalIdentity =
+          snapshotLetterhead is Map &&
+          snapshotLetterhead['organizationName'] is String &&
+          snapshotLetterhead['departmentName'] is String &&
+          snapshotLetterhead['unitChiefRank'] is String &&
+          snapshotLetterhead['unitChiefName'] is String;
+      if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
+        telegramData.addAll(
+          Map<String, dynamic>.from(activeVersion['snapshot'] as Map),
+        );
+      }
+
       final logoOrganizationId =
           resolveOrganizationLogoId(
             accountOrganizationId: settingsData['organizationId'],
@@ -227,44 +281,45 @@ class _OfficialTelegramDocumentPageState
             ownerOrganizationId: telegramData['organizationId'],
           ) ??
           '';
-      final settingsOrganizationId =
-          resolveOrganizationLogoId(
-            accountOrganizationId: settingsData['organizationId'],
-          ) ??
-          '';
-      final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
-      settingsData['logoUrl'] =
-          logoOrganizationId.isNotEmpty &&
-              settingsOrganizationId == logoOrganizationId &&
-              savedSettingsLogo.isNotEmpty
-          ? savedSettingsLogo
-          : null;
+      if (!hasSelectedVersion) {
+        // Legacy telegrams without a saved version keep the verified current
+        // organization logo fallback. A version with no historical logo must
+        // remain logo-less rather than borrowing today's logo.
+        final settingsOrganizationId =
+            resolveOrganizationLogoId(
+              accountOrganizationId: settingsData['organizationId'],
+            ) ??
+            '';
+        final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
+        settingsData['logoUrl'] =
+            logoOrganizationId.isNotEmpty &&
+                settingsOrganizationId == logoOrganizationId &&
+                savedSettingsLogo.isNotEmpty
+            ? savedSettingsLogo
+            : null;
 
-      // Prefer the organization-scoped logo used by the web interface. If
-      // this endpoint is unavailable to a non-owner account, retain the
-      // account-settings logo only when its organization ID matches the
-      // telegram's organization; never display a logo from another unit.
-      if (logoOrganizationId.isNotEmpty) {
-        try {
-          final organizationSettings = await widget.api.call(
-            'organizations.logo',
-            input: {'organizationId': logoOrganizationId},
-          );
-          if (organizationSettings is Map &&
-              resolveOrganizationLogoId(
-                    accountOrganizationId:
-                        organizationSettings['organizationId'],
-                  ) ==
-                  logoOrganizationId) {
-            final scopedLogo = organizationSettings['logoUrl']
-                ?.toString()
-                .trim();
-            if (scopedLogo != null && scopedLogo.isNotEmpty) {
-              settingsData['logoUrl'] = scopedLogo;
+        if (logoOrganizationId.isNotEmpty) {
+          try {
+            final organizationSettings = await widget.api.call(
+              'organizations.logo',
+              input: {'organizationId': logoOrganizationId},
+            );
+            if (organizationSettings is Map &&
+                resolveOrganizationLogoId(
+                      accountOrganizationId:
+                          organizationSettings['organizationId'],
+                    ) ==
+                    logoOrganizationId) {
+              final scopedLogo = organizationSettings['logoUrl']
+                  ?.toString()
+                  .trim();
+              if (scopedLogo != null && scopedLogo.isNotEmpty) {
+                settingsData['logoUrl'] = scopedLogo;
+              }
             }
+          } catch (_) {
+            // Keep the verified account-settings fallback when available.
           }
-        } catch (_) {
-          // Keep the verified account-settings fallback when available.
         }
       }
 
@@ -279,7 +334,12 @@ class _OfficialTelegramDocumentPageState
       // Load them together so preview generation does not wait for them in series.
       final resources = await Future.wait<Object?>([
         _loadFontDataUrls(),
-        _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
+        hasSelectedVersion
+            ? _loadHistoricalLogoDataUrl(
+                activeVersion,
+                _value(telegramData['organizationId']),
+              )
+            : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
       final logoDataUrl = resources[1] as String?;
@@ -329,6 +389,12 @@ class _OfficialTelegramDocumentPageState
       setState(() {
         telegram = telegramData;
         settings = settingsData;
+        versions = versionsData;
+        selectedVersionNumber = hasSelectedVersion
+            ? activeVersion['versionNumber'] as int?
+            : null;
+        historicalIdentityUnavailable =
+            hasSelectedVersion && !hasHistoricalIdentity;
         documentHtml = html;
         preview = image;
         loading = false;
@@ -355,6 +421,26 @@ class _OfficialTelegramDocumentPageState
       }),
     );
     return Map<int, String>.fromEntries(entries);
+  }
+
+  Future<String?> _loadHistoricalLogoDataUrl(
+    Map<String, dynamic> version,
+    String organizationId,
+  ) async {
+    final url = _value(version['logoUrl'], fallback: '');
+    if (url.isEmpty || organizationId.isEmpty) return null;
+    final cacheKey = '$organizationId\n$url';
+    final cached = _officialLogoDataUrlCache[cacheKey];
+    if (cached != null) return cached;
+
+    final bytes = await widget.api.fetchImageAsset(url);
+    if (bytes == null || bytes.isEmpty) {
+      throw Exception('تعذر تحميل شعار الإصدار التاريخي للبرقية.');
+    }
+    final normalized = await normalizeOfficialDocumentLogo(bytes);
+    final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+    _officialLogoDataUrlCache[cacheKey] = dataUrl;
+    return dataUrl;
   }
 
   Future<String?> _loadLogoDataUrl(
@@ -392,6 +478,23 @@ class _OfficialTelegramDocumentPageState
   String get _displaySerial =>
       getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
+  void _updateProgress(double value, String message) {
+    if (!mounted) return;
+    setState(() {
+      _progress = value.clamp(0, 100).toDouble();
+      _progressMessage = message;
+      _hasMeasuredProgress = true;
+    });
+  }
+
+  void _beginIndeterminateProgress(String message) {
+    if (!mounted) return;
+    setState(() {
+      _progressMessage = message;
+      _hasMeasuredProgress = false;
+    });
+  }
+
   Future<String> _recordDocumentOutput(String operation, String format) async {
     final result = await widget.api.call(
       'telegrams.recordDocumentOutput',
@@ -406,6 +509,7 @@ class _OfficialTelegramDocumentPageState
     if (result is Map) {
       final occurredAt = result['occurredAt']?.toString().trim();
       if (occurredAt != null && DateTime.tryParse(occurredAt) != null) {
+        _updateProgress(15, 'تم تسجيل عملية الإخراج');
         return occurredAt;
       }
     }
@@ -432,18 +536,23 @@ class _OfficialTelegramDocumentPageState
 
   Future<Uint8List> _renderOutputPdf(String operation, String format) async {
     final occurredAt = await _recordDocumentOutput(operation, format);
-    final bytes = await _renderer.renderPdf(
-      _htmlWithOutputTimestamp(occurredAt),
-    );
+    final html = _htmlWithOutputTimestamp(occurredAt);
+    _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
+    _beginIndeterminateProgress('جارٍ إنشاء ملف PDF');
+    final bytes = await _renderer.renderPdf(html);
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
     }
+    _updateProgress(82, 'اكتمل إنشاء ملف PDF');
     if (mounted) {
       try {
+        _beginIndeterminateProgress('جارٍ تحديث معاينة الوثيقة');
         final updatedPreview = await _renderer.renderPreview(bytes);
         if (mounted) setState(() => preview = updatedPreview);
+        _updateProgress(92, 'تم تحديث معاينة الوثيقة');
       } catch (_) {
         // A preview refresh must not cancel a valid export or print request.
+        _updateProgress(90, 'ملف PDF جاهز للإخراج');
       }
     }
     return bytes;
@@ -451,31 +560,31 @@ class _OfficialTelegramDocumentPageState
 
   Future<Uint8List> _renderOutputImage() async {
     final pdfBytes = await _renderOutputPdf('download', 'png');
+    _beginIndeterminateProgress('جارٍ تحويل الوثيقة إلى صورة عالية الدقة');
     final image = await _renderer.renderHighResolutionImage(pdfBytes);
     if (image.isEmpty) {
       throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
     }
+    _updateProgress(96, 'اكتمل تجهيز صورة الوثيقة');
     return image;
   }
 
-  Future<void> _perform(Future<void> Function() action) async {
+  Future<void> _perform(
+    Future<void> Function() action, {
+    String title = 'جارٍ تنفيذ الإجراء',
+  }) async {
     if (busy) return;
     setState(() {
       busy = true;
-      _progress = 3;
+      _progress = 0;
+      _progressTitle = title;
+      _progressMessage = 'بدء التنفيذ';
+      _hasMeasuredProgress = false;
     });
-    _progressTimer?.cancel();
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 350), (_) {
-      if (mounted && busy) {
-        setState(() {
-          _progress = (_progress + (100 - _progress) * .12)
-              .clamp(3, 92)
-              .toDouble();
-        });
-      }
-    });
+    var completed = false;
     try {
       await action();
+      completed = true;
     } catch (exception) {
       if (!mounted) return;
       Toast.error(
@@ -483,10 +592,15 @@ class _OfficialTelegramDocumentPageState
         exception.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      _progressTimer?.cancel();
       if (mounted) {
-        setState(() => _progress = 100);
-        await Future<void>.delayed(const Duration(milliseconds: 650));
+        if (completed) {
+          setState(() {
+            _progress = 100;
+            _progressMessage = 'اكتمل العمل';
+            _hasMeasuredProgress = true;
+          });
+          await Future<void>.delayed(const Duration(milliseconds: 450));
+        }
         if (mounted) setState(() => busy = false);
       }
     }
@@ -494,8 +608,111 @@ class _OfficialTelegramDocumentPageState
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _selectVersion(int versionNumber) async {
+    if (versionNumber == selectedVersionNumber) return;
+    setState(() => selectedVersionNumber = versionNumber);
+    await load(versionNumber: versionNumber);
+  }
+
+  Future<void> _reissue() async {
+    if (!widget.canReissue || busy) return;
+    final reasonController = TextEditingController();
+    String? reasonError;
+    final reason = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('إعادة إصدار البرقية'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'سيُنشأ إصدار موثق جديد بالشعار الحالي، مع الاحتفاظ بنفس الرقم الرسمي والنسخ السابقة.',
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: reasonController,
+                  minLines: 2,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'سبب إعادة الإصدار',
+                    hintText: 'اكتب سبباً واضحاً (5 أحرف على الأقل)',
+                    errorText: reasonError,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = reasonController.text.trim();
+                  if (value.length < 5) {
+                    setDialogState(
+                      () => reasonError =
+                          'سبب إعادة الإصدار مطلوب ويجب ألا يقل عن 5 أحرف.',
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(value);
+                },
+                child: const Text('تأكيد إعادة الإصدار'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    reasonController.dispose();
+    if (reason == null || !mounted) return;
+
+    setState(() => busy = true);
+    try {
+      final result = await widget.api.call(
+        'telegrams.reissue',
+        mutation: true,
+        input: {'id': widget.telegramId, 'reason': reason},
+      );
+      final newVersionNumber = result is Map
+          ? result['versionNumber'] as int?
+          : null;
+      if (newVersionNumber == null) {
+        throw Exception('لم يُرجع الخادم رقم الإصدار الجديد.');
+      }
+      await load(versionNumber: newVersionNumber);
+      if (!mounted) return;
+      Toast.success(
+        context,
+        'تم إنشاء الإصدار $newVersionNumber مع الاحتفاظ بالرقم الرسمي.',
+      );
+      if (result is Map &&
+          (result['actionLogRecorded'] == false ||
+              result['auditLogRecorded'] == false)) {
+        Toast.warning(
+          context,
+          'تم حفظ الإصدار، لكن تعذر تسجيل أحد سجلات التدقيق الثانوية.',
+        );
+      }
+    } catch (exception) {
+      if (!mounted) return;
+      Toast.error(
+        context,
+        exception.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> _printPdf() => _perform(() async {
@@ -504,10 +721,11 @@ class _OfficialTelegramDocumentPageState
       name: '$_fileBaseName.pdf',
       onLayout: (_) async => bytes,
     );
-  });
+  }, title: 'تصدير PDF للطباعة');
 
   Future<void> _savePdf() => _perform(() async {
     final bytes = await _renderOutputPdf('download', 'pdf');
+    _updateProgress(95, 'ملف PDF جاهز للحفظ');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ الوثيقة الرسمية',
       fileName: '$_fileBaseName.pdf',
@@ -521,15 +739,17 @@ class _OfficialTelegramDocumentPageState
     } else {
       Toast.success(context, 'تم حفظ الوثيقة.');
     }
-  });
+  }, title: 'حفظ وثيقة PDF');
 
   Future<void> _sharePdf() => _perform(() async {
     final bytes = await _renderOutputPdf('download', 'pdf');
+    _updateProgress(95, 'ملف PDF جاهز للمشاركة');
     await Printing.sharePdf(bytes: bytes, filename: '$_fileBaseName.pdf');
-  });
+  }, title: 'مشاركة وثيقة PDF');
 
   Future<void> _shareImage() => _perform(() async {
     final bytes = await _renderOutputImage();
+    _updateProgress(98, 'الصورة جاهزة للمشاركة');
     await SharePlus.instance.share(
       ShareParams(
         files: [
@@ -543,10 +763,11 @@ class _OfficialTelegramDocumentPageState
         text: _value(telegram?['subject'], fallback: ''),
       ),
     );
-  });
+  }, title: 'مشاركة صورة الوثيقة');
 
   Future<void> _saveImage() => _perform(() async {
     final bytes = await _renderOutputImage();
+    _updateProgress(98, 'الصورة جاهزة للحفظ');
     final path = await FilePicker.saveFile(
       dialogTitle: 'حفظ صورة الوثيقة الرسمية',
       fileName: '$_fileBaseName.png',
@@ -560,7 +781,7 @@ class _OfficialTelegramDocumentPageState
     } else {
       Toast.success(context, 'تم حفظ الصورة.');
     }
-  });
+  }, title: 'حفظ صورة الوثيقة');
 
   Future<void> _attachFile() => _perform(() async {
     final result = await FilePicker.pickFiles(
@@ -777,6 +998,61 @@ class _OfficialTelegramDocumentPageState
             )
           : Column(
               children: [
+                if (versions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                    child: DropdownButtonFormField<int>(
+                      key: ValueKey(selectedVersionNumber),
+                      initialValue: selectedVersionNumber,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'الإصدار المعروض',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: versions
+                          .map(
+                            (version) => DropdownMenuItem<int>(
+                              value: version['versionNumber'] as int,
+                              child: Text(
+                                'الإصدار ${version['versionNumber']} · ${version['changeReason'] ?? ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: busy || loading
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                _selectVersion(value);
+                              }
+                            },
+                    ),
+                  ),
+                if (versions.isEmpty || historicalIdentityUnavailable)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Text(
+                          versions.isEmpty
+                              ? 'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.'
+                              : 'هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد اسم الجهة أو رتبة واسم رئيسها وقت الإصدار؛ المعروض هو الإعداد الحالي.',
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: Container(
                     color: const Color(0xFFF8F8F6),
@@ -803,41 +1079,126 @@ class _OfficialTelegramDocumentPageState
                 ),
                 if (busy)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 2),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'جارٍ تجهيز الوثيقة',
-                                style: TextStyle(
-                                  color: Color(0xFF101C35),
-                                  fontWeight: FontWeight.w800,
+                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _progressTitle,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface,
+                                    fontFamily: 'Cairo',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              '${_progress.round()}%',
-                              textDirection: TextDirection.ltr,
-                              style: const TextStyle(
-                                color: Color(0xFF101C35),
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: _progress / 100,
-                            minHeight: 7,
-                            backgroundColor: const Color(0xFFE8E1D1),
-                            color: const Color(0xFFD8C38E),
+                              if (_hasMeasuredProgress) ...[
+                                const SizedBox(width: 10),
+                                Text(
+                                  '${_progress.round()}%',
+                                  textDirection: TextDirection.ltr,
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? const Color(0xFF4ADE80)
+                                        : const Color(0xFF15803D),
+                                    fontFamily: 'Cairo',
+                                    fontSize: 34,
+                                    height: 1,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: _hasMeasuredProgress
+                                  ? _progress / 100
+                                  : null,
+                              minHeight: 14,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFF4ADE80)
+                                  : const Color(0xFF15803D),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _progressMessage,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF16A34A)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    'قيد التنفيذ',
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? const Color(0xFF4ADE80)
+                                          : const Color(0xFF15803D),
+                                      fontFamily: 'Cairo',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 SafeArea(
@@ -867,6 +1228,13 @@ class _OfficialTelegramDocumentPageState
                         mainAxisSpacing: 8,
                         childAspectRatio: 3.25,
                         children: [
+                          if (widget.canReissue)
+                            _documentAction(
+                              label: busy ? 'جارٍ التجهيز...' : 'إعادة إصدار',
+                              icon: Icons.history_edu_outlined,
+                              primary: false,
+                              onPressed: busy ? null : _reissue,
+                            ),
                           _documentAction(
                             label: busy ? 'جارٍ التجهيز...' : 'طباعة',
                             icon: Icons.print_outlined,
@@ -965,8 +1333,18 @@ String buildOfficialTelegramHtml({
       RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(requestedDividerColor)
       ? requestedDividerColor
       : '#b49a55';
+  final letterhead = telegram['letterhead'] is Map
+      ? Map<String, dynamic>.from(telegram['letterhead'] as Map)
+      : <String, dynamic>{};
+  final historicalOrganizationName = _value(
+    letterhead['organizationName'],
+    fallback: '',
+  ).trim();
   final departmentName = _localizeDigits(
-    _value(settings['departmentName'], fallback: 'قسم العمليات'),
+    _value(
+      letterhead['departmentName'] ?? settings['departmentName'],
+      fallback: 'قسم العمليات',
+    ),
     numberSystem,
   );
   final senderOrganizationName = _localizeDigits(
@@ -977,13 +1355,17 @@ String buildOfficialTelegramHtml({
     for (final organization in routingDirectory)
       _value(organization['id'], fallback: ''): organization,
   };
-  final hierarchyNames = <String>[];
+  final hierarchyNames = <String>[
+    if (historicalOrganizationName.isNotEmpty) historicalOrganizationName,
+  ];
   var hierarchyId = _value(
     telegram['currentOrganizationId'] ?? telegram['organizationId'],
     fallback: '',
   );
   final visited = <String>{};
-  while (hierarchyId.isNotEmpty && visited.add(hierarchyId)) {
+  while (historicalOrganizationName.isEmpty &&
+      hierarchyId.isNotEmpty &&
+      visited.add(hierarchyId)) {
     final organization = hierarchyById[hierarchyId];
     if (organization == null) break;
     hierarchyNames.insert(0, _value(organization['name']));
@@ -992,7 +1374,10 @@ String buildOfficialTelegramHtml({
   final hierarchyCandidates = hierarchyNames.isNotEmpty
       ? [...hierarchyNames]
       : [
-          _value(settings['unitName'], fallback: 'قيادة الأمن الداخلي'),
+          _value(
+            letterhead['unitName'] ?? settings['unitName'],
+            fallback: 'قيادة الأمن الداخلي',
+          ),
           _value(settings['departmentName'], fallback: 'قسم العمليات'),
         ];
   if (!hierarchyCandidates.any(
@@ -1225,7 +1610,7 @@ $watermark
 <h2 class="body-heading">نص البرقية</h2>
 <div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
 <section class="signature">
-<p><strong>${_escapeHtml(_localizeDigits(_value(settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
+<p><strong>${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefRank'] ?? settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefName'] ?? settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
 </section></main>
 <footer class="document-footer">

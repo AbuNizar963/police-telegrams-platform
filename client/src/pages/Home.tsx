@@ -4773,7 +4773,9 @@ function TelegramDetail({
                         ? "تغيير حالة البرقية"
                         : action.action === "attachment.upload"
                           ? "رفع مرفق"
-                          : action.action}
+                          : action.action === "telegram.reissue"
+                            ? "إعادة إصدار البرقية"
+                            : action.action}
                     </span>
                     <time
                       className="text-[10px] text-muted-foreground"

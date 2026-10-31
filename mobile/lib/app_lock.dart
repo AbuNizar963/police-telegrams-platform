@@ -223,9 +223,8 @@ class _MandatoryPinSetupDialogState extends State<_MandatoryPinSetupDialog> {
                 value: _enableBiometric,
                 onChanged: _saving
                     ? null
-                    : (value) => setState(
-                          () => _enableBiometric = value ?? false,
-                        ),
+                    : (value) =>
+                          setState(() => _enableBiometric = value ?? false),
                 title: const Text('تفعيل البصمة عند فتح التطبيق'),
                 subtitle: const Text(
                   'يمكن تغيير هذا الخيار لاحقًا من الإعدادات.',

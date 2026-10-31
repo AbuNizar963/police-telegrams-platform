@@ -300,7 +300,7 @@ jobs:
         run: flutter pub get
 
       - name: Verify iOS simulator build without signing
-        run: flutter build ios --release --simulator --no-codesign
+        run: flutter build ios --debug --simulator --no-codesign
   publish-mobile-release:
     name: Publish Android APK Release
     runs-on: ubuntu-latest

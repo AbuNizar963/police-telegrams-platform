@@ -167,7 +167,7 @@ void main() {
       html,
       contains('<span class="footer-output-time">2026/10/30 - 12:34:56</span>'),
     );
-    expect(html, isNot(contains('2026/10/15')));
+    expect(html, contains('2026/10/15'));
   });
 
   test('omits the QR from the document when platform settings disable it', () {

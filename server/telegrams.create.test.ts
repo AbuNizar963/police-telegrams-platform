@@ -155,8 +155,7 @@ describe("telegrams.create", () => {
 
   it("reissues a telegram under the same official number and records a new version", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
-    const logoKey =
-      `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-letterhead.png`;
+    const logoKey = `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-letterhead.png`;
     const telegram = {
       id: 7,
       serialNumber: 55,

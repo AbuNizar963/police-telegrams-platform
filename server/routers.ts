@@ -1852,9 +1852,15 @@ export const appRouter = router({
               ? letterhead.logoStorageKey
               : null;
           const expectedLogoPrefix = `department/logos/${telegram.organizationId}/`;
+          const logoFileName = storedLogoKey?.startsWith(expectedLogoPrefix)
+            ? storedLogoKey.slice(expectedLogoPrefix.length)
+            : "";
           const hasHistoricalLogo =
-            Boolean(storedLogoKey) &&
-            storedLogoKey!.startsWith(expectedLogoPrefix);
+            letterhead?.organizationId === telegram.organizationId &&
+            Boolean(logoFileName) &&
+            !logoFileName.includes("/") &&
+            !logoFileName.includes("\\") &&
+            /^[^/]+\\.(?:png|jpe?g|webp)$/i.test(logoFileName);
 
           return {
             id: version.id,

@@ -3233,14 +3233,13 @@ function TelegramDetail({
     versions.data?.[versions.data.length - 1] ??
     null;
   const selectedVersionLetterhead = selectedVersion?.snapshot?.letterhead as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const selectedVersionHasHistoricalIdentity = Boolean(
     selectedVersionLetterhead &&
-      typeof selectedVersionLetterhead.organizationName === "string" &&
-      typeof selectedVersionLetterhead.departmentName === "string" &&
-      typeof selectedVersionLetterhead.unitChiefRank === "string" &&
-      typeof selectedVersionLetterhead.unitChiefName === "string"
+    typeof selectedVersionLetterhead.organizationName === "string" &&
+    typeof selectedVersionLetterhead.departmentName === "string" &&
+    typeof selectedVersionLetterhead.unitChiefRank === "string" &&
+    typeof selectedVersionLetterhead.unitChiefName === "string"
   );
   const downloadAttachment = trpc.telegrams.downloadAttachment.useMutation({
     onSuccess: result => {
@@ -4579,7 +4578,9 @@ function TelegramDetail({
         selectedVersion &&
         !selectedVersionHasHistoricalIdentity && (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
-            هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد اسم الجهة أو اسم ورتبة رئيسها كما كانت وقت الإصدار؛ المعروض في هذه الحقول هو الإعداد الحالي.
+            هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد
+            اسم الجهة أو اسم ورتبة رئيسها كما كانت وقت الإصدار؛ المعروض في هذه
+            الحقول هو الإعداد الحالي.
           </div>
         )}
       {versions.data && versions.data.length > 0 && (

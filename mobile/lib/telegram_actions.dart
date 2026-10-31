@@ -686,18 +686,20 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   vertical: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF050607),
-                  border: Border.all(color: const Color(0xFF202124)),
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
+                    Text(
                       'جارٍ تنفيذ الإجراء',
                       textAlign: TextAlign.right,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -705,10 +707,14 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                     const SizedBox(height: 16),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
-                      child: const LinearProgressIndicator(
+                      child: LinearProgressIndicator(
                         minHeight: 14,
-                        backgroundColor: Color(0xFF292A2D),
-                        color: Color(0xFF08A94F),
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFF15803D),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -718,14 +724,17 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                           child: Text(
                             'جارٍ تنفيذ الطلب',
                             style: TextStyle(
-                              color: Color(0xFFB9BBBF),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontSize: 12,
                             ),
                           ),
                         ),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF003C26),
+                            color: const Color(0xFF16A34A)
+                                .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: const Padding(
@@ -736,7 +745,11 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                             child: Text(
                               'قيد التنفيذ',
                               style: TextStyle(
-                                color: Color(0xFF18C66C),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? const Color(0xFF4ADE80)
+                                    : const Color(0xFF15803D),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),

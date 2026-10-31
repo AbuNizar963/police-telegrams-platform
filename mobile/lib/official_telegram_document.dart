@@ -1087,8 +1087,10 @@ class _OfficialTelegramDocumentPageState
                         vertical: 16,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF050607),
-                        border: Border.all(color: const Color(0xFF202124)),
+                        color: Colors.transparent,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
                         borderRadius: BorderRadius.circular(28),
                       ),
                       child: Column(
@@ -1101,8 +1103,10 @@ class _OfficialTelegramDocumentPageState
                                   _progressTitle,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface,
                                     fontFamily: 'Cairo',
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
@@ -1114,8 +1118,12 @@ class _OfficialTelegramDocumentPageState
                                 Text(
                                   '${_progress.round()}%',
                                   textDirection: TextDirection.ltr,
-                                  style: const TextStyle(
-                                    color: Color(0xFF08B65B),
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? const Color(0xFF4ADE80)
+                                        : const Color(0xFF15803D),
                                     fontFamily: 'Cairo',
                                     fontSize: 34,
                                     height: 1,
@@ -1133,8 +1141,14 @@ class _OfficialTelegramDocumentPageState
                                   ? _progress / 100
                                   : null,
                               minHeight: 14,
-                              backgroundColor: const Color(0xFF292A2D),
-                              color: const Color(0xFF08A94F),
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFF4ADE80)
+                                  : const Color(0xFF15803D),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -1145,8 +1159,10 @@ class _OfficialTelegramDocumentPageState
                                   _progressMessage,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFFB9BBBF),
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontFamily: 'Cairo',
                                     fontSize: 12,
                                   ),
@@ -1155,18 +1171,23 @@ class _OfficialTelegramDocumentPageState
                               const SizedBox(width: 12),
                               DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF003C26),
+                                  color: const Color(0xFF16A34A)
+                                      .withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 8,
                                   ),
                                   child: Text(
                                     'قيد التنفيذ',
                                     style: TextStyle(
-                                      color: Color(0xFF18C66C),
+                                      color:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? const Color(0xFF4ADE80)
+                                          : const Color(0xFF15803D),
                                       fontFamily: 'Cairo',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,

@@ -4511,24 +4511,24 @@ function TelegramDetail({
       )}`}
       titleClassName="text-base font-semibold"
       subtitleClassName="text-base font-semibold text-foreground"
-      headerClassName="text-left"
+      headerClassName="text-right"
       close={close}
     >
       {documentPreparing && (
         <div
           role="status"
           aria-live="polite"
-          className="mb-3 flex min-h-[38px] items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-200"
+          className="mb-3 flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-50 px-3 py-4 text-center text-sm text-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-200"
         >
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10">
+          <div className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-emerald-500/10">
             <LoaderCircle
-              className="h-6 w-6 animate-spin text-emerald-600 dark:text-emerald-300"
+              className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-300"
               aria-hidden="true"
             />
           </div>
           <div className="min-w-0 leading-5">
             <p className="font-bold">جارٍ تجهيز الوثيقة الرسمية</p>
-            <p className="truncate text-xs opacity-80">
+            <p className="text-xs opacity-80">
               يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
             </p>
           </div>
@@ -4821,8 +4821,12 @@ function TelegramDetail({
       ) : (
         actions.data &&
         actions.data.length > 0 && (
-          <details className="mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
-            <summary className="cursor-pointer text-xs font-bold">
+          <details className="group mt-4 rounded-xl border bg-muted/20 p-3 print:hidden">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-bold [&::-webkit-details-marker]:hidden">
+              <ChevronDown
+                className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
               سجل التدقيق والإجراءات ({actions.data.length})
             </summary>
             <div className="mt-3 grid gap-2">

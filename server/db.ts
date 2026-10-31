@@ -1040,7 +1040,9 @@ export type TelegramVersionRecord = {
   createdAt: Date;
 };
 
-function mapTelegramVersion(row: Record<string, unknown>): TelegramVersionRecord {
+function mapTelegramVersion(
+  row: Record<string, unknown>
+): TelegramVersionRecord {
   let snapshot: unknown = row.snapshot;
   if (typeof snapshot === "string") {
     try {
@@ -1049,11 +1051,7 @@ function mapTelegramVersion(row: Record<string, unknown>): TelegramVersionRecord
       throw new Error("Telegram version snapshot contains invalid JSON");
     }
   }
-  if (
-    !snapshot ||
-    typeof snapshot !== "object" ||
-    Array.isArray(snapshot)
-  ) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
     throw new Error("Telegram version snapshot has an invalid structure");
   }
 

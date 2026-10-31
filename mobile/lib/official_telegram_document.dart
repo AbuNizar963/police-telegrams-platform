@@ -224,6 +224,16 @@ class _OfficialTelegramDocumentPageState
       final platformDocumentSettings = Map<String, dynamic>.from(
         results[3] as Map,
       );
+      Map<String, dynamic> accountOrganizationContext = <String, dynamic>{};
+      try {
+        final contextResult = await widget.api.call('organizations.context');
+        if (contextResult is Map) {
+          accountOrganizationContext = Map<String, dynamic>.from(contextResult);
+        }
+      } catch (_) {
+        // Telegram loading must remain available if the optional context call
+        // is unavailable on an older server deployment.
+      }
 
       List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
       var versionHistoryAvailable = false;
@@ -241,9 +251,10 @@ class _OfficialTelegramDocumentPageState
               .toList();
         }
       } catch (_) {
-        throw Exception(
-          'تعذر تحميل سجل إصدارات البرقية؛ تحقق من الاتصال وأعد المحاولة.',
-        );
+        // The current telegram remains usable when an older deployment or a
+        // transient connection issue prevents loading its optional history.
+        // Do not replace the document with a full-screen error in that case.
+        versionsData = <Map<String, dynamic>>[];
       }
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
       if (requestedVersionNumber != null &&
@@ -267,7 +278,9 @@ class _OfficialTelegramDocumentPageState
 
       final logoOrganizationId =
           resolveOrganizationLogoId(
-            accountOrganizationId: settingsData['organizationId'],
+            accountOrganizationId:
+                accountOrganizationContext['organizationId'] ??
+                settingsData['organizationId'],
             currentOrganizationId: telegramData['currentOrganizationId'],
             ownerOrganizationId: telegramData['organizationId'],
           ) ??
@@ -278,7 +291,9 @@ class _OfficialTelegramDocumentPageState
         // remain logo-less rather than borrowing today's logo.
         final settingsOrganizationId =
             resolveOrganizationLogoId(
-              accountOrganizationId: settingsData['organizationId'],
+              accountOrganizationId:
+                  accountOrganizationContext['organizationId'] ??
+                  settingsData['organizationId'],
             ) ??
             '';
         final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');

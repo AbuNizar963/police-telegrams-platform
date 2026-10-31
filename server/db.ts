@@ -1095,9 +1095,7 @@ export async function getTelegramVersion(
     .eq("versionNumber", versionNumber)
     .maybeSingle();
   throwIfError(error, "Failed to load telegram version");
-  return data
-    ? mapTelegramVersion(data as Record<string, unknown>)
-    : undefined;
+  return data ? mapTelegramVersion(data as Record<string, unknown>) : undefined;
 }
 
 export async function recordTelegramAction(input: {

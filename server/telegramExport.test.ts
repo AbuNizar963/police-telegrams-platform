@@ -3,6 +3,8 @@ import {
   isAllowedExportResourceUrl,
   isSafeExportHtml,
   withPngDpiMetadata,
+  MAX_TELEGRAM_PNG_BYTES,
+  PNG_RENDER_SCALE_FACTORS,
 } from "./telegramExport";
 
 const safeDocument = `<!doctype html>
@@ -128,6 +130,11 @@ describe("telegram export resource isolation", () => {
 });
 
 describe("official PNG resolution metadata", () => {
+  it("starts at 384 DPI and leaves headroom below Vercel's hard response cap", () => {
+    expect(PNG_RENDER_SCALE_FACTORS).toEqual([4, 3, 2]);
+    expect(MAX_TELEGRAM_PNG_BYTES).toBe(4_000_000);
+  });
+
   it("writes high-quality physical resolution without changing image dimensions", () => {
     const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
     const ihdrLength = Buffer.alloc(4);
@@ -151,10 +158,10 @@ describe("official PNG resolution metadata", () => {
     const physicalChunk = result.indexOf(Buffer.from("pHYs", "ascii"));
     expect(physicalChunk).toBeGreaterThan(0);
     expect(result.readUInt32BE(physicalChunk + 4)).toBe(
-      Math.round((3 * 96) / 0.0254)
+      Math.round((4 * 96) / 0.0254)
     );
     expect(result.readUInt32BE(physicalChunk + 8)).toBe(
-      Math.round((3 * 96) / 0.0254)
+      Math.round((4 * 96) / 0.0254)
     );
     expect(result[physicalChunk + 12]).toBe(1);
     expect(result.readUInt32BE(16)).toBe(1);

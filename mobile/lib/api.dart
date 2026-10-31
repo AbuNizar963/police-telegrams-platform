@@ -26,6 +26,13 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+class _OrganizationLogoCacheEntry {
+  const _OrganizationLogoCacheEntry(this.bytes, this.cachedAt);
+
+  final Uint8List bytes;
+  final DateTime cachedAt;
+}
+
 class PoliceApi {
   static const _offlineCacheKeyRegistry = 'offline_cache_key_registry_v1';
   static const _maxOfflineCacheKeys = 128;
@@ -50,6 +57,8 @@ class PoliceApi {
   final Directory? imageCacheDirectory;
   final _storage = const FlutterSecureStorage();
   final Map<String, Future<Uint8List?>> _organizationLogoRequests = {};
+  final Map<String, Future<void>> _organizationLogoRefreshes = {};
+  final Map<String, _OrganizationLogoCacheEntry> _organizationLogoMemory = {};
   Future<Directory>? _logoCacheDirectoryFuture;
   int _logoCacheGeneration = 0;
 
@@ -447,6 +456,8 @@ class PoliceApi {
   Future<void> clearOrganizationLogoCache() async {
     _logoCacheGeneration++;
     _organizationLogoRequests.clear();
+    _organizationLogoRefreshes.clear();
+    _organizationLogoMemory.clear();
     try {
       final directory = await _organizationLogoCacheDirectory();
       if (await directory.exists()) await directory.delete(recursive: true);
@@ -465,10 +476,25 @@ class PoliceApi {
       return Future.value(null);
     }
     final requestKey = '$normalizedOrganizationId\n$identity';
+    final memoryEntry = _organizationLogoMemory[requestKey];
+    if (memoryEntry != null) {
+      if (DateTime.now().difference(memoryEntry.cachedAt) <
+          _organizationLogoMemoryTtl) {
+        return Future.value(memoryEntry.bytes);
+      }
+      _scheduleOrganizationLogoRefresh(
+        requestKey: requestKey,
+        organizationId: normalizedOrganizationId,
+        source: source,
+        identity: identity,
+        generation: _logoCacheGeneration,
+      );
+      return Future.value(memoryEntry.bytes);
+    }
     final existing = _organizationLogoRequests[requestKey];
     if (existing != null) return existing;
-
     final request = _fetchOrganizationLogo(
+      requestKey: requestKey,
       organizationId: normalizedOrganizationId,
       source: source,
       identity: identity,
@@ -481,6 +507,7 @@ class PoliceApi {
   }
 
   Future<Uint8List?> _fetchOrganizationLogo({
+    required String requestKey,
     required String organizationId,
     required String source,
     required String identity,
@@ -506,27 +533,102 @@ class PoliceApi {
             bytes.length <= _maximumCachedOrganizationLogoBytes &&
             _isSupportedImagePayload('', Uint8List.fromList(bytes))) {
           staleBytes = Uint8List.fromList(bytes);
-          // Always revalidate: the logo can be overwritten at the same storage
-          // path, which a URL-only cache identity cannot detect. Keep cached
-          // bytes as an offline fallback if the refresh fails.
         }
       }
     } catch (_) {
-      // A missing, incomplete, or expired cache is refreshed below.
+      // A missing, incomplete, or expired cache is fetched below.
     }
 
-    var bytes = await fetchImageAsset(source);
+    if (generation != _logoCacheGeneration) return null;
+    if (staleBytes != null) {
+      _organizationLogoMemory[requestKey] = _OrganizationLogoCacheEntry(
+        staleBytes,
+        DateTime.now().subtract(_organizationLogoMemoryTtl),
+      );
+      // Stale-while-revalidate: render the verified, organization-scoped
+      // local logo now; refresh storage and memory without blocking the UI.
+      _scheduleOrganizationLogoRefresh(
+        requestKey: requestKey,
+        organizationId: organizationId,
+        source: source,
+        identity: identity,
+        generation: generation,
+      );
+      return staleBytes;
+    }
+
+    return _refreshOrganizationLogo(
+      requestKey: requestKey,
+      organizationId: organizationId,
+      source: source,
+      identity: identity,
+      generation: generation,
+      imageFile: imageFile,
+      metadataFile: metadataFile,
+    );
+  }
+
+  void _scheduleOrganizationLogoRefresh({
+    required String requestKey,
+    required String organizationId,
+    required String source,
+    required String identity,
+    required int generation,
+  }) {
+    if (_organizationLogoRefreshes.containsKey(requestKey)) return;
+    final refresh = () async {
+      final cacheDirectory = await _organizationLogoCacheDirectory();
+      final fileStem = base64Url
+          .encode(utf8.encode(organizationId))
+          .replaceAll('=', '');
+      await _refreshOrganizationLogo(
+        requestKey: requestKey,
+        organizationId: organizationId,
+        source: source,
+        identity: identity,
+        generation: generation,
+        imageFile: File(
+          '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
+        ),
+        metadataFile: File(
+          '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.json',
+        ),
+      );
+    }();
+    _organizationLogoRefreshes[requestKey] = refresh;
+    unawaited(
+      refresh.whenComplete(() {
+        _organizationLogoRefreshes.remove(requestKey);
+      }),
+    );
+  }
+
+  Future<Uint8List?> _refreshOrganizationLogo({
+    required String requestKey,
+    required String organizationId,
+    required String source,
+    required String identity,
+    required int generation,
+    required File imageFile,
+    required File metadataFile,
+  }) async {
+    Uint8List? bytes = await fetchImageAsset(source);
     if (bytes == null || bytes.isEmpty) {
-      // Some mobile networks or intermediaries mishandle the second image
-      // request even though authenticated tRPC calls work. Retry through the
-      // same protected API origin using its size-bounded inline logo payload.
+      // Authenticated API fallback for storage routes unavailable to the
+      // device's image client.
       bytes = await _fetchOrganizationLogoFromApi(organizationId);
     }
     if (generation != _logoCacheGeneration) return null;
-    if (bytes == null || bytes.isEmpty) return staleBytes;
+    if (bytes == null ||
+        bytes.isEmpty ||
+        bytes.length > _maximumCachedOrganizationLogoBytes) {
+      return _organizationLogoMemory[requestKey]?.bytes;
+    }
+
     if (bytes.length <= _maximumCachedOrganizationLogoBytes) {
       try {
         if (generation != _logoCacheGeneration) return null;
+        final cacheDirectory = await _organizationLogoCacheDirectory();
         await cacheDirectory.create(recursive: true);
         final temporaryImage = File('${imageFile.path}.tmp');
         final temporaryMetadata = File('${metadataFile.path}.tmp');
@@ -538,14 +640,20 @@ class PoliceApi {
           }),
           flush: true,
         );
+        if (generation != _logoCacheGeneration) return null;
         await temporaryImage.rename(imageFile.path);
         await temporaryMetadata.rename(metadataFile.path);
       } catch (_) {
-        // Image caching is best-effort; a writable cache must not be required
-        // for a valid organization logo to render.
+        // A writable cache must not be required for a valid remote logo.
       }
     }
-    return bytes;
+    if (generation != _logoCacheGeneration) return null;
+    final copiedBytes = Uint8List.fromList(bytes);
+    _organizationLogoMemory[requestKey] = _OrganizationLogoCacheEntry(
+      copiedBytes,
+      DateTime.now(),
+    );
+    return copiedBytes;
   }
 
   Future<Uint8List?> _fetchOrganizationLogoFromApi(

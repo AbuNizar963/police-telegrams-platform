@@ -1895,6 +1895,12 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         );
         final savedLogo = _text(saved['logoUrl']);
         final savedOrganizationId = _text(saved['organizationId']);
+        final previousLogo = _text(_settings['logoUrl']);
+        if (_pendingLogoPreviewBytes != null ||
+            widget.api.organizationLogoCacheIdentity(previousLogo) !=
+                widget.api.organizationLogoCacheIdentity(savedLogo)) {
+          await widget.api.clearOrganizationLogoCache();
+        }
         final savedLogoBytes = savedLogo.isEmpty || savedOrganizationId.isEmpty
             ? null
             : await widget.api.fetchOrganizationLogo(

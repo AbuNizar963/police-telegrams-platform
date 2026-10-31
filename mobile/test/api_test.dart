@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -424,8 +425,8 @@ void main() {
       ),
       imageBytes,
     );
-    // Revalidate even when a renewed signed URL points to the same object path.
-    expect(networkRequests, 2);
+    // Signed-token rotation does not invalidate fresh bytes for the same object.
+    expect(networkRequests, 1);
 
     var secondClientRequests = 0;
     final secondClient = MockClient((request) async {
@@ -444,9 +445,70 @@ void main() {
       ),
       imageBytes,
     );
-    // A failed refresh must still return the previously cached valid image.
+    // Cached bytes are returned first; failed refreshes happen in background.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(secondClientRequests, 2);
   });
+
+
+  test(
+    'returns a disk-cached organization logo before network refresh completes',
+    () async {
+      final cacheDirectory = await Directory.systemTemp.createTemp(
+        'police-telegrams-logo-stale-test-',
+      );
+      addTearDown(() => cacheDirectory.delete(recursive: true));
+      final imageBytes = Uint8List.fromList(
+        base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
+        ),
+      );
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const logoUrl =
+          'https://storage.example.test/storage/v1/object/sign/logos/department.png?token=first';
+      final seedClient = MockClient(
+        (request) async => http.Response.bytes(
+          imageBytes,
+          200,
+          headers: {'content-type': 'image/png'},
+        ),
+      );
+      addTearDown(seedClient.close);
+      await PoliceApi(
+        httpClient: seedClient,
+        imageCacheDirectory: cacheDirectory,
+      ).fetchOrganizationLogo(organizationId: organizationId, source: logoUrl);
+
+      final refreshResponse = Completer<http.Response>();
+      final refreshStarted = Completer<void>();
+      final refreshClient = MockClient((request) {
+        if (!refreshStarted.isCompleted) refreshStarted.complete();
+        return refreshResponse.future;
+      });
+      addTearDown(refreshClient.close);
+      final api = PoliceApi(
+        httpClient: refreshClient,
+        imageCacheDirectory: cacheDirectory,
+      );
+
+      final cached = await api
+          .fetchOrganizationLogo(
+            organizationId: organizationId,
+            source: logoUrl,
+          )
+          .timeout(const Duration(milliseconds: 500));
+      expect(cached, imageBytes);
+      await refreshStarted.future.timeout(const Duration(milliseconds: 500));
+      refreshResponse.complete(
+        http.Response.bytes(
+          imageBytes,
+          200,
+          headers: {'content-type': 'image/png'},
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    },
+  );
 
   test(
     'relative organization logo paths resolve against the API host',

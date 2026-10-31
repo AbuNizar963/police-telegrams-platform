@@ -199,16 +199,16 @@ class _ToastCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Color.alphaBlend(
-            _color.withValues(alpha: 0.08),
+            _color.withValues(alpha: 0.1),
             Theme.of(context).colorScheme.surface,
           ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _color.withValues(alpha: 0.28)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _color.withValues(alpha: 0.58)),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x260D1B2A),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+              color: Color(0x1F0D1B2A),
+              blurRadius: 14,
+              offset: Offset(0, 5),
             ),
           ],
         ),

@@ -1015,8 +1015,8 @@ class _OfficialTelegramDocumentPageState
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE9FFF4),
-                  border: Border.all(color: const Color(0x5534D399)),
+                  color: Colors.transparent,
+                  border: Border.all(color: Colors.transparent),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -1028,7 +1028,6 @@ class _OfficialTelegramDocumentPageState
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
                         color: const Color(0xFF16A34A),
-                        backgroundColor: const Color(0x2216A34A),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1040,7 +1039,7 @@ class _OfficialTelegramDocumentPageState
                             'جارٍ تجهيز الوثيقة الرسمية',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF166534),
+                              color: Colors.black,
                               fontFamily: 'Cairo',
                               fontWeight: FontWeight.w800,
                             ),
@@ -1050,7 +1049,7 @@ class _OfficialTelegramDocumentPageState
                             'يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF4D7C5B),
+                              color: Colors.black,
                               fontFamily: 'Cairo',
                               fontSize: 11,
                             ),

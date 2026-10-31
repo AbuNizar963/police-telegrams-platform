@@ -134,6 +134,10 @@ describe("telegrams.create", () => {
       isActive: true,
     });
     mocked.getOrganizationSettings.mockResolvedValue({
+      departmentName: "قسم شرطة الشهباء",
+      unitName: "قسم شرطة الشهباء",
+      unitChiefRank: "المقدم",
+      unitChiefName: "غسان صالح كنو",
       logoKey: `/api/storage/${logoKey}`,
       logoUrl: `/api/storage/${logoKey}`,
     });

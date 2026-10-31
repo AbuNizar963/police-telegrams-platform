@@ -4544,7 +4544,8 @@ function TelegramDetail({
       )}
       {!versions.isLoading && versions.data?.length === 0 && (
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 print:hidden">
-          لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الذي استُخدم عند إصدارها الأصلي.
+          لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة
+          الحالي، ولا يمكن تأكيد أنه الشعار الذي استُخدم عند إصدارها الأصلي.
         </div>
       )}
       {versions.data && versions.data.length > 0 && (

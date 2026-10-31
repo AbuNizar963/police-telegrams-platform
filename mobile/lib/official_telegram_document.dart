@@ -174,6 +174,7 @@ class _OfficialTelegramDocumentPageState
   Map<String, dynamic>? settings;
   List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
   int? selectedVersionNumber;
+  bool historicalIdentityUnavailable = false;
   String? documentHtml;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
@@ -198,6 +199,7 @@ class _OfficialTelegramDocumentPageState
         loading = true;
         error = null;
         preview = null;
+        historicalIdentityUnavailable = false;
       });
     }
     try {
@@ -256,6 +258,14 @@ class _OfficialTelegramDocumentPageState
               (item) => item['versionNumber'] == requestedVersionNumber,
             );
       final hasSelectedVersion = activeVersion.isNotEmpty;
+      final snapshotLetterhead = activeVersion['snapshot'] is Map
+          ? (activeVersion['snapshot'] as Map)['letterhead']
+          : null;
+      final hasHistoricalIdentity = snapshotLetterhead is Map &&
+          snapshotLetterhead['organizationName'] is String &&
+          snapshotLetterhead['departmentName'] is String &&
+          snapshotLetterhead['unitChiefRank'] is String &&
+          snapshotLetterhead['unitChiefName'] is String;
       if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
         telegramData.addAll(
           Map<String, dynamic>.from(activeVersion['snapshot'] as Map),
@@ -381,6 +391,8 @@ class _OfficialTelegramDocumentPageState
         selectedVersionNumber = hasSelectedVersion
             ? activeVersion['versionNumber'] as int?
             : null;
+        historicalIdentityUnavailable =
+            hasSelectedVersion && !hasHistoricalIdentity;
         documentHtml = html;
         preview = image;
         loading = false;
@@ -986,7 +998,7 @@ class _OfficialTelegramDocumentPageState
                             },
                     ),
                   ),
-                if (versions.isEmpty)
+                if (versions.isEmpty || historicalIdentityUnavailable)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                     child: DecoratedBox(
@@ -999,7 +1011,9 @@ class _OfficialTelegramDocumentPageState
                       child: const Padding(
                         padding: EdgeInsets.all(10),
                         child: Text(
-                          'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.',
+                          versions.isEmpty
+                              ? 'لا توجد لقطة تاريخية محفوظة لهذه البرقية. الشعار المعروض هو شعار الجهة الحالي، ولا يمكن تأكيد أنه الشعار الأصلي عند الإصدار.'
+                              : 'هذا الإصدار أُنشئ قبل حفظ بيانات الترويسة التاريخية. لا يمكن تأكيد اسم الجهة أو رتبة واسم رئيسها وقت الإصدار؛ المعروض هو الإعداد الحالي.',
                           textDirection: TextDirection.rtl,
                           style: TextStyle(fontSize: 11),
                         ),

@@ -3616,14 +3616,14 @@ function TelegramDetail({
         .telegram-export-page .header-government { text-align: right; }
         .telegram-export-page .header-metadata { text-align: left; }
         .telegram-export-page .header-government p,
-        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
+        .telegram-export-page .header-metadata p { margin: 0; font-size: 15pt; font-weight: 700; line-height: 1.5; white-space: nowrap; letter-spacing: -0.12px; transform: scaleX(0.86); transform-origin: left center; }
         .telegram-export-page .header-government p { transform-origin: right center; }
         .telegram-export-page .header-date-row { transform: translateX(1ch) scaleX(0.86); }
         .telegram-export-page .header-date-value { display: inline-block; direction: ltr; unicode-bidi: isolate; font-size: 13pt; letter-spacing: 0; white-space: nowrap; }
         .telegram-export-page .official-header { font-weight: 700; }
         .telegram-export-page .government-name { font-size: 15pt; font-weight: 700; white-space: nowrap; }
         .telegram-export-page .government-subtitle { font-size: 15pt; font-weight: 700; white-space: nowrap; }
-        .telegram-export-page .header-metadata { font-size: 15pt; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+        .telegram-export-page .header-metadata { font-size: 15pt; font-weight: 700; line-height: 1.5; white-space: nowrap; }
          .telegram-export-page .header-logo-cell { display: flex; align-items: center; justify-content: center; min-width: 0; }
          .telegram-export-page .official-logo {
           display: block;

@@ -240,9 +240,8 @@ class _OfficialTelegramDocumentPageState
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
       final activeVersion = versionsData.firstWhere(
         (item) => item['versionNumber'] == requestedVersionNumber,
-        orElse: () => versionsData.isNotEmpty
-            ? versionsData.last
-            : <String, dynamic>{},
+        orElse: () =>
+            versionsData.isNotEmpty ? versionsData.last : <String, dynamic>{},
       );
       final hasSelectedVersion = activeVersion.isNotEmpty;
       if (hasSelectedVersion && activeVersion['snapshot'] is Map) {
@@ -267,10 +266,7 @@ class _OfficialTelegramDocumentPageState
               accountOrganizationId: settingsData['organizationId'],
             ) ??
             '';
-        final savedSettingsLogo = _value(
-          settingsData['logoUrl'],
-          fallback: '',
-        );
+        final savedSettingsLogo = _value(settingsData['logoUrl'], fallback: '');
         settingsData['logoUrl'] =
             logoOrganizationId.isNotEmpty &&
                 settingsOrganizationId == logoOrganizationId &&
@@ -941,7 +937,8 @@ class _OfficialTelegramDocumentPageState
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                     child: DropdownButtonFormField<int>(
-                      value: selectedVersionNumber,
+                      key: ValueKey(selectedVersionNumber),
+                      initialValue: selectedVersionNumber,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'الإصدار المعروض',

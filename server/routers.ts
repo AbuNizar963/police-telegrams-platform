@@ -356,34 +356,6 @@ function assertOrganizationLogoScope(
   }
 }
 
-async function cleanupReplacedDepartmentLogo(
-  previousValue: unknown,
-  nextValue: unknown,
-  organizationId: string | null
-): Promise<void> {
-  const previousKey = departmentLogoKeyFromStoredValue(previousValue);
-  const nextKey = departmentLogoKeyFromStoredValue(nextValue);
-  if (!organizationId || !previousKey || previousKey === nextKey) return;
-
-  // Never delete a legacy unscoped/shared object: another organization may
-  // still reference it. Only remove a file owned by this exact organization.
-  const scopedMatch = previousKey.match(
-    /^department\/logos\/([0-9a-f-]{36})\//i
-  );
-  if (
-    !scopedMatch ||
-    scopedMatch[1].toLowerCase() !== organizationId.toLowerCase()
-  ) {
-    return;
-  }
-
-  try {
-    await storageDelete(previousKey);
-  } catch (error) {
-    console.error("[Storage] Replaced department logo cleanup failed", error);
-  }
-}
-
 function assertLogoBelongsToOrganization(
   logoValue: string | null | undefined,
   organizationId: string | null,
@@ -1011,12 +983,6 @@ export const appRouter = router({
             }
           );
 
-          await cleanupReplacedDepartmentLogo(
-            previousSettings?.logoKey ?? previousSettings?.logoUrl,
-            input.logoUrl,
-            organization.id
-          );
-
           await writeAuditLog({
             ...getRequestAuditContext(ctx.req),
             actorUserId: ctx.user.id,
@@ -1587,12 +1553,6 @@ export const appRouter = router({
           logoUrl: input.logoUrl ?? null,
           updatedByUserId: ctx.user.id,
         });
-
-        await cleanupReplacedDepartmentLogo(
-          previousLogoValue,
-          input.logoUrl,
-          dbSettings.organizationId
-        );
 
         await writeAuditLog({
           ...getRequestAuditContext(ctx.req),

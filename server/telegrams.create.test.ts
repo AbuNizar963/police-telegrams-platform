@@ -153,6 +153,86 @@ describe("telegrams.create", () => {
     );
   });
 
+  it("reissues a telegram under the same official number and records a new version", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const logoKey =
+      `department/logos/${organizationId}/550e8400-e29b-41d4-a716-446655440001-letterhead.png`;
+    const telegram = {
+      id: 7,
+      serialNumber: 55,
+      serialCode: "OUT-2026-10-31-00055",
+      organizationId,
+      currentOrganizationId: organizationId,
+      subject: "تعميم إداري",
+      recipient: "غرفة العمليات",
+      body: "النص الأصلي للبرقية",
+      classification: "normal",
+      priority: "normal",
+      category: "administrative",
+      status: "approved",
+      createdAt: new Date(),
+    };
+    mocked.getTelegramById.mockResolvedValueOnce(telegram);
+    organizationMocks.getUserOrganizationMembership.mockResolvedValue({
+      organizationId,
+      role: "member",
+      isActive: true,
+    });
+    mocked.getOrganizationSettings.mockResolvedValueOnce({
+      logoKey: `/api/storage/${logoKey}`,
+      logoUrl: `/api/storage/${logoKey}`,
+    });
+    mocked.recordTelegramVersion.mockResolvedValueOnce(3);
+
+    const caller = appRouter.createCaller(createContext());
+    await expect(
+      caller.telegrams.reissue({
+        id: telegram.id,
+        reason: "تحديث الشعار الرسمي للجهة",
+      })
+    ).resolves.toEqual({
+      success: true,
+      telegramId: telegram.id,
+      serialNumber: telegram.serialNumber,
+      serialCode: telegram.serialCode,
+      versionNumber: 3,
+      actionLogRecorded: true,
+      auditLogRecorded: true,
+    });
+
+    expect(mocked.recordTelegramVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: telegram.id,
+        changedByUserId: 42,
+        changeReason: expect.stringContaining("تحديث الشعار الرسمي للجهة"),
+        snapshot: expect.objectContaining({
+          serialNumber: telegram.serialNumber,
+          serialCode: telegram.serialCode,
+          letterhead: expect.objectContaining({
+            organizationId,
+            logoStorageKey: logoKey,
+            logoContentType: "image/png",
+          }),
+          issuance: expect.objectContaining({
+            type: "reissue",
+            officialSerialCode: telegram.serialCode,
+          }),
+        }),
+      })
+    );
+    expect(mocked.recordTelegramAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telegramId: telegram.id,
+        actorUserId: 42,
+        action: "telegram.reissue",
+        reason: "تحديث الشعار الرسمي للجهة",
+        metadata: expect.objectContaining({ versionNumber: 3 }),
+      })
+    );
+    expect(mocked.allocateSerialNumber).not.toHaveBeenCalled();
+    expect(mocked.allocateOrganizationSerialNumber).not.toHaveBeenCalled();
+  });
+
   it("uses the authenticated officer identity instead of accepting a client-supplied author", async () => {
     const caller = appRouter.createCaller(createContext());
     const result = await caller.telegrams.create({

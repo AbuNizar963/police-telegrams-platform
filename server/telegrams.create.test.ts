@@ -29,6 +29,7 @@ const mocked = vi.hoisted(() => ({
 }));
 const organizationMocks = vi.hoisted(() => ({
   getUserOrganizationMembership: vi.fn(),
+  getOrganizationById: vi.fn(),
 }));
 
 vi.mock("./db", () => mocked);
@@ -44,6 +45,7 @@ vi.mock("./organization", async importOriginal => {
     hasTelegramRoute: mocked.hasTelegramRoute,
     getUserOrganizationMembership:
       organizationMocks.getUserOrganizationMembership,
+    getOrganizationById: organizationMocks.getOrganizationById,
   };
 });
 
@@ -87,6 +89,14 @@ describe("telegrams.create", () => {
       role: "member",
       isActive: true,
     });
+    organizationMocks.getOrganizationById.mockImplementation(async id => ({
+      id,
+      name: "قسم شرطة الشهباء",
+      type: "department",
+      code: "SHAHBA",
+      isActive: true,
+      parentOrganizationId: null,
+    }));
     mocked.getOrganizationSettings.mockResolvedValue(undefined);
     mocked.getOrCreateSettings.mockResolvedValue({
       serialPrefix: "OUT",
@@ -141,13 +151,17 @@ describe("telegrams.create", () => {
     expect(mocked.recordTelegramVersion).toHaveBeenCalledWith(
       expect.objectContaining({
         snapshot: expect.objectContaining({
-          schemaVersion: 1,
+          schemaVersion: 2,
           organizationId,
-          letterhead: {
+          letterhead: expect.objectContaining({
             organizationId,
+            organizationName: "قسم شرطة الشهباء",
+            departmentName: "قسم شرطة الشهباء",
+            unitChiefRank: "المقدم",
+            unitChiefName: "غسان صالح كنو",
             logoStorageKey: logoKey,
             logoContentType: "image/png",
-          },
+          }),
         }),
       })
     );

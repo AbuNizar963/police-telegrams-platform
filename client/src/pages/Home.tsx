@@ -4709,7 +4709,7 @@ function TelegramDetail({
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
             <FileDown className="ml-2 h-4 w-4" />
-            {exporting === "pdf" ? "جارٍ فتح الطباعة..." : "PDF مطابق للطباعة"}
+            {exporting === "pdf" ? "جارٍ فتح الطباعة..." : "تنزيل PDF"}
           </Button>
           <Button
             onClick={downloadImage}
@@ -4718,7 +4718,7 @@ function TelegramDetail({
             className="h-10 flex-1 rounded-lg sm:flex-none"
           >
             <FileImage className="ml-2 h-4 w-4" />
-            {exporting === "image" ? "جارٍ التجهيز..." : "صورة عالية الدقة"}
+            {exporting === "image" ? "جارٍ التجهيز..." : "تنزيل كصورة"}
           </Button>
           <Button
             onClick={() => void prepareDocumentShare("pdf")}

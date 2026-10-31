@@ -3908,10 +3908,14 @@ function TelegramDetail({
     const host = paperRef.current;
     if (!host || versions.isLoading) return;
     if (versions.isError) {
-      setDocumentPreparing(false);
-      toast.error(
-        "تعذر تحميل سجل إصدارات البرقية؛ لا يمكن تأكيد الشعار التاريخي الآن."
-      );
+      const historyErrorKey = `${telegram.id}:history-error`;
+      if (preparedTelegramIdRef.current !== historyErrorKey) {
+        preparedTelegramIdRef.current = historyErrorKey;
+        setDocumentPreparing(false);
+        toast.error(
+          "تعذر تحميل سجل إصدارات البرقية؛ لا يمكن تأكيد الشعار التاريخي الآن."
+        );
+      }
       return;
     }
 

@@ -720,7 +720,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'جارٍ تنفيذ الطلب',
                             style: TextStyle(
@@ -737,7 +737,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                                 .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: const Padding(
+                          child: Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 8,

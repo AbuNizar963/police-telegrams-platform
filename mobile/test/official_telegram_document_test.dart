@@ -386,12 +386,15 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, contains('inset:3mm;'));
-      expect(html, contains('gap:5mm;'));
+      expect(html, contains('gap:5.15mm;'));
       expect(html, contains('font-size:11pt'));
       expect(html, contains('translateX(-10.3mm)'));
       expect(html, contains('font-family: "Aref Ruqaa"'));
       expect(html, contains('watermark-text-row-offset'));
-      expect(html, contains('width:max-content;gap:5mm;white-space:nowrap'));
+      expect(
+        html,
+        contains('width:max-content;gap:5.9mm;white-space:nowrap'),
+      );
       expect(
         html,
         contains(

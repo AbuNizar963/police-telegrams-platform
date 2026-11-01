@@ -111,10 +111,11 @@ void main() {
       ]),
     );
 
-    expect(
-      archive.files.map((file) => file.name).toList(),
-      ['telegram-page-01.png', 'telegram-page-02.png', 'telegram-page-03.png'],
-    );
+    expect(archive.files.map((file) => file.name).toList(), [
+      'telegram-page-01.png',
+      'telegram-page-02.png',
+      'telegram-page-03.png',
+    ]);
     expect(
       archive.files
           .map((file) => List<int>.from(file.content as List<int>))

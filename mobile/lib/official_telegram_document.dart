@@ -90,12 +90,11 @@ class NativeOfficialTelegramDocumentRenderer
       _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
 
   @override
-  Future<List<Uint8List>> renderHighResolutionImages(
-    Uint8List pdfBytes,
-  ) =>
-      Printing.raster(pdfBytes, dpi: _documentImageExportDpi)
-          .asyncMap((page) => page.toPng())
-          .toList();
+  Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes) =>
+      Printing.raster(
+        pdfBytes,
+        dpi: _documentImageExportDpi,
+      ).asyncMap((page) => page.toPng()).toList();
 
   Future<Uint8List> _renderFirstPage(
     Uint8List pdfBytes, {

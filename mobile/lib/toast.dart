@@ -210,10 +210,7 @@ class _ToastCard extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 96, maxHeight: 160),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Color.alphaBlend(
-            _color.withValues(alpha: 0.09),
-            Colors.white,
-          ),
+          color: Color.alphaBlend(_color.withValues(alpha: 0.09), Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _color, width: 1.5),
           boxShadow: const [

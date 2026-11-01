@@ -78,7 +78,9 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(
         html,
-        contains('font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt'),
+        contains(
+          'font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt',
+        ),
       );
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),

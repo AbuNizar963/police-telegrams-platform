@@ -45,6 +45,13 @@ describe("official telegram A4 print layout", () => {
     expect(css).toContain(
       'content: "صفحة رقم " counter(page) " من " counter(pages);'
     );
+    expect(css).toContain(
+      ".telegram-export-page.telegram-multipage .page-watermark {"
+    );
+    expect(css).toContain("position: fixed;");
+    expect(css).toContain("inset: 0 auto auto 0;");
+    expect(css).toContain("width: 210mm;");
+    expect(css).toContain("height: 297mm;");
   });
 
   it("uses the same backup A4 geometry in the standalone print stylesheet", () => {

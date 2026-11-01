@@ -69,6 +69,13 @@ export function getTelegramPaperLayoutCss(
         min-height: ${PRINT_PAGE_AREA_HEIGHT_MM}mm${suffix};
         padding: ${PRINT_MARGIN_MM}mm ${PRINT_MARGIN_MM}mm 0${suffix};
       }
+      /* The page counter reserves a bottom margin; watermark still spans the full sheet. */
+      ${multiPageSelector} .page-watermark {
+        position: fixed${suffix};
+        inset: 0 auto auto 0${suffix};
+        width: ${PRINT_PAGE_WIDTH_MM}mm${suffix};
+        height: ${PRINT_PAGE_HEIGHT_MM}mm${suffix};
+      }
     }
   `;
 }

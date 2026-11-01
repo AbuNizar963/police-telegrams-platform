@@ -147,6 +147,12 @@ export function getTelegramRenderLayoutCss(printLayout: boolean): string {
             padding: 10mm 10mm 0 !important;
           }
           .telegram-export-page .page-watermark { position: fixed !important; }
+          /* @page reserves 10mm for the counter; keep the watermark on full A4. */
+          .telegram-export-page.telegram-multipage .page-watermark {
+            inset: 0 auto auto 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+          }
         `
         : `
           .telegram-export-page {

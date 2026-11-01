@@ -83,6 +83,8 @@ describe("official telegram watermark", () => {
 
     expect(css).toContain(".telegram-export-page .page-watermark");
     expect(css).toContain("inset: 3mm;");
+    expect(css).toContain("align-items: center;");
+    expect(css).toContain("justify-content: center;");
     expect(css).toContain(".telegram-export-page .watermark-logo");
     expect(css).toContain("width: 93.75%;");
     expect(css).toContain("gap: 5mm;");

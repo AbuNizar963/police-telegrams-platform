@@ -74,10 +74,12 @@ export function buildTelegramWatermarkCss(opacity: number): string {
     .telegram-export-page .watermark-text-pattern {
       position: absolute;
       z-index: 0;
+      /* Keep all watermark ink inside a 3mm safe area and center the pattern. */
       inset: ${TELEGRAM_WATERMARK_INSET_MM}mm;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: center;
+      justify-content: center;
       gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
       overflow: hidden;
       opacity: ${safeOpacity};

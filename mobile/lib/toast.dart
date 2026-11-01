@@ -208,8 +208,8 @@ class _ToastCard extends StatelessWidget {
   };
 
   IconData get _icon => switch (kind) {
-    ToastKind.success => Icons.check_rounded,
-    ToastKind.error => Icons.close_rounded,
+    ToastKind.success => Icons.check_circle_outline,
+    ToastKind.error => Icons.error_outline,
     ToastKind.warning => Icons.priority_high_rounded,
     ToastKind.info => Icons.lightbulb_outline_rounded,
     ToastKind.loading => Icons.hourglass_top_rounded,
@@ -261,19 +261,21 @@ class _ToastCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    _title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: Color(0xFF171717),
-                      fontSize: 18,
-                      height: 1.3,
-                      fontWeight: FontWeight.w800,
+                  if (_title != message) ...[
+                    Text(
+                      _title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF171717),
+                        fontSize: 18,
+                        height: 1.3,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
+                    const SizedBox(height: 2),
+                  ],
                   Text(
                     message,
                     maxLines: 2,
@@ -296,9 +298,11 @@ class _ToastCard extends StatelessWidget {
               button: true,
               child: IconButton(
                 visualDensity: VisualDensity.standard,
-                constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+                constraints: const BoxConstraints.tightFor(
+                  width: 40,
+                  height: 40,
+                ),
                 padding: EdgeInsets.zero,
-                tooltip: 'إغلاق الإشعار',
                 onPressed: onClose,
                 icon: const Icon(
                   Icons.close_rounded,

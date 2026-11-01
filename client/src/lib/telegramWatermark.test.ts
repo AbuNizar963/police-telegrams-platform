@@ -7,10 +7,11 @@ import {
   TELEGRAM_WATERMARK_DEFAULT_OPACITY,
   TELEGRAM_WATERMARK_FONT_FAMILY,
   TELEGRAM_WATERMARK_FONT_SIZE_PT,
-  TELEGRAM_WATERMARK_GAP_MM,
+  TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM,
   TELEGRAM_WATERMARK_INSET_MM,
   TELEGRAM_WATERMARK_ROWS,
   TELEGRAM_WATERMARK_REPEAT_COUNT,
+  TELEGRAM_WATERMARK_VERTICAL_GAP_MM,
 } from "./telegramWatermark";
 
 describe("official telegram watermark", () => {
@@ -35,7 +36,8 @@ describe("official telegram watermark", () => {
     expect(TELEGRAM_WATERMARK_COLUMNS).toBe(10);
     expect(TELEGRAM_WATERMARK_ROWS).toBe(33);
     expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(330);
-    expect(TELEGRAM_WATERMARK_GAP_MM).toBe(5);
+    expect(TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM).toBe(5.9);
+    expect(TELEGRAM_WATERMARK_VERTICAL_GAP_MM).toBe(5.15);
     expect(TELEGRAM_WATERMARK_INSET_MM).toBe(3);
     expect(TELEGRAM_WATERMARK_FONT_FAMILY).toBe("Aref Ruqaa");
     expect(TELEGRAM_WATERMARK_FONT_SIZE_PT).toBe(11);
@@ -87,7 +89,8 @@ describe("official telegram watermark", () => {
     expect(css).toContain("justify-content: center;");
     expect(css).toContain(".telegram-export-page .watermark-logo");
     expect(css).toContain("width: 93.75%;");
-    expect(css).toContain("gap: 5mm;");
+    expect(css).toContain("gap: 5.15mm;");
+    expect(css).toContain("gap: 5.9mm;");
     expect(css).toContain("translateX(-10.3mm)");
     expect(css).toContain('font-family: "Aref Ruqaa", serif;');
     expect(css).toContain("font-size: 11pt;");

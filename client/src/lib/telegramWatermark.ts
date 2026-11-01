@@ -1,8 +1,9 @@
 export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
 export const TELEGRAM_WATERMARK_COLUMNS = 10;
 export const TELEGRAM_WATERMARK_ROWS = 33;
-/** Space between repeated labels in both directions. */
-export const TELEGRAM_WATERMARK_GAP_MM = 5;
+/** Calibrated with the bundled Arabic font so visible ink reaches the 3mm inset. */
+export const TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM = 5.9;
+export const TELEGRAM_WATERMARK_VERTICAL_GAP_MM = 5.15;
 export const TELEGRAM_WATERMARK_INSET_MM = 3;
 export const TELEGRAM_WATERMARK_FONT_SIZE_PT = 11;
 export const TELEGRAM_WATERMARK_DEFAULT_OPACITY = 0.12;
@@ -80,7 +81,7 @@ export function buildTelegramWatermarkCss(opacity: number): string {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+      gap: ${TELEGRAM_WATERMARK_VERTICAL_GAP_MM}mm;
       overflow: hidden;
       opacity: ${safeOpacity};
       -webkit-print-color-adjust: exact;
@@ -90,7 +91,7 @@ export function buildTelegramWatermarkCss(opacity: number): string {
       display: flex;
       flex: 0 0 auto;
       width: max-content;
-      gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+      gap: ${TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM}mm;
       white-space: nowrap;
     }
     .telegram-export-page .watermark-text-row-offset {

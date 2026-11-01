@@ -101,6 +101,7 @@ import {
   PRINT_PAGE_HEIGHT_MM,
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
+  getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "@/lib/telegramPrintLayout";
 
@@ -3976,10 +3977,46 @@ function TelegramDetail({
       activeObserver?.disconnect();
       host.replaceChildren(exportWrapper);
 
+      const watermarkTemplate =
+        paper.querySelector<HTMLElement>(".page-watermark");
+      const syncPreviewWatermarks = () => {
+        if (!watermarkTemplate) return;
+
+        const requiredPageCount = getTelegramPreviewPageCount(
+          paper.offsetHeight
+        );
+        const cloneSelector =
+          '.page-watermark[data-preview-watermark-clone="true"]';
+        let clones = Array.from(
+          paper.querySelectorAll<HTMLElement>(cloneSelector)
+        );
+        while (clones.length > requiredPageCount - 1) {
+          clones.pop()?.remove();
+        }
+        while (clones.length < requiredPageCount - 1) {
+          const clone = watermarkTemplate.cloneNode(true) as HTMLElement;
+          clone.dataset.previewWatermarkClone = "true";
+          paper.appendChild(clone);
+          clones.push(clone);
+        }
+
+        [watermarkTemplate, ...clones].forEach((watermark, pageIndex) => {
+          watermark.style.position = "absolute";
+          watermark.style.inset = "auto";
+          watermark.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX}px`;
+          watermark.style.left = "0";
+          watermark.style.right = "auto";
+          watermark.style.bottom = "auto";
+          watermark.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
+          watermark.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
+        });
+      };
+
       const fitPaperToPreview = () => {
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
+        syncPreviewWatermarks();
         const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
         const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
@@ -3996,6 +4033,7 @@ function TelegramDetail({
       fitPaperToPreview();
       activeObserver = new ResizeObserver(fitPaperToPreview);
       activeObserver.observe(host);
+      activeObserver.observe(paper);
     };
 
     // Render the official paper as soon as its document settings are ready.

@@ -8,10 +8,19 @@ import {
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
   PRINT_PAGE_WIDTH_PX,
+  getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "./telegramPrintLayout";
 
 describe("official telegram A4 print layout", () => {
+  it("counts physical A4 sheets for preview watermark placement", () => {
+    expect(getTelegramPreviewPageCount(0)).toBe(1);
+    expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX)).toBe(1);
+    expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX + 1)).toBe(2);
+    expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX * 2)).toBe(2);
+    expect(getTelegramPreviewPageCount(Number.NaN)).toBe(1);
+  });
+
   it("restores the saved 794x1123px preview with only 10mm internal padding", () => {
     const css = getTelegramPaperLayoutCss();
 
@@ -45,13 +54,14 @@ describe("official telegram A4 print layout", () => {
     expect(css).toContain(
       'content: "صفحة رقم " counter(page) " من " counter(pages);'
     );
-    expect(css).toContain(
-      ".telegram-export-page.telegram-multipage .page-watermark {"
-    );
+    expect(css).toContain(".telegram-export-page .page-watermark {");
     expect(css).toContain("position: fixed;");
     expect(css).toContain("inset: 0 auto auto 0;");
     expect(css).toContain("width: 210mm;");
     expect(css).toContain("height: 297mm;");
+    expect(css).not.toContain(
+      ".telegram-export-page.telegram-multipage .page-watermark"
+    );
   });
 
   it("uses the same backup A4 geometry in the standalone print stylesheet", () => {

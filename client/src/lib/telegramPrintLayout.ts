@@ -10,6 +10,11 @@ export const PRINT_CONTENT_HEIGHT_MM =
 // remaining A4 page is still 210x297mm, with the content inset inside it.
 export const PRINT_PAGE_AREA_HEIGHT_MM = PRINT_PAGE_HEIGHT_MM - PRINT_MARGIN_MM;
 
+export function getTelegramPreviewPageCount(heightPx: number): number {
+  if (!Number.isFinite(heightPx) || heightPx <= 0) return 1;
+  return Math.max(1, Math.ceil(heightPx / PRINT_PAGE_HEIGHT_PX));
+}
+
 /**
  * Restore the original 794x1123px A4 preview and full-page print geometry.
  * The only layout adjustment from the saved backup is a 10mm inset.
@@ -69,8 +74,8 @@ export function getTelegramPaperLayoutCss(
         min-height: ${PRINT_PAGE_AREA_HEIGHT_MM}mm${suffix};
         padding: ${PRINT_MARGIN_MM}mm ${PRINT_MARGIN_MM}mm 0${suffix};
       }
-      /* The page counter reserves a bottom margin; watermark still spans the full sheet. */
-      ${multiPageSelector} .page-watermark {
+      /* Fixed watermarks use the physical A4 sheet, not the shorter page area. */
+      ${selector} .page-watermark {
         position: fixed${suffix};
         inset: 0 auto auto 0${suffix};
         width: ${PRINT_PAGE_WIDTH_MM}mm${suffix};

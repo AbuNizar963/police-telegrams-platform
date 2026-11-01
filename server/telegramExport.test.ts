@@ -41,12 +41,13 @@ describe("telegram export page geometry", () => {
     expect(css).toContain("min-height: 297mm !important;");
     expect(css).toContain("min-height: 287mm !important;");
     expect(css).toContain("padding: 10mm 10mm 0 !important;");
-    expect(css).toContain(
-      ".telegram-export-page.telegram-multipage .page-watermark"
-    );
+    expect(css).toContain(".telegram-export-page .page-watermark");
     expect(css).toContain("inset: 0 auto auto 0 !important;");
     expect(css).toContain("width: 210mm !important;");
     expect(css).toContain("height: 297mm !important;");
+    expect(css).not.toContain(
+      ".telegram-export-page.telegram-multipage .page-watermark"
+    );
     expect(css).not.toMatch(/width:\s*190mm/);
     expect(css).not.toMatch(/margin:\s*10mm/);
   });

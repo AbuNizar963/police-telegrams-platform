@@ -1,12 +1,5 @@
 import { useTheme } from "next-themes";
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Hourglass,
-  Info,
-  X,
-} from "lucide-react";
+import { Check, Lightbulb, LoaderCircle, X } from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { useEffect } from "react";
 
@@ -80,22 +73,29 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       closeButton
       icons={{
-        success: (
-          <CheckCircle2 aria-hidden="true" size={21} strokeWidth={1.8} />
-        ),
-        error: <AlertCircle aria-hidden="true" size={21} strokeWidth={1.8} />,
+        success: <Check aria-hidden="true" size={28} strokeWidth={2.8} />,
+        error: <X aria-hidden="true" size={25} strokeWidth={2.6} />,
         warning: (
-          <AlertTriangle aria-hidden="true" size={21} strokeWidth={1.8} />
+          <span aria-hidden="true" className="toast-warning-mark">
+            !
+          </span>
         ),
-        info: <Info aria-hidden="true" size={21} strokeWidth={1.8} />,
-        loading: <Hourglass aria-hidden="true" size={21} strokeWidth={1.8} />,
-        close: <X aria-hidden="true" size={21} strokeWidth={2} />,
+        info: <Lightbulb aria-hidden="true" size={26} strokeWidth={2} />,
+        loading: (
+          <LoaderCircle
+            aria-hidden="true"
+            className="animate-spin"
+            size={25}
+            strokeWidth={2.2}
+          />
+        ),
+        close: <X aria-hidden="true" size={24} strokeWidth={1.8} />,
       }}
       expand={false}
-      gap={10}
+      gap={14}
       visibleToasts={1}
-      offset="calc(env(safe-area-inset-top, 0px) + 12px)"
-      mobileOffset="calc(env(safe-area-inset-top, 0px) + 12px)"
+      offset="calc(env(safe-area-inset-top, 0px) + 16px)"
+      mobileOffset="calc(env(safe-area-inset-top, 0px) + 16px)"
       className="toaster group"
       toastOptions={{
         duration: 4000,
@@ -104,8 +104,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          "--width": "min(520px, calc(100vw - 32px))",
-          "--border-radius": "16px",
+          "--width": "min(650px, calc(100vw - 32px))",
+          "--border-radius": "20px",
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",

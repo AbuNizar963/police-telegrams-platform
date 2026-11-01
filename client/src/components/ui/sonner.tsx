@@ -1,4 +1,12 @@
 import { useTheme } from "next-themes";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Hourglass,
+  Info,
+  X,
+} from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { useEffect } from "react";
 
@@ -71,20 +79,33 @@ const Toaster = ({ ...props }: ToasterProps) => {
       dir="rtl"
       richColors
       closeButton
-      expand
+      icons={{
+        success: (
+          <CheckCircle2 aria-hidden="true" size={23} strokeWidth={1.8} />
+        ),
+        error: <AlertCircle aria-hidden="true" size={23} strokeWidth={1.8} />,
+        warning: (
+          <AlertTriangle aria-hidden="true" size={23} strokeWidth={1.8} />
+        ),
+        info: <Info aria-hidden="true" size={23} strokeWidth={1.8} />,
+        loading: <Hourglass aria-hidden="true" size={23} strokeWidth={1.8} />,
+        close: <X aria-hidden="true" size={19} strokeWidth={2} />,
+      }}
+      expand={false}
       gap={10}
-      visibleToasts={4}
-      offset="calc(env(safe-area-inset-top, 0px) + 14px)"
-      mobileOffset="calc(env(safe-area-inset-top, 0px) + 10px)"
+      visibleToasts={1}
+      offset="calc(env(safe-area-inset-top, 0px) + 12px)"
+      mobileOffset="calc(env(safe-area-inset-top, 0px) + 12px)"
       className="toaster group"
       toastOptions={{
-        duration: 4500,
+        duration: 4000,
         closeButton: true,
+        closeButtonAriaLabel: "إغلاق الإشعار",
       }}
       style={
         {
-          "--width": "min(420px, calc(100vw - 32px))",
-          "--border-radius": "14px",
+          "--width": "min(520px, calc(100vw - 32px))",
+          "--border-radius": "16px",
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",

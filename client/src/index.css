@@ -200,60 +200,68 @@
     max-height: 100%;
   }
 
-  /* Production toast-card redesign marker: 2026-11-01 */
   [data-sonner-toaster].toaster {
     font-family: "Cairo", sans-serif;
-    --width: min(420px, calc(100vw - 24px));
+    --width: min(520px, calc(100vw - 32px));
     --border-radius: 16px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] {
     position: relative;
-    min-height: 76px;
+    min-height: 54px;
     padding: 14px 16px;
+    padding-inline-end: 42px;
     overflow: hidden;
-    border: 1.5px solid var(--toast-accent, var(--border));
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: color-mix(
-      in srgb,
-      var(--toast-accent, var(--popover)) 9%,
-      var(--popover)
-    );
-    box-shadow:
-      0 8px 24px rgb(16 35 63 / 0.1),
-      0 2px 6px rgb(16 35 63 / 0.04);
-    color: var(--foreground);
+    background: var(--popover);
+    box-shadow: 0 8px 24px rgb(13 27 42 / 0.15);
+    color: var(--popover-foreground);
     transition:
       opacity 180ms ease,
-      filter 180ms ease,
       box-shadow 180ms ease;
   }
 
+  [data-sonner-toaster].toaster [data-sonner-toast]::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    border-radius: inherit;
+    background: var(--toast-accent, var(--border));
+    content: "";
+  }
+
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="success"] {
-    --toast-accent: #16a36a;
+    --toast-accent: #16845b;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="error"] {
-    --toast-accent: #dc4050;
+    --toast-accent: #be3a3a;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="warning"] {
-    --toast-accent: #d99312;
+    --toast-accent: #b97712;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="info"] {
-    --toast-accent: #3180d7;
+    --toast-accent: #2865a0;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="loading"] {
-    --toast-accent: #78869a;
+    --toast-accent: #53647a;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.45;
     letter-spacing: -0.01em;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    text-overflow: ellipsis;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-description] {
@@ -264,28 +272,33 @@
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
-    width: 34px;
-    height: 34px;
-    flex: 0 0 34px;
-    padding: 7px;
-    border-radius: 999px;
-    background: var(--toast-accent, var(--border));
-    color: white;
+    width: 23px;
+    height: 23px;
+    flex: 0 0 23px;
+    color: var(--toast-accent, var(--muted-foreground));
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] svg {
-    color: white;
+    width: 23px;
+    height: 23px;
+    color: var(--toast-accent, var(--muted-foreground));
     stroke: currentColor;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
+    top: 50%;
+    right: auto;
+    left: 4px;
     width: 32px;
     height: 32px;
     min-width: 32px;
     min-height: 32px;
-    border-radius: 999px;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 10px;
     color: var(--toast-accent, var(--muted-foreground));
-    background: transparent;
+    background: var(--popover);
     transition:
       background-color 150ms ease,
       color 150ms ease,
@@ -293,7 +306,8 @@
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button]:hover {
-    transform: scale(1.04);
+    transform: translateY(-50%) scale(1.04);
+    background: var(--muted);
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast]:focus-visible,
@@ -305,9 +319,7 @@
   }
 
   .dark [data-sonner-toaster].toaster [data-sonner-toast] {
-    box-shadow:
-      0 8px 24px rgb(0 0 0 / 0.28),
-      0 2px 6px rgb(0 0 0 / 0.16);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -318,23 +330,23 @@
     @keyframes toast-arrive {
       from {
         opacity: 0;
-        filter: blur(3px);
+        translate: 0 -8px;
       }
 
       to {
         opacity: 1;
-        filter: blur(0);
+        translate: 0 0;
       }
     }
   }
 
   @media (max-width: 480px) {
     [data-sonner-toaster].toaster {
-      --width: calc(100vw - 20px);
+      --width: calc(100vw - 32px);
     }
 
     [data-sonner-toaster].toaster [data-sonner-toast] {
-      padding: 14px 15px;
+      padding: 14px 16px;
     }
   }
 }

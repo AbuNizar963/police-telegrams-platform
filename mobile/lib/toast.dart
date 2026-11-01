@@ -144,7 +144,7 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
                         opacity: _visible ? 1 : 0,
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(
-                            maxWidth: 520,
+                            maxWidth: 650,
                             maxHeight: 160,
                           ),
                           child: _ToastCard(
@@ -364,7 +364,7 @@ class _FallbackToastView extends StatelessWidget {
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 160),
+              constraints: const BoxConstraints(maxWidth: 650, maxHeight: 160),
               child: _ToastCard(message: message, kind: kind, onClose: close),
             ),
           ),

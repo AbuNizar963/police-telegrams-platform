@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasMultiPageTelegramLayout,
   isAllowedExportResourceUrl,
   isSafeExportHtml,
   withPngDpiMetadata,
@@ -126,6 +127,24 @@ describe("telegram export resource isolation", () => {
     ]) {
       expect(isAllowedExportResourceUrl(url)).toBe(false);
     }
+  });
+});
+
+describe("telegram multi-page image export", () => {
+  it("recognizes a telegram marked for multi-page output", () => {
+    expect(
+      hasMultiPageTelegramLayout(
+        '<article class="telegram-export-page telegram-multipage"></article>'
+      )
+    ).toBe(true);
+  });
+
+  it("keeps a one-page telegram as a single PNG", () => {
+    expect(
+      hasMultiPageTelegramLayout(
+        '<article class="telegram-export-page"></article>'
+      )
+    ).toBe(false);
   });
 });
 

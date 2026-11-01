@@ -61,6 +61,7 @@ import {
   buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
 } from "@/lib/telegramWatermark";
+import { pdfPagesToPngArchive } from "@/lib/telegramPageImageArchive";
 import {
   resolveTelegramExportLogo,
   resolveTelegramExportOrganizationId,
@@ -4207,21 +4208,19 @@ function TelegramDetail({
     ) {
       throw new Error("تعذر تضمين خطوط العربية في الوثيقة");
     }
-    if (format === "pdf") {
-      const measurementHost = document.createElement("div");
-      measurementHost.style.cssText =
-        "position:fixed;left:-20000px;top:0;visibility:hidden;pointer-events:none";
-      measurementHost.appendChild(wrapper);
-      document.body.appendChild(measurementHost);
-      try {
-        await document.fonts.ready;
-        await new Promise<void>(resolve => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        });
-        applyTelegramPageNumbering(paper);
-      } finally {
-        measurementHost.remove();
-      }
+    const measurementHost = document.createElement("div");
+    measurementHost.style.cssText =
+      "position:fixed;left:-20000px;top:0;visibility:hidden;pointer-events:none";
+    measurementHost.appendChild(wrapper);
+    document.body.appendChild(measurementHost);
+    try {
+      await document.fonts.ready;
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      applyTelegramPageNumbering(paper);
+    } finally {
+      measurementHost.remove();
     }
     reportExportProgress(82, "اكتمل تضمين الخطوط العربية");
 
@@ -4260,6 +4259,12 @@ function TelegramDetail({
       );
     }
     const renderedDocument = await response.blob();
+    if (
+      format === "png" &&
+      response.headers.get("Content-Type")?.includes("application/pdf")
+    ) {
+      return pdfPagesToPngArchive(renderedDocument);
+    }
     reportExportProgress(100, "اكتمل إنشاء ملف الوثيقة");
     return renderedDocument;
   };
@@ -4503,10 +4508,18 @@ function TelegramDetail({
       const outputTimestamp = await auditDocumentOutput("download", format);
       const blob = await renderOfficialDocument(format, outputTimestamp);
       const isPdf = format === "pdf";
+      const isPngArchive = blob.type === "application/zip";
+      const extension = isPdf ? "pdf" : isPngArchive ? "zip" : "png";
       const file = new File(
         [blob],
-        `${getTelegramExportFileBaseName(telegram)}.${isPdf ? "pdf" : "png"}`,
-        { type: isPdf ? "application/pdf" : "image/png" }
+        `${getTelegramExportFileBaseName(telegram)}.${extension}`,
+        {
+          type: isPdf
+            ? "application/pdf"
+            : isPngArchive
+              ? "application/zip"
+              : "image/png",
+        }
       );
 
       if (navigator.canShare?.({ files: [file] })) {
@@ -4521,11 +4534,17 @@ function TelegramDetail({
           text: telegram.subject,
         });
         toast.info(
-          "تم تجهيز الملف؛ اضغط زر المشاركة مرة أخرى لفتح خيارات المشاركة."
+          isPngArchive
+            ? "تم تجهيز صور صفحات البرقية؛ اضغط زر المشاركة مرة أخرى لإرسالها."
+            : "تم تجهيز الملف؛ اضغط زر المشاركة مرة أخرى لفتح خيارات المشاركة."
         );
       } else {
         downloadExportFile(file);
-        toast.info("المتصفح لا يدعم مشاركة الملفات مباشرة؛ تم تنزيل الملف");
+        toast.info(
+          isPngArchive
+            ? "المتصفح لا يدعم مشاركة الملفات مباشرة؛ تم تنزيل ملف ZIP الذي يحتوي صور الصفحات."
+            : "المتصفح لا يدعم مشاركة الملفات مباشرة؛ تم تنزيل الملف"
+        );
       }
     } catch (error) {
       toast.error(

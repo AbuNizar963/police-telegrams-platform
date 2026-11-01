@@ -106,6 +106,12 @@ export function isAllowedExportResourceUrl(url: string): boolean {
   );
 }
 
+export function hasMultiPageTelegramLayout(html: string): boolean {
+  return /<article\b[^>]*class=["'][^"']*\btelegram-export-page\b[^"']*\btelegram-multipage\b[^"']*["']/i.test(
+    html
+  );
+}
+
 function getChromiumExecutablePath(): string {
   return process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 }
@@ -133,7 +139,11 @@ export async function renderTelegramDocument(
 ) {
   const browser = await launchBrowser();
   try {
-    const createReadyPage = async (deviceScaleFactor: number) => {
+    const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
+    const createReadyPage = async (
+      deviceScaleFactor: number,
+      printLayout: boolean
+    ) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },
         deviceScaleFactor,
@@ -149,7 +159,7 @@ export async function renderTelegramDocument(
           }
           await route.abort("blockedbyclient");
         });
-        await page.emulateMedia({ media: "print" });
+        await page.emulateMedia({ media: printLayout ? "print" : "screen" });
         await page.setContent(
           html.replace(
             "</head>",
@@ -157,24 +167,42 @@ export async function renderTelegramDocument(
               html, body {
                 margin: 0 !important;
                 padding: 0 !important;
-                width: 100vw !important;
+                width: auto !important;
                 min-height: 0 !important;
                 background: #fff !important;
               }
               @page {
-                size: 210mm 297mm;
-                margin: 0;
+                size: A4 portrait;
+                margin: 10mm;
               }
-              .telegram-export-page {
-                width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                max-height: 297mm !important;
-                display: block !important;
-                margin: 0 auto !important;
-                overflow: hidden !important;
-                break-inside: avoid !important;
-                page-break-inside: avoid !important;
+              ${
+                printLayout
+                  ? `
+                .telegram-export-page {
+                  width: 190mm !important;
+                  height: auto !important;
+                  min-height: 277mm !important;
+                  max-height: none !important;
+                  display: block !important;
+                  margin: 0 auto !important;
+                  overflow: visible !important;
+                  break-inside: auto !important;
+                  page-break-inside: auto !important;
+                }
+                .telegram-export-page .page-watermark { position: fixed !important; }
+              `
+                  : `
+                .telegram-export-page {
+                  width: 210mm !important;
+                  height: 297mm !important;
+                  min-height: 297mm !important;
+                  max-height: 297mm !important;
+                  padding: 10mm !important;
+                  display: block !important;
+                  margin: 0 auto !important;
+                  overflow: hidden !important;
+                }
+              `
               }
             </style></head>`
           ),
@@ -226,15 +254,12 @@ export async function renderTelegramDocument(
     };
 
     if (format === "pdf") {
-      const page = await createReadyPage(1);
+      const page = await createReadyPage(1, true);
       try {
         return {
           body: await page.pdf({
-            width: "210mm",
-            height: "297mm",
             printBackground: true,
-            preferCSSPageSize: false,
-            margin: { top: "0", right: "0", bottom: "0", left: "0" },
+            preferCSSPageSize: true,
             tagged: true,
           }),
           contentType: "application/pdf",
@@ -245,8 +270,25 @@ export async function renderTelegramDocument(
       }
     }
 
+    if (isMultiPagePng) {
+      const page = await createReadyPage(1, true);
+      try {
+        return {
+          body: await page.pdf({
+            printBackground: true,
+            preferCSSPageSize: true,
+            tagged: true,
+          }),
+          contentType: "application/pdf",
+          fileName: "telegram-pages.pdf",
+        };
+      } finally {
+        await page.close();
+      }
+    }
+
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
-      const page = await createReadyPage(deviceScaleFactor);
+      const page = await createReadyPage(deviceScaleFactor, false);
       try {
         const renderedPng = await page.screenshot({
           type: "png",

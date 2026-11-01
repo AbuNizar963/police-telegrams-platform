@@ -1,9 +1,8 @@
 export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
-export const TELEGRAM_WATERMARK_COLUMNS = 10;
+export const TELEGRAM_WATERMARK_COLUMNS = 13;
 export const TELEGRAM_WATERMARK_ROWS = 33;
-/** Calibrated with the bundled Arabic font so visible ink reaches the 3mm inset. */
-export const TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM = 5.9;
-export const TELEGRAM_WATERMARK_VERTICAL_GAP_MM = 5.15;
+/** Calibrated against the bundled font in Chromium's A4 PDF output. */
+export const TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM = 6.16;
 export const TELEGRAM_WATERMARK_INSET_MM = 3;
 export const TELEGRAM_WATERMARK_FONT_SIZE_PT = 11;
 export const TELEGRAM_WATERMARK_DEFAULT_OPACITY = 0.12;
@@ -75,13 +74,13 @@ export function buildTelegramWatermarkCss(opacity: number): string {
     .telegram-export-page .watermark-text-pattern {
       position: absolute;
       z-index: 0;
-      /* Keep all watermark ink inside a 3mm safe area and center the pattern. */
-      inset: ${TELEGRAM_WATERMARK_INSET_MM}mm;
+      /* Aref Ruqaa glyph bounds are inset from line boxes; these offsets yield 3mm visible ink margins. */
+      inset: 2.4mm 3.2mm ${TELEGRAM_WATERMARK_INSET_MM}mm;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: ${TELEGRAM_WATERMARK_VERTICAL_GAP_MM}mm;
+      justify-content: space-between;
+      gap: 0;
       overflow: hidden;
       opacity: ${safeOpacity};
       -webkit-print-color-adjust: exact;

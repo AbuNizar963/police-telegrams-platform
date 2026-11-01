@@ -11,7 +11,6 @@ import {
   TELEGRAM_WATERMARK_INSET_MM,
   TELEGRAM_WATERMARK_ROWS,
   TELEGRAM_WATERMARK_REPEAT_COUNT,
-  TELEGRAM_WATERMARK_VERTICAL_GAP_MM,
 } from "./telegramWatermark";
 
 describe("official telegram watermark", () => {
@@ -33,11 +32,10 @@ describe("official telegram watermark", () => {
     );
     expect(html).not.toContain("وزارة التربية");
     expect(OFFICIAL_MINISTRY_NAME).toBe("وزارة الداخلية");
-    expect(TELEGRAM_WATERMARK_COLUMNS).toBe(10);
+    expect(TELEGRAM_WATERMARK_COLUMNS).toBe(13);
     expect(TELEGRAM_WATERMARK_ROWS).toBe(33);
-    expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(330);
-    expect(TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM).toBe(5.9);
-    expect(TELEGRAM_WATERMARK_VERTICAL_GAP_MM).toBe(5.15);
+    expect(TELEGRAM_WATERMARK_REPEAT_COUNT).toBe(429);
+    expect(TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM).toBe(6.16);
     expect(TELEGRAM_WATERMARK_INSET_MM).toBe(3);
     expect(TELEGRAM_WATERMARK_FONT_FAMILY).toBe("Aref Ruqaa");
     expect(TELEGRAM_WATERMARK_FONT_SIZE_PT).toBe(11);
@@ -84,13 +82,12 @@ describe("official telegram watermark", () => {
     const css = buildTelegramWatermarkCss(0.12);
 
     expect(css).toContain(".telegram-export-page .page-watermark");
-    expect(css).toContain("inset: 3mm;");
+    expect(css).toContain("inset: 2.4mm 3.2mm 3mm;");
     expect(css).toContain("align-items: center;");
-    expect(css).toContain("justify-content: center;");
+    expect(css).toContain("justify-content: space-between;");
     expect(css).toContain(".telegram-export-page .watermark-logo");
     expect(css).toContain("width: 93.75%;");
-    expect(css).toContain("gap: 5.15mm;");
-    expect(css).toContain("gap: 5.9mm;");
+    expect(css).toContain("gap: 6.16mm;");
     expect(css).toContain("translateX(-10.3mm)");
     expect(css).toContain('font-family: "Aref Ruqaa", serif;');
     expect(css).toContain("font-size: 11pt;");

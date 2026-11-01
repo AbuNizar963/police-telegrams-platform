@@ -64,9 +64,15 @@ void main() {
         'inset:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;',
       ),
     );
+    expect(html, contains('gap:5.15mm;overflow:hidden;'));
+    expect(html, contains('width:max-content;gap:5.9mm;white-space:nowrap'));
     expect(html, contains('inset: 0 auto auto 0;'));
     expect(html, contains('width: 210mm;'));
     expect(html, contains('height: 297mm;'));
+    expect(
+      html,
+      contains('.telegram-export-page .page-watermark {\n    position: fixed;'),
+    );
     expect(
       html,
       contains(

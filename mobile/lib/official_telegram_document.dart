@@ -31,7 +31,8 @@ const _documentImageExportDpi = 300.0;
 // A4 watermark mosaic; keep row count, spacing, and edge inset aligned with web.
 const _ministryWatermarkColumns = 10;
 const _ministryWatermarkRows = 33;
-const _ministryWatermarkGapCss = '5mm';
+const _ministryWatermarkHorizontalGapCss = '5.9mm';
+const _ministryWatermarkVerticalGapCss = '5.15mm';
 const _ministryWatermarkInsetCss = '3mm';
 const _documentFooterPersonIcon = '''<svg class="footer-icon" data-icon="person" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
   <circle cx="12" cy="8" r="3.5" />
@@ -1734,8 +1735,8 @@ $fontFaces
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:$_ministryWatermarkGapCss;overflow:hidden;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkGapCss;white-space:nowrap}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:$_ministryWatermarkVerticalGapCss;overflow:hidden;opacity:$watermarkOpacity}
+.telegram-export-page .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
 .telegram-export-page .watermark-text-row-offset{transform:translateX(-10.3mm)}
 .telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt;font-weight:400;line-height:1;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:2}
@@ -1832,9 +1833,9 @@ $fontFaces
     min-height: ${_documentMultiPageAreaHeightMm}mm;
     padding: ${_documentMarginMm}mm ${_documentMarginMm}mm 0;
   }
-  .telegram-export-page .page-watermark { position: fixed; }
-  /* Keep the watermark on full A4; the page counter uses the reserved 10mm footer. */
-  .telegram-export-page.telegram-multipage .page-watermark {
+  /* Fixed watermarks use the physical A4 sheet, not the shorter page area. */
+  .telegram-export-page .page-watermark {
+    position: fixed;
     inset: 0 auto auto 0;
     width: ${_documentPageWidthMm}mm;
     height: ${_documentPageHeightMm}mm;

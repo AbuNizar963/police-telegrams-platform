@@ -31,7 +31,7 @@ void main() {
     'createdAt': '2026-10-15T00:00:00.000Z',
   };
 
-  test('keeps physical A4 size and applies 10mm content insets', () {
+  test('keeps A4 with one 10mm inset and no outer page margin', () {
     final html = buildOfficialTelegramHtml(
       telegram: telegram(),
       settings: const {},
@@ -42,6 +42,7 @@ void main() {
 
     expect(html, contains('size: A4 portrait;'));
     expect(html, contains('margin: 0;'));
+    expect(html, isNot(contains('margin: 10mm')));
     expect(
       html,
       contains(

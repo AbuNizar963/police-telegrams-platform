@@ -1805,6 +1805,7 @@ $fontFaces
 }
 @page {
   size: A4 portrait;
+  /* The only 10mm inset is inside the A4 sheet, not in the page box. */
   margin: 0;
 }
 @page telegram-multipage {

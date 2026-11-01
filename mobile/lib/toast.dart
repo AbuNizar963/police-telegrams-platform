@@ -260,8 +260,8 @@ class _ToastCard extends StatelessWidget {
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       color: Color(0xFF171717),
-                      fontSize: 16,
-                      height: 1.35,
+                      fontSize: 18,
+                      height: 1.3,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -273,8 +273,8 @@ class _ToastCard extends StatelessWidget {
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       color: Color(0xFF55585D),
-                      fontSize: 14,
-                      height: 1.45,
+                      fontSize: 16,
+                      height: 1.4,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -287,7 +287,9 @@ class _ToastCard extends StatelessWidget {
               label: 'إغلاق الإشعار',
               button: true,
               child: IconButton(
-                visualDensity: VisualDensity.compact,
+                visualDensity: VisualDensity.standard,
+                constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+                padding: EdgeInsets.zero,
                 tooltip: 'إغلاق الإشعار',
                 onPressed: onClose,
                 icon: const Icon(

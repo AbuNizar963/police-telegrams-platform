@@ -1008,7 +1008,7 @@ class _OfficialTelegramDocumentPageState
         automaticallyImplyLeading: false,
         leadingWidth: 0,
         leading: const SizedBox.shrink(),
-        toolbarHeight: 88,
+        toolbarHeight: 80,
         titleSpacing: 12,
         backgroundColor: const Color(0xFFF8F7F2),
         foregroundColor: const Color(0xFF101C35),
@@ -1212,7 +1212,7 @@ class _OfficialTelegramDocumentPageState
                   ),
                 Expanded(
                   child: Container(
-                    color: const Color(0xFFF8F8F6),
+                    color: Colors.white,
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       minScale: 1,

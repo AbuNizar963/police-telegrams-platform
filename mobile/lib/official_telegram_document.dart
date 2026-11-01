@@ -28,12 +28,11 @@ const _documentMultiPageAreaHeightMm =
     _documentPageHeightMm - _documentMarginMm;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
-// A4 watermark mosaic; keep row count, spacing, and edge inset aligned with web.
-const _ministryWatermarkColumns = 10;
+// A4 watermark mosaic; calibrated against the web PDF for visible 3mm margins.
+const _ministryWatermarkColumns = 13;
 const _ministryWatermarkRows = 33;
-const _ministryWatermarkHorizontalGapCss = '5.9mm';
-const _ministryWatermarkVerticalGapCss = '5.15mm';
-const _ministryWatermarkInsetCss = '3mm';
+const _ministryWatermarkHorizontalGapCss = '6.16mm';
+const _ministryWatermarkInsetCss = '2.4mm 3.2mm 3mm';
 const _documentFooterPersonIcon = '''<svg class="footer-icon" data-icon="person" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
   <circle cx="12" cy="8" r="3.5" />
   <path d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6" />
@@ -1735,7 +1734,7 @@ $fontFaces
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:$_ministryWatermarkVerticalGapCss;overflow:hidden;opacity:$watermarkOpacity}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;overflow:hidden;opacity:$watermarkOpacity}
 .telegram-export-page .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
 .telegram-export-page .watermark-text-row-offset{transform:translateX(-10.3mm)}
 .telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt;font-weight:400;line-height:1;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}

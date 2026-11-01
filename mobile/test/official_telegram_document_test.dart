@@ -52,6 +52,10 @@ void main() {
     expect(html, contains('@page telegram-multipage {'));
     expect(html, contains('margin: 0 0 10mm 0;'));
     expect(html, contains('page: telegram-multipage;'));
+    expect(
+      RegExp(r'<span>وزارة الداخلية</span>').allMatches(html).length,
+      429,
+    );
     expect(html, contains('width: 210mm;'));
     expect(html, contains('min-height: 297mm;'));
     expect(html, contains('padding: 10mm;'));
@@ -61,11 +65,11 @@ void main() {
     expect(
       html,
       contains(
-        'inset:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;',
+        'inset:2.4mm 3.2mm 3mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;',
       ),
     );
-    expect(html, contains('gap:5.15mm;overflow:hidden;'));
-    expect(html, contains('width:max-content;gap:5.9mm;white-space:nowrap'));
+    expect(html, contains('overflow:hidden;opacity:0.12'));
+    expect(html, contains('width:max-content;gap:6.16mm;white-space:nowrap'));
     expect(html, contains('inset: 0 auto auto 0;'));
     expect(html, contains('width: 210mm;'));
     expect(html, contains('height: 297mm;'));
@@ -385,23 +389,18 @@ void main() {
       );
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(html, isNot(contains('وزارة التربية')));
-      expect(html, contains('inset:3mm;'));
-      expect(html, contains('gap:5.15mm;'));
+      expect(html, contains('inset:2.4mm 3.2mm 3mm;'));
       expect(html, contains('font-size:11pt'));
       expect(html, contains('translateX(-10.3mm)'));
       expect(html, contains('font-family: "Aref Ruqaa"'));
       expect(html, contains('watermark-text-row-offset'));
-      expect(
-        html,
-        contains('width:max-content;gap:5.9mm;white-space:nowrap'),
-      );
+      expect(html, contains('width:max-content;gap:6.16mm;white-space:nowrap'));
       expect(
         html,
         contains(
-          'watermark-text-pattern{position:absolute;z-index:0;inset:3mm;',
+          'watermark-text-pattern{position:absolute;z-index:0;inset:2.4mm 3.2mm 3mm;',
         ),
       );
-      expect(html, contains('inset:3mm;'));
       expect(html, contains('opacity:0.12'));
       expect(html, contains('src: url("data:font/ttf;base64,AA==")'));
       expect(html, contains('object-fit:contain;opacity:0.12'));

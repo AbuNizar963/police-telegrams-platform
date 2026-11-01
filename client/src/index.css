@@ -210,7 +210,7 @@
     position: relative;
     min-height: 54px;
     max-height: 160px;
-    padding: 15px 14px;
+    padding: 0 14px;
     padding-inline-end: 58px;
     overflow: hidden;
     border: 1.5px solid var(--toast-accent, var(--border));
@@ -252,6 +252,7 @@
     font-weight: 600;
     line-height: 1.45;
     letter-spacing: normal;
+    padding-block: 15px;
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
@@ -341,7 +342,7 @@
     }
 
     [data-sonner-toaster].toaster [data-sonner-toast] {
-      padding: 15px 14px;
+      padding: 0 14px;
       padding-inline-end: 58px;
     }
   }

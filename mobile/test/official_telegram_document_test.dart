@@ -40,32 +40,27 @@ void main() {
       fontDataUrls: fonts,
     );
 
-    expect(html, contains('@page{size:A4 portrait;margin:0}'));
+    expect(html, contains('size: A4 portrait;'));
+    expect(html, contains('margin: 0;'));
     expect(
       html,
       contains(
-        'box-sizing:border-box;width:210mm;min-height:297mm;padding:10mm;',
+        'box-sizing:border-box;width:794px;min-height:1123px;padding:10mm;',
       ),
     );
-    expect(
-      html,
-      contains('@page telegram-multipage{size:A4 portrait;margin:10mm 0;'),
-    );
-    expect(
-      html,
-      contains(
-        '.telegram-export-page.telegram-multipage{page:telegram-multipage;min-height:0;padding:0 10mm}',
-      ),
-    );
-    expect(
-      html,
-      contains('.telegram-export-page{width:210mm;min-height:297mm}'),
-    );
+    expect(html, contains('@page telegram-multipage {'));
+    expect(html, contains('margin: 0 0 10mm 0;'));
+    expect(html, contains('page: telegram-multipage;'));
+    expect(html, contains('width: 210mm;'));
+    expect(html, contains('min-height: 297mm;'));
+    expect(html, contains('padding: 10mm;'));
+    expect(html, contains('min-height: 287mm;'));
+    expect(html, contains('padding: 10mm 10mm 0;'));
     expect(html, contains('counter(page) " من " counter(pages)'));
     expect(
       html,
       contains(
-        "page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > (297 * 96 / 25.4) + 1);",
+        "page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > 1124);",
       ),
     );
     expect(html, isNot(contains('width:190mm')));
@@ -102,10 +97,10 @@ void main() {
       expect(
         html,
         contains(
-          'box-sizing:border-box;width:210mm;min-height:297mm;padding:10mm;',
+          'box-sizing:border-box;width:794px;min-height:1123px;padding:10mm;',
         ),
       );
-      expect(html, contains('@page{size:A4 portrait;margin:0}'));
+      expect(html, contains('size: A4 portrait;'));
       expect(html, contains('@page telegram-multipage'));
       expect(html, contains('counter(page) " من " counter(pages)'));
       expect(html, contains('classList.toggle(\'telegram-multipage\''));

@@ -19,7 +19,13 @@ import 'telegram_display.dart';
 import 'telegram_report_labels.dart';
 import 'toast.dart';
 
+const _documentPageWidth = 794;
+const _documentPageHeight = 1123;
+const _documentPageWidthMm = 210;
+const _documentPageHeightMm = 297;
 const _documentMarginMm = 10;
+const _documentMultiPageAreaHeightMm =
+    _documentPageHeightMm - _documentMarginMm;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
 // A4 watermark mosaic; keep row count, spacing, and edge inset aligned with web.
@@ -1724,7 +1730,7 @@ String buildOfficialTelegramHtml({
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8" />
 <style>
 $fontFaces
-.telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:210mm;min-height:297mm;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
@@ -1797,10 +1803,36 @@ $fontFaces
   justify-content: flex-end;
   text-align: left;
 }
-@page{size:A4 portrait;margin:0}
-@page telegram-multipage{size:A4 portrait;margin:${_documentMarginMm}mm 0;@bottom-center{content:"صفحة رقم " counter(page) " من " counter(pages);font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:9pt;color:#667085}}
-.telegram-export-page.telegram-multipage{page:telegram-multipage;min-height:0;padding:0 ${_documentMarginMm}mm}
-@media print{html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}.telegram-export-page.telegram-multipage{min-height:0}.telegram-export-page .page-watermark{position:fixed}}
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+@page telegram-multipage {
+  size: A4 portrait;
+  margin: 0 0 ${_documentMarginMm}mm 0;
+  @bottom-center {
+    content: "صفحة رقم " counter(page) " من " counter(pages);
+    font-family: "Cairo", Tahoma, Arial, sans-serif;
+    font-size: 9pt;
+    color: #667085;
+  }
+}
+.telegram-export-page.telegram-multipage { page: telegram-multipage; }
+@media print {
+  html, body { margin: 0; padding: 0; background: #fff; }
+  .telegram-export-page {
+    width: ${_documentPageWidthMm}mm;
+    min-height: ${_documentPageHeightMm}mm;
+    padding: ${_documentMarginMm}mm;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  .telegram-export-page.telegram-multipage {
+    min-height: ${_documentMultiPageAreaHeightMm}mm;
+    padding: ${_documentMarginMm}mm ${_documentMarginMm}mm 0;
+  }
+  .telegram-export-page .page-watermark { position: fixed; }
+}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
 $watermark
@@ -1841,7 +1873,7 @@ $importNotesMarkup
   const updatePagination = () => {
     const page = document.querySelector('.telegram-export-page');
     if (!page) return;
-    page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > (297 * 96 / 25.4) + 1);
+    page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > ${_documentPageHeight + 1});
   };
   if (document.fonts?.ready) document.fonts.ready.then(() => requestAnimationFrame(updatePagination));
   window.addEventListener('load', updatePagination, { once: true });

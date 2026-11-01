@@ -24,6 +24,9 @@ describe("document settings for export", () => {
     expect(fetchSettings).toHaveBeenCalledOnce();
   });
 
+  it("defaults the watermark opacity to 12 percent", () => {
+    expect(DEFAULT_PLATFORM_DOCUMENT_SETTINGS.watermarkOpacityPercent).toBe(12);
+  });
   it("accepts defaults explicitly returned by the server", async () => {
     await expect(
       loadDocumentSettingsForExport(async () => ({

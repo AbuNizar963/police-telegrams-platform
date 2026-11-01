@@ -165,10 +165,19 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
-// Microsoft Word "Narrow" margins: 0.5in on every side.
-const PRINT_MARGIN_MM = 12.7;
+// Official A4 page-edge margins are 3mm on all four sides.
+const PRINT_MARGIN_MM = 3;
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const TELEGRAMS_PER_PAGE = 10;
+const EXPORT_AREF_RUQAA_FONT_FACE = `
+  @font-face {
+    font-family: "Aref Ruqaa";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("/fonts/ArefRuqaa-Regular.ttf") format("truetype");
+  }
+`;
 const EXPORT_CAIRO_FONT_FACES = `
   @font-face {
     font-family: "Cairo";
@@ -3502,9 +3511,7 @@ function TelegramDetail({
     ).letterhead;
     const numberSystem = normalizeNumberSystem(settings?.numberSystem);
     const showVerificationQr = documentSettings.showVerificationQr !== false;
-    // Match the working application branch: keep both watermark layers
-    // visible at a restrained opacity, independent of stale legacy settings.
-    const watermarkOpacity = 0.12;
+    const watermarkOpacity = documentSettings.watermarkOpacityPercent / 100;
     const requestedHeaderDividerColor = documentSettings.headerDividerColor;
     const headerDividerColor = /^#[0-9a-fA-F]{6}$/.test(
       requestedHeaderDividerColor
@@ -3647,16 +3654,15 @@ function TelegramDetail({
         })()
       : "";
 
-    // Match the working application branch: the ministry watermark text
-    // remains visible regardless of stale legacy document-setting values.
     const watermark = buildTelegramWatermarkHtml(resolvedLogoUrl, {
-      showMinistryText: true,
+      showMinistryText: documentSettings.showMinistryWatermarkText,
     });
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
         ${EXPORT_CAIRO_FONT_FACES}
+        ${EXPORT_AREF_RUQAA_FONT_FACE}
         .telegram-export-page {
           position: relative;
           isolation: isolate;
@@ -4115,25 +4121,28 @@ function TelegramDetail({
     );
     reportExportProgress(65, "اكتمل تحميل الشعار والعلامة المائية");
 
-    // Chromium renders this document from about:blank with all network
-    // requests disabled. Inline the same bundled Cairo fonts used by the
-    // preview so Arabic glyphs never depend on a relative URL resolving.
-    const fontWeights = ["400", "500", "600", "700"] as const;
+    // Chromium renders from about:blank with network requests disabled, so
+    // inline every font face used by the document and watermark.
+    const fontFiles = [
+      "cairo-400.ttf",
+      "cairo-500.ttf",
+      "cairo-600.ttf",
+      "cairo-700.ttf",
+      "ArefRuqaa-Regular.ttf",
+    ] as const;
     const fontDataUrls = new Map<string, string>(
       await Promise.all(
-        fontWeights.map(async weight => {
-          const response = await fetch(`/fonts/cairo-${weight}.ttf`, {
+        fontFiles.map(async fontFile => {
+          const response = await fetch(`/fonts/${fontFile}`, {
             credentials: "same-origin",
           });
           if (!response.ok) {
-            throw new Error(`تعذر تحميل خط الوثيقة Cairo (${weight})`);
+            throw new Error(`تعذر تحميل خط الوثيقة ${fontFile}`);
           }
-
           const fontBlob = await response.blob();
           if (fontBlob.size === 0) {
-            throw new Error(`ملف خط الوثيقة Cairo (${weight}) فارغ`);
+            throw new Error(`ملف خط الوثيقة ${fontFile} فارغ`);
           }
-
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
@@ -4147,20 +4156,17 @@ function TelegramDetail({
               reject(reader.error ?? new Error("تعذر قراءة خط الوثيقة"));
             reader.readAsDataURL(fontBlob);
           });
-
-          return [`cairo-${weight}.ttf`, dataUrl] as const;
+          return [fontFile, dataUrl] as const;
         })
       )
     );
-
     const exportStyles = Array.from(wrapper.querySelectorAll("style"));
     for (const style of exportStyles) {
       let css = style.textContent ?? "";
-      for (const weight of fontWeights) {
-        const fontName = `cairo-${weight}.ttf`;
+      for (const fontName of fontFiles) {
         const dataUrl = fontDataUrls.get(fontName);
         if (!dataUrl) {
-          throw new Error(`خط الوثيقة Cairo (${weight}) غير جاهز`);
+          throw new Error(`خط الوثيقة ${fontName} غير جاهز`);
         }
         css = css.replaceAll(`url("/fonts/${fontName}")`, `url("${dataUrl}")`);
       }
@@ -4169,7 +4175,9 @@ function TelegramDetail({
 
     if (
       exportStyles.some(style =>
-        /url\(["']?\/fonts\/cairo-\d+\.ttf/.test(style.textContent ?? "")
+        /url\(["']?\/fonts\/(?:cairo-\d+|ArefRuqaa-Regular)\.ttf/.test(
+          style.textContent ?? ""
+        )
       )
     ) {
       throw new Error("تعذر تضمين خطوط العربية في الوثيقة");

@@ -1,8 +1,12 @@
 export const OFFICIAL_MINISTRY_NAME = "وزارة الداخلية";
 export const TELEGRAM_WATERMARK_COLUMNS = 10;
-export const TELEGRAM_WATERMARK_ROWS = 34;
-/** Half-centimetre horizontal and vertical separation between repetitions. */
+export const TELEGRAM_WATERMARK_ROWS = 33;
+/** Space between repeated labels in both directions. */
 export const TELEGRAM_WATERMARK_GAP_MM = 5;
+export const TELEGRAM_WATERMARK_INSET_MM = 3;
+export const TELEGRAM_WATERMARK_FONT_SIZE_PT = 11;
+export const TELEGRAM_WATERMARK_DEFAULT_OPACITY = 0.12;
+export const TELEGRAM_WATERMARK_FONT_FAMILY = "Aref Ruqaa";
 export const TELEGRAM_WATERMARK_REPEAT_COUNT =
   TELEGRAM_WATERMARK_COLUMNS * TELEGRAM_WATERMARK_ROWS;
 
@@ -19,15 +23,18 @@ export function buildTelegramWatermarkHtml(
   logoUrl?: string | null,
   options: { showMinistryText?: boolean } = {}
 ): string {
-  const labels =
+  const rows =
     options.showMinistryText === false
       ? ""
-      : Array.from(
-          { length: TELEGRAM_WATERMARK_REPEAT_COUNT },
-          () => `<span>${OFFICIAL_MINISTRY_NAME}</span>`
-        ).join("");
-  const watermarkText = labels
-    ? `<div class="watermark-text-pattern">${labels}</div>`
+      : Array.from({ length: TELEGRAM_WATERMARK_ROWS }, (_, row) => {
+          const labels = Array.from(
+            { length: TELEGRAM_WATERMARK_COLUMNS },
+            () => `<span>${OFFICIAL_MINISTRY_NAME}</span>`
+          ).join("");
+          return `<div class="watermark-text-row${row % 2 ? " watermark-text-row-offset" : ""}">${labels}</div>`;
+        }).join("");
+  const watermarkText = rows
+    ? `<div class="watermark-text-pattern">${rows}</div>`
     : "";
   const logo = logoUrl?.trim()
     ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" />`
@@ -39,7 +46,7 @@ export function buildTelegramWatermarkHtml(
 export function buildTelegramWatermarkCss(opacity: number): string {
   const safeOpacity = Number.isFinite(opacity)
     ? Math.min(1, Math.max(0, opacity))
-    : 0.12;
+    : TELEGRAM_WATERMARK_DEFAULT_OPACITY;
 
   return `
     .telegram-export-page .page-watermark {
@@ -67,28 +74,33 @@ export function buildTelegramWatermarkCss(opacity: number): string {
     .telegram-export-page .watermark-text-pattern {
       position: absolute;
       z-index: 0;
-      inset: 0;
-      display: grid;
-      grid-template-columns: repeat(${TELEGRAM_WATERMARK_COLUMNS}, max-content);
-      grid-template-rows: repeat(${TELEGRAM_WATERMARK_ROWS}, max-content);
-      column-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-      row-gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
-      justify-content: space-between;
-      align-content: space-between;
-      align-items: center;
-      justify-items: center;
+      inset: ${TELEGRAM_WATERMARK_INSET_MM}mm;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
       overflow: hidden;
       opacity: ${safeOpacity};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .telegram-export-page .watermark-text-row {
+      display: flex;
+      flex: 0 0 auto;
+      width: max-content;
+      gap: ${TELEGRAM_WATERMARK_GAP_MM}mm;
+      white-space: nowrap;
+    }
+    .telegram-export-page .watermark-text-row-offset {
+      transform: translateX(-10.3mm);
+    }
     .telegram-export-page .watermark-text-pattern span {
       color: #73777d;
       text-align: center;
-      font-family: "Cairo", "Noto Naskh Arabic", Tahoma, serif;
-      font-size: 8px;
+      font-family: "${TELEGRAM_WATERMARK_FONT_FAMILY}", serif;
+      font-size: ${TELEGRAM_WATERMARK_FONT_SIZE_PT}pt;
       font-weight: 400;
-      line-height: 1.2;
+      line-height: 1;
       white-space: nowrap;
     }
   `;

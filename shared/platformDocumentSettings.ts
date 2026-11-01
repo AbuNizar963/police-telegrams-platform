@@ -1,13 +1,13 @@
 export const DEFAULT_PLATFORM_DOCUMENT_SETTINGS = {
   showMinistryWatermarkText: true,
-  watermarkOpacityPercent: 16,
+  watermarkOpacityPercent: 12,
   headerDividerColor: "#b49a55",
   showVerificationQr: true,
 } as const;
 
 export type PlatformDocumentSettings = {
   showMinistryWatermarkText: boolean;
-  /** Opacity for the ministry text and organization-logo watermark layers. */
+  /** Opacity percentage for the ministry text and organization-logo watermark layers (default 12%). */
   watermarkOpacityPercent: number;
   headerDividerColor: string;
   showVerificationQr: boolean;

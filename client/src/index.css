@@ -228,19 +228,23 @@
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="success"] {
-    --toast-accent: #35c96b;\n    --toast-tint: #f0faf3;
+    --toast-accent: #35c96b;
+    --toast-tint: #f0faf3;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="error"] {
-    --toast-accent: #f0444f;\n    --toast-tint: #fff0ef;
+    --toast-accent: #f0444f;
+    --toast-tint: #fff0ef;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="warning"] {
-    --toast-accent: #f2bd19;\n    --toast-tint: #fff8e9;
+    --toast-accent: #f2bd19;
+    --toast-tint: #fff8e9;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="info"] {
-    --toast-accent: #287bd6;\n    --toast-tint: #eef5ff;
+    --toast-accent: #287bd6;
+    --toast-tint: #eef5ff;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="loading"] {
@@ -334,7 +338,8 @@
     }
 
     [data-sonner-toaster].toaster [data-sonner-toast] {
-      min-height: 84px;\n      padding: 12px 13px;
+      min-height: 84px;
+      padding: 12px 13px;
     }
   }
 }

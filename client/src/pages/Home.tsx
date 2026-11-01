@@ -96,6 +96,12 @@ import {
   normalizeNumberSystem,
   type NumberSystem as SupportedNumberSystem,
 } from "@shared/numberSystem";
+import {
+  PRINT_PAGE_HEIGHT_MM,
+  PRINT_PAGE_HEIGHT_PX,
+  PRINT_PAGE_WIDTH_MM,
+  getTelegramPaperLayoutCss,
+} from "@/lib/telegramPrintLayout";
 
 qrcode.stringToBytes = utf8StringToBytes;
 
@@ -162,16 +168,9 @@ function downloadBase64File(base64: string, fileName: string) {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");
-const PRINT_PAGE_HEIGHT_PX = 1123;
-const PRINT_PAGE_WIDTH_MM = 210;
-const PRINT_PAGE_HEIGHT_MM = 297;
-// Official A4 page-edge margins are 10mm on all four sides.
-const PRINT_MARGIN_MM = 10;
-const PRINT_CONTENT_HEIGHT_MM = PRINT_PAGE_HEIGHT_MM - PRINT_MARGIN_MM * 2;
-const PRINT_CONTENT_HEIGHT_PX = PRINT_CONTENT_HEIGHT_MM * (96 / 25.4);
 function applyTelegramPageNumbering(paper: HTMLElement) {
   const isMultiPage =
-    paper.getBoundingClientRect().height > PRINT_CONTENT_HEIGHT_PX + 1;
+    paper.getBoundingClientRect().height > PRINT_PAGE_HEIGHT_PX + 1;
   paper.classList.toggle("telegram-multipage", isMultiPage);
 }
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
@@ -3670,14 +3669,11 @@ function TelegramDetail({
       <style>
         ${EXPORT_CAIRO_FONT_FACES}
         ${EXPORT_AREF_RUQAA_FONT_FACE}
+        ${getTelegramPaperLayoutCss()}
         .telegram-export-page {
           position: relative;
           isolation: isolate;
           box-sizing: border-box;
-          width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm;
-          min-height: ${PRINT_CONTENT_HEIGHT_MM}mm;
-          padding: 0;
-          margin: 0;
           background: #fff;
           color: #172033;
           direction: rtl;
@@ -3861,27 +3857,8 @@ function TelegramDetail({
           justify-content: flex-end;
           text-align: left;
         }
-        .telegram-export-page.telegram-multipage { page: telegram-multipage; }
-        @page { size: A4 portrait; margin: ${PRINT_MARGIN_MM}mm; }
-        @page telegram-multipage {
-          size: A4 portrait;
-          margin: ${PRINT_MARGIN_MM}mm;
-          @bottom-center {
-            content: "صفحة رقم " counter(page) " من " counter(pages);
-            font-family: "Cairo", Tahoma, Arial, sans-serif;
-            font-size: 9pt;
-            color: #667085;
-          }
-        }
         @media print {
           html, body { margin: 0; padding: 0; background: #fff; }
-          .telegram-export-page {
-            width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm;
-            min-height: ${PRINT_CONTENT_HEIGHT_MM}mm;
-            height: auto;
-            max-height: none;
-            overflow: visible;
-          }
           .telegram-export-page .page-watermark { position: fixed; }
         }
       </style>
@@ -4002,10 +3979,8 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        // Center the rendered paper using its actual 190mm content width.
-        // The previous fixed 794px offset was the full A4 width, not the
-        // paper width after the 10mm page margins, which visibly shifted the
-        // preview on narrow screens.
+        // Scale and center the complete 210mm A4 sheet, including its
+        // visible 10mm content insets, rather than sizing only the content box.
         const paperWidth = paper.offsetWidth;
         if (!paperWidth) return;
         const scale = Math.min(1, availableWidth / paperWidth);
@@ -4309,22 +4284,11 @@ function TelegramDetail({
           overflow: visible !important;
         }
 
-        #telegram-print-root .telegram-export-page {
-          width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm !important;
-          height: auto !important;
-          min-height: ${PRINT_CONTENT_HEIGHT_MM}mm !important;
-          max-height: none !important;
-          margin: 0 auto !important;
-          overflow: visible !important;
-          break-inside: auto !important;
-          page-break-inside: auto !important;
-        }
-
-        @page {
-          size: A4 portrait;
-          margin: ${PRINT_MARGIN_MM}mm;
-        }
       }
+      ${getTelegramPaperLayoutCss(
+        "#telegram-print-root .telegram-export-page",
+        { screenLayout: false, important: true }
+      )}
 `;
 
   const printTelegram = async () => {

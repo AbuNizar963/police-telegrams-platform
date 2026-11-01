@@ -194,8 +194,8 @@ class _ToastCard extends StatelessWidget {
   };
 
   IconData get _icon => switch (kind) {
-    ToastKind.success => Icons.check_rounded,
-    ToastKind.error => Icons.close_rounded,
+    ToastKind.success => Icons.check_circle_outline,
+    ToastKind.error => Icons.error_outline,
     ToastKind.warning => Icons.priority_high_rounded,
     ToastKind.info => Icons.lightbulb_outline_rounded,
     ToastKind.loading => Icons.hourglass_top_rounded,
@@ -238,19 +238,21 @@ class _ToastCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      color: Color(0xFF15171A),
-                      fontSize: 20,
-                      height: 1.25,
-                      fontWeight: FontWeight.w700,
+                  if (_title != message) ...[
+                    Text(
+                      _title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        color: Color(0xFF15171A),
+                        fontSize: 20,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
+                    const SizedBox(height: 4),
+                  ],
                   Text(
                     message,
                     maxLines: 2,

@@ -61,6 +61,15 @@ void main() {
     expect(
       html,
       contains(
+        'inset:3mm;display:flex;flex-direction:column;align-items:center;justify-content:center;',
+      ),
+    );
+    expect(html, contains('inset: 0 auto auto 0;'));
+    expect(html, contains('width: 210mm;'));
+    expect(html, contains('height: 297mm;'));
+    expect(
+      html,
+      contains(
         "page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > 1124);",
       ),
     );

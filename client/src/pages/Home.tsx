@@ -162,7 +162,6 @@ function downloadBase64File(base64: string, fileName: string) {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");
-const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
@@ -4003,14 +4002,20 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        // Center the rendered paper using its actual 190mm content width.
+        // The previous fixed 794px offset was the full A4 width, not the
+        // paper width after the 10mm page margins, which visibly shifted the
+        // preview on narrow screens.
+        const paperWidth = paper.offsetWidth;
+        if (!paperWidth) return;
+        const scale = Math.min(1, availableWidth / paperWidth);
         const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
-        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
-        paper.style.position = "absolute";
+        exportWrapper.style.cssText = `position:relative;display:flex;justify-content:center;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+        paper.style.position = "relative";
         paper.style.top = "0";
-        paper.style.left = "50%";
-        paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
+        paper.style.left = "auto";
+        paper.style.margin = "0";
         paper.style.transformOrigin = "top center";
         paper.style.transform = `scale(${scale})`;
         host.style.height = `${scaledHeight}px`;

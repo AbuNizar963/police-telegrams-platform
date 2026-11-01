@@ -165,8 +165,15 @@ const PRINT_PAGE_WIDTH_PX = 794;
 const PRINT_PAGE_HEIGHT_PX = 1123;
 const PRINT_PAGE_WIDTH_MM = 210;
 const PRINT_PAGE_HEIGHT_MM = 297;
-// Official A4 page-edge margins are 3mm on all four sides.
-const PRINT_MARGIN_MM = 3;
+// Official A4 page-edge margins are 10mm on all four sides.
+const PRINT_MARGIN_MM = 10;
+const PRINT_CONTENT_HEIGHT_MM = PRINT_PAGE_HEIGHT_MM - PRINT_MARGIN_MM * 2;
+const PRINT_CONTENT_HEIGHT_PX = PRINT_CONTENT_HEIGHT_MM * (96 / 25.4);
+function applyTelegramPageNumbering(paper: HTMLElement) {
+  const isMultiPage =
+    paper.getBoundingClientRect().height > PRINT_CONTENT_HEIGHT_PX + 1;
+  paper.classList.toggle("telegram-multipage", isMultiPage);
+}
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const TELEGRAMS_PER_PAGE = 10;
 const EXPORT_AREF_RUQAA_FONT_FACE = `
@@ -3667,9 +3674,9 @@ function TelegramDetail({
           position: relative;
           isolation: isolate;
           box-sizing: border-box;
-          width: ${PRINT_PAGE_WIDTH_PX}px;
-          min-height: ${PRINT_PAGE_HEIGHT_PX}px;
-          padding: ${PRINT_MARGIN_MM}mm;
+          width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm;
+          min-height: ${PRINT_CONTENT_HEIGHT_MM}mm;
+          padding: 0;
           margin: 0;
           background: #fff;
           color: #172033;
@@ -3854,10 +3861,28 @@ function TelegramDetail({
           justify-content: flex-end;
           text-align: left;
         }
+        .telegram-export-page.telegram-multipage { page: telegram-multipage; }
+        @page { size: A4 portrait; margin: ${PRINT_MARGIN_MM}mm; }
+        @page telegram-multipage {
+          size: A4 portrait;
+          margin: ${PRINT_MARGIN_MM}mm;
+          @bottom-center {
+            content: "صفحة رقم " counter(page) " من " counter(pages);
+            font-family: "Cairo", Tahoma, Arial, sans-serif;
+            font-size: 9pt;
+            color: #667085;
+          }
+        }
         @media print {
-          @page { size: A4 portrait; margin: 0; }
           html, body { margin: 0; padding: 0; background: #fff; }
-          .telegram-export-page { width: ${PRINT_PAGE_WIDTH_MM}mm; min-height: ${PRINT_PAGE_HEIGHT_MM}mm; }
+          .telegram-export-page {
+            width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm;
+            min-height: ${PRINT_CONTENT_HEIGHT_MM}mm;
+            height: auto;
+            max-height: none;
+            overflow: visible;
+          }
+          .telegram-export-page .page-watermark { position: fixed; }
         }
       </style>
       <article class="telegram-export-page" dir="rtl" lang="ar">
@@ -4182,6 +4207,22 @@ function TelegramDetail({
     ) {
       throw new Error("تعذر تضمين خطوط العربية في الوثيقة");
     }
+    if (format === "pdf") {
+      const measurementHost = document.createElement("div");
+      measurementHost.style.cssText =
+        "position:fixed;left:-20000px;top:0;visibility:hidden;pointer-events:none";
+      measurementHost.appendChild(wrapper);
+      document.body.appendChild(measurementHost);
+      try {
+        await document.fonts.ready;
+        await new Promise<void>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
+        applyTelegramPageNumbering(paper);
+      } finally {
+        measurementHost.remove();
+      }
+    }
     reportExportProgress(82, "اكتمل تضمين الخطوط العربية");
 
     const html = `<!doctype html>
@@ -4248,30 +4289,30 @@ function TelegramDetail({
           inset: auto !important;
           z-index: auto !important;
           display: block !important;
-          width: 100vw !important;
-          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          width: auto !important;
+          height: auto !important;
           min-height: 0 !important;
-          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          max-height: none !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #fff !important;
-          overflow: hidden !important;
+          overflow: visible !important;
         }
 
         #telegram-print-root .telegram-export-page {
-          width: ${PRINT_PAGE_WIDTH_MM}mm !important;
-          height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
-          min-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
-          max-height: ${PRINT_PAGE_HEIGHT_MM}mm !important;
+          width: ${PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2}mm !important;
+          height: auto !important;
+          min-height: ${PRINT_CONTENT_HEIGHT_MM}mm !important;
+          max-height: none !important;
           margin: 0 auto !important;
-          overflow: hidden !important;
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
+          overflow: visible !important;
+          break-inside: auto !important;
+          page-break-inside: auto !important;
         }
 
         @page {
           size: A4 portrait;
-          margin: 0;
+          margin: ${PRINT_MARGIN_MM}mm;
         }
       }
 `;
@@ -4333,6 +4374,13 @@ function TelegramDetail({
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
+      const printablePaper = printRoot.querySelector<HTMLElement>(
+        ".telegram-export-page"
+      );
+      if (!printablePaper) {
+        throw new Error("تعذر تجهيز صفحة البرقية للطباعة.");
+      }
+      applyTelegramPageNumbering(printablePaper);
 
       const outputTimestamp = await auditDocumentOutput("print", "pdf");
       reportExportProgress(90, "اكتمل توثيق عملية الطباعة");

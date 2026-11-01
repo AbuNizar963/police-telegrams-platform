@@ -83,7 +83,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          "--width": "min(420px, calc(100vw - 32px))",
+          "--width": "min(650px, calc(100vw - 32px))",
           "--border-radius": "14px",
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",

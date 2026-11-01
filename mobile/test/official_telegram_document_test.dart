@@ -56,7 +56,11 @@ void main() {
 
       expect(html, contains('class="telegram-export-page"'));
       expect(html, contains('size:A4 portrait'));
-      expect(html, contains('padding:3mm;'));
+      expect(html, contains('width:190mm;min-height:277mm;padding:0;'));
+      expect(html, contains('@page{size:A4 portrait;margin:10mm}'));
+      expect(html, contains('@page telegram-multipage'));
+      expect(html, contains('counter(page) " من " counter(pages)'));
+      expect(html, contains('classList.toggle(\'telegram-multipage\''));
       expect(html, contains('font-family:"Cairo"'));
       expect(
         html,
@@ -70,6 +74,10 @@ void main() {
       expect(html, contains('class="page-watermark"'));
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, contains('<span>وزارة الداخلية</span>'));
+      expect(
+        html,
+        contains('font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt'),
+      );
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
         hasLength(330),

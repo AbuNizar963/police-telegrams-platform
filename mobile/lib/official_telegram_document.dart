@@ -18,9 +18,7 @@ import 'telegram_display.dart';
 import 'telegram_report_labels.dart';
 import 'toast.dart';
 
-const _documentPageWidth = 794;
-const _documentPageHeight = 1123;
-const _documentMarginMm = 3;
+const _documentMarginMm = 10;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
 // A4 watermark mosaic; keep row count, spacing, and edge inset aligned with web.
@@ -1687,7 +1685,7 @@ String buildOfficialTelegramHtml({
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8" />
 <style>
 $fontFaces
-.telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:190mm;min-height:277mm;padding:0;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
@@ -1760,7 +1758,10 @@ $fontFaces
   justify-content: flex-end;
   text-align: left;
 }
-@media print{@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:210mm;min-height:297mm}}
+@page{size:A4 portrait;margin:${_documentMarginMm}mm}
+@page telegram-multipage{size:A4 portrait;margin:${_documentMarginMm}mm;@bottom-center{content:"صفحة رقم " counter(page) " من " counter(pages);font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:9pt;color:#667085}}
+.telegram-export-page.telegram-multipage{page:telegram-multipage}
+@media print{html,body{margin:0;padding:0;background:#fff}.telegram-export-page{width:190mm;min-height:277mm}.telegram-export-page .page-watermark{position:fixed}}
 </style></head><body>
 <article class="telegram-export-page" dir="rtl" lang="ar">
 $watermark
@@ -1796,7 +1797,17 @@ $watermark
 <p class="footer-date">$_documentFooterCalendarIcon<span class="footer-text"><span class="footer-date-label">تاريخ ووقت إخراج النسخة:</span> <span class="footer-output-time">${_escapeHtml(documentOutputAt)}</span></span></p>
 </footer>
 $importNotesMarkup
-</article></body></html>''';
+</article><script>
+(() => {
+  const updatePagination = () => {
+    const page = document.querySelector('.telegram-export-page');
+    if (!page) return;
+    page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > (277 * 96 / 25.4) + 1);
+  };
+  if (document.fonts?.ready) document.fonts.ready.then(() => requestAnimationFrame(updatePagination));
+  window.addEventListener('load', updatePagination, { once: true });
+})();
+</script></body></html>''';
 }
 
 String _createQrSvg(String value) {

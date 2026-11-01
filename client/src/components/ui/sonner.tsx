@@ -81,15 +81,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       closeButton
       icons={{
         success: (
-          <CheckCircle2 aria-hidden="true" size={23} strokeWidth={1.8} />
+          <CheckCircle2 aria-hidden="true" size={21} strokeWidth={1.8} />
         ),
-        error: <AlertCircle aria-hidden="true" size={23} strokeWidth={1.8} />,
+        error: <AlertCircle aria-hidden="true" size={21} strokeWidth={1.8} />,
         warning: (
-          <AlertTriangle aria-hidden="true" size={23} strokeWidth={1.8} />
+          <AlertTriangle aria-hidden="true" size={21} strokeWidth={1.8} />
         ),
-        info: <Info aria-hidden="true" size={23} strokeWidth={1.8} />,
-        loading: <Hourglass aria-hidden="true" size={23} strokeWidth={1.8} />,
-        close: <X aria-hidden="true" size={19} strokeWidth={2} />,
+        info: <Info aria-hidden="true" size={21} strokeWidth={1.8} />,
+        loading: <Hourglass aria-hidden="true" size={21} strokeWidth={1.8} />,
+        close: <X aria-hidden="true" size={21} strokeWidth={2} />,
       }}
       expand={false}
       gap={10}

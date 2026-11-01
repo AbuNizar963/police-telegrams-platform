@@ -1,6 +1,6 @@
 export const DEFAULT_PLATFORM_DOCUMENT_SETTINGS = {
   showMinistryWatermarkText: true,
-  watermarkOpacityPercent: 16,
+  watermarkOpacityPercent: 12,
   headerDividerColor: "#b49a55",
   showVerificationQr: true,
 } as const;

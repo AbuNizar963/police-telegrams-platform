@@ -9,6 +9,7 @@ void main() {
     500: 'data:font/ttf;base64,AA==',
     600: 'data:font/ttf;base64,AA==',
     700: 'data:font/ttf;base64,AA==',
+    900: 'data:font/ttf;base64,AA==',
   };
 
   Map<String, dynamic> telegram({String body = 'محتوى الاختبار'}) => {
@@ -55,6 +56,7 @@ void main() {
 
       expect(html, contains('class="telegram-export-page"'));
       expect(html, contains('size:A4 portrait'));
+      expect(html, contains('padding:3mm;'));
       expect(html, contains('font-family:"Cairo"'));
       expect(
         html,
@@ -70,7 +72,7 @@ void main() {
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
-        hasLength(340),
+        hasLength(330),
       );
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, isNot(contains('class="official-logo"')));
@@ -289,20 +291,24 @@ void main() {
       );
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(html, isNot(contains('وزارة التربية')));
-      expect(html, contains('width:93.75%;height:93.75%'));
-      expect(html, contains('column-gap:5mm;row-gap:5mm'));
-      expect(html, contains('grid-template-columns:repeat(10,max-content)'));
-      expect(html, contains('grid-template-rows:repeat(34,max-content)'));
+      expect(html, contains('inset:3mm;'));
+      expect(html, contains('gap:5mm;'));
+      expect(html, contains('font-size:11pt'));
+      expect(html, contains('translateX(-10.3mm)'));
+      expect(html, contains('font-family: "Aref Ruqaa"'));
+      expect(html, contains('watermark-text-row-offset'));
+      expect(html, contains('width:max-content;gap:5mm;white-space:nowrap'));
       expect(
         html,
-        contains('watermark-text-pattern{position:absolute;z-index:0;inset:0;'),
+        contains(
+          'watermark-text-pattern{position:absolute;z-index:0;inset:3mm;',
+        ),
       );
-      expect(
-        html,
-        contains('justify-content:space-between;align-content:space-between'),
-      );
-      expect(html, contains('object-fit:contain;opacity:0.16'));
-      expect(html, contains('overflow:hidden;opacity:0.16'));
+      expect(html, contains('inset:3mm;'));
+      expect(html, contains('opacity:0.12'));
+      expect(html, contains('src: url("data:font/ttf;base64,AA==")'));
+      expect(html, contains('object-fit:contain;opacity:0.12'));
+      expect(html, contains('overflow:hidden;opacity:0.12'));
       expect(html, contains('border-bottom:3px solid #b49a55'));
       expect(
         html,

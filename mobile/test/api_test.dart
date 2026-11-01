@@ -425,8 +425,8 @@ void main() {
       ),
       imageBytes,
     );
-    // Signed-token rotation does not invalidate fresh bytes for the same object.
-    expect(networkRequests, 1);
+    // The authenticated route is checked first; the storage URL is the fallback.
+    expect(networkRequests, 2);
 
     var secondClientRequests = 0;
     final secondClient = MockClient((request) async {
@@ -542,7 +542,7 @@ void main() {
     },
   );
 
-  test('organization logo falls back to the authenticated tRPC payload when image GET fails', () async {
+  test('organization logo prefers the authenticated tRPC payload', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
       'police-telegrams-inline-logo-test-',
     );
@@ -594,7 +594,7 @@ void main() {
       source: '/api/storage/department/logos/$organizationId/logo.png',
     );
     expect(bytes, imageBytes);
-    expect(imageRequestCount, 1);
+    expect(imageRequestCount, 0);
     expect(logoApiRequestCount, 1);
   });
 }

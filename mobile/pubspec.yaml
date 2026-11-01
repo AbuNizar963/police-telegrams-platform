@@ -34,7 +34,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/police-telegrams-icon.png
+    - assets/fonts/aref-ruqaa-regular.ttf
+    - assets/licenses/ArefRuqaa-OFL.txt
   fonts:
+    - family: Aref Ruqaa
+      fonts:
+        - asset: assets/fonts/aref-ruqaa-regular.ttf
+          weight: 400
     - family: Cairo
       fonts:
         - asset: assets/fonts/cairo-400.ttf

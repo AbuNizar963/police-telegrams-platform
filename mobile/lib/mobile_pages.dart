@@ -2303,7 +2303,7 @@ class _PlatformDocumentSettingsPageState
   bool _settingsConfirmed = false;
   bool _showMinistryWatermarkText = true;
   bool _showVerificationQr = true;
-  double _watermarkOpacityPercent = 16;
+  double _watermarkOpacityPercent = 12;
   String _headerDividerColor = _defaultColor;
   String? _error;
   final TextEditingController _colorController = TextEditingController(

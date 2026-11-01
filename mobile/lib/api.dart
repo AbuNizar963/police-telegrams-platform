@@ -617,11 +617,14 @@ class PoliceApi {
     required File imageFile,
     required File metadataFile,
   }) async {
-    Uint8List? bytes = await fetchImageAsset(source);
+    // Prefer the authenticated organization-scoped export endpoint. It reads
+    // the logo from the signed-in organization's storage and avoids stale or
+    // inaccessible CDN/storage URLs on mobile clients.
+    Uint8List? bytes = await _fetchOrganizationLogoFromApi(organizationId);
     if (bytes == null || bytes.isEmpty) {
-      // Authenticated API fallback for storage routes unavailable to the
-      // device's image client.
-      bytes = await _fetchOrganizationLogoFromApi(organizationId);
+      // Keep a same-origin/storage URL fallback for older servers that do not
+      // yet return inline logo bytes from the authenticated export endpoint.
+      bytes = await fetchImageAsset(source);
     }
     if (generation != _logoCacheGeneration) return null;
     if (bytes == null ||

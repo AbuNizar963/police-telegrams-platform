@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -19,15 +20,14 @@ import 'toast.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
-const _documentMarginMm = 12.7;
+const _documentMarginMm = 3;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
-// Keep the Flutter document watermark identical to the web export: a dense
-// full-page 10 by 34 pattern with the same spacing and restrained ink.
+// A4 watermark mosaic; keep row count, spacing, and edge inset aligned with web.
 const _ministryWatermarkColumns = 10;
-const _ministryWatermarkRows = 34;
-// Half-centimetre horizontal and vertical separation between repetitions.
+const _ministryWatermarkRows = 33;
 const _ministryWatermarkGapCss = '5mm';
+const _ministryWatermarkInsetCss = '3mm';
 const _documentFooterPersonIcon = '''<svg class="footer-icon" data-icon="person" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
   <circle cx="12" cy="8" r="3.5" />
   <path d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6" />
@@ -165,6 +165,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
 
 class _OfficialTelegramDocumentPageState
     extends State<OfficialTelegramDocumentPage> {
+  static const _preparationTimeout = Duration(seconds: 45);
   bool loading = true;
   bool busy = false;
   double _progress = 0;
@@ -178,6 +179,8 @@ class _OfficialTelegramDocumentPageState
   List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
   int? selectedVersionNumber;
   String? documentHtml;
+  Timer? _loadingWatchdog;
+  int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
 
@@ -196,6 +199,17 @@ class _OfficialTelegramDocumentPageState
   }
 
   Future<void> load({int? versionNumber}) async {
+    final generation = ++_loadGeneration;
+    _loadingWatchdog?.cancel();
+    _loadingWatchdog = Timer(_preparationTimeout, () {
+      if (!mounted || generation != _loadGeneration || !loading) return;
+      _loadingWatchdog = null;
+      _loadGeneration++;
+      setState(() {
+        error = 'استغرق تجهيز معاينة البرقية وقتًا أطول من المتوقع. تحقّق من الاتصال ثم أعد المحاولة.';
+        loading = false;
+      });
+    });
     if (mounted) {
       setState(() {
         loading = true;
@@ -407,15 +421,29 @@ class _OfficialTelegramDocumentPageState
       );
       // The same locally generated PDF powers preview, print, save, and
       // sharing. Tests can replace the native renderer through the scope.
-      final pdfBytes = await _renderer.renderPdf(html);
+      final pdfBytes = await _renderer
+          .renderPdf(html)
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () => throw Exception(
+              'تعذر تحويل الوثيقة إلى PDF في الوقت المحدد. أعد المحاولة.',
+            ),
+          );
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final image = await _renderer.renderPreview(pdfBytes);
+      final image = await _renderer
+          .renderPreview(pdfBytes)
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () => throw Exception(
+              'استغرق تجهيز صورة المعاينة وقتًا طويلًا. أعد المحاولة.',
+            ),
+          );
       if (image.isEmpty) {
         throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
       }
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         telegram = telegramData;
         settings = settingsData;
@@ -428,11 +456,16 @@ class _OfficialTelegramDocumentPageState
         loading = false;
       });
     } catch (exception) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         error = exception.toString().replaceFirst('Exception: ', '');
         loading = false;
       });
+    } finally {
+      if (generation == _loadGeneration) {
+        _loadingWatchdog?.cancel();
+        _loadingWatchdog = null;
+      }
     }
   }
 
@@ -448,7 +481,15 @@ class _OfficialTelegramDocumentPageState
         return MapEntry(weight, 'data:font/ttf;base64,${base64Encode(bytes)}');
       }),
     );
-    return Map<int, String>.fromEntries(entries);
+    final ruqaaData = await rootBundle.load(
+      'assets/fonts/aref-ruqaa-regular.ttf',
+    );
+    final ruqaaBytes = ruqaaData.buffer.asUint8List(
+      ruqaaData.offsetInBytes,
+      ruqaaData.lengthInBytes,
+    );
+    return Map<int, String>.fromEntries(entries)
+      ..[900] = 'data:font/ttf;base64,${base64Encode(ruqaaBytes)}';
   }
 
   Future<String?> _loadHistoricalLogoDataUrl(
@@ -653,6 +694,9 @@ class _OfficialTelegramDocumentPageState
 
   @override
   void dispose() {
+    _loadGeneration++;
+    _loadingWatchdog?.cancel();
+    _loadingWatchdog = null;
     super.dispose();
   }
 
@@ -1024,57 +1068,84 @@ class _OfficialTelegramDocumentPageState
         ],
       ),
       body: loading
-          ? Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(color: Colors.transparent),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  textDirection: TextDirection.rtl,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox.square(
-                      dimension: 38,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: const Color(0xFF16A34A),
+          ? ColoredBox(
+              color: const Color(0xFFF6F8F7),
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFE5EAE7)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x120F172A),
+                            blurRadius: 28,
+                            offset: Offset(0, 12),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
-                        children: const [
-                          Text(
-                            'جارٍ تجهيز الوثيقة الرسمية',
+                        children: [
+                          Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF7EF),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            alignment: Alignment.center,
+                            child: const SizedBox.square(
+                              dimension: 34,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3.2,
+                                color: Color(0xFF159447),
+                                semanticsLabel: 'جارٍ تجهيز معاينة البرقية',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'نجهّز معاينة البرقية',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.black,
+                              color: Color(0xFF17251D),
                               fontFamily: 'Cairo',
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          SizedBox(height: 2),
-                          Text(
-                            'يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…',
+                          const SizedBox(height: 7),
+                          const Text(
+                            'يتم تحميل شعار الجهة وإعداد الوثيقة الرسمية. سيظهر تنبيه إذا استغرق التجهيز وقتًا أطول من المتوقع.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.black,
+                              color: Color(0xFF647067),
                               fontFamily: 'Cairo',
-                              fontSize: 11,
+                              fontSize: 12,
+                              height: 1.7,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: const LinearProgressIndicator(
+                              minHeight: 4,
+                              color: Color(0xFF159447),
+                              backgroundColor: Color(0xFFE8F1EB),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             )
@@ -1410,7 +1481,7 @@ String buildOfficialTelegramHtml({
       platformDocumentSettings['showMinistryWatermarkText'] != false;
   final opacityValue =
       int.tryParse('${platformDocumentSettings['watermarkOpacityPercent']}') ??
-      16;
+      12;
   final watermarkOpacity = (opacityValue.clamp(0, 60) / 100).toStringAsFixed(2);
   final requestedDividerColor =
       platformDocumentSettings['headerDividerColor']?.toString() ?? '';
@@ -1584,10 +1655,16 @@ String buildOfficialTelegramHtml({
       ? ''
       : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" />';
   final watermarkItems = showMinistryWatermarkText
-      ? List<String>.filled(
-          _ministryWatermarkColumns * _ministryWatermarkRows,
-          '<span>وزارة الداخلية</span>',
-        ).join()
+      ? List<String>.generate(_ministryWatermarkRows, (row) {
+          final labels = List<String>.filled(
+            _ministryWatermarkColumns,
+            '<span>وزارة الداخلية</span>',
+          ).join();
+          final rowClass = row.isOdd
+              ? 'watermark-text-row watermark-text-row-offset'
+              : 'watermark-text-row';
+          return '<div class="$rowClass">$labels</div>';
+        }).join()
       : '';
   final watermarkText = showMinistryWatermarkText
       ? '<div class="watermark-text-pattern" aria-hidden="true">$watermarkItems</div>'
@@ -1595,11 +1672,11 @@ String buildOfficialTelegramHtml({
   final watermark =
       '<div class="page-watermark" aria-hidden="true">$watermarkText$watermarkLogo</div>';
   final qrSvg = showVerificationQr ? _createQrSvg(verificationUrl) : '';
-  final fontFaces = [400, 500, 600, 700]
+  final fontFaces = [400, 500, 600, 700, 900]
       .map((weight) {
         final font = fontDataUrls[weight] ?? '';
         return '''@font-face {
-          font-family: "Cairo"; font-style: normal; font-weight: $weight;
+          font-family: "${weight == 900 ? 'Aref Ruqaa' : 'Cairo'}"; font-style: normal; font-weight: ${weight == 900 ? 400 : weight};
           font-display: block; src: url("$font") format("truetype");
         }''';
       })
@@ -1613,8 +1690,10 @@ $fontFaces
 .telegram-export-page *{box-sizing:border-box}
 .telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:0;display:grid;grid-template-columns:repeat($_ministryWatermarkColumns,max-content);grid-template-rows:repeat($_ministryWatermarkRows,max-content);column-gap:$_ministryWatermarkGapCss;row-gap:$_ministryWatermarkGapCss;justify-content:space-between;align-content:space-between;align-items:center;justify-items:center;overflow:hidden;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Cairo","Noto Naskh Arabic",Tahoma,serif;font-size:8px;font-weight:400;line-height:1.2;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:flex-start;gap:$_ministryWatermarkGapCss;overflow:hidden;opacity:$watermarkOpacity}
+.telegram-export-page .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkGapCss;white-space:nowrap}
+.telegram-export-page .watermark-text-row-offset{transform:translateX(-10.3mm)}
+.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt;font-weight:400;line-height:1;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:2}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid $headerDividerColor;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}

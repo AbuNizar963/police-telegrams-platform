@@ -113,6 +113,7 @@ class _TestPoliceApi extends PoliceApi {
     this.signedIn = false,
     this.organizationLogoUrl,
     this.resolvedOrganizationLogoUrl,
+    this.apiLogoFallbackAvailable = false,
     this.contextUnavailable = false,
     this.accountOrganizationId = 'org-1',
   });
@@ -120,6 +121,7 @@ class _TestPoliceApi extends PoliceApi {
   final bool signedIn;
   final String? organizationLogoUrl;
   final String? resolvedOrganizationLogoUrl;
+  final bool apiLogoFallbackAvailable;
   final bool contextUnavailable;
   final String? accountOrganizationId;
   final calls = <String, Map<String, dynamic>?>{};
@@ -221,7 +223,10 @@ class _TestPoliceApi extends PoliceApi {
   Future<Uint8List?> fetchOrganizationLogo({
     required String organizationId,
     required String source,
-  }) async => organizationId == 'org-1' && source == organizationLogoUrl
+  }) async =>
+      organizationId == 'org-1' &&
+          (source == organizationLogoUrl ||
+              (source.isEmpty && apiLogoFallbackAvailable))
       ? _testPng
       : null;
 }
@@ -313,6 +318,12 @@ class _TestOfficialTelegramDocumentRenderer
   @override
   Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes) async =>
       _testPng;
+}
+
+class _StalledPdfDocumentRenderer
+    extends _TestOfficialTelegramDocumentRenderer {
+  @override
+  Future<Uint8List> renderPdf(String html) => Completer<Uint8List>().future;
 }
 
 void main() {
@@ -482,6 +493,89 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'official telegram preview loads logo from authenticated API fallback',
+    (tester) async {
+      _setMobileViewport(tester);
+      final api = _TestPoliceApi(
+        signedIn: true,
+        apiLogoFallbackAvailable: true,
+      );
+      final renderer = _TestOfficialTelegramDocumentRenderer();
+
+      await tester.pumpWidget(
+        OfficialTelegramDocumentRendererScope(
+          renderer: renderer,
+          child: MaterialApp(
+            home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
+          ),
+        ),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 12);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+
+      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+      expect(renderer.renderedHtml, contains('class="official-logo"'));
+    },
+  );
+
+  testWidgets(
+    'official document loading indicator and copy are centered together',
+    (tester) async {
+      _setMobileViewport(tester);
+      final renderer = _TestOfficialTelegramDocumentRenderer();
+
+      await tester.pumpWidget(
+        OfficialTelegramDocumentRendererScope(
+          renderer: renderer,
+          child: MaterialApp(
+            home: OfficialTelegramDocumentPage(
+              api: _TestPoliceApi(signedIn: true),
+              telegramId: 7,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('نجهّز معاينة البرقية'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'stalled PDF renderer shows a retry instead of spinning forever',
+    (tester) async {
+      _setMobileViewport(tester);
+      final renderer = _StalledPdfDocumentRenderer();
+
+      await tester.pumpWidget(
+        OfficialTelegramDocumentRendererScope(
+          renderer: renderer,
+          child: MaterialApp(
+            home: OfficialTelegramDocumentPage(
+              api: _TestPoliceApi(signedIn: true),
+              telegramId: 7,
+            ),
+          ),
+        ),
+      );
+      await _pumpDashboardFrames(tester, frameCount: 12);
+      await tester.pump(const Duration(seconds: 25));
+      await tester.pump();
+
+      expect(
+        find.text('تعذر تحويل الوثيقة إلى PDF في الوقت المحدد. أعد المحاولة.'),
+        findsOneWidget,
+      );
+      expect(find.text('إعادة المحاولة'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
 
   testWidgets('does not render a document with unconfirmed platform settings', (
     tester,

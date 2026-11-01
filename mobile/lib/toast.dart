@@ -59,6 +59,14 @@ class Toast {
 
 enum ToastKind { success, error, warning, info, loading }
 
+String _toastTitle(ToastKind kind) => switch (kind) {
+  ToastKind.success => 'تم بنجاح!',
+  ToastKind.info => 'معلومة',
+  ToastKind.warning => 'تحذير!',
+  ToastKind.error => 'حدث خطأ!',
+  ToastKind.loading => 'جارٍ التنفيذ',
+};
+
 class ToastOverlayHost extends StatefulWidget {
   const ToastOverlayHost({required this.child, super.key});
   final Widget child;
@@ -118,7 +126,7 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
         widget.child,
         if (_message != null)
           Positioned(
-            top: 12,
+            top: 16,
             left: 16,
             right: 16,
             child: SafeArea(
@@ -130,7 +138,7 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
                   ignoring: !_visible,
                   child: Semantics(
                     liveRegion: true,
-                    label: _message,
+                    label: '${_toastTitle(_kind)}: $_message',
                     child: AnimatedSlide(
                       duration: _reduceMotion
                           ? Duration.zero
@@ -144,7 +152,7 @@ class ToastOverlayHostState extends State<ToastOverlayHost>
                         opacity: _visible ? 1 : 0,
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(
-                            maxWidth: 520,
+                            maxWidth: 650,
                             maxHeight: 160,
                           ),
                           child: _ToastCard(
@@ -175,19 +183,21 @@ class _ToastCard extends StatelessWidget {
   final ToastKind kind;
   final VoidCallback onClose;
 
+  String get _title => _toastTitle(kind);
+
   Color get _color => switch (kind) {
-    ToastKind.success => const Color(0xFF16845B),
-    ToastKind.error => const Color(0xFFBE3A3A),
-    ToastKind.warning => const Color(0xFFB97712),
-    ToastKind.info => const Color(0xFF2865A0),
-    ToastKind.loading => const Color(0xFF53647A),
+    ToastKind.success => const Color(0xFF45C776),
+    ToastKind.error => const Color(0xFFE45355),
+    ToastKind.warning => const Color(0xFFE7BD24),
+    ToastKind.info => const Color(0xFF3488D8),
+    ToastKind.loading => const Color(0xFF3488D8),
   };
 
   IconData get _icon => switch (kind) {
-    ToastKind.success => Icons.check_circle_outline,
-    ToastKind.error => Icons.error_outline,
-    ToastKind.warning => Icons.warning_amber_rounded,
-    ToastKind.info => Icons.info_outline,
+    ToastKind.success => Icons.check_rounded,
+    ToastKind.error => Icons.close_rounded,
+    ToastKind.warning => Icons.priority_high_rounded,
+    ToastKind.info => Icons.lightbulb_outline_rounded,
     ToastKind.loading => Icons.hourglass_top_rounded,
   };
 
@@ -197,46 +207,66 @@ class _ToastCard extends StatelessWidget {
     child: Material(
       color: Colors.transparent,
       child: Container(
+        constraints: const BoxConstraints(minHeight: 96, maxHeight: 160),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: Color.alphaBlend(
-            _color.withValues(alpha: 0.1),
-            Theme.of(context).colorScheme.surface,
+            _color.withValues(alpha: 0.09),
+            Colors.white,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _color, width: 1.5),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1F0D1B2A),
-              blurRadius: 20,
-              offset: Offset(0, 7),
+              color: Color(0x160D1B2A),
+              blurRadius: 18,
+              offset: Offset(0, 6),
             ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Container(
-              width: 36,
-              height: 36,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
-              child: Icon(_icon, color: Colors.white, size: 21),
+              alignment: Alignment.center,
+              child: Icon(_icon, color: Colors.white, size: 26),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                child: Text(
-                  message,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Color(0xFF15171A),
+                      fontSize: 20,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  textAlign: TextAlign.right,
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Color(0xFF555B62),
+                      fontSize: 18,
+                      height: 1.3,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ),
             Semantics(
@@ -246,10 +276,14 @@ class _ToastCard extends StatelessWidget {
               child: IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed: onClose,
-                icon: Icon(Icons.close_rounded, color: _color, size: 21),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: Color(0xFF646A70),
+                  size: 24,
+                ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
           ],
         ),
       ),
@@ -304,7 +338,7 @@ class _FallbackToastView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Positioned(
-    top: 12,
+    top: 16,
     left: 16,
     right: 16,
     child: SafeArea(
@@ -317,7 +351,7 @@ class _FallbackToastView extends StatelessWidget {
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 160),
+              constraints: const BoxConstraints(maxWidth: 650, maxHeight: 160),
               child: _ToastCard(message: message, kind: kind, onClose: close),
             ),
           ),

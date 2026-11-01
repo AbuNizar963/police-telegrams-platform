@@ -1249,9 +1249,11 @@ class _OfficialTelegramDocumentPageState
                     child: InteractiveViewer(
                       minScale: 1,
                       maxScale: 4,
+                      alignment: Alignment.topCenter,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                        child: Center(
+                        child: Align(
+                          alignment: Alignment.topCenter,
                           child: Image.memory(
                             preview!,
                             fit: BoxFit.contain,

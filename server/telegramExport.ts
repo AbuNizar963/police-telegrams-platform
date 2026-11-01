@@ -112,6 +112,59 @@ export function hasMultiPageTelegramLayout(html: string): boolean {
   );
 }
 
+/** Keep the A4 page box full-size; the document's sole 10mm inset is its padding. */
+export function getTelegramRenderLayoutCss(printLayout: boolean): string {
+  return `
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: auto !important;
+      min-height: 0 !important;
+      background: #fff !important;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+    ${
+      printLayout
+        ? `
+          .telegram-export-page {
+            box-sizing: border-box !important;
+            width: 210mm !important;
+            height: auto !important;
+            min-height: 297mm !important;
+            max-height: none !important;
+            padding: 10mm !important;
+            display: block !important;
+            margin: 0 auto !important;
+            overflow: visible !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+          .telegram-export-page.telegram-multipage {
+            min-height: 287mm !important;
+            padding: 10mm 10mm 0 !important;
+          }
+          .telegram-export-page .page-watermark { position: fixed !important; }
+        `
+        : `
+          .telegram-export-page {
+            box-sizing: border-box !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            padding: 10mm !important;
+            display: block !important;
+            margin: 0 auto !important;
+            overflow: hidden !important;
+          }
+        `
+    }
+  `;
+}
+
 function getChromiumExecutablePath(): string {
   return process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 }
@@ -163,48 +216,7 @@ export async function renderTelegramDocument(
         await page.setContent(
           html.replace(
             "</head>",
-            `<style>
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: auto !important;
-                min-height: 0 !important;
-                background: #fff !important;
-              }
-              @page {
-                size: A4 portrait;
-                margin: 10mm;
-              }
-              ${
-                printLayout
-                  ? `
-                .telegram-export-page {
-                  width: 190mm !important;
-                  height: auto !important;
-                  min-height: 277mm !important;
-                  max-height: none !important;
-                  display: block !important;
-                  margin: 0 auto !important;
-                  overflow: visible !important;
-                  break-inside: auto !important;
-                  page-break-inside: auto !important;
-                }
-                .telegram-export-page .page-watermark { position: fixed !important; }
-              `
-                  : `
-                .telegram-export-page {
-                  width: 210mm !important;
-                  height: 297mm !important;
-                  min-height: 297mm !important;
-                  max-height: 297mm !important;
-                  padding: 10mm !important;
-                  display: block !important;
-                  margin: 0 auto !important;
-                  overflow: hidden !important;
-                }
-              `
-              }
-            </style></head>`
+            `<style>${getTelegramRenderLayoutCss(printLayout)}</style></head>`
           ),
           { waitUntil: "load" }
         );

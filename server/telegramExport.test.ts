@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hasMultiPageTelegramLayout,
+  getTelegramRenderLayoutCss,
   isAllowedExportResourceUrl,
   isSafeExportHtml,
   withPngDpiMetadata,
@@ -26,6 +27,35 @@ const safeDocument = `<!doctype html>
     </article>
   </body>
 </html>`;
+
+describe("telegram export page geometry", () => {
+  it("uses full A4 with a single 10mm inset for PDF output", () => {
+    const css = getTelegramRenderLayoutCss(true);
+
+    expect(css).toMatch(
+      /@page\s*\{\s*size:\s*A4 portrait;\s*margin:\s*0;\s*\}/
+    );
+    expect(css).toMatch(
+      /\.telegram-export-page\s*\{[^}]*width:\s*210mm !important;[^}]*padding:\s*10mm !important;/s
+    );
+    expect(css).toContain("min-height: 297mm !important;");
+    expect(css).toContain("min-height: 287mm !important;");
+    expect(css).toContain("padding: 10mm 10mm 0 !important;");
+    expect(css).not.toMatch(/width:\s*190mm/);
+    expect(css).not.toMatch(/margin:\s*10mm/);
+  });
+
+  it("keeps single-page PNG capture on the full A4 canvas", () => {
+    const css = getTelegramRenderLayoutCss(false);
+
+    expect(css).toContain("width: 210mm !important;");
+    expect(css).toContain("height: 297mm !important;");
+    expect(css).toContain("padding: 10mm !important;");
+    expect(css).toMatch(
+      /@page\s*\{\s*size:\s*A4 portrait;\s*margin:\s*0;\s*\}/
+    );
+  });
+});
 
 describe("telegram export HTML validation", () => {
   it("allows legitimate text, embedded images, and Cairo fonts", () => {

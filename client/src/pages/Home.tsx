@@ -97,6 +97,7 @@ import {
   type NumberSystem as SupportedNumberSystem,
 } from "@shared/numberSystem";
 import {
+  PRINT_PAGE_WIDTH_PX,
   PRINT_PAGE_HEIGHT_MM,
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
@@ -3979,18 +3980,14 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        // Scale and center the complete 210mm A4 sheet, including its
-        // visible 10mm content insets, rather than sizing only the content box.
-        const paperWidth = paper.offsetWidth;
-        if (!paperWidth) return;
-        const scale = Math.min(1, availableWidth / paperWidth);
+        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
         const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
-        exportWrapper.style.cssText = `position:relative;display:flex;justify-content:center;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
-        paper.style.position = "relative";
+        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+        paper.style.position = "absolute";
         paper.style.top = "0";
-        paper.style.left = "auto";
-        paper.style.margin = "0";
+        paper.style.left = "50%";
+        paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
         paper.style.transformOrigin = "top center";
         paper.style.transform = `scale(${scale})`;
         host.style.height = `${scaledHeight}px`;

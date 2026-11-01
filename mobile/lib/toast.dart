@@ -176,18 +176,34 @@ class _ToastCard extends StatelessWidget {
   final VoidCallback onClose;
 
   Color get _color => switch (kind) {
-    ToastKind.success => const Color(0xFF16845B),
-    ToastKind.error => const Color(0xFFBE3A3A),
-    ToastKind.warning => const Color(0xFFB97712),
-    ToastKind.info => const Color(0xFF2865A0),
-    ToastKind.loading => const Color(0xFF53647A),
+    ToastKind.success => const Color(0xFF35C96B),
+    ToastKind.error => const Color(0xFFF0444F),
+    ToastKind.warning => const Color(0xFFF2BD19),
+    ToastKind.info => const Color(0xFF287BD6),
+    ToastKind.loading => const Color(0xFF64748B),
+  };
+
+  Color get _tint => switch (kind) {
+    ToastKind.success => const Color(0xFFF0FAF3),
+    ToastKind.error => const Color(0xFFFFF0EF),
+    ToastKind.warning => const Color(0xFFFFF8E9),
+    ToastKind.info => const Color(0xFFEEF5FF),
+    ToastKind.loading => const Color(0xFFF1F4F8),
+  };
+
+  String get _title => switch (kind) {
+    ToastKind.success => 'تم بنجاح',
+    ToastKind.error => 'حدث خطأ',
+    ToastKind.warning => 'تنبيه',
+    ToastKind.info => 'هل تعلم؟',
+    ToastKind.loading => 'يرجى الانتظار',
   };
 
   IconData get _icon => switch (kind) {
-    ToastKind.success => Icons.check_circle_outline,
-    ToastKind.error => Icons.error_outline,
-    ToastKind.warning => Icons.warning_amber_rounded,
-    ToastKind.info => Icons.info_outline,
+    ToastKind.success => Icons.check_rounded,
+    ToastKind.error => Icons.close_rounded,
+    ToastKind.warning => Icons.priority_high_rounded,
+    ToastKind.info => Icons.lightbulb_outline_rounded,
     ToastKind.loading => Icons.hourglass_top_rounded,
   };
 
@@ -197,54 +213,90 @@ class _ToastCard extends StatelessWidget {
     child: Material(
       color: Colors.transparent,
       child: Container(
+        constraints: const BoxConstraints(minHeight: 96),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          color: _tint,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(color: _color, width: 1.5),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x260D1B2A),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+              color: Color(0x120D1B2A),
+              blurRadius: 16,
+              offset: Offset(0, 5),
             ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsetsDirectional.only(
+          start: 14,
+          end: 12,
+          top: 13,
+          bottom: 13,
+        ),
         child: Row(
+          textDirection: TextDirection.rtl,
           children: [
-            Container(width: 4, color: _color),
-            const SizedBox(width: 14),
-            Icon(_icon, color: _color, size: 23),
-            const SizedBox(width: 10),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: _color,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(_icon, color: Colors.white, size: 27),
+            ),
+            const SizedBox(width: 16),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                child: Text(
-                  message,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF171717),
+                      fontSize: 16,
+                      height: 1.35,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  textAlign: TextAlign.right,
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF55585D),
+                      fontSize: 14,
+                      height: 1.45,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(width: 8),
             Semantics(
               container: true,
               label: 'إغلاق الإشعار',
               button: true,
               child: IconButton(
                 visualDensity: VisualDensity.compact,
+                tooltip: 'إغلاق الإشعار',
                 onPressed: onClose,
-                icon: const Icon(Icons.close_rounded, size: 19),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 23,
+                  color: Color(0xFF62676D),
+                ),
               ),
             ),
-            const SizedBox(width: 4),
           ],
         ),
       ),

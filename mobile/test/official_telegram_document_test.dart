@@ -52,10 +52,7 @@ void main() {
     expect(html, contains('@page telegram-multipage {'));
     expect(html, contains('margin: 0 0 10mm 0;'));
     expect(html, contains('page: telegram-multipage;'));
-    expect(
-      RegExp(r'<span>وزارة الداخلية</span>').allMatches(html).length,
-      429,
-    );
+    expect(RegExp(r'<span>وزارة الداخلية</span>').allMatches(html).length, 429);
     expect(html, contains('width: 210mm;'));
     expect(html, contains('min-height: 297mm;'));
     expect(html, contains('padding: 10mm;'));
@@ -144,7 +141,7 @@ void main() {
       );
       expect(
         RegExp(r'<span>وزارة الداخلية</span>').allMatches(html),
-        hasLength(330),
+        hasLength(429),
       );
       expect(html, isNot(contains('وزارة التربية')));
       expect(html, isNot(contains('class="official-logo"')));

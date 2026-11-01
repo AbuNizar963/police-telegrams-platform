@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -69,7 +70,7 @@ Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
-  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes);
+  Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes);
 }
 
 class NativeOfficialTelegramDocumentRenderer
@@ -89,8 +90,12 @@ class NativeOfficialTelegramDocumentRenderer
       _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
 
   @override
-  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes) =>
-      _renderFirstPage(pdfBytes, dpi: _documentImageExportDpi);
+  Future<List<Uint8List>> renderHighResolutionImages(
+    Uint8List pdfBytes,
+  ) =>
+      Printing.raster(pdfBytes, dpi: _documentImageExportDpi)
+          .asyncMap((page) => page.toPng())
+          .toList();
 
   Future<Uint8List> _renderFirstPage(
     Uint8List pdfBytes, {
@@ -103,6 +108,22 @@ class NativeOfficialTelegramDocumentRenderer
     ).first;
     return firstPage.toPng();
   }
+}
+
+@visibleForTesting
+Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
+  if (pageImages.length < 2) {
+    throw ArgumentError.value(pageImages.length, 'pageImages');
+  }
+  final archive = Archive();
+  for (var index = 0; index < pageImages.length; index += 1) {
+    final pageNumber = (index + 1).toString().padLeft(2, '0');
+    final image = pageImages[index];
+    archive.addFile(
+      ArchiveFile('telegram-page-$pageNumber.png', image.length, image),
+    );
+  }
+  return Uint8List.fromList(ZipEncoder().encode(archive));
 }
 
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
@@ -642,15 +663,15 @@ class _OfficialTelegramDocumentPageState
     return bytes;
   }
 
-  Future<Uint8List> _renderOutputImage() async {
+  Future<List<Uint8List>> _renderOutputImages() async {
     final pdfBytes = await _renderOutputPdf('download', 'png');
-    _beginIndeterminateProgress('جارٍ تحويل الوثيقة إلى صورة عالية الدقة');
-    final image = await _renderer.renderHighResolutionImage(pdfBytes);
-    if (image.isEmpty) {
-      throw Exception('تعذر تجهيز صورة الوثيقة بدقة الطباعة.');
+    _beginIndeterminateProgress('جارٍ تحويل صفحات الوثيقة إلى صور عالية الدقة');
+    final images = await _renderer.renderHighResolutionImages(pdfBytes);
+    if (images.isEmpty || images.any((image) => image.isEmpty)) {
+      throw Exception('تعذر تجهيز صور صفحات الوثيقة بدقة الطباعة.');
     }
-    _updateProgress(96, 'اكتمل تجهيز صورة الوثيقة');
-    return image;
+    _updateProgress(96, 'اكتمل تجهيز صور صفحات الوثيقة');
+    return images;
   }
 
   Future<void> _perform(
@@ -835,40 +856,53 @@ class _OfficialTelegramDocumentPageState
   }, title: 'مشاركة وثيقة PDF');
 
   Future<void> _shareImage() => _perform(() async {
-    final bytes = await _renderOutputImage();
-    _updateProgress(98, 'الصورة جاهزة للمشاركة');
+    final images = await _renderOutputImages();
+    _updateProgress(98, 'صور الصفحات جاهزة للمشاركة');
     await SharePlus.instance.share(
       ShareParams(
-        files: [
-          XFile.fromData(
-            bytes,
-            name: '$_fileBaseName.png',
+        files: List<XFile>.generate(
+          images.length,
+          (index) => XFile.fromData(
+            images[index],
+            name: images.length == 1
+                ? '$_fileBaseName.png'
+                : '$_fileBaseName-page-${(index + 1).toString().padLeft(2, '0')}.png',
             mimeType: 'image/png',
           ),
-        ],
+        ),
         title: 'برقية ${_value(telegram?['subject'], fallback: '')}',
         text: _value(telegram?['subject'], fallback: ''),
       ),
     );
-  }, title: 'مشاركة صورة الوثيقة');
+  }, title: 'مشاركة صور الوثيقة');
 
   Future<void> _saveImage() => _perform(() async {
-    final bytes = await _renderOutputImage();
-    _updateProgress(98, 'الصورة جاهزة للحفظ');
+    final images = await _renderOutputImages();
+    final isMultiPage = images.length > 1;
+    final bytes = isMultiPage
+        ? createTelegramPageImageArchive(images)
+        : images.single;
+    final extension = isMultiPage ? 'zip' : 'png';
+    _updateProgress(98, 'صور الصفحات جاهزة للحفظ');
     final path = await FilePicker.saveFile(
-      dialogTitle: 'حفظ صورة الوثيقة الرسمية',
-      fileName: '$_fileBaseName.png',
+      dialogTitle: isMultiPage
+          ? 'حفظ صور صفحات الوثيقة الرسمية'
+          : 'حفظ صورة الوثيقة الرسمية',
+      fileName: '$_fileBaseName.$extension',
       type: FileType.custom,
-      allowedExtensions: const ['png'],
+      allowedExtensions: [extension],
       bytes: bytes,
     );
     if (!mounted) return;
     if (path == null) {
       Toast.info(context, 'تم إلغاء حفظ الصورة.');
     } else {
-      Toast.success(context, 'تم حفظ الصورة.');
+      Toast.success(
+        context,
+        isMultiPage ? 'تم حفظ ملف ZIP لصور صفحات البرقية.' : 'تم حفظ الصورة.',
+      );
     }
-  }, title: 'حفظ صورة الوثيقة');
+  }, title: 'حفظ صور الوثيقة');
 
   Future<void> _attachFile() => _perform(() async {
     final result = await FilePicker.pickFiles(

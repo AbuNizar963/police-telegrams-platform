@@ -316,8 +316,10 @@ class _TestOfficialTelegramDocumentRenderer
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
 
   @override
-  Future<Uint8List> renderHighResolutionImage(Uint8List pdfBytes) async =>
-      _testPng;
+  Future<List<Uint8List>> renderHighResolutionImages(
+    Uint8List pdfBytes,
+  ) async =>
+      [_testPng];
 }
 
 class _StalledPdfDocumentRenderer

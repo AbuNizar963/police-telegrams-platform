@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/official_telegram_document.dart';
 
@@ -99,6 +101,31 @@ void main() {
       expect(html, isNot(contains('نص الوثيقة')));
     },
   );
+
+  test('archives each exported page as a separately numbered PNG', () {
+    final archive = ZipDecoder().decodeBytes(
+      createTelegramPageImageArchive([
+        Uint8List.fromList([1, 2, 3]),
+        Uint8List.fromList([4, 5, 6]),
+        Uint8List.fromList([7, 8, 9]),
+      ]),
+    );
+
+    expect(
+      archive.files.map((file) => file.name).toList(),
+      ['telegram-page-01.png', 'telegram-page-02.png', 'telegram-page-03.png'],
+    );
+    expect(
+      archive.files
+          .map((file) => List<int>.from(file.content as List<int>))
+          .toList(),
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+      ],
+    );
+  });
 
   test('renders the frozen organization and chief identity from the selected version', () {
     final source = telegram()

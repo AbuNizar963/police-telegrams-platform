@@ -123,7 +123,11 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
       ArchiveFile('telegram-page-$pageNumber.png', image.length, image),
     );
   }
-  return Uint8List.fromList(ZipEncoder().encode(archive));
+  final encodedArchive = ZipEncoder().encode(archive);
+  if (encodedArchive == null || encodedArchive.isEmpty) {
+    throw StateError('تعذر إنشاء أرشيف صور صفحات البرقية.');
+  }
+  return Uint8List.fromList(encodedArchive);
 }
 
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {

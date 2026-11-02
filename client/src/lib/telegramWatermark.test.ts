@@ -81,11 +81,13 @@ describe("official telegram watermark", () => {
   it("covers the full sheet and retains watermark ink in printed exports", () => {
     const css = buildTelegramWatermarkCss(0.12);
 
-    expect(css).toContain(".telegram-export-page .page-watermark");
+    expect(css).toContain(".page-watermark {");
+    expect(css).toContain("width: 210mm;");
+    expect(css).toContain("height: 297mm;");
     expect(css).toContain("inset: 2.4mm 3.2mm 3mm;");
     expect(css).toContain("align-items: center;");
     expect(css).toContain("justify-content: space-between;");
-    expect(css).toContain(".telegram-export-page .watermark-logo");
+    expect(css).toContain(".page-watermark .watermark-logo");
     expect(css).toContain("width: 93.75%;");
     expect(css).toContain("gap: 6.16mm;");
     expect(css).toContain("translateX(-10.3mm)");

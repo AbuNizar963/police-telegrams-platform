@@ -49,16 +49,18 @@ export function buildTelegramWatermarkCss(opacity: number): string {
     : TELEGRAM_WATERMARK_DEFAULT_OPACITY;
 
   return `
-    .telegram-export-page .page-watermark {
+    .page-watermark {
       position: absolute;
       inset: 0;
       z-index: 1;
+      width: 210mm;
+      height: 297mm;
       overflow: hidden;
       pointer-events: none;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .telegram-export-page .watermark-logo {
+    .page-watermark .watermark-logo {
       position: absolute;
       z-index: 1;
       top: 50%;
@@ -71,7 +73,7 @@ export function buildTelegramWatermarkCss(opacity: number): string {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .telegram-export-page .watermark-text-pattern {
+    .page-watermark .watermark-text-pattern {
       position: absolute;
       z-index: 0;
       /* Aref Ruqaa glyph bounds are inset from line boxes; these offsets yield 3mm visible ink margins. */
@@ -86,17 +88,17 @@ export function buildTelegramWatermarkCss(opacity: number): string {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .telegram-export-page .watermark-text-row {
+    .page-watermark .watermark-text-row {
       display: flex;
       flex: 0 0 auto;
       width: max-content;
       gap: ${TELEGRAM_WATERMARK_HORIZONTAL_GAP_MM}mm;
       white-space: nowrap;
     }
-    .telegram-export-page .watermark-text-row-offset {
+    .page-watermark .watermark-text-row-offset {
       transform: translateX(-10.3mm);
     }
-    .telegram-export-page .watermark-text-pattern span {
+    .page-watermark .watermark-text-pattern span {
       color: #73777d;
       text-align: center;
       font-family: "${TELEGRAM_WATERMARK_FONT_FAMILY}", serif;

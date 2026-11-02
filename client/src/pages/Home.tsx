@@ -3675,8 +3675,9 @@ function TelegramDetail({
         .telegram-export-page {
           position: relative;
           isolation: isolate;
+          z-index: 2;
           box-sizing: border-box;
-          background: #fff;
+          background: transparent;
           color: #172033;
           direction: rtl;
           font-family: "Cairo", Tahoma, Arial, sans-serif;
@@ -3861,11 +3862,11 @@ function TelegramDetail({
         }
         @media print {
           html, body { margin: 0; padding: 0; background: #fff; }
-          .telegram-export-page .page-watermark { position: fixed; }
+          .page-watermark { position: fixed; }
         }
       </style>
+      ${watermark}
       <article class="telegram-export-page" dir="rtl" lang="ar">
-        ${watermark}
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>
@@ -3977,8 +3978,9 @@ function TelegramDetail({
       activeObserver?.disconnect();
       host.replaceChildren(exportWrapper);
 
+      let previewScale = 1;
       const watermarkTemplate =
-        paper.querySelector<HTMLElement>(".page-watermark");
+        exportWrapper.querySelector<HTMLElement>(".page-watermark");
       const syncPreviewWatermarks = () => {
         if (!watermarkTemplate) return;
 
@@ -3988,7 +3990,7 @@ function TelegramDetail({
         const cloneSelector =
           '.page-watermark[data-preview-watermark-clone="true"]';
         let clones = Array.from(
-          paper.querySelectorAll<HTMLElement>(cloneSelector)
+          exportWrapper.querySelectorAll<HTMLElement>(cloneSelector)
         );
         while (clones.length > requiredPageCount - 1) {
           clones.pop()?.remove();
@@ -3996,19 +3998,21 @@ function TelegramDetail({
         while (clones.length < requiredPageCount - 1) {
           const clone = watermarkTemplate.cloneNode(true) as HTMLElement;
           clone.dataset.previewWatermarkClone = "true";
-          paper.appendChild(clone);
+          exportWrapper.appendChild(clone);
           clones.push(clone);
         }
 
         [watermarkTemplate, ...clones].forEach((watermark, pageIndex) => {
           watermark.style.position = "absolute";
           watermark.style.inset = "auto";
-          watermark.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX}px`;
-          watermark.style.left = "0";
+          watermark.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX * previewScale}px`;
+          watermark.style.left = `${(host.clientWidth - PRINT_PAGE_WIDTH_PX * previewScale) / 2}px`;
           watermark.style.right = "auto";
           watermark.style.bottom = "auto";
           watermark.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
           watermark.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
+          watermark.style.transformOrigin = "top left";
+          watermark.style.transform = `scale(${previewScale})`;
         });
       };
 
@@ -4016,11 +4020,12 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        syncPreviewWatermarks();
         const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        previewScale = scale;
+        syncPreviewWatermarks();
         const scaledHeight = Math.ceil(paper.offsetHeight * scale);
 
-        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;`;
+        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;background:#fff;`;
         paper.style.position = "absolute";
         paper.style.top = "0";
         paper.style.left = "50%";

@@ -5110,7 +5110,7 @@ function TelegramDetail({
               <span>مشاركة</span>
               <ChevronDown className="h-3 w-3" aria-hidden="true" />
             </summary>
-            <div className="mt-1 grid w-full gap-1 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-sm">
+            <div className="absolute right-0 top-full z-40 mt-1 grid min-w-40 gap-1 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl">
               <button
                 type="button"
                 disabled={!!exporting || documentSettingsUnavailable}

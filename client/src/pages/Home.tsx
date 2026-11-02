@@ -102,6 +102,7 @@ import {
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
   PREVIEW_PAGE_GAP_PX,
+  getTelegramPreviewPageTopPx,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "@/lib/telegramPrintLayout";
@@ -4006,7 +4007,7 @@ function TelegramDetail({
         [watermarkTemplate, ...clones].forEach((watermark, pageIndex) => {
           watermark.style.position = "absolute";
           watermark.style.inset = "auto";
-          watermark.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX * previewScale}px`;
+          watermark.style.top = `${getTelegramPreviewPageTopPx(pageIndex, previewScale)}px`;
           watermark.style.left = `${(host.clientWidth - PRINT_PAGE_WIDTH_PX * previewScale) / 2}px`;
           watermark.style.right = "auto";
           watermark.style.bottom = "auto";
@@ -4030,7 +4031,7 @@ function TelegramDetail({
           gap.style.position = "absolute";
           gap.style.zIndex = "4";
           gap.style.pointerEvents = "none";
-          gap.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX * previewScale}px`;
+          gap.style.top = `${getTelegramPreviewPageTopPx(pageIndex, previewScale) - PREVIEW_PAGE_GAP_PX * previewScale}px`;
           gap.style.left = "0";
           gap.style.width = "100%";
           gap.style.height = `${PREVIEW_PAGE_GAP_PX * previewScale}px`;
@@ -4050,7 +4051,9 @@ function TelegramDetail({
         syncPreviewWatermarks();
         const pageCount = getTelegramPreviewPageCount(paper.offsetHeight);
         const gapHeight = Math.max(0, pageCount - 1) * PREVIEW_PAGE_GAP_PX;
-        const scaledHeight = Math.ceil((paper.offsetHeight + gapHeight) * scale);
+        const scaledHeight = Math.ceil(
+          (paper.offsetHeight + gapHeight) * scale
+        );
 
         exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;background:#eef1f5;`;
         paper.style.position = "absolute";

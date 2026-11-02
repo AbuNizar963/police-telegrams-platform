@@ -9,6 +9,7 @@ import {
   PRINT_PAGE_WIDTH_MM,
   PRINT_PAGE_WIDTH_PX,
   PREVIEW_PAGE_GAP_PX,
+  getTelegramPreviewPageTopPx,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "./telegramPrintLayout";
@@ -21,6 +22,20 @@ describe("official telegram A4 print layout", () => {
     expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX * 2)).toBe(2);
     expect(getTelegramPreviewPageCount(Number.NaN)).toBe(1);
     expect(PREVIEW_PAGE_GAP_PX).toBe(18);
+  });
+
+  it("includes preview gaps when positioning overlays on later sheets", () => {
+    expect(getTelegramPreviewPageTopPx(0)).toBe(0);
+    expect(getTelegramPreviewPageTopPx(1)).toBe(
+      PRINT_PAGE_HEIGHT_PX + PREVIEW_PAGE_GAP_PX
+    );
+    expect(getTelegramPreviewPageTopPx(2, 0.5)).toBe(
+      (PRINT_PAGE_HEIGHT_PX * 2 + PREVIEW_PAGE_GAP_PX * 2) * 0.5
+    );
+    expect(getTelegramPreviewPageTopPx(Number.NaN)).toBe(0);
+    expect(getTelegramPreviewPageTopPx(1, Number.NaN)).toBe(
+      PRINT_PAGE_HEIGHT_PX + PREVIEW_PAGE_GAP_PX
+    );
   });
 
   it("restores the saved 794x1123px preview with only 10mm internal padding", () => {

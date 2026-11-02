@@ -3,6 +3,8 @@ export const PRINT_PAGE_HEIGHT_PX = 1123;
 export const PRINT_PAGE_WIDTH_MM = 210;
 export const PRINT_PAGE_HEIGHT_MM = 297;
 export const PRINT_MARGIN_MM = 10;
+/** Visual-only separation between A4 sheets in the in-app preview. */
+export const PREVIEW_PAGE_GAP_PX = 18;
 export const PRINT_CONTENT_WIDTH_MM = PRINT_PAGE_WIDTH_MM - PRINT_MARGIN_MM * 2;
 export const PRINT_CONTENT_HEIGHT_MM =
   PRINT_PAGE_HEIGHT_MM - PRINT_MARGIN_MM * 2;

@@ -8,6 +8,7 @@ import {
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
   PRINT_PAGE_WIDTH_PX,
+  PREVIEW_PAGE_GAP_PX,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "./telegramPrintLayout";
@@ -19,6 +20,7 @@ describe("official telegram A4 print layout", () => {
     expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX + 1)).toBe(2);
     expect(getTelegramPreviewPageCount(PRINT_PAGE_HEIGHT_PX * 2)).toBe(2);
     expect(getTelegramPreviewPageCount(Number.NaN)).toBe(1);
+    expect(PREVIEW_PAGE_GAP_PX).toBe(18);
   });
 
   it("restores the saved 794x1123px preview with only 10mm internal padding", () => {

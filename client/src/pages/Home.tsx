@@ -101,6 +101,7 @@ import {
   PRINT_PAGE_HEIGHT_MM,
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
+  PREVIEW_PAGE_GAP_PX,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "@/lib/telegramPrintLayout";
@@ -4014,6 +4015,30 @@ function TelegramDetail({
           watermark.style.transformOrigin = "top left";
           watermark.style.transform = `scale(${previewScale})`;
         });
+
+        const gapSelector = ".telegram-preview-page-gap";
+        exportWrapper
+          .querySelectorAll<HTMLElement>(gapSelector)
+          .forEach(gap => gap.remove());
+        for (let pageIndex = 1; pageIndex < requiredPageCount; pageIndex++) {
+          const gap = document.createElement("div");
+          gap.className = gapSelector.slice(1);
+          gap.setAttribute(
+            "aria-label",
+            `فاصل المعاينة قبل الصفحة ${pageIndex + 1}`
+          );
+          gap.style.position = "absolute";
+          gap.style.zIndex = "4";
+          gap.style.pointerEvents = "none";
+          gap.style.top = `${pageIndex * PRINT_PAGE_HEIGHT_PX * previewScale}px`;
+          gap.style.left = "0";
+          gap.style.width = "100%";
+          gap.style.height = `${PREVIEW_PAGE_GAP_PX * previewScale}px`;
+          gap.style.background = "#eef1f5";
+          gap.style.borderTop = "1px solid #d7dde5";
+          gap.style.borderBottom = "1px solid #d7dde5";
+          exportWrapper.appendChild(gap);
+        }
       };
 
       const fitPaperToPreview = () => {
@@ -4023,9 +4048,11 @@ function TelegramDetail({
         const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
         previewScale = scale;
         syncPreviewWatermarks();
-        const scaledHeight = Math.ceil(paper.offsetHeight * scale);
+        const pageCount = getTelegramPreviewPageCount(paper.offsetHeight);
+        const gapHeight = Math.max(0, pageCount - 1) * PREVIEW_PAGE_GAP_PX;
+        const scaledHeight = Math.ceil((paper.offsetHeight + gapHeight) * scale);
 
-        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;background:#fff;`;
+        exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;background:#eef1f5;`;
         paper.style.position = "absolute";
         paper.style.top = "0";
         paper.style.left = "50%";

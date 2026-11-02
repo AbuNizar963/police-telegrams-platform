@@ -28,6 +28,7 @@ const _documentMultiPageAreaHeightMm =
     _documentPageHeightMm - _documentMarginMm;
 const _documentPreviewDpi = 150.0;
 const _documentImageExportDpi = 300.0;
+const _documentPreviewPageGap = 18.0;
 // A4 watermark mosaic; calibrated against the web PDF for visible 3mm margins.
 const _ministryWatermarkColumns = 13;
 const _ministryWatermarkRows = 33;
@@ -76,6 +77,7 @@ Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
+  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes);
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes);
 }
 
@@ -94,6 +96,13 @@ class NativeOfficialTelegramDocumentRenderer
   @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) =>
       _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
+
+  @override
+  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) =>
+      Printing.raster(
+        pdfBytes,
+        dpi: _documentPreviewDpi,
+      ).asyncMap((page) => page.toPng()).toList();
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes) =>
@@ -201,7 +210,7 @@ class _OfficialTelegramDocumentPageState
   String _progressMessage = 'بدء التنفيذ';
   bool _hasMeasuredProgress = false;
   String? error;
-  Uint8List? preview;
+  List<Uint8List> previewPages = <Uint8List>[];
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
   List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
@@ -242,7 +251,7 @@ class _OfficialTelegramDocumentPageState
       setState(() {
         loading = true;
         error = null;
-        preview = null;
+        previewPages = <Uint8List>[];
       });
     }
     try {
@@ -460,15 +469,15 @@ class _OfficialTelegramDocumentPageState
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final image = await _renderer
-          .renderPreview(pdfBytes)
+      final images = await _renderer
+          .renderPreviewPages(pdfBytes)
           .timeout(
             const Duration(seconds: 25),
             onTimeout: () => throw Exception(
               'استغرق تجهيز صورة المعاينة وقتًا طويلًا. أعد المحاولة.',
             ),
           );
-      if (image.isEmpty) {
+      if (images.isEmpty || images.any((image) => image.isEmpty)) {
         throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
       }
       if (!mounted || generation != _loadGeneration) return;
@@ -480,7 +489,7 @@ class _OfficialTelegramDocumentPageState
             ? activeVersion['versionNumber'] as int?
             : null;
         documentHtml = html;
-        preview = image;
+        previewPages = images;
         loading = false;
       });
     } catch (exception) {
@@ -661,8 +670,8 @@ class _OfficialTelegramDocumentPageState
     if (mounted) {
       try {
         _beginIndeterminateProgress('جارٍ تحديث معاينة الوثيقة');
-        final updatedPreview = await _renderer.renderPreview(bytes);
-        if (mounted) setState(() => preview = updatedPreview);
+        final updatedPreview = await _renderer.renderPreviewPages(bytes);
+        if (mounted) setState(() => previewPages = updatedPreview);
         _updateProgress(92, 'تم تحديث معاينة الوثيقة');
       } catch (_) {
         // A preview refresh must not cancel a valid export or print request.
@@ -1253,7 +1262,7 @@ class _OfficialTelegramDocumentPageState
                   ),
                 Expanded(
                   child: Container(
-                    color: Colors.white,
+                    color: const Color(0xFFF0F2F5),
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       minScale: 1,
@@ -1261,17 +1270,28 @@ class _OfficialTelegramDocumentPageState
                       alignment: Alignment.topCenter,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: Image.memory(
-                            preview!,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                            width: double.infinity,
-                            semanticLabel: 'معاينة الوثيقة الرسمية للبرقية',
-                            errorBuilder: (context, exception, stackTrace) =>
-                                const Text('تعذر عرض معاينة الوثيقة.'),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var index = 0;
+                                index < previewPages.length;
+                                index++) ...[
+                              if (index > 0)
+                                const SizedBox(
+                                  height: _documentPreviewPageGap,
+                                ),
+                              Image.memory(
+                                previewPages[index],
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                                width: double.infinity,
+                                semanticLabel:
+                                    'معاينة الصفحة ${index + 1} من ${previewPages.length}',
+                                errorBuilder: (context, exception, stackTrace) =>
+                                    const Text('تعذر عرض معاينة الوثيقة.'),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),

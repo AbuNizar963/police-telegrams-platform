@@ -211,7 +211,7 @@
 [data-sonner-toaster].toaster [data-sonner-toast] {
   position: relative;
   min-height: 96px;
-  padding: 16px 68px 16px 64px;
+  padding: 16px 84px 16px 64px;
   overflow: hidden;
   direction: rtl;
   text-align: right;
@@ -290,9 +290,13 @@
   border-radius: 999px;
   color: #fff;
   background: var(--toast-accent);
-  order: -1;
-  align-self: center;
-  margin: 0 0 0 12px;
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  left: auto;
+  transform: translateY(-50%);
+  order: 0;
+  margin: 0;
 }
 
 [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
@@ -358,7 +362,7 @@
 
   [data-sonner-toaster].toaster [data-sonner-toast] {
     min-height: 96px;
-    padding: 16px 68px 16px 64px;
+    padding: 16px 84px 16px 64px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
@@ -366,8 +370,13 @@
     height: 52px;
     min-width: 52px;
     flex-basis: 52px;
-    order: -1;
-    margin: 0 0 0 12px;
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    left: auto;
+    transform: translateY(-50%);
+    order: 0;
+    margin: 0;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {

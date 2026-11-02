@@ -271,6 +271,15 @@
   text-align: right;
 }
 
+[data-sonner-toaster].toaster [data-sonner-toast] [data-content] {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: right;
+}
+
 [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
   width: 52px;
   height: 52px;
@@ -281,7 +290,9 @@
   border-radius: 999px;
   color: #fff;
   background: var(--toast-accent);
-  margin-inline: 0 8px;
+  order: -1;
+  align-self: center;
+  margin: 0 0 0 12px;
 }
 
 [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
@@ -355,6 +366,8 @@
     height: 52px;
     min-width: 52px;
     flex-basis: 52px;
+    order: -1;
+    margin: 0 0 0 12px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {

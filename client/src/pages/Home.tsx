@@ -4048,7 +4048,8 @@ function TelegramDetail({
           watermark.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
           watermark.style.height = `${PRINT_PAGE_HEIGHT_MM}mm`;
           watermark.style.transform = "none";
-          const watermarkLogo = watermark.querySelector<HTMLImageElement>(".watermark-logo");
+          const watermarkLogo =
+            watermark.querySelector<HTMLImageElement>(".watermark-logo");
           if (watermarkLogo) {
             watermarkLogo.style.position = "absolute";
             watermarkLogo.style.top = "148.5mm";
@@ -4087,8 +4088,7 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        const scale =
-          Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
         previewScale = scale;
         syncPreviewPages();
         const stackHeight =
@@ -5077,7 +5077,9 @@ function TelegramDetail({
                 type="button"
                 disabled={!!exporting || documentSettingsUnavailable}
                 onClick={event => {
-                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
                   void exportPdf();
                 }}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
@@ -5089,7 +5091,9 @@ function TelegramDetail({
                 type="button"
                 disabled={!!exporting || documentSettingsUnavailable}
                 onClick={event => {
-                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
                   void downloadImage();
                 }}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
@@ -5115,7 +5119,9 @@ function TelegramDetail({
                 type="button"
                 disabled={!!exporting || documentSettingsUnavailable}
                 onClick={event => {
-                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
                   void prepareDocumentShare("pdf");
                 }}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
@@ -5127,7 +5133,9 @@ function TelegramDetail({
                 type="button"
                 disabled={!!exporting || documentSettingsUnavailable}
                 onClick={event => {
-                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
                   void prepareDocumentShare("png");
                 }}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
@@ -5141,7 +5149,9 @@ function TelegramDetail({
           <Button
             type="button"
             variant="outline"
-            onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")}
+            onClick={() =>
+              toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
+            }
             title="موقع البرقية"
             aria-label="موقع البرقية"
             className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
@@ -5154,9 +5164,17 @@ function TelegramDetail({
             <Button
               type="button"
               variant="outline"
-              onClick={() => managementExpired ? notifyManagementExpired() : setEditOpen(true)}
+              onClick={() =>
+                managementExpired
+                  ? notifyManagementExpired()
+                  : setEditOpen(true)
+              }
               aria-disabled={managementExpired}
-              title={managementExpired ? "انتهت مهلة التعديل البالغة 48 ساعة" : "تعديل البرقية"}
+              title={
+                managementExpired
+                  ? "انتهت مهلة التعديل البالغة 48 ساعة"
+                  : "تعديل البرقية"
+              }
               className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
             >
               <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -5174,50 +5192,112 @@ function TelegramDetail({
               className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Copy className="h-4 w-4" aria-hidden="true" />
-              <span>{reissueTelegram.isPending ? "جارٍ الإصدار…" : "إعادة إصدار"}</span>
+              <span>
+                {reissueTelegram.isPending ? "جارٍ الإصدار…" : "إعادة إصدار"}
+              </span>
             </Button>
           )}
 
           {(isAdmin || canOperate) && telegram.status === "draft" && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("submitted")} disabled={transition.isPending} title="إرسال للمراجعة" className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("submitted")}
+              disabled={transition.isPending}
+              title="إرسال للمراجعة"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
               <Send className="h-4 w-4" aria-hidden="true" />
               <span>إرسال للمراجعة</span>
             </Button>
           )}
           {(isAdmin || canOperate) && telegram.status === "submitted" && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("in_review")} disabled={transition.isPending} title="بدء المراجعة" className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("in_review")}
+              disabled={transition.isPending}
+              title="بدء المراجعة"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
               <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
               <span>بدء المراجعة</span>
             </Button>
           )}
           {(isAdmin || canOperate) && telegram.status === "pending" && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("in_progress")} disabled={transition.isPending} title="بدء الإجراء" className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("in_progress")}
+              disabled={transition.isPending}
+              title="بدء الإجراء"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
               <Play className="h-4 w-4" aria-hidden="true" />
               <span>بدء الإجراء</span>
             </Button>
           )}
-          {(isAdmin || canOperate) && ["in_progress", "approved", "forwarded"].includes(telegram.status) && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("completed")} disabled={transition.isPending} title="إكمال المعالجة" className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
+          {(isAdmin || canOperate) &&
+            ["in_progress", "approved", "forwarded"].includes(
+              telegram.status
+            ) && (
+            <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("completed")}
+                disabled={transition.isPending}
+                title="إكمال المعالجة"
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               <span>إكمال المعالجة</span>
             </Button>
           )}
           {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
-              <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[11px] text-white whitespace-nowrap">
-                <Check className="h-4 w-4" aria-hidden="true" /><span>اعتماد</span>
+              <Button
+                type="button"
+                onClick={() => requestTransition("approved")}
+                disabled={transition.isPending}
+                className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[11px] text-white whitespace-nowrap"
+              >
+                <Check className="h-4 w-4" aria-hidden="true" />
+                <span>اعتماد</span>
               </Button>
-              <Button type="button" variant="outline" onClick={() => requestTransition("returned")} disabled={transition.isPending} className="col-span-3 h-11 w-full justify-center gap-2 rounded-lg px-3 text-sm">
-                <CornerUpLeft className="h-4 w-4" aria-hidden="true" /><span>إرجاع</span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("returned")}
+                disabled={transition.isPending}
+                className="col-span-3 h-11 w-full justify-center gap-2 rounded-lg px-3 text-sm"
+              >
+                <CornerUpLeft className="h-4 w-4" aria-hidden="true" />
+                <span>إرجاع</span>
               </Button>
-              <Button type="button" variant="destructive" onClick={() => requestTransition("rejected")} disabled={transition.isPending} className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
-                <XCircle className="h-4 w-4" aria-hidden="true" /><span>رفض</span>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => requestTransition("rejected")}
+                disabled={transition.isPending}
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
+                <XCircle className="h-4 w-4" aria-hidden="true" />
+                <span>رفض</span>
               </Button>
             </>
           )}
-          {(isAdmin || canOperate) && ["resolved", "completed"].includes(telegram.status) && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("archived")} disabled={transition.isPending} title="أرشفة البرقية" className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
-              <Archive className="h-4 w-4" aria-hidden="true" /><span>أرشفة</span>
+          {(isAdmin || canOperate) &&
+            ["resolved", "completed"].includes(telegram.status) && (
+            <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("archived")}
+                disabled={transition.isPending}
+                title="أرشفة البرقية"
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
+              <Archive className="h-4 w-4" aria-hidden="true" />
+                <span>أرشفة</span>
             </Button>
           )}
 
@@ -5228,17 +5308,24 @@ function TelegramDetail({
               onClick={requestPermanentDelete}
               disabled={deleteTelegram.isPending}
               aria-disabled={managementExpired}
-              title={managementExpired ? "انتهت مهلة الحذف البالغة 48 ساعة" : "حذف نهائي"}
+              title={
+                managementExpired
+                  ? "انتهت مهلة الحذف البالغة 48 ساعة"
+                  : "حذف نهائي"
+              }
               className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
-              <span>{deleteTelegram.isPending ? "جارٍ الحذف…" : "حذف نهائي"}</span>
+              <span>
+                {deleteTelegram.isPending ? "جارٍ الحذف…" : "حذف نهائي"}
+              </span>
             </Button>
           )}
         </div>
         {preparedShare?.telegramId === telegram.id && (
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            {preparedShare.format === "pdf" ? "ملف PDF" : "صورة"} جاهز للمشاركة؛ اضغط زر المشاركة مرة أخرى لإرسال الملف.
+            {preparedShare.format === "pdf" ? "ملف PDF" : "صورة"} جاهز للمشاركة؛
+            اضغط زر المشاركة مرة أخرى لإرسال الملف.
           </p>
         )}
       </div>

@@ -4046,6 +4046,16 @@ function TelegramDetail({
           watermark.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
           watermark.style.height = `${PRINT_PAGE_HEIGHT_MM}mm`;
           watermark.style.transform = "none";
+          const watermarkLogo = watermark.querySelector<HTMLElement>(".watermark-logo");
+          if (watermarkLogo) {
+            watermarkLogo.style.position = "absolute";
+            watermarkLogo.style.top = "50%";
+            watermarkLogo.style.left = "50%";
+            watermarkLogo.style.width = "93.75%";
+            watermarkLogo.style.height = "93.75%";
+            watermarkLogo.style.transform = "translate(-50%, -50%)";
+            watermarkLogo.style.objectFit = "contain";
+          }
           sheet.appendChild(watermark);
         }
         sheet.appendChild(pageContent);

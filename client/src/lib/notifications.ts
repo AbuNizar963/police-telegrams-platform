@@ -97,12 +97,12 @@ export async function showLocalTelegramNotification(input: {
 
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 
-type NotificationOptions = ExternalToast;
+type ToastOptions = ExternalToast;
 
 function notify(
   type: "success" | "error" | "info" | "warning",
   message: string,
-  options?: NotificationOptions
+  options?: ToastOptions
 ) {
   const titles = {
     success: "تم بنجاح",
@@ -118,12 +118,12 @@ function notify(
 }
 
 export const toast = {
-  success: (message: string, options?: NotificationOptions) =>
+  success: (message: string, options?: ToastOptions) =>
     notify("success", message, options),
-  error: (message: string, options?: NotificationOptions) =>
+  error: (message: string, options?: ToastOptions) =>
     notify("error", message, options),
-  info: (message: string, options?: NotificationOptions) =>
+  info: (message: string, options?: ToastOptions) =>
     notify("info", message, options),
-  warning: (message: string, options?: NotificationOptions) =>
+  warning: (message: string, options?: ToastOptions) =>
     notify("warning", message, options),
 };

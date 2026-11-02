@@ -5238,31 +5238,31 @@ function TelegramDetail({
             </Button>
           )}
 
-          {canOperate && telegram.status === "draft" && (
+          {(isAdmin || canOperate) && telegram.status === "draft" && (
             <Button type="button" variant="outline" onClick={() => requestTransition("submitted")} disabled={transition.isPending} title="إرسال للمراجعة" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
               <Send className="h-4 w-4" aria-hidden="true" />
               <span>إرسال للمراجعة</span>
             </Button>
           )}
-          {canOperate && telegram.status === "submitted" && (
+          {(isAdmin || canOperate) && telegram.status === "submitted" && (
             <Button type="button" variant="outline" onClick={() => requestTransition("in_review")} disabled={transition.isPending} title="بدء المراجعة" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
               <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
               <span>بدء المراجعة</span>
             </Button>
           )}
-          {canOperate && telegram.status === "pending" && (
+          {(isAdmin || canOperate) && telegram.status === "pending" && (
             <Button type="button" variant="outline" onClick={() => requestTransition("in_progress")} disabled={transition.isPending} title="بدء الإجراء" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
               <Play className="h-4 w-4" aria-hidden="true" />
               <span>بدء الإجراء</span>
             </Button>
           )}
-          {canOperate && ["in_progress", "approved", "forwarded"].includes(telegram.status) && (
+          {(isAdmin || canOperate) && ["in_progress", "approved", "forwarded"].includes(telegram.status) && (
             <Button type="button" variant="outline" onClick={() => requestTransition("completed")} disabled={transition.isPending} title="إكمال المعالجة" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               <span>إكمال المعالجة</span>
             </Button>
           )}
-          {canOperate && telegram.status === "in_review" && (
+          {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
               <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-9 shrink-0 gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-[11px] text-white">
                 <Check className="h-4 w-4" aria-hidden="true" /><span>اعتماد</span>
@@ -5275,7 +5275,7 @@ function TelegramDetail({
               </Button>
             </>
           )}
-          {canOperate && ["resolved", "completed"].includes(telegram.status) && (
+          {(isAdmin || canOperate) && ["resolved", "completed"].includes(telegram.status) && (
             <Button type="button" variant="outline" onClick={() => requestTransition("archived")} disabled={transition.isPending} title="أرشفة البرقية" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
               <Archive className="h-4 w-4" aria-hidden="true" /><span>أرشفة</span>
             </Button>

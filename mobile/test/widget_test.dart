@@ -493,8 +493,7 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Image &&
-            widget.semanticLabel == 'معاينة الصفحة 1 من 1',
+            widget is Image && widget.semanticLabel == 'معاينة الصفحة 1 من 1',
       ),
       findsOneWidget,
     );
@@ -1154,8 +1153,7 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Image &&
-            widget.semanticLabel == 'معاينة الصفحة 1 من 1',
+            widget is Image && widget.semanticLabel == 'معاينة الصفحة 1 من 1',
       ),
       findsOneWidget,
     );

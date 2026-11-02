@@ -1273,13 +1273,13 @@ class _OfficialTelegramDocumentPageState
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            for (var index = 0;
-                                index < previewPages.length;
-                                index++) ...[
+                            for (
+                              var index = 0;
+                              index < previewPages.length;
+                              index++
+                            ) ...[
                               if (index > 0)
-                                const SizedBox(
-                                  height: _documentPreviewPageGap,
-                                ),
+                                const SizedBox(height: _documentPreviewPageGap),
                               Image.memory(
                                 previewPages[index],
                                 fit: BoxFit.contain,
@@ -1287,8 +1287,11 @@ class _OfficialTelegramDocumentPageState
                                 width: double.infinity,
                                 semanticLabel:
                                     'معاينة الصفحة ${index + 1} من ${previewPages.length}',
-                                errorBuilder: (context, exception, stackTrace) =>
-                                    const Text('تعذر عرض معاينة الوثيقة.'),
+                                errorBuilder: (
+                                  context,
+                                  exception,
+                                  stackTrace,
+                                ) => const Text('تعذر عرض معاينة الوثيقة.'),
                               ),
                             ],
                           ],

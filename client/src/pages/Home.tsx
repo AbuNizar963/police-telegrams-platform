@@ -5160,11 +5160,11 @@ function TelegramDetail({
             </div>
           </details>
 
-          <details className="group relative shrink-0">
+          <details className="group relative w-full">
             <summary
               title="مشاركة"
               aria-label="خيارات مشاركة البرقية"
-              className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border bg-background px-2.5 text-[11px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+              className="flex h-10 w-full cursor-pointer list-none items-center justify-start gap-2 rounded-lg border bg-background px-3 text-xs font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
             >
               <Share2 className="h-4 w-4" aria-hidden="true" />
               <span>مشاركة</span>
@@ -5251,7 +5251,7 @@ function TelegramDetail({
             </Button>
           )}
           {(isAdmin || canOperate) && telegram.status === "pending" && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("in_progress")} disabled={transition.isPending} title="بدء الإجراء" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
+            <Button type="button" variant="outline" onClick={() => requestTransition("in_progress")} disabled={transition.isPending} title="بدء الإجراء" className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs">
               <Play className="h-4 w-4" aria-hidden="true" />
               <span>بدء الإجراء</span>
             </Button>

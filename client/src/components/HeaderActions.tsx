@@ -28,7 +28,7 @@ import {
   hasOrganizationSettingsMenuAccess,
   hasUserManagementMenuAccess,
 } from "@/lib/menuAccess";
-import { toast } from "sonner";
+import { toast } from "@/lib/notifications";
 import { useEffect, useState } from "react";
 
 function decodeVapidKey(value: string): Uint8Array {

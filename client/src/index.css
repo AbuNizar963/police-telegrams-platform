@@ -203,177 +203,101 @@
   [data-sonner-toaster].toaster {
     font-family: "Cairo", sans-serif;
     --width: min(650px, calc(100vw - 32px));
-    --border-radius: 20px;
+    --border-radius: 16px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] {
     position: relative;
     min-height: 96px;
-    max-height: 160px;
-    padding: 12px 16px;
-    padding-inline-end: 64px;
+    padding: 16px 20px;
     overflow: hidden;
-    gap: 14px;
+    direction: rtl;
+    text-align: right;
     border: 1.5px solid var(--toast-accent, var(--border));
     border-radius: 20px;
-    background: color-mix(in srgb, var(--toast-accent, #64748b) 9%, #fff);
-    box-shadow: 0 6px 18px rgb(15 23 42 / 0.09);
-    color: #15171a;
+    background: var(--toast-tint, var(--popover));
+    box-shadow:
+      0 10px 26px rgb(16 35 63 / 0.08),
+      0 2px 6px rgb(16 35 63 / 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transition:
       opacity 180ms ease,
+      filter 180ms ease,
       box-shadow 180ms ease;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="success"] {
-    --toast-accent: #45c776;
+    --toast-accent: #35c96b;
+    --toast-tint: #f0faf3;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="error"] {
-    --toast-accent: #e45355;
+    --toast-accent: #f0444f;
+    --toast-tint: #fff0ef;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="warning"] {
-    --toast-accent: #e7bd24;
+    --toast-accent: #f2bd19;
+    --toast-tint: #fff8e9;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="info"] {
-    --toast-accent: #3488d8;
+    --toast-accent: #287bd6;
+    --toast-tint: #eef5ff;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast][data-type="loading"] {
-    --toast-accent: #3488d8;
+    --toast-accent: #78869a;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    color: #555b62;
     font-size: 18px;
-    font-weight: 400;
-    line-height: 1.3;
-    letter-spacing: normal;
-    text-overflow: ellipsis;
-  }
-
-  [data-sonner-toaster].toaster [data-sonner-toast] [data-title]::before {
-    display: block;
-    margin-bottom: 3px;
-    color: #15171a;
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.25;
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast][data-type="success"]
-    [data-title]::before {
-    content: "تم بنجاح!";
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast][data-type="info"]
-    [data-title]::before {
-    content: "معلومة";
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast][data-type="warning"]
-    [data-title]::before {
-    content: "تحذير!";
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast][data-type="error"]
-    [data-title]::before {
-    content: "حدث خطأ!";
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast][data-type="loading"]
-    [data-title]::before {
-    content: "جارٍ التنفيذ";
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast]:has([data-description])
-    [data-title] {
-    color: #15171a;
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  [data-sonner-toaster].toaster
-    [data-sonner-toast]:has([data-description])
-    [data-title]::before {
-    display: none;
-    content: none;
+    font-weight: 800;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    text-align: right;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-description] {
-    display: -webkit-box;
-    overflow: hidden;
-    margin-top: 4px;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    color: #555b62;
-    font-size: 18px;
-    font-weight: 400;
-    line-height: 1.3;
-    text-overflow: ellipsis;
+    margin-top: 2px;
+    font-size: 16px;
+    line-height: 1.45;
+    opacity: 0.82;
+    text-align: right;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
-    display: flex;
     width: 52px;
     height: 52px;
+    min-width: 52px;
     flex: 0 0 52px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    margin: 0;
+    display: grid;
+    place-items: center;
     border-radius: 999px;
-    background: var(--toast-accent, var(--border));
-    color: white;
-  }
-
-  [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] svg {
-    width: 26px;
-    height: 26px;
-    color: white;
-    stroke: currentColor;
-  }
-
-  [data-sonner-toaster].toaster [data-sonner-toast] .toast-warning-mark {
-    color: white;
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1;
+    color: #fff;
+    background: var(--toast-accent);
+    margin-inline: 0 8px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
-    top: 50%;
-    right: auto;
-    left: 4px;
     width: 40px;
     height: 40px;
     min-width: 40px;
     min-height: 40px;
-    padding: 0;
-    transform: translateY(-50%);
+    margin-inline-start: 4px;
+    margin-inline-end: 0;
     border: 0;
-    border-radius: 999px;
-    color: #646a70;
+    border-radius: 8px;
     background: transparent;
     transition:
       background-color 150ms ease,
+      color 150ms ease,
       transform 150ms ease;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button]:hover {
-    transform: translateY(-50%) scale(1.04);
-    background: rgb(15 23 42 / 0.07);
+    transform: scale(1.04);
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast]:focus-visible,
@@ -384,6 +308,12 @@
     outline-offset: 2px;
   }
 
+  .dark [data-sonner-toaster].toaster [data-sonner-toast] {
+    box-shadow:
+      0 18px 42px rgb(0 0 0 / 0.34),
+      0 3px 10px rgb(0 0 0 / 0.2);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     [data-sonner-toaster].toaster [data-sonner-toast][data-mounted="true"] {
       animation: toast-arrive 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -392,24 +322,24 @@
     @keyframes toast-arrive {
       from {
         opacity: 0;
-        translate: 0 -8px;
+        filter: blur(3px);
       }
 
       to {
         opacity: 1;
-        translate: 0 0;
+        filter: blur(0);
       }
     }
   }
 
   @media (max-width: 480px) {
     [data-sonner-toaster].toaster {
-      --width: calc(100vw - 32px);
+      --width: calc(100vw - 20px);
     }
 
     [data-sonner-toaster].toaster [data-sonner-toast] {
-      padding-inline: 14px;
-      padding-inline-end: 64px;
+      min-height: 84px;
+      padding: 12px 13px;
     }
   }
 }

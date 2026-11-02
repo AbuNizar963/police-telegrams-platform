@@ -102,7 +102,6 @@ import {
   PRINT_PAGE_HEIGHT_PX,
   PRINT_PAGE_WIDTH_MM,
   PREVIEW_PAGE_GAP_PX,
-  getTelegramPreviewPageTopPx,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
 } from "@/lib/telegramPrintLayout";
@@ -3982,64 +3981,83 @@ function TelegramDetail({
 
       let previewScale = 1;
       const watermarkTemplate =
-        exportWrapper.querySelector<HTMLElement>(".page-watermark");
-      const syncPreviewWatermarks = () => {
-        if (!watermarkTemplate) return;
+        paper.querySelector<HTMLElement>(".page-watermark");
+      const previewPageStack = document.createElement("div");
+      previewPageStack.className = "telegram-preview-page-stack";
+      previewPageStack.style.position = "absolute";
+      previewPageStack.style.top = "0";
+      previewPageStack.style.left = "0";
+      previewPageStack.style.display = "flex";
+      previewPageStack.style.flexDirection = "column";
+      previewPageStack.style.alignItems = "center";
+      previewPageStack.style.gap = `${PREVIEW_PAGE_GAP_PX}px`;
+      previewPageStack.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
 
+      // Keep one unscaled copy for reliable height measurement. The visible
+      // preview is made from clipped A4 sheets below, not from one long sheet.
+      paper.style.position = "absolute";
+      paper.style.top = "-100000px";
+      paper.style.left = "0";
+      paper.style.visibility = "hidden";
+      paper.style.pointerEvents = "none";
+      exportWrapper.appendChild(previewPageStack);
+
+      const createPreviewSheet = (pageIndex: number) => {
+        const sheet = document.createElement("section");
+        sheet.className = "telegram-preview-page";
+        sheet.setAttribute("aria-label", `صفحة البرقية ${pageIndex + 1}`);
+        sheet.style.position = "relative";
+        sheet.style.flex = "0 0 auto";
+        sheet.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
+        sheet.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
+        sheet.style.overflow = "hidden";
+        sheet.style.background = "#fff";
+        sheet.style.boxShadow = "0 2px 12px rgba(15, 23, 42, 0.16)";
+
+        const pageContent = paper.cloneNode(true) as HTMLElement;
+        pageContent
+          .querySelectorAll<HTMLElement>(".page-watermark")
+          .forEach(watermark => watermark.remove());
+        pageContent.style.position = "absolute";
+        pageContent.style.top = `${-pageIndex * PRINT_PAGE_HEIGHT_PX}px`;
+        pageContent.style.left = "0";
+        pageContent.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
+        pageContent.style.minHeight = `${PRINT_PAGE_HEIGHT_PX}px`;
+        pageContent.style.margin = "0";
+        pageContent.style.transform = "none";
+        pageContent.style.visibility = "visible";
+        pageContent.style.pointerEvents = "none";
+
+        if (watermarkTemplate) {
+          const watermark = watermarkTemplate.cloneNode(true) as HTMLElement;
+          watermark.style.position = "absolute";
+          watermark.style.inset = "0";
+          watermark.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
+          watermark.style.height = `${PRINT_PAGE_HEIGHT_MM}mm`;
+          watermark.style.transform = "none";
+          sheet.appendChild(watermark);
+        }
+        sheet.appendChild(pageContent);
+        return sheet;
+      };
+
+      let previewPageCount = 1;
+      const syncPreviewPages = () => {
         const requiredPageCount = getTelegramPreviewPageCount(
           paper.offsetHeight
         );
-        const cloneSelector =
-          '.page-watermark[data-preview-watermark-clone="true"]';
-        let clones = Array.from(
-          exportWrapper.querySelectorAll<HTMLElement>(cloneSelector)
+        if (
+          requiredPageCount === previewPageCount &&
+          previewPageStack.childElementCount
+        ) {
+          return;
+        }
+        previewPageCount = requiredPageCount;
+        previewPageStack.replaceChildren(
+          ...Array.from({ length: requiredPageCount }, (_, pageIndex) =>
+            createPreviewSheet(pageIndex)
+          )
         );
-        while (clones.length > requiredPageCount - 1) {
-          clones.pop()?.remove();
-        }
-        while (clones.length < requiredPageCount - 1) {
-          const clone = watermarkTemplate.cloneNode(true) as HTMLElement;
-          clone.dataset.previewWatermarkClone = "true";
-          exportWrapper.appendChild(clone);
-          clones.push(clone);
-        }
-
-        [watermarkTemplate, ...clones].forEach((watermark, pageIndex) => {
-          watermark.style.position = "absolute";
-          watermark.style.inset = "auto";
-          watermark.style.top = `${getTelegramPreviewPageTopPx(pageIndex, previewScale)}px`;
-          watermark.style.left = `${(host.clientWidth - PRINT_PAGE_WIDTH_PX * previewScale) / 2}px`;
-          watermark.style.right = "auto";
-          watermark.style.bottom = "auto";
-          watermark.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
-          watermark.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
-          watermark.style.transformOrigin = "top left";
-          watermark.style.transform = `scale(${previewScale})`;
-        });
-
-        const gapSelector = ".telegram-preview-page-gap";
-        exportWrapper
-          .querySelectorAll<HTMLElement>(gapSelector)
-          .forEach(gap => gap.remove());
-        for (let pageIndex = 1; pageIndex < requiredPageCount; pageIndex++) {
-          const gap = document.createElement("div");
-          gap.className = gapSelector.slice(1);
-          gap.setAttribute(
-            "aria-label",
-            `فاصل المعاينة قبل الصفحة ${pageIndex + 1}`
-          );
-          gap.style.position = "absolute";
-          gap.style.zIndex = "4";
-          gap.style.pointerEvents = "none";
-          gap.style.top = `${getTelegramPreviewPageTopPx(pageIndex, previewScale) - PREVIEW_PAGE_GAP_PX * previewScale}px`;
-          gap.style.left = "0";
-          gap.style.width = "100%";
-          gap.style.height = `${PREVIEW_PAGE_GAP_PX * previewScale}px`;
-          gap.style.background = "#eef1f5";
-          gap.style.borderTop = "1px solid #d7dde5";
-          gap.style.borderBottom = "1px solid #d7dde5";
-          exportWrapper.appendChild(gap);
-        }
       };
 
       const fitPaperToPreview = () => {
@@ -4048,20 +4066,16 @@ function TelegramDetail({
 
         const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
         previewScale = scale;
-        syncPreviewWatermarks();
-        const pageCount = getTelegramPreviewPageCount(paper.offsetHeight);
-        const gapHeight = Math.max(0, pageCount - 1) * PREVIEW_PAGE_GAP_PX;
-        const scaledHeight = Math.ceil(
-          (paper.offsetHeight + gapHeight) * scale
-        );
+        syncPreviewPages();
+        const stackHeight =
+          previewPageCount * PRINT_PAGE_HEIGHT_PX +
+          Math.max(0, previewPageCount - 1) * PREVIEW_PAGE_GAP_PX;
+        const scaledHeight = Math.ceil(stackHeight * scale);
 
         exportWrapper.style.cssText = `position:relative;width:${availableWidth}px;height:${scaledHeight}px;overflow:hidden;background:#eef1f5;`;
-        paper.style.position = "absolute";
-        paper.style.top = "0";
-        paper.style.left = "50%";
-        paper.style.marginLeft = `${-(PRINT_PAGE_WIDTH_PX / 2)}px`;
-        paper.style.transformOrigin = "top center";
-        paper.style.transform = `scale(${scale})`;
+        previewPageStack.style.left = `${(availableWidth - PRINT_PAGE_WIDTH_PX * scale) / 2}px`;
+        previewPageStack.style.transformOrigin = "top left";
+        previewPageStack.style.transform = `scale(${scale})`;
         host.style.height = `${scaledHeight}px`;
       };
 

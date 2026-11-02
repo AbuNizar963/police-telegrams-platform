@@ -12,23 +12,6 @@ export const PRINT_CONTENT_HEIGHT_MM =
 // remaining A4 page is still 210x297mm, with the content inset inside it.
 export const PRINT_PAGE_AREA_HEIGHT_MM = PRINT_PAGE_HEIGHT_MM - PRINT_MARGIN_MM;
 
-/**
- * Returns the top offset for a physical A4 sheet in the scaled preview.
- * Preview-only gaps must be included so overlays stay aligned with the
- * corresponding sheet after the first page.
- */
-export function getTelegramPreviewPageTopPx(
-  pageIndex: number,
-  scale = 1
-): number {
-  if (!Number.isFinite(pageIndex) || pageIndex <= 0) return 0;
-  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  return (
-    (pageIndex * PRINT_PAGE_HEIGHT_PX + pageIndex * PREVIEW_PAGE_GAP_PX) *
-    safeScale
-  );
-}
-
 export function getTelegramPreviewPageCount(heightPx: number): number {
   if (!Number.isFinite(heightPx) || heightPx <= 0) return 1;
   return Math.max(1, Math.ceil(heightPx / PRINT_PAGE_HEIGHT_PX));

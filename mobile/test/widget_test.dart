@@ -316,9 +316,9 @@ class _TestOfficialTelegramDocumentRenderer
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
 
   @override
-  Future<List<Uint8List>> renderPreviewPages(
-    Uint8List pdfBytes,
-  ) async => [_testPng];
+  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) async => [
+    _testPng,
+  ];
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(
@@ -494,7 +494,7 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Image &&
-            widget.semanticLabel == 'معاينة الوثيقة الرسمية للبرقية',
+            widget.semanticLabel == 'معاينة الصفحة 1 من 1',
       ),
       findsOneWidget,
     );
@@ -1155,7 +1155,7 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Image &&
-            widget.semanticLabel == 'معاينة الوثيقة الرسمية للبرقية',
+            widget.semanticLabel == 'معاينة الصفحة 1 من 1',
       ),
       findsOneWidget,
     );

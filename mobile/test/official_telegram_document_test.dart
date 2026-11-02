@@ -74,7 +74,12 @@ void main() {
     expect(html, contains('inset: 0 auto auto 0;'));
     expect(html, contains('width: 210mm;'));
     expect(html, contains('height: 297mm;'));
-    expect(html, contains('top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%)'));
+    expect(
+      html,
+      contains(
+        'top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%)',
+      ),
+    );
     expect(html, contains('.page-watermark {\n    position: fixed;'));
     expect(
       html,

@@ -1365,8 +1365,10 @@ class _OfficialTelegramDocumentPageState
                       alignment: Alignment.topCenter,
                       panEnabled: true,
                       scaleEnabled: true,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 20),
+                      child: SizedBox(
+                        width: MediaQuery.sizeOf(context).width,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 20),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1413,6 +1415,7 @@ class _OfficialTelegramDocumentPageState
                               ),
                             ],
                           ],
+                          ),
                         ),
                       ),
                     ),

@@ -5276,7 +5276,7 @@ function TelegramDetail({
             </>
           )}
           {(isAdmin || canOperate) && ["resolved", "completed"].includes(telegram.status) && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("archived")} disabled={transition.isPending} title="أرشفة البرقية" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
+            <Button type="button" variant="outline" onClick={() => requestTransition("archived")} disabled={transition.isPending} title="أرشفة البرقية" className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
               <Archive className="h-4 w-4" aria-hidden="true" /><span>أرشفة</span>
             </Button>
           )}
@@ -5289,7 +5289,7 @@ function TelegramDetail({
               disabled={deleteTelegram.isPending}
               aria-disabled={managementExpired}
               title={managementExpired ? "انتهت مهلة الحذف البالغة 48 ساعة" : "حذف نهائي"}
-              className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]"
+              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               <span>{deleteTelegram.isPending ? "جارٍ الحذف…" : "حذف نهائي"}</span>

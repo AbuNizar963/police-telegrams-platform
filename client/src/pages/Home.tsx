@@ -4041,20 +4041,22 @@ function TelegramDetail({
 
         if (watermarkTemplate) {
           const watermark = watermarkTemplate.cloneNode(true) as HTMLElement;
-          watermark.style.position = "absolute";
-          watermark.style.inset = "0";
-          watermark.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
-          watermark.style.height = `${PRINT_PAGE_HEIGHT_MM}mm`;
-          watermark.style.transform = "none";
-          const watermarkLogo = watermark.querySelector<HTMLElement>(".watermark-logo");
+          // Anchor the watermark to the exact A4 preview sheet in CSS pixels.
+          // Avoid percentage transforms that can vary with image intrinsic sizing.
+          watermark.style.cssText = [
+            "position:absolute", "top:0", "right:0", "bottom:0", "left:0",
+            "width:100%", "height:100%", "margin:0", "padding:0",
+            "box-sizing:border-box", "transform:none", "overflow:hidden",
+            "pointer-events:none",
+          ].join(";");
+          const watermarkLogo = watermark.querySelector<HTMLImageElement>(".watermark-logo");
           if (watermarkLogo) {
-            watermarkLogo.style.position = "absolute";
-            watermarkLogo.style.top = "50%";
-            watermarkLogo.style.left = "50%";
-            watermarkLogo.style.width = "93.75%";
-            watermarkLogo.style.height = "93.75%";
-            watermarkLogo.style.transform = "translate(-50%, -50%)";
-            watermarkLogo.style.objectFit = "contain";
+            watermarkLogo.style.cssText = [
+              "position:absolute", "top:0", "right:0", "bottom:0", "left:0",
+              "display:block", "width:93.75%", "height:93.75%",
+              "max-width:none", "max-height:none", "margin:auto", "padding:0",
+              "transform:none", "object-fit:contain", "object-position:center center",
+            ].join(";");
           }
           sheet.appendChild(watermark);
         }

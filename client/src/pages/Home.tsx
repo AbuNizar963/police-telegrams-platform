@@ -3981,7 +3981,8 @@ function TelegramDetail({
 
       let previewScale = 1;
       const watermarkTemplate =
-        paper.querySelector<HTMLElement>(".page-watermark");
+        exportWrapper.querySelector<HTMLElement>(".page-watermark");
+      watermarkTemplate?.remove();
       const previewPageStack = document.createElement("div");
       previewPageStack.className = "telegram-preview-page-stack";
       previewPageStack.style.position = "absolute";

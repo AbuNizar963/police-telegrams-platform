@@ -5087,14 +5087,14 @@ function TelegramDetail({
       )}
       <div className="mt-3 print:hidden">
         <div
-          className="grid w-full grid-cols-4 items-center gap-2 rounded-xl border bg-muted/20 p-2"
+          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2"
           aria-label="إجراءات البرقية"
           dir="rtl"
         >
           <label
             title="إرفاق ملف"
             aria-label="إرفاق ملف"
-            className="inline-flex h-10 w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex h-11 w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[11px] whitespace-nowrap font-semibold text-foreground transition hover:bg-muted"
           >
             <Paperclip className="h-4 w-4" aria-hidden="true" />
             <span>إرفاق</span>
@@ -5116,7 +5116,7 @@ function TelegramDetail({
             disabled={!!exporting || documentSettingsUnavailable}
             title="طباعة البرقية"
             aria-label="طباعة البرقية"
-            className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg bg-[#10233f] px-1.5 text-[10px] text-white hover:bg-[#18375f]"
+            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-[#10233f] px-1.5 text-[11px] whitespace-nowrap text-white hover:bg-[#18375f]"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span>طباعة</span>
@@ -5126,7 +5126,7 @@ function TelegramDetail({
             <summary
               title="تنزيل"
               aria-label="خيارات تنزيل البرقية"
-              className="flex h-10 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+              className="flex h-11 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[11px] whitespace-nowrap font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               <span>تنزيل</span>
@@ -5204,7 +5204,7 @@ function TelegramDetail({
             onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")}
             title="موقع البرقية"
             aria-label="موقع البرقية"
-            className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
           >
             <LocateFixed className="h-4 w-4" aria-hidden="true" />
             <span>الموقع</span>
@@ -5231,7 +5231,7 @@ function TelegramDetail({
               onClick={requestReissue}
               disabled={reissueTelegram.isPending || managementExpired}
               title="إعادة إصدار بنفس الرقم"
-              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Copy className="h-4 w-4" aria-hidden="true" />
               <span>{reissueTelegram.isPending ? "جارٍ الإصدار…" : "إعادة إصدار"}</span>
@@ -5264,10 +5264,10 @@ function TelegramDetail({
           )}
           {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
-              <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[10px] text-white">
+              <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[11px] text-white whitespace-nowrap">
                 <Check className="h-4 w-4" aria-hidden="true" /><span>اعتماد</span>
               </Button>
-              <Button type="button" variant="outline" onClick={() => requestTransition("returned")} disabled={transition.isPending} className="col-span-4 h-10 w-full justify-center gap-2 rounded-lg px-3 text-xs">
+              <Button type="button" variant="outline" onClick={() => requestTransition("returned")} disabled={transition.isPending} className="col-span-3 h-11 w-full justify-center gap-2 rounded-lg px-3 text-sm">
                 <CornerUpLeft className="h-4 w-4" aria-hidden="true" /><span>إرجاع</span>
               </Button>
               <Button type="button" variant="destructive" onClick={() => requestTransition("rejected")} disabled={transition.isPending} className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">

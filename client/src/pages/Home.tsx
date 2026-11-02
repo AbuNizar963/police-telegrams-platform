@@ -5241,7 +5241,7 @@ function TelegramDetail({
             ["in_progress", "approved", "forwarded"].includes(
               telegram.status
             ) && (
-            <Button
+              <Button
                 type="button"
                 variant="outline"
                 onClick={() => requestTransition("completed")}
@@ -5249,10 +5249,10 @@ function TelegramDetail({
                 title="إكمال المعالجة"
                 className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
               >
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              <span>إكمال المعالجة</span>
-            </Button>
-          )}
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                <span>إكمال المعالجة</span>
+              </Button>
+            )}
           {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
               <Button
@@ -5288,7 +5288,7 @@ function TelegramDetail({
           )}
           {(isAdmin || canOperate) &&
             ["resolved", "completed"].includes(telegram.status) && (
-            <Button
+              <Button
                 type="button"
                 variant="outline"
                 onClick={() => requestTransition("archived")}
@@ -5296,10 +5296,10 @@ function TelegramDetail({
                 title="أرشفة البرقية"
                 className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
               >
-              <Archive className="h-4 w-4" aria-hidden="true" />
+                <Archive className="h-4 w-4" aria-hidden="true" />
                 <span>أرشفة</span>
-            </Button>
-          )}
+              </Button>
+            )}
 
           {canManageContent && (
             <Button

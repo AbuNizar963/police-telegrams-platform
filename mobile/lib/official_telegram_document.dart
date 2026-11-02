@@ -1369,52 +1369,54 @@ class _OfficialTelegramDocumentPageState
                         width: MediaQuery.sizeOf(context).width,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(12, 14, 12, 20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (
-                              var index = 0;
-                              index < previewPages.length;
-                              index++
-                            ) ...[
-                              if (index > 0)
-                                const SizedBox(height: _documentPreviewPageGap),
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: Border.all(
-                                    color: const Color(0xFFD7DCE3),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (
+                                var index = 0;
+                                index < previewPages.length;
+                                index++
+                              ) ...[
+                                if (index > 0)
+                                  const SizedBox(
+                                    height: _documentPreviewPageGap,
                                   ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x180F172A),
-                                      blurRadius: 14,
-                                      offset: Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: Image.memory(
-                                  previewPages[index],
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
+                                Container(
                                   width: double.infinity,
-                                  semanticLabel:
-                                      'معاينة الصفحة ${index + 1} من ${previewPages.length}',
-                                  errorBuilder:
-                                      (context, exception, stackTrace) =>
-                                          const Padding(
-                                            padding: EdgeInsets.all(24),
-                                            child: Text(
-                                              'تعذر عرض معاينة الوثيقة.',
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                      color: const Color(0xFFD7DCE3),
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x180F172A),
+                                        blurRadius: 14,
+                                        offset: Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.memory(
+                                    previewPages[index],
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                    width: double.infinity,
+                                    semanticLabel:
+                                        'معاينة الصفحة ${index + 1} من ${previewPages.length}',
+                                    errorBuilder:
+                                        (context, exception, stackTrace) =>
+                                            const Padding(
+                                              padding: EdgeInsets.all(24),
+                                              child: Text(
+                                                'تعذر عرض معاينة الوثيقة.',
+                                              ),
                                             ),
-                                          ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
                           ),
                         ),
                       ),

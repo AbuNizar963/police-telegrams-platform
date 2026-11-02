@@ -220,6 +220,8 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
+  final TransformationController _previewTransform = TransformationController();
+  double _previewZoom = 1;
 
   @override
   void didChangeDependencies() {
@@ -734,7 +736,15 @@ class _OfficialTelegramDocumentPageState
     _loadGeneration++;
     _loadingWatchdog?.cancel();
     _loadingWatchdog = null;
+    _previewTransform.dispose();
     super.dispose();
+  }
+
+  void _setPreviewZoom(double zoom) {
+    final nextZoom = zoom.clamp(1.0, 2.4).toDouble();
+    setState(() => _previewZoom = nextZoom);
+    _previewTransform.value = Matrix4.identity()
+      ..scaleByDouble(nextZoom, nextZoom, 1, 1);
   }
 
   Future<void> _selectVersion(int versionNumber) async {
@@ -1260,41 +1270,154 @@ class _OfficialTelegramDocumentPageState
                             },
                     ),
                   ),
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFF0F2F5),
-                    alignment: Alignment.topCenter,
-                    child: InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 4,
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                        child: Column(
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFCFCFA),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFE2E5E9)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10233F)
+                              .withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            for (
-                              var index = 0;
-                              index < previewPages.length;
-                              index++
-                            ) ...[
-                              if (index > 0)
-                                const SizedBox(height: _documentPreviewPageGap),
-                              Image.memory(
-                                previewPages[index],
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.high,
-                                width: double.infinity,
-                                semanticLabel:
-                                    'معاينة الصفحة ${index + 1} من ${previewPages.length}',
-                                errorBuilder: (
-                                  context,
-                                  exception,
-                                  stackTrace,
-                                ) => const Text('تعذر عرض معاينة الوثيقة.'),
+                            const Icon(
+                              Icons.description_outlined,
+                              size: 16,
+                              color: Color(0xFF10233F),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${previewPages.length} صفحات · A4',
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10233F),
                               ),
-                            ],
+                            ),
                           ],
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'تصغير المعاينة',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _previewZoom <= 1
+                            ? null
+                            : () => _setPreviewZoom(_previewZoom - 0.2),
+                        icon: const Icon(Icons.remove_rounded),
+                      ),
+                      SizedBox(
+                        width: 42,
+                        child: Text(
+                          '${(_previewZoom * 100).round()}%',
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.ltr,
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'تكبير المعاينة',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _previewZoom >= 2.4
+                            ? null
+                            : () => _setPreviewZoom(_previewZoom + 0.2),
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                      IconButton(
+                        tooltip: 'ملاءمة العرض',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _setPreviewZoom(1),
+                        icon: const Icon(Icons.fit_screen_outlined),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    color: const Color(0xFFE9EDF2),
+                    alignment: Alignment.topCenter,
+                    child: InteractiveViewer(
+                      transformationController: _previewTransform,
+                      constrained: false,
+                      minScale: 1,
+                      maxScale: 2.4,
+                      alignment: Alignment.topCenter,
+                      panEnabled: true,
+                      scaleEnabled: true,
+                      child: SizedBox(
+                        width: MediaQuery.sizeOf(context).width,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 20),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (
+                                var index = 0;
+                                index < previewPages.length;
+                                index++
+                              ) ...[
+                                if (index > 0)
+                                  const SizedBox(
+                                    height: _documentPreviewPageGap,
+                                  ),
+                                Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                      color: const Color(0xFFD7DCE3),
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x180F172A),
+                                        blurRadius: 14,
+                                        offset: Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.memory(
+                                    previewPages[index],
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                    width: double.infinity,
+                                    semanticLabel:
+                                        'معاينة الصفحة ${index + 1} من ${previewPages.length}',
+                                    errorBuilder:
+                                        (context, exception, stackTrace) =>
+                                            const Padding(
+                                              padding: EdgeInsets.all(24),
+                                              child: Text(
+                                                'تعذر عرض معاينة الوثيقة.',
+                                              ),
+                                            ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1756,7 +1879,7 @@ $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .page-watermark{position:absolute;inset:0;z-index:1;width:210mm;height:297mm;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page-watermark .watermark-logo{position:absolute;z-index:1;top:148.5mm;left:105mm;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
+.page-watermark .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
 .page-watermark .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;overflow:hidden;opacity:$watermarkOpacity}
 .page-watermark .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
 .page-watermark .watermark-text-row-offset{transform:translateX(-10.3mm)}

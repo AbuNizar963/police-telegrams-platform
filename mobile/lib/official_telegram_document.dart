@@ -1359,6 +1359,7 @@ class _OfficialTelegramDocumentPageState
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       transformationController: _previewTransform,
+                      constrained: false,
                       minScale: 1,
                       maxScale: 2.4,
                       alignment: Alignment.topCenter,

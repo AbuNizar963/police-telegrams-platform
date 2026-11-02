@@ -5087,14 +5087,14 @@ function TelegramDetail({
       )}
       <div className="mt-3 print:hidden">
         <div
-          className="flex w-full flex-row flex-wrap items-center gap-2 rounded-xl border bg-muted/20 p-2"
+          className="grid w-full grid-cols-4 items-center gap-2 rounded-xl border bg-muted/20 p-2"
           aria-label="إجراءات البرقية"
           dir="rtl"
         >
           <label
             title="إرفاق ملف"
             aria-label="إرفاق ملف"
-            className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-2.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex h-10 w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold text-foreground transition hover:bg-muted"
           >
             <Paperclip className="h-4 w-4" aria-hidden="true" />
             <span>إرفاق</span>
@@ -5116,17 +5116,17 @@ function TelegramDetail({
             disabled={!!exporting || documentSettingsUnavailable}
             title="طباعة البرقية"
             aria-label="طباعة البرقية"
-            className="h-9 shrink-0 gap-1.5 rounded-lg bg-[#10233f] px-2.5 text-[11px] text-white hover:bg-[#18375f]"
+            className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg bg-[#10233f] px-1.5 text-[10px] text-white hover:bg-[#18375f]"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span>طباعة</span>
           </Button>
 
-          <details className="group relative shrink-0">
+          <details className="group relative w-full min-w-0">
             <summary
               title="تنزيل"
               aria-label="خيارات تنزيل البرقية"
-              className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border bg-background px-2.5 text-[11px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+              className="flex h-10 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               <span>تنزيل</span>
@@ -5164,7 +5164,7 @@ function TelegramDetail({
             <summary
               title="مشاركة"
               aria-label="خيارات مشاركة البرقية"
-              className="flex h-10 w-full cursor-pointer list-none items-center justify-start gap-2 rounded-lg border bg-background px-3 text-xs font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+              className="flex h-10 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
             >
               <Share2 className="h-4 w-4" aria-hidden="true" />
               <span>مشاركة</span>
@@ -5204,7 +5204,7 @@ function TelegramDetail({
             onClick={() => toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")}
             title="موقع البرقية"
             aria-label="موقع البرقية"
-            className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]"
+            className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
           >
             <LocateFixed className="h-4 w-4" aria-hidden="true" />
             <span>الموقع</span>
@@ -5217,7 +5217,7 @@ function TelegramDetail({
               onClick={() => managementExpired ? notifyManagementExpired() : setEditOpen(true)}
               aria-disabled={managementExpired}
               title={managementExpired ? "انتهت مهلة التعديل البالغة 48 ساعة" : "تعديل البرقية"}
-              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
             >
               <Pencil className="h-4 w-4" aria-hidden="true" />
               <span>تعديل</span>
@@ -5257,20 +5257,20 @@ function TelegramDetail({
             </Button>
           )}
           {(isAdmin || canOperate) && ["in_progress", "approved", "forwarded"].includes(telegram.status) && (
-            <Button type="button" variant="outline" onClick={() => requestTransition("completed")} disabled={transition.isPending} title="إكمال المعالجة" className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
+            <Button type="button" variant="outline" onClick={() => requestTransition("completed")} disabled={transition.isPending} title="إكمال المعالجة" className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               <span>إكمال المعالجة</span>
             </Button>
           )}
           {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
-              <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-9 shrink-0 gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-[11px] text-white">
+              <Button type="button" onClick={() => requestTransition("approved")} disabled={transition.isPending} className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[10px] text-white">
                 <Check className="h-4 w-4" aria-hidden="true" /><span>اعتماد</span>
               </Button>
-              <Button type="button" variant="outline" onClick={() => requestTransition("returned")} disabled={transition.isPending} className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
+              <Button type="button" variant="outline" onClick={() => requestTransition("returned")} disabled={transition.isPending} className="col-span-4 h-10 w-full justify-center gap-2 rounded-lg px-3 text-xs">
                 <CornerUpLeft className="h-4 w-4" aria-hidden="true" /><span>إرجاع</span>
               </Button>
-              <Button type="button" variant="destructive" onClick={() => requestTransition("rejected")} disabled={transition.isPending} className="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-[11px]">
+              <Button type="button" variant="destructive" onClick={() => requestTransition("rejected")} disabled={transition.isPending} className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]">
                 <XCircle className="h-4 w-4" aria-hidden="true" /><span>رفض</span>
               </Button>
             </>

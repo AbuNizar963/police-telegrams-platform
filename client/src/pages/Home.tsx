@@ -4679,7 +4679,9 @@ function TelegramDetail({
           </div>
         </div>
       )}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 print:hidden">
+      <div
+        className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 print:hidden"
+      >
         <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-background text-primary shadow-sm">
             <FileText className="h-4 w-4" aria-hidden="true" />
@@ -4689,7 +4691,11 @@ function TelegramDetail({
             A4 · صفحات متتابعة
           </span>
         </div>
-        <div className="flex items-center gap-1" dir="ltr" aria-label="أدوات تكبير المعاينة">
+        <div
+          className="flex items-center gap-1"
+          dir="ltr"
+          aria-label="أدوات تكبير المعاينة"
+        >
           <button
             type="button"
             className="grid h-9 w-9 place-items-center rounded-lg border bg-background text-foreground hover:bg-muted disabled:opacity-40"
@@ -4697,7 +4703,9 @@ function TelegramDetail({
             title="تصغير"
             disabled={previewZoom <= 0.7}
             onClick={() => changePreviewZoom(previewZoom - 0.15)}
-          >−</button>
+          >
+            −
+          </button>
           <span className="min-w-12 text-center text-xs font-semibold tabular-nums">
             {Math.round(previewZoom * 100)}%
           </span>
@@ -4708,12 +4716,16 @@ function TelegramDetail({
             title="تكبير"
             disabled={previewZoom >= 2}
             onClick={() => changePreviewZoom(previewZoom + 0.15)}
-          >+</button>
+          >
+            +
+          </button>
           <button
             type="button"
             className="rounded-lg border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
             onClick={() => changePreviewZoom(1)}
-          >ملاءمة الصفحة</button>
+          >
+            ملاءمة الصفحة
+          </button>
         </div>
       </div>
       <div

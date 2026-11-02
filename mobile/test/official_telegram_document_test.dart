@@ -74,13 +74,12 @@ void main() {
     expect(html, contains('inset: 0 auto auto 0;'));
     expect(html, contains('width: 210mm;'));
     expect(html, contains('height: 297mm;'));
+    expect(html, contains('.page-watermark {\n    position: fixed;'));
     expect(
       html,
-      contains('.page-watermark {\n    position: fixed;'),
-    );
-    expect(
-      html,
-      contains('.telegram-export-page { z-index: 2; background: transparent; }'),
+      contains(
+        '.telegram-export-page { z-index: 2; background: transparent; }',
+      ),
     );
     expect(
       html,

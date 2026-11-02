@@ -346,23 +346,23 @@
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] {
-    min-height: 84px;
-    padding: 12px 60px 12px 56px;
+    min-height: 96px;
+    padding: 16px 68px 16px 64px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    flex-basis: 44px;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    flex-basis: 52px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-description] {
-    font-size: 14px;
+    font-size: 16px;
   }
 }
 

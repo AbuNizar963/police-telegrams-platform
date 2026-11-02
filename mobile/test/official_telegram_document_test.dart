@@ -53,6 +53,10 @@ void main() {
     expect(html, contains('margin: 0 0 10mm 0;'));
     expect(html, contains('page: telegram-multipage;'));
     expect(RegExp(r'<span>وزارة الداخلية</span>').allMatches(html).length, 429);
+    expect(
+      html.indexOf('<div class="page-watermark"'),
+      lessThan(html.indexOf('<article class="telegram-export-page"')),
+    );
     expect(html, contains('width: 210mm;'));
     expect(html, contains('min-height: 297mm;'));
     expect(html, contains('padding: 10mm;'));
@@ -72,7 +76,11 @@ void main() {
     expect(html, contains('height: 297mm;'));
     expect(
       html,
-      contains('.telegram-export-page .page-watermark {\n    position: fixed;'),
+      contains('.page-watermark {\n    position: fixed;'),
+    );
+    expect(
+      html,
+      contains('.telegram-export-page { z-index: 2; background: transparent; }'),
     );
     expect(
       html,
@@ -131,6 +139,10 @@ void main() {
       expect(html, contains('درجة السرية:</strong> عادية'));
       expect(html, isNot(contains('درجة الأولوية:')));
       expect(html, contains('class="page-watermark"'));
+      expect(
+        html.indexOf('class="page-watermark"'),
+        lessThan(html.indexOf('<article class="telegram-export-page"')),
+      );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, contains('<span>وزارة الداخلية</span>'));
       expect(
@@ -395,7 +407,7 @@ void main() {
       expect(
         html,
         contains(
-          'watermark-text-pattern{position:absolute;z-index:0;inset:2.4mm 3.2mm 3mm;',
+          'page-watermark .watermark-text-pattern{position:absolute;z-index:0;inset:2.4mm 3.2mm 3mm;',
         ),
       );
       expect(html, contains('opacity:0.12'));

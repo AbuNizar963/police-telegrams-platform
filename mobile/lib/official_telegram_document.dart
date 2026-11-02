@@ -1732,12 +1732,12 @@ String buildOfficialTelegramHtml({
 $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
-.telegram-export-page .page-watermark{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.telegram-export-page .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;overflow:hidden;opacity:$watermarkOpacity}
-.telegram-export-page .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
-.telegram-export-page .watermark-text-row-offset{transform:translateX(-10.3mm)}
-.telegram-export-page .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt;font-weight:400;line-height:1;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page-watermark{position:absolute;inset:0;z-index:1;width:210mm;height:297mm;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page-watermark .watermark-logo{position:absolute;z-index:1;top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
+.page-watermark .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;overflow:hidden;opacity:$watermarkOpacity}
+.page-watermark .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
+.page-watermark .watermark-text-row-offset{transform:translateX(-10.3mm)}
+.page-watermark .watermark-text-pattern span{color:#73777d;text-align:center;font-family:"Aref Ruqaa","Noto Naskh Arabic",Tahoma,serif;font-size:11pt;font-weight:400;line-height:1;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page .official-header,.telegram-export-page .classification,.telegram-export-page .telegram-content,.telegram-export-page .document-footer{position:relative;z-index:2}
 .telegram-export-page .official-header{display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:start;gap:2px;padding:0 0 22px;border-bottom:3px solid $headerDividerColor;font-weight:700}
 .telegram-export-page .header-government,.telegram-export-page .header-metadata{min-width:0}.telegram-export-page .header-government{text-align:right}.telegram-export-page .header-metadata{text-align:left}
@@ -1833,16 +1833,17 @@ $fontFaces
     padding: ${_documentMarginMm}mm ${_documentMarginMm}mm 0;
   }
   /* Fixed watermarks use the physical A4 sheet, not the shorter page area. */
-  .telegram-export-page .page-watermark {
+  .page-watermark {
     position: fixed;
     inset: 0 auto auto 0;
     width: ${_documentPageWidthMm}mm;
     height: ${_documentPageHeightMm}mm;
   }
+  .telegram-export-page { z-index: 2; background: transparent; }
 }
 </style></head><body>
-<article class="telegram-export-page" dir="rtl" lang="ar">
 $watermark
+<article class="telegram-export-page" dir="rtl" lang="ar">
 <header class="official-header">
 <div class="header-government"><p class="government-name">الجمهورية العربية السورية</p><p class="government-subtitle">وزارة الداخلية</p>$organizationHierarchy</div>
 <div class="header-logo-cell">$logo</div>

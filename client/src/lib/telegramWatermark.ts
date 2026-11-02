@@ -63,7 +63,7 @@ export function buildTelegramWatermarkCss(opacity: number): string {
     .page-watermark .watermark-logo {
       position: absolute;
       z-index: 1;
-      top: 50%;
+      top: calc(50% + 2mm);
       left: 50%;
       width: 93.75%;
       height: 93.75%;

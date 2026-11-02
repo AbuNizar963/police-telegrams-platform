@@ -3356,6 +3356,15 @@ function TelegramDetail({
     text: string;
   } | null>(null);
   const [documentPreparing, setDocumentPreparing] = useState(true);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const previewZoomRef = useRef(1);
+  const fitPreviewRef = useRef<(() => void) | null>(null);
+  const changePreviewZoom = (nextZoom: number) => {
+    const boundedZoom = Math.min(2, Math.max(0.7, nextZoom));
+    previewZoomRef.current = boundedZoom;
+    setPreviewZoom(boundedZoom);
+    fitPreviewRef.current?.();
+  };
   const [exportProgress, setExportProgress] = useState(0);
   const [exportProgressMessage, setExportProgressMessage] = useState(
     "بانتظار بدء العملية"
@@ -3977,6 +3986,7 @@ function TelegramDetail({
       if (!paper) return;
 
       activeObserver?.disconnect();
+      fitPreviewRef.current = null;
       host.replaceChildren(exportWrapper);
 
       let previewScale = 1;
@@ -4065,7 +4075,9 @@ function TelegramDetail({
         const availableWidth = host.clientWidth;
         if (!availableWidth) return;
 
-        const scale = Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX);
+        const scale =
+          Math.min(1, availableWidth / PRINT_PAGE_WIDTH_PX) *
+          previewZoomRef.current;
         previewScale = scale;
         syncPreviewPages();
         const stackHeight =
@@ -4080,6 +4092,7 @@ function TelegramDetail({
         host.style.height = `${scaledHeight}px`;
       };
 
+      fitPreviewRef.current = fitPaperToPreview;
       fitPaperToPreview();
       activeObserver = new ResizeObserver(fitPaperToPreview);
       activeObserver.observe(host);
@@ -4151,6 +4164,7 @@ function TelegramDetail({
     return () => {
       cancelled = true;
       activeObserver?.disconnect();
+      fitPreviewRef.current = null;
       host.replaceChildren();
       host.style.height = "";
     };
@@ -4665,9 +4679,46 @@ function TelegramDetail({
           </div>
         </div>
       )}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 print:hidden">
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-background text-primary shadow-sm">
+            <FileText className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <span>معاينة المستند</span>
+          <span className="rounded-full bg-background px-2 py-1 text-muted-foreground">
+            A4 · صفحات متتابعة
+          </span>
+        </div>
+        <div className="flex items-center gap-1" dir="ltr" aria-label="أدوات تكبير المعاينة">
+          <button
+            type="button"
+            className="grid h-9 w-9 place-items-center rounded-lg border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+            aria-label="تصغير المعاينة"
+            title="تصغير"
+            disabled={previewZoom <= 0.7}
+            onClick={() => changePreviewZoom(previewZoom - 0.15)}
+          >−</button>
+          <span className="min-w-12 text-center text-xs font-semibold tabular-nums">
+            {Math.round(previewZoom * 100)}%
+          </span>
+          <button
+            type="button"
+            className="grid h-9 w-9 place-items-center rounded-lg border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+            aria-label="تكبير المعاينة"
+            title="تكبير"
+            disabled={previewZoom >= 2}
+            onClick={() => changePreviewZoom(previewZoom + 0.15)}
+          >+</button>
+          <button
+            type="button"
+            className="rounded-lg border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+            onClick={() => changePreviewZoom(1)}
+          >ملاءمة الصفحة</button>
+        </div>
+      </div>
       <div
         ref={paperRef}
-        className="telegram-preview-stage w-full overflow-hidden rounded-sm bg-white"
+        className="telegram-preview-stage w-full overflow-hidden rounded-xl bg-[#eef1f5]"
         dir="rtl"
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"

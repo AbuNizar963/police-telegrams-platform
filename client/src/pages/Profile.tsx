@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import {
   Card,

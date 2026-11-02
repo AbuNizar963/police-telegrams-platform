@@ -221,7 +221,6 @@ class _OfficialTelegramDocumentPageState
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
   final TransformationController _previewTransform = TransformationController();
-  double _previewZoom = 1;
 
   @override
   void didChangeDependencies() {
@@ -740,13 +739,6 @@ class _OfficialTelegramDocumentPageState
     super.dispose();
   }
 
-  void _setPreviewZoom(double zoom) {
-    final nextZoom = zoom.clamp(1.0, 2.4).toDouble();
-    setState(() => _previewZoom = nextZoom);
-    _previewTransform.value = Matrix4.identity()
-      ..scaleByDouble(nextZoom, nextZoom, 1, 1);
-  }
-
   Future<void> _selectVersion(int versionNumber) async {
     if (versionNumber == selectedVersionNumber) return;
     setState(() => selectedVersionNumber = versionNumber);
@@ -848,6 +840,40 @@ class _OfficialTelegramDocumentPageState
       );
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _showDownloadOptions() async {
+    final format = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(24, 0, 24, 0),
+      items: const [
+        PopupMenuItem(value: 'pdf', child: Text('تنزيل PDF')),
+        PopupMenuItem(value: 'image', child: Text('تنزيل صورة')),
+      ],
+    );
+    if (!mounted || format == null) return;
+    if (format == 'pdf') {
+      await _savePdf();
+    } else {
+      await _saveImage();
+    }
+  }
+
+  Future<void> _showShareOptions() async {
+    final format = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(24, 0, 24, 0),
+      items: const [
+        PopupMenuItem(value: 'pdf', child: Text('مشاركة PDF')),
+        PopupMenuItem(value: 'image', child: Text('مشاركة صورة')),
+      ],
+    );
+    if (!mounted || format == null) return;
+    if (format == 'pdf') {
+      await _sharePdf();
+    } else {
+      await _shareImage();
     }
   }
 
@@ -1270,89 +1296,6 @@ class _OfficialTelegramDocumentPageState
                             },
                     ),
                   ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFCFCFA),
-                    border: Border(
-                      bottom: BorderSide(color: Color(0xFFE2E5E9)),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10233F)
-                              .withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.description_outlined,
-                              size: 16,
-                              color: Color(0xFF10233F),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${previewPages.length} صفحات · A4',
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF10233F),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'تصغير المعاينة',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: _previewZoom <= 1
-                            ? null
-                            : () => _setPreviewZoom(_previewZoom - 0.2),
-                        icon: const Icon(Icons.remove_rounded),
-                      ),
-                      SizedBox(
-                        width: 42,
-                        child: Text(
-                          '${(_previewZoom * 100).round()}%',
-                          textAlign: TextAlign.center,
-                          textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'تكبير المعاينة',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: _previewZoom >= 2.4
-                            ? null
-                            : () => _setPreviewZoom(_previewZoom + 0.2),
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                      IconButton(
-                        tooltip: 'ملاءمة العرض',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _setPreviewZoom(1),
-                        icon: const Icon(Icons.fit_screen_outlined),
-                      ),
-                    ],
-                  ),
-                ),
                 Expanded(
                   child: Container(
                     color: const Color(0xFFE9EDF2),
@@ -1564,57 +1507,42 @@ class _OfficialTelegramDocumentPageState
                         ),
                       ],
                     ),
-                    child: Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 3.25,
-                        children: [
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        const spacing = 8.0;
+                        final itemWidth =
+                            (constraints.maxWidth - spacing * 2) / 3;
+                        final actions = <Widget>[
                           if (widget.canReissue)
                             _documentAction(
                               label: busy ? 'جارٍ التجهيز...' : 'إعادة إصدار',
                               icon: Icons.history_edu_outlined,
-                              primary: false,
                               onPressed: busy ? null : _reissue,
                             ),
                           _documentAction(
                             label: busy ? 'جارٍ التجهيز...' : 'طباعة',
                             icon: Icons.print_outlined,
                             primary: true,
-                            onPressed: busy ? null : () => _printPdf(),
+                            onPressed: busy ? null : _printPdf,
                           ),
                           _documentAction(
                             label: 'إرفاق ملف',
                             icon: Icons.attach_file,
-                            onPressed: busy ? null : () => _attachFile(),
+                            onPressed: busy ? null : _attachFile,
                           ),
                           _documentAction(
-                            label: 'تنزيل كصورة',
-                            icon: Icons.image_outlined,
-                            onPressed: busy ? null : () => _saveImage(),
+                            label: 'تنزيل',
+                            icon: Icons.download_outlined,
+                            onPressed: busy ? null : () => _showDownloadOptions(),
                           ),
                           _documentAction(
-                            label: 'تنزيل PDF',
-                            icon: Icons.picture_as_pdf_outlined,
-                            onPressed: busy ? null : () => _savePdf(),
-                          ),
-                          _documentAction(
-                            label: 'مشاركة صورة',
+                            label: 'مشاركة',
                             icon: Icons.share_outlined,
-                            onPressed: busy ? null : () => _shareImage(),
-                          ),
-                          _documentAction(
-                            label: 'مشاركة PDF',
-                            icon: Icons.share_outlined,
-                            onPressed: busy ? null : () => _sharePdf(),
+                            onPressed: busy ? null : () => _showShareOptions(),
                           ),
                           _documentAction(
                             label: 'تعديل البرقية',
-                            icon: Icons.save_outlined,
+                            icon: Icons.edit_outlined,
                             onPressed: busy || widget.onEdit == null
                                 ? null
                                 : () => widget.onEdit!(),
@@ -1622,15 +1550,7 @@ class _OfficialTelegramDocumentPageState
                           _documentAction(
                             label: 'الموقع',
                             icon: Icons.my_location_outlined,
-                            onPressed: busy ? null : () => _showLocation(),
-                          ),
-                          _documentAction(
-                            label: 'حذف نهائي',
-                            icon: Icons.delete_outline,
-                            danger: true,
-                            onPressed: busy || widget.onDelete == null
-                                ? null
-                                : () => widget.onDelete!(),
+                            onPressed: busy ? null : _showLocation,
                           ),
                           _documentAction(
                             label: 'إرسال للمراجعة',
@@ -1639,8 +1559,30 @@ class _OfficialTelegramDocumentPageState
                                 ? null
                                 : () => widget.onSubmitForReview!(),
                           ),
-                        ],
-                      ),
+                        ];
+                        return Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: Wrap(
+                            spacing: spacing,
+                            runSpacing: spacing,
+                            children: [
+                              for (final action in actions)
+                                SizedBox(width: itemWidth, child: action),
+                              SizedBox(
+                                width: double.infinity,
+                                child: _documentAction(
+                                  label: 'حذف نهائي',
+                                  icon: Icons.delete_outline,
+                                  danger: true,
+                                  onPressed: busy || widget.onDelete == null
+                                      ? null
+                                      : () => widget.onDelete!(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

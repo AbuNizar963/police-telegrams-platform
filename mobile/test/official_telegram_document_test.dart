@@ -77,7 +77,7 @@ void main() {
     expect(
       html,
       contains(
-        'top:50%;left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%)',
+        'top:calc(50% + 2mm);left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%)',
       ),
     );
     expect(html, contains('.page-watermark {\n    position: fixed;'));

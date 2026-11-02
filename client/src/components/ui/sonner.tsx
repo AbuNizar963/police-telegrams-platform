@@ -70,7 +70,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       position="top-center"
       dir="rtl"
-      richColors
       closeButton
       icons={{
         success: <Check aria-hidden="true" size={28} strokeWidth={2.8} />,

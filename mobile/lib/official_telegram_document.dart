@@ -1756,7 +1756,7 @@ $fontFaces
 .telegram-export-page{position:relative;isolation:isolate;box-sizing:border-box;width:${_documentPageWidth}px;min-height:${_documentPageHeight}px;padding:${_documentMarginMm}mm;margin:0;background:#fff;color:#172033;direction:rtl;font-family:"Cairo",Tahoma,Arial,sans-serif;font-size:19px;line-height:1.85;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .telegram-export-page *{box-sizing:border-box}
 .page-watermark{position:absolute;inset:0;z-index:1;width:210mm;height:297mm;overflow:hidden;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page-watermark .watermark-logo{position:absolute;z-index:1;top:calc(50% + 2mm);left:50%;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
+.page-watermark .watermark-logo{position:absolute;z-index:1;top:148.5mm;left:105mm;width:93.75%;height:93.75%;transform:translate(-50%,-50%);object-fit:contain;opacity:$watermarkOpacity}
 .page-watermark .watermark-text-pattern{position:absolute;z-index:0;inset:$_ministryWatermarkInsetCss;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;overflow:hidden;opacity:$watermarkOpacity}
 .page-watermark .watermark-text-row{display:flex;flex:0 0 auto;width:max-content;gap:$_ministryWatermarkHorizontalGapCss;white-space:nowrap}
 .page-watermark .watermark-text-row-offset{transform:translateX(-10.3mm)}

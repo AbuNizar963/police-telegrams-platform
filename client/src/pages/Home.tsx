@@ -3875,8 +3875,8 @@ function TelegramDetail({
           .page-watermark { position: fixed; }
         }
       </style>
-      ${watermark}
       <article class="telegram-export-page" dir="rtl" lang="ar">
+        ${watermark}
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>

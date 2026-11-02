@@ -4682,12 +4682,18 @@ function TelegramDetail({
       <div
         className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 print:hidden"
       >
-        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-background text-primary shadow-sm">
+        <div
+          className="flex items-center gap-2 text-xs font-semibold text-foreground"
+        >
+          <span
+            className="grid h-8 w-8 place-items-center rounded-lg bg-background text-primary shadow-sm"
+          >
             <FileText className="h-4 w-4" aria-hidden="true" />
           </span>
           <span>معاينة المستند</span>
-          <span className="rounded-full bg-background px-2 py-1 text-muted-foreground">
+          <span
+            className="rounded-full bg-background px-2 py-1 text-muted-foreground"
+          >
             A4 · صفحات متتابعة
           </span>
         </div>
@@ -4706,7 +4712,9 @@ function TelegramDetail({
           >
             −
           </button>
-          <span className="min-w-12 text-center text-xs font-semibold tabular-nums">
+          <span
+            className="min-w-12 text-center text-xs font-semibold tabular-nums"
+          >
             {Math.round(previewZoom * 100)}%
           </span>
           <button

@@ -220,8 +220,7 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
-  final TransformationController _previewTransform =
-      TransformationController();
+  final TransformationController _previewTransform = TransformationController();
   double _previewZoom = 1;
 
   @override
@@ -744,7 +743,8 @@ class _OfficialTelegramDocumentPageState
   void _setPreviewZoom(double zoom) {
     final nextZoom = zoom.clamp(1.0, 2.4).toDouble();
     setState(() => _previewZoom = nextZoom);
-    _previewTransform.value = Matrix4.identity()..scale(nextZoom);
+    _previewTransform.value = Matrix4.identity()
+      ..scaleByDouble(nextZoom, nextZoom, 1, 1);
   }
 
   Future<void> _selectVersion(int versionNumber) async {
@@ -1289,7 +1289,8 @@ class _OfficialTelegramDocumentPageState
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10233F).withValues(alpha: 0.06),
+                          color: const Color(0xFF10233F)
+                              .withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -1399,14 +1400,14 @@ class _OfficialTelegramDocumentPageState
                                   width: double.infinity,
                                   semanticLabel:
                                       'معاينة الصفحة ${index + 1} من ${previewPages.length}',
-                                  errorBuilder: (
-                                    context,
-                                    exception,
-                                    stackTrace,
-                                  ) => const Padding(
-                                    padding: EdgeInsets.all(24),
-                                    child: Text('تعذر عرض معاينة الوثيقة.'),
-                                  ),
+                                  errorBuilder:
+                                      (context, exception, stackTrace) =>
+                                          const Padding(
+                                            padding: EdgeInsets.all(24),
+                                            child: Text(
+                                              'تعذر عرض معاينة الوثيقة.',
+                                            ),
+                                          ),
                                 ),
                               ),
                             ],

@@ -89,8 +89,8 @@ describe("official telegram watermark", () => {
     expect(css).toContain("justify-content: space-between;");
     expect(css).toContain(".page-watermark .watermark-logo");
     expect(css).toContain("width: 93.75%;");
-    expect(css).toContain("top: 148.5mm;");
-    expect(css).toContain("left: 105mm;");
+    expect(css).toContain("top: 50%;");
+    expect(css).toContain("left: 50%;");
     expect(css).toContain("gap: 6.16mm;");
     expect(css).toContain("translateX(-10.3mm)");
     expect(css).toContain('font-family: "Aref Ruqaa", serif;');

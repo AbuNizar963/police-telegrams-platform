@@ -60,35 +60,42 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       });
     }
     try {
-      final results = await Future.wait<dynamic>([
-        widget.api.call(
+      Future<(dynamic, String?)> read(
+        String procedure, {
+        Map<String, dynamic>? input,
+      }) async {
+        try {
+          return (await widget.api.call(procedure, input: input), null);
+        } catch (exception) {
+          return (null, _actionError(exception));
+        }
+      }
+
+      final results = await Future.wait<(dynamic, String?)>([
+        read(
           'telegrams.incomingRoutes',
           input: {'telegramId': widget.telegramId},
         ),
-        widget.api.call(
-          'telegrams.attachments',
-          input: {'telegramId': widget.telegramId},
-        ),
-        widget.api.call(
-          'telegrams.actions',
-          input: {'telegramId': widget.telegramId},
-        ),
-        widget.api
-            .call('organizations.routingDirectory')
-            .catchError((_) => <dynamic>[]),
+        read('telegrams.attachments', input: {'telegramId': widget.telegramId}),
+        read('telegrams.actions', input: {'telegramId': widget.telegramId}),
+        read('organizations.routingDirectory'),
       ]);
       if (!mounted) return;
       setState(() {
-        routes = results[0] is List ? results[0] as List : const [];
-        attachments = results[1] is List ? results[1] as List : const [];
-        actions = results[2] is List ? results[2] as List : const [];
-        routingDirectory = results[3] is List
-            ? (results[3] as List)
+        routes = results[0].$1 is List ? results[0].$1 as List : const [];
+        attachments = results[1].$1 is List ? results[1].$1 as List : const [];
+        actions = results[2].$1 is List ? results[2].$1 as List : const [];
+        routingDirectory = results[3].$1 is List
+            ? (results[3].$1 as List)
                   .whereType<Map>()
                   .map((item) => Map<String, dynamic>.from(item))
                   .toList()
             : const [];
-        error = null;
+        final errors = results
+            .map((result) => result.$2)
+            .whereType<String>()
+            .toSet();
+        error = errors.isEmpty ? null : errors.join(' · ');
         loadingRecords = false;
       });
     } catch (exception) {
@@ -659,7 +666,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
                 Align(
                   alignment: Alignment.centerRight,

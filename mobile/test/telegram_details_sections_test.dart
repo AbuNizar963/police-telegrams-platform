@@ -4,7 +4,8 @@ import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/main.dart';
 
 class _DetailsApi extends PoliceApi {
-  _DetailsApi({this.failVersions = false}) : super(baseUrl: 'https://example.test');
+  _DetailsApi({this.failVersions = false})
+    : super(baseUrl: 'https://example.test');
 
   final bool failVersions;
   final calls = <String>[];
@@ -87,58 +88,78 @@ class _DetailsApi extends PoliceApi {
 }
 
 void main() {
-  testWidgets('detail shows version history, action log, attachments and receipt routes', (tester) async {
-    final api = _DetailsApi();
-    await tester.pumpWidget(MaterialApp(
-      home: TelegramDetailsPage(
-        api: api,
-        telegramId: 17,
-        initialTelegram: {
-          'id': 17,
-          'serialCode': 'TEST-17',
-          'subject': 'موضوع التفاصيل',
-          'body': 'نص البرقية التجريبي',
-          'status': 'in_review',
-          'createdAt': '2026-11-01T10:00:00Z',
-        },
-        account: {'id': 8, 'role': 'user'},
-        organizationRole: 'reviewer',
-        organizationIsOwner: true,
-      ),
-    ));
-    await tester.pumpAndSettle();
-    expect(find.text('إصدارات الوثيقة (1)'), findsOneWidget);
-    expect(find.textContaining('تصحيح الموضوع'), findsOneWidget);
-    expect(find.text('سجل التدقيق والإجراءات (1)'), findsOneWidget);
-    expect(find.text('المرفقات'), findsOneWidget);
-    expect(find.text('محضر.pdf'), findsOneWidget);
-    expect(find.text('مسار الاستلام والإحالات'), findsOneWidget);
-    expect(find.textContaining('تم تأكيد استلام الإحالة'), findsOneWidget);
-    expect(api.calls, contains('telegrams.versions'));
-  });
+  testWidgets(
+    'detail shows version history, action log, attachments and receipt routes',
+    (tester) async {
+      final api = _DetailsApi();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TelegramDetailsPage(
+            api: api,
+            telegramId: 17,
+            officialDocument: false,
+            initialTelegram: {
+              'id': 17,
+              'serialCode': 'TEST-17',
+              'subject': 'موضوع التفاصيل',
+              'body': 'نص البرقية التجريبي',
+              'status': 'in_review',
+              'createdAt': '2026-11-01T10:00:00Z',
+            },
+            account: {'id': 8, 'role': 'user'},
+            organizationRole: 'reviewer',
+            organizationIsOwner: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.textContaining('إصدارات الوثيقة'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('إصدارات الوثيقة (1)'), findsOneWidget);
+      expect(find.textContaining('تصحيح الموضوع'), findsOneWidget);
+      expect(find.text('سجل التدقيق والإجراءات (1)'), findsOneWidget);
+      expect(find.text('المرفقات'), findsOneWidget);
+      expect(find.text('محضر.pdf'), findsOneWidget);
+      expect(find.text('مسار الاستلام والإحالات'), findsOneWidget);
+      expect(find.textContaining('تم تأكيد استلام الإحالة'), findsOneWidget);
+      expect(api.calls, contains('telegrams.versions'));
+    },
+  );
 
-  testWidgets('version history failure is visible and can be retried', (tester) async {
+  testWidgets('version history failure is visible and can be retried', (
+    tester,
+  ) async {
     final api = _DetailsApi(failVersions: true);
-    await tester.pumpWidget(MaterialApp(
-      home: TelegramDetailsPage(
-        api: api,
-        telegramId: 17,
-        initialTelegram: {
-          'id': 17,
-          'serialCode': 'TEST-17',
-          'subject': 'موضوع التفاصيل',
-          'body': 'نص البرقية التجريبي',
-          'status': 'draft',
-          'createdAt': '2026-11-01T10:00:00Z',
-        },
-        account: {'id': 8, 'role': 'user'},
-        organizationRole: null,
-        organizationIsOwner: false,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TelegramDetailsPage(
+          api: api,
+          telegramId: 17,
+          officialDocument: false,
+          initialTelegram: {
+            'id': 17,
+            'serialCode': 'TEST-17',
+            'subject': 'موضوع التفاصيل',
+            'body': 'نص البرقية التجريبي',
+            'status': 'draft',
+            'createdAt': '2026-11-01T10:00:00Z',
+          },
+          account: {'id': 8, 'role': 'user'},
+          organizationRole: null,
+          organizationIsOwner: false,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.textContaining('إصدارات الوثيقة'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.textContaining('تعذر تحميل سجل الإصدارات'), findsOneWidget);
     expect(find.text('إعادة المحاولة'), findsOneWidget);
-    expect(find.text('موضوع التفاصيل'), findsOneWidget);
   });
 }

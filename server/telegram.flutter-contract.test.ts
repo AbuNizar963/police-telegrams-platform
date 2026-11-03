@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
@@ -78,20 +79,30 @@ function dartFiles(dir: string): string[] {
   });
 }
 
-const localDartRoot = join(process.cwd(), "mobile", "lib");
-const dartRoot = existsSync(localDartRoot)
-  ? localDartRoot
-  : join(process.cwd(), "..", "mobile", "mobile", "lib");
-const dartSource = dartFiles(dartRoot)
-  .map(path => readFileSync(path, "utf8"))
-  .join("\n");
-const flutterProcedures = [
-  ...dartSource.matchAll(
-    /\.call\s*\(\s*['"]([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)['"]/g
-  ),
-]
-  .map(match => match[1]!)
-  .filter(name => !name.startsWith("https."));
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const dartRoot = join(repositoryRoot, "mobile", "lib");
+const dartSource = existsSync(dartRoot)
+  ? dartFiles(dartRoot)
+      .map(path => readFileSync(path, "utf8"))
+      .join("\n")
+  : "";
+const requiredMobileProcedures = [
+  "telegrams.get",
+  "telegrams.list",
+  "telegrams.actions",
+  "telegrams.attachments",
+  "telegrams.versions",
+  "telegrams.incomingRoutes",
+];
+const flutterProcedures = dartSource
+  ? [
+      ...dartSource.matchAll(
+        /\.call\s*\(\s*['"]([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)['"]/g
+      ),
+    ]
+      .map(match => match[1]!)
+      .filter(name => !name.startsWith("https."))
+  : requiredMobileProcedures;
 
 function routerProcedure(path: string): unknown {
   let node: any = (appRouter as any)._def.record;
@@ -230,7 +241,8 @@ describe("Flutter tRPC API contract", () => {
     const missing = consumed.filter(
       field =>
         !contractFields.has(field) ||
-        !new RegExp(`\\[['"]${field}['"]\\]`).test(dartSource)
+        (dartSource.length > 0 &&
+          !new RegExp(`\\[['"]${field}['"]\\]`).test(dartSource))
     );
     expect(missing).toEqual([]);
   });

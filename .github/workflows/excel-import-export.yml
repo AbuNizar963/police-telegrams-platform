@@ -72,10 +72,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Read FVM-pinned Flutter version
+        id: fvm_version
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -er '.flutter | select(type == "string" and length > 0)' mobile/.fvmrc)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.47.2"
+          flutter-version: ${{ steps.fvm_version.outputs.version }}
           channel: stable
           cache: true
 
@@ -97,7 +106,7 @@ jobs:
 
       - name: Install Flutter dependencies
         working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Check Dart formatting
         working-directory: mobile

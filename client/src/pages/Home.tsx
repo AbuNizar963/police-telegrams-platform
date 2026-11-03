@@ -5027,7 +5027,7 @@ function TelegramDetail({
       )}
       <div className="mt-3 print:hidden">
         <div
-          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2"
+          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2 [&>*:last-child:nth-child(3n+1)]:col-span-3"
           aria-label="إجراءات البرقية"
           dir="rtl"
         >

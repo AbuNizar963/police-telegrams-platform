@@ -205,7 +205,7 @@ class _ToastCard extends StatelessWidget {
     ToastKind.success => Icons.check_circle_outline,
     ToastKind.error => Icons.error_outline,
     ToastKind.warning => Icons.priority_high_rounded,
-    ToastKind.info => Icons.lightbulb_outline_rounded,
+    ToastKind.info => Icons.lightbulb_rounded,
     ToastKind.loading => Icons.hourglass_top_rounded,
   };
 
@@ -238,12 +238,22 @@ class _ToastCard extends StatelessWidget {
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
-              alignment: Alignment.center,
-              child: Icon(_icon, color: Colors.white, size: 27),
+            SizedBox.square(
+              dimension: 52,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _color,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    _icon,
+                    color: Colors.white,
+                    size: 26,
+                    opticalSize: 26,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(

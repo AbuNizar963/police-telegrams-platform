@@ -1142,10 +1142,26 @@ void main() {
     expect(find.text(_telegramSubject), findsOneWidget);
     expect(find.text('طباعة'), findsOneWidget);
     expect(find.text('إرفاق ملف'), findsOneWidget);
-    expect(find.text('تنزيل كصورة'), findsOneWidget);
+    expect(find.text('تنزيل'), findsOneWidget);
+    expect(find.text('مشاركة'), findsOneWidget);
+    expect(find.text('تنزيل كصورة'), findsNothing);
+    expect(find.text('تنزيل PDF'), findsNothing);
+    expect(find.text('مشاركة صورة'), findsNothing);
+    expect(find.text('مشاركة PDF'), findsNothing);
+
+    await tester.tap(find.text('تنزيل'));
+    await tester.pumpAndSettle();
     expect(find.text('تنزيل PDF'), findsOneWidget);
-    expect(find.text('مشاركة صورة'), findsOneWidget);
+    expect(find.text('تنزيل صورة'), findsOneWidget);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('مشاركة'));
+    await tester.pumpAndSettle();
     expect(find.text('مشاركة PDF'), findsOneWidget);
+    expect(find.text('مشاركة صورة'), findsOneWidget);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
     expect(find.text('تعديل البرقية'), findsOneWidget);
     expect(find.text('الموقع'), findsOneWidget);
     expect(find.text('حذف نهائي'), findsOneWidget);

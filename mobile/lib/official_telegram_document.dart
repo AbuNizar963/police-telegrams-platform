@@ -1069,17 +1069,22 @@ class _OfficialTelegramDocumentPageState
                 ? const Color(0xFF10233F)
                 : const Color(0xFFD8DCE2),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        icon: Icon(icon, size: 19),
+        icon: Icon(icon, size: 16),
         label: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             label,
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -1496,16 +1501,9 @@ class _OfficialTelegramDocumentPageState
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFCFCFA),
-                      borderRadius: BorderRadius.circular(26),
-                      border: Border.all(color: const Color(0xFFD8DCE2)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A182230),
-                          blurRadius: 12,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      color: const Color(0xFFF5F5F3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE1E5EB)),
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
@@ -1513,22 +1511,16 @@ class _OfficialTelegramDocumentPageState
                         final itemWidth =
                             (constraints.maxWidth - spacing * 2) / 3;
                         final actions = <Widget>[
-                          if (widget.canReissue)
-                            _documentAction(
-                              label: busy ? 'جارٍ التجهيز...' : 'إعادة إصدار',
-                              icon: Icons.history_edu_outlined,
-                              onPressed: busy ? null : _reissue,
-                            ),
+                          _documentAction(
+                            label: 'إرفاق ملف',
+                            icon: Icons.attach_file,
+                            onPressed: busy ? null : _attachFile,
+                          ),
                           _documentAction(
                             label: busy ? 'جارٍ التجهيز...' : 'طباعة',
                             icon: Icons.print_outlined,
                             primary: true,
                             onPressed: busy ? null : _printPdf,
-                          ),
-                          _documentAction(
-                            label: 'إرفاق ملف',
-                            icon: Icons.attach_file,
-                            onPressed: busy ? null : _attachFile,
                           ),
                           _documentAction(
                             label: 'تنزيل',
@@ -1543,17 +1535,23 @@ class _OfficialTelegramDocumentPageState
                             onPressed: busy ? null : () => _showShareOptions(),
                           ),
                           _documentAction(
+                            label: 'الموقع',
+                            icon: Icons.my_location_outlined,
+                            onPressed: busy ? null : _showLocation,
+                          ),
+                          _documentAction(
                             label: 'تعديل البرقية',
                             icon: Icons.edit_outlined,
                             onPressed: busy || widget.onEdit == null
                                 ? null
                                 : () => widget.onEdit!(),
                           ),
-                          _documentAction(
-                            label: 'الموقع',
-                            icon: Icons.my_location_outlined,
-                            onPressed: busy ? null : _showLocation,
-                          ),
+                          if (widget.canReissue)
+                            _documentAction(
+                              label: busy ? 'جارٍ التجهيز...' : 'إعادة إصدار',
+                              icon: Icons.history_edu_outlined,
+                              onPressed: busy ? null : _reissue,
+                            ),
                           _documentAction(
                             label: 'إرسال للمراجعة',
                             icon: Icons.send_outlined,
@@ -1571,7 +1569,9 @@ class _OfficialTelegramDocumentPageState
                               for (final action in actions)
                                 SizedBox(width: itemWidth, child: action),
                               SizedBox(
-                                width: double.infinity,
+                                width: (actions.length + 1) % 3 == 1
+                                    ? constraints.maxWidth
+                                    : itemWidth,
                                 child: _documentAction(
                                   label: 'حذف نهائي',
                                   icon: Icons.delete_outline,

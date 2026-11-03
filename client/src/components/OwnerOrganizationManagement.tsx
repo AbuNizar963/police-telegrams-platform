@@ -13,7 +13,7 @@ import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
 import {
   canOrganizationHaveParent,
   getAllowedOrganizationChildTypes,
-} from "../../../shared/organizationHierarchy";
+} from "@shared/organizationHierarchy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

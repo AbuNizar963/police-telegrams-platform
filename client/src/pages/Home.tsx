@@ -68,15 +68,15 @@ import {
 import {
   buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
-} from "@/lib/telegramWatermark";
-import { pdfPagesToPngArchive } from "@/lib/telegramPageImageArchive";
+} from "@/features/telegrams/documents/telegramWatermark";
+import { pdfPagesToPngArchive } from "@/features/telegrams/documents/telegramPageImageArchive";
 import {
   resolveTelegramExportLogo,
   resolveTelegramExportOrganizationId,
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
-import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
-import { getCachedOfficialDocumentLogo } from "@/lib/officialDocumentLogoCache";
+import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
+import { getCachedOfficialDocumentLogo } from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -112,7 +112,7 @@ import {
   PREVIEW_PAGE_GAP_PX,
   getTelegramPreviewPageCount,
   getTelegramPaperLayoutCss,
-} from "@/lib/telegramPrintLayout";
+} from "@/features/telegrams/documents/telegramPrintLayout";
 
 qrcode.stringToBytes = utf8StringToBytes;
 

@@ -5027,7 +5027,7 @@ function TelegramDetail({
       )}
       <div className="mt-3 print:hidden">
         <div
-          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2"
+          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2 [&>*:last-child:nth-child(3n+1)]:col-span-3"
           aria-label="إجراءات البرقية"
           dir="rtl"
         >
@@ -5108,7 +5108,7 @@ function TelegramDetail({
             <summary
               title="مشاركة"
               aria-label="خيارات مشاركة البرقية"
-              className="flex h-10 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+              className="flex h-11 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[11px] whitespace-nowrap font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
             >
               <Share2 className="h-4 w-4" aria-hidden="true" />
               <span>مشاركة</span>
@@ -5175,7 +5175,7 @@ function TelegramDetail({
                   ? "انتهت مهلة التعديل البالغة 48 ساعة"
                   : "تعديل البرقية"
               }
-              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Pencil className="h-4 w-4" aria-hidden="true" />
               <span>تعديل</span>
@@ -5205,7 +5205,7 @@ function TelegramDetail({
               onClick={() => requestTransition("submitted")}
               disabled={transition.isPending}
               title="إرسال للمراجعة"
-              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
               <span>إرسال للمراجعة</span>
@@ -5218,7 +5218,7 @@ function TelegramDetail({
               onClick={() => requestTransition("in_review")}
               disabled={transition.isPending}
               title="بدء المراجعة"
-              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
               <span>بدء المراجعة</span>
@@ -5231,7 +5231,7 @@ function TelegramDetail({
               onClick={() => requestTransition("in_progress")}
               disabled={transition.isPending}
               title="بدء الإجراء"
-              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Play className="h-4 w-4" aria-hidden="true" />
               <span>بدء الإجراء</span>
@@ -5247,7 +5247,7 @@ function TelegramDetail({
                 onClick={() => requestTransition("completed")}
                 disabled={transition.isPending}
                 title="إكمال المعالجة"
-                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+                className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
               >
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 <span>إكمال المعالجة</span>
@@ -5279,7 +5279,7 @@ function TelegramDetail({
                 variant="destructive"
                 onClick={() => requestTransition("rejected")}
                 disabled={transition.isPending}
-                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+                className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
               >
                 <XCircle className="h-4 w-4" aria-hidden="true" />
                 <span>رفض</span>
@@ -5294,7 +5294,7 @@ function TelegramDetail({
                 onClick={() => requestTransition("archived")}
                 disabled={transition.isPending}
                 title="أرشفة البرقية"
-                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+                className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
               >
                 <Archive className="h-4 w-4" aria-hidden="true" />
                 <span>أرشفة</span>
@@ -5313,7 +5313,7 @@ function TelegramDetail({
                   ? "انتهت مهلة الحذف البالغة 48 ساعة"
                   : "حذف نهائي"
               }
-              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               <span>

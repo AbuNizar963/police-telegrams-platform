@@ -1533,7 +1533,9 @@ class _OfficialTelegramDocumentPageState
                           _documentAction(
                             label: 'تنزيل',
                             icon: Icons.download_outlined,
-                            onPressed: busy ? null : () => _showDownloadOptions(),
+                            onPressed: busy
+                                ? null
+                                : () => _showDownloadOptions(),
                           ),
                           _documentAction(
                             label: 'مشاركة',

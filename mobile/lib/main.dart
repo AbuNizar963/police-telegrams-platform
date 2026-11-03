@@ -4629,7 +4629,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                   onPressed: number == null
                       ? null
                       : () => setState(
-                          () => _selectedVersionNumber = selected ? null : number,
+                          () =>
+                              _selectedVersionNumber = selected ? null : number,
                         ),
                   child: Text(selected ? 'إخفاء التفاصيل' : 'عرض التفاصيل'),
                 ),

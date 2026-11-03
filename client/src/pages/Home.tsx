@@ -58,14 +58,14 @@ import {
 import {
   buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
-} from "@/lib/telegramWatermark";
+} from "@/features/telegrams/documents/telegramWatermark";
 import {
   resolveTelegramExportLogo,
   resolveTelegramExportOrganizationId,
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
-import { detectOfficialDocumentLogoMimeType } from "@/lib/officialDocumentLogo";
-import { getCachedOfficialDocumentLogo } from "@/lib/officialDocumentLogoCache";
+import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
+import { getCachedOfficialDocumentLogo } from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,

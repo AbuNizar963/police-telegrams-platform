@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_PLATFORM_DOCUMENT_SETTINGS,
   MAX_WATERMARK_OPACITY_PERCENT,
-} from "../../../shared/platformDocumentSettings";
+} from "@shared/platformDocumentSettings";
 
 export default function PlatformDocumentSettings() {
   const me = trpc.auth.me.useQuery(undefined, { retry: false });

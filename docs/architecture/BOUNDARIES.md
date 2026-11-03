@@ -32,8 +32,16 @@ client/src/features/
     import-export/
     display/
     documents/
+      officialDocumentLogo.ts
+      telegramWatermark.ts
+      telegramPrintLayout.ts       # إذا كان متوفرًا في نسخة الفرع
+      telegramPageImageArchive.ts  # إذا كان متوفرًا في نسخة الفرع
   organizations/
   notifications/
+
+mobile/lib/features/
+  telegrams/documents/
+    official_telegram_document.dart
 
 server/
   auth/
@@ -50,7 +58,7 @@ shared/
   utils/
 ```
 
-هذه خريطة مستهدفة وليست تعليمات لنقل جماعي فوري. يجب نقل وحدة واحدة في كل PR مع إبقاء الاستيرادات القديمة مؤقتًا عند الحاجة، ثم حذفها بعد نجاح CI واختبارات الاستخدام.
+بدأ تطبيق الخريطة تدريجيًا بنقل وحدات وثائق البرقيات واختباراتها إلى مسارات `features/telegrams/documents/` في العميلين؛ لا تتوفر جميع وحدات الويب في كل نسخة فرع. تبقى وحدات المجال الأخرى في مواقعها الحالية إلى أن تُنقل كوحدة مستقلة قابلة للاختبار؛ لا تنقل الشجرة كلها دفعة واحدة. راجع `docs/architecture/REPOSITORY_STRUCTURE_AR.md` لملكية المجلدات ومسارات البناء.
 
 ## بوابات القبول
 

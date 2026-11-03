@@ -13,11 +13,11 @@ import 'package:share_plus/share_plus.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'api.dart';
-import 'organization_logo_resolution.dart';
-import 'telegram_display.dart';
-import 'telegram_report_labels.dart';
-import 'toast.dart';
+import 'package:police_telegrams/api.dart';
+import 'package:police_telegrams/organization_logo_resolution.dart';
+import 'package:police_telegrams/telegram_display.dart';
+import 'package:police_telegrams/telegram_report_labels.dart';
+import 'package:police_telegrams/toast.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;

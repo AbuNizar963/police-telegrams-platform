@@ -39,6 +39,10 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
 - تغييرات قاعدة البيانات إضافية ومتوافقة: أضف ترحيلًا جديدًا، ولا تعدّل ترحيلًا مطبقًا، واختبر النسخة القديمة والجديدة من التطبيق في بيئة محلية أو staging قبل النشر.
 - التخزين المحلي للقراءات أو صندوق الصادر لا يثبت نجاح الكتابة على الخادم ولا يتجاوز التحقق منه. عند تغير المستخدم أو انتهاء الجلسة، لا تعرض cache حساب آخر.
 
+## تنظيم شيفرة Flutter
+
+يبقى `lib/main.dart` نقطة الدخول المستقرة. نُقلت وحدة مستند البرقية إلى `lib/features/telegrams/documents/official_telegram_document.dart`، واختبارها إلى `test/features/telegrams/documents/`. تُنقل بقية الملفات المسطحة تدريجيًا حسب الميزة، مع تحديث imports وتشغيل التنسيق والتحليل والاختبارات والبناء في كل خطوة. خريطة ملكية المستودع كاملة في [`docs/architecture/REPOSITORY_STRUCTURE_AR.md`](../docs/architecture/REPOSITORY_STRUCTURE_AR.md).
+
 ## التنسيق والاختبارات
 
 من مجلد `mobile`:

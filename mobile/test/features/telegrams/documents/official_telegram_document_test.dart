@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/official_telegram_document.dart';
+import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 
 void main() {
   const fonts = {

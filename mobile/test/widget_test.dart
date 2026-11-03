@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:police_telegrams/app_lock.dart';
 import 'package:police_telegrams/api.dart';
-import 'package:police_telegrams/official_telegram_document.dart';
+import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
 import 'package:police_telegrams/mobile_pages.dart'
     show DepartmentSettingsPage, PlatformDocumentSettingsPage;

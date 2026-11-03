@@ -100,7 +100,9 @@ jobs:
     # build scripts. Never run it for pull requests, including same-repository
     # branches, because their code can otherwise expose release credentials.
     # Pull requests still run the secret-free analysis, tests, and iOS build.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/flutter-mobile-app'
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/flutter-mobile-app'
     defaults:
       run:
         working-directory: mobile
@@ -309,7 +311,7 @@ jobs:
       - build-android-apk
       - build-ios
     if: >-
-      github.event_name == 'workflow_dispatch' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/flutter-mobile-app'
     permissions:
       contents: write

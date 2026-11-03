@@ -2133,7 +2133,7 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _urgentAlert() {
-    final count = stats['urgentAwaitingReceipt'] ?? stats['todayUrgent'] ?? 0;
+    final count = stats['urgentAwaitingReceipt'] ?? 0;
     final numericCount = count is num
         ? count.toInt()
         : int.tryParse('$count') ?? 0;
@@ -2160,7 +2160,7 @@ class _DashboardPageState extends State<DashboardPage>
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'تنبيه أمني: توجد $numericCount برقية عاجلة تحتاج إلى متابعة.',
+              'تنبيه أمني: توجد $numericCount برقية عاجلة موجّهة إلى الجهة الحالية بانتظار الاستلام.',
               style: const TextStyle(
                 color: Color(0xFF8A1C28),
                 fontSize: 12,

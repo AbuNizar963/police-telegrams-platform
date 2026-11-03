@@ -1804,27 +1804,20 @@ const dashboardUrgentTelegramPageSize = 500;
 const dashboardRouteLookupBatchSize = 200;
 
 async function countUrgentAlertsAwaitingReceipt(
-  canViewAll: boolean,
-  organizationId: string | null
+  receivingOrganizationId: string | null
 ): Promise<number> {
+  if (!receivingOrganizationId) return 0;
+
   const telegrams: DashboardUrgentTelegram[] = [];
 
   for (let offset = 0; ; offset += dashboardUrgentTelegramPageSize) {
-    let query = getSupabaseAdmin()
+    const query = getSupabaseAdmin()
       .from("telegrams")
       .select("id,currentOrganizationId")
       .eq("priority", "urgent")
+      .eq("currentOrganizationId", receivingOrganizationId)
       .order("id", { ascending: true })
       .range(offset, offset + dashboardUrgentTelegramPageSize - 1);
-
-    if (!canViewAll) {
-      if (!organizationId) {
-        throw new Error("Organization scope is required to count telegrams");
-      }
-      query = query.or(
-        `organizationId.eq.${organizationId},currentOrganizationId.eq.${organizationId}`
-      );
-    }
 
     const { data, error } = await query;
     throwIfError(error, "Failed to list urgent telegrams");
@@ -1854,7 +1847,11 @@ async function countUrgentAlertsAwaitingReceipt(
     routes.push(...((data ?? []) as DashboardTelegramRoute[]));
   }
 
-  return countUrgentTelegramsAwaitingReceipt(telegrams, routes);
+  return countUrgentTelegramsAwaitingReceipt(
+    telegrams,
+    routes,
+    receivingOrganizationId
+  );
 }
 
 export async function getDashboardStats(
@@ -1887,7 +1884,7 @@ export async function getDashboardStats(
     countTelegrams(userId, canViewAll, organizationId, q =>
       q.eq("priority", "urgent")
     ),
-    countUrgentAlertsAwaitingReceipt(canViewAll, organizationId),
+    countUrgentAlertsAwaitingReceipt(organizationId),
     countTelegrams(userId, canViewAll, organizationId, q =>
       q.eq("classification", "secret")
     ),

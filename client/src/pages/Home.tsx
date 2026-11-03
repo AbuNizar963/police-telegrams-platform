@@ -1072,7 +1072,8 @@ export default function Home() {
               <p className="text-sm font-bold">تنبيه أمني يحتاج إلى متابعة</p>
               <p className="text-xs opacity-80">
                 يوجد {formatCount(data.urgentAwaitingReceipt, numberSystem)}{" "}
-                برقية ذات أولوية عاجلة ضمن نطاق صلاحيتك.
+                برقية ذات أولوية عاجلة موجّهة إلى الجهة الحالية بانتظار
+                الاستلام.
               </p>
             </div>
           </div>

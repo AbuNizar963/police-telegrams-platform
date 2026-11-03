@@ -116,6 +116,7 @@ class _TestPoliceApi extends PoliceApi {
     this.apiLogoFallbackAvailable = false,
     this.contextUnavailable = false,
     this.accountOrganizationId = 'org-1',
+    this.urgentAwaitingReceipt = 0,
   });
 
   final bool signedIn;
@@ -124,6 +125,7 @@ class _TestPoliceApi extends PoliceApi {
   final bool apiLogoFallbackAvailable;
   final bool contextUnavailable;
   final String? accountOrganizationId;
+  final int? urgentAwaitingReceipt;
   final calls = <String, Map<String, dynamic>?>{};
   bool logoutCalled = false;
 
@@ -172,7 +174,8 @@ class _TestPoliceApi extends PoliceApi {
         'todayUrgent': 1,
         'todayIncoming': 2,
         'inProgress': 2,
-        'urgentAwaitingReceipt': 0,
+        if (urgentAwaitingReceipt != null)
+          'urgentAwaitingReceipt': urgentAwaitingReceipt,
       },
       'organizations.context' =>
         contextUnavailable
@@ -973,6 +976,43 @@ void main() {
       expect(api.calls['telegrams.list']?['to'], isA<String>());
     },
   );
+
+  testWidgets('does not use today urgent count as a receipt alert fallback', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    _seedExistingPin();
+    await tester.pumpWidget(
+      PoliceTelegramsApp(
+        api: _TestPoliceApi(signedIn: true, urgentAwaitingReceipt: null),
+      ),
+    );
+    await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
+
+    expect(find.textContaining('موجّهة إلى الجهة الحالية'), findsNothing);
+  });
+
+  testWidgets('labels the urgent receipt alert for the current receiving org', (
+    tester,
+  ) async {
+    _setMobileViewport(tester);
+    _seedExistingPin();
+    await tester.pumpWidget(
+      PoliceTelegramsApp(
+        api: _TestPoliceApi(signedIn: true, urgentAwaitingReceipt: 1),
+      ),
+    );
+    await _pumpDashboardFrames(tester);
+    await _unlockAppIfLocked(tester);
+
+    expect(
+      find.text(
+        'تنبيه أمني: توجد 1 برقية عاجلة موجّهة إلى الجهة الحالية بانتظار الاستلام.',
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'shows the organization logo in the welcome panel when context is unavailable',

@@ -40,15 +40,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Read FVM-pinned Flutter version
+        id: fvm_version
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -er '.flutter | select(type == "string" and length > 0)' mobile/.fvmrc)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.47.2"
+          flutter-version: ${{ steps.fvm_version.outputs.version }}
           channel: stable
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       # Keep the source-of-truth check strict: CI must never hide unformatted
       # files by silently accepting formatter changes.
@@ -112,6 +121,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Read FVM-pinned Flutter version
+        id: fvm_version
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -er '.flutter | select(type == "string" and length > 0)' mobile/.fvmrc)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Determine release version
         id: release_version
         working-directory: ${{ github.workspace }}
@@ -163,12 +181,12 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.47.2"
+          flutter-version: ${{ steps.fvm_version.outputs.version }}
           channel: stable
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prepare release keystore
         env:
@@ -291,15 +309,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Read FVM-pinned Flutter version
+        id: fvm_version
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -er '.flutter | select(type == "string" and length > 0)' mobile/.fvmrc)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.47.2"
+          flutter-version: ${{ steps.fvm_version.outputs.version }}
           channel: stable
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify iOS simulator build without signing
         run: flutter build ios --debug --simulator --no-codesign

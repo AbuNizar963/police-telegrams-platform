@@ -26,21 +26,22 @@ For database changes, also run the local Supabase migration and database test wo
 
 ## Flutter mobile development
 
-The Flutter client is maintained on `flutter-mobile-app`, not in `main`. Fetch the branch first, then run the checks from `mobile/`:
+The Flutter client is maintained on `flutter-mobile-app`, not in `main`. The pinned Flutter SDK is declared in `mobile/.fvmrc`; CI reads the same file so local and CI SDK versions stay aligned. Install FVM using the [official installation guide](https://fvm.app/documentation/getting-started/installation), then run from the repository root:
 
 ```bash
 git fetch origin
 git switch --track origin/flutter-mobile-app
 cd mobile
-flutter pub get
-dart format lib test
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
-flutter test
-flutter build apk --debug
+fvm install
+fvm flutter pub get
+fvm dart format lib test
+fvm dart format --output=none --set-exit-if-changed lib test
+fvm flutter analyze
+fvm flutter test
+fvm flutter build apk --debug
 ```
 
-Use the formatter bundled with the Flutter/Dart SDK configured by the project. Do not use a different formatter or manually adjust whitespace to work around a formatting failure.
+Do not commit `mobile/.fvm/`; it contains the local SDK link and is ignored. Commit changes to `mobile/.fvmrc` only through an intentional Flutter SDK upgrade. Use the formatter bundled with the pinned Flutter/Dart SDK. Do not use a different formatter or manually adjust whitespace to work around a formatting failure.
 
 ## Pull requests and Actions
 

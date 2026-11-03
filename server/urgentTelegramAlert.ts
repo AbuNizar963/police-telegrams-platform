@@ -12,13 +12,17 @@ export type DashboardTelegramRoute = {
 };
 
 /**
- * Urgent alerts are cleared once the current receiving organization accepts
- * the latest route. A decision for an older route must not clear a newer one.
+ * Counts only routed urgent telegrams awaiting the active receiving organization.
+ * New drafts start with their creator's organization as currentOrganizationId,
+ * so a matching latest route is required before showing an alert.
  */
 export function countUrgentTelegramsAwaitingReceipt(
   telegrams: DashboardUrgentTelegram[],
-  routes: DashboardTelegramRoute[]
+  routes: DashboardTelegramRoute[],
+  receivingOrganizationId: string | null
 ): number {
+  if (!receivingOrganizationId) return 0;
+
   const latestRouteByTelegram = new Map<number, DashboardTelegramRoute>();
 
   for (const route of routes) {
@@ -38,12 +42,18 @@ export function countUrgentTelegramsAwaitingReceipt(
   }
 
   return telegrams.filter(telegram => {
-    if (!telegram.currentOrganizationId) return true;
+    if (telegram.currentOrganizationId !== receivingOrganizationId) {
+      return false;
+    }
 
     const latestRoute = latestRouteByTelegram.get(telegram.id);
-    return !(
-      latestRoute?.receiverDecisionStatus === "accepted" &&
-      latestRoute.toOrganizationId === telegram.currentOrganizationId
-    );
+    if (
+      !latestRoute ||
+      latestRoute.toOrganizationId !== receivingOrganizationId
+    ) {
+      return false;
+    }
+
+    return latestRoute.receiverDecisionStatus !== "accepted";
   }).length;
 }

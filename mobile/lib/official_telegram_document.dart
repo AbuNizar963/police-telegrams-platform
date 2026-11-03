@@ -1567,7 +1567,7 @@ class _OfficialTelegramDocumentPageState
                               for (final action in actions)
                                 SizedBox(width: itemWidth, child: action),
                               SizedBox(
-                                width: double.infinity,
+                                width: itemWidth,
                                 child: _documentAction(
                                   label: 'حذف نهائي',
                                   icon: Icons.delete_outline,

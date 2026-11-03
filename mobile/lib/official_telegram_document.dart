@@ -1512,7 +1512,7 @@ class _OfficialTelegramDocumentPageState
                             (constraints.maxWidth - spacing * 2) / 3;
                         final actions = <Widget>[
                           _documentAction(
-                            label: 'إرفاق',
+                            label: 'إرفاق ملف',
                             icon: Icons.attach_file,
                             onPressed: busy ? null : _attachFile,
                           ),

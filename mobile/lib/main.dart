@@ -4139,6 +4139,10 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   bool loading = true;
   String? error;
   Map<String, dynamic>? telegram;
+  bool _versionsLoading = true;
+  String? _versionsError;
+  List<Map<String, dynamic>> _versions = const [];
+  int? _selectedVersionNumber;
 
   bool get _isAdmin => widget.account['role'] == 'admin';
   bool get _canOperate =>
@@ -4200,6 +4204,37 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     telegram = widget.initialTelegram;
     loading = widget.initialTelegram == null;
     load();
+    _loadVersions();
+  }
+
+  Future<void> _loadVersions() async {
+    setState(() {
+      _versionsLoading = true;
+      _versionsError = null;
+    });
+    try {
+      final result = await widget.api.call(
+        'telegrams.versions',
+        input: {'telegramId': widget.telegramId},
+        allowOfflineCache: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _versions = result is List
+            ? result
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList()
+            : const [];
+        _versionsLoading = false;
+      });
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        _versionsLoading = false;
+        _versionsError = exception.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   Future<void> load() async {
@@ -4509,6 +4544,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                     ),
                   ]),
                   const SizedBox(height: 12),
+                  _versionsCard(),
+                  const SizedBox(height: 12),
                   TelegramActionsPanel(
                     api: widget.api,
                     telegramId: widget.telegramId,
@@ -4522,6 +4559,86 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       ),
     );
   }
+
+  Widget _versionsCard() => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'إصدارات الوثيقة (${_versions.length})',
+            style: const TextStyle(
+              color: navy,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (_versionsLoading)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_versionsError != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'تعذر تحميل سجل الإصدارات: $_versionsError',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _loadVersions,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ),
+              ],
+            )
+          else if (_versions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('لا توجد إصدارات سابقة محفوظة لهذه الوثيقة.'),
+            )
+          else
+            ..._versions.map((version) {
+              final number = int.tryParse('${version['versionNumber'] ?? ''}');
+              final snapshot = version['snapshot'] is Map
+                  ? Map<String, dynamic>.from(version['snapshot'] as Map)
+                  : const <String, dynamic>{};
+              final selected = _selectedVersionNumber == number;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(selected ? Icons.visibility : Icons.history),
+                title: Text(
+                  'الإصدار ${number ?? '—'}${selected ? ' · التفاصيل المعروضة' : ''}',
+                ),
+                subtitle: Text(
+                  '${version['changeReason'] ?? 'تعديل الوثيقة'} · '
+                  '${_formatDate(version['createdAt'] ?? '—')}\n'
+                  '${snapshot['subject'] ?? '—'}'
+                  '${selected ? '\nالجهة المستلمة: ${snapshot['recipient'] ?? '—'}\nالحالة: ${snapshot['status'] ?? '—'}\nالنص: ${snapshot['body'] ?? '—'}' : ''}',
+                ),
+                isThreeLine: selected,
+                trailing: TextButton(
+                  onPressed: number == null
+                      ? null
+                      : () => setState(
+                          () => _selectedVersionNumber = selected ? null : number,
+                        ),
+                  child: Text(selected ? 'إخفاء التفاصيل' : 'عرض التفاصيل'),
+                ),
+              );
+            }),
+        ],
+      ),
+    ),
+  );
 
   Widget _infoCard(String title, List<Widget> children) => Card(
     child: Padding(

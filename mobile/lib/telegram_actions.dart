@@ -39,6 +39,7 @@ class TelegramActionsPanel extends StatefulWidget {
 
 class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   bool busy = false;
+  bool loadingRecords = true;
   String? error;
   List<dynamic> routes = const [];
   List<dynamic> attachments = const [];
@@ -52,6 +53,12 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   }
 
   Future<void> load() async {
+    if (mounted) {
+      setState(() {
+        loadingRecords = true;
+        error = null;
+      });
+    }
     try {
       final results = await Future.wait<dynamic>([
         widget.api.call(
@@ -62,9 +69,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'telegrams.attachments',
           input: {'telegramId': widget.telegramId},
         ),
-        widget.api
-            .call('telegrams.actions', input: {'telegramId': widget.telegramId})
-            .catchError((_) => <dynamic>[]),
+        widget.api.call(
+          'telegrams.actions',
+          input: {'telegramId': widget.telegramId},
+        ),
         widget.api
             .call('organizations.routingDirectory')
             .catchError((_) => <dynamic>[]),
@@ -81,9 +89,15 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   .toList()
             : const [];
         error = null;
+        loadingRecords = false;
       });
     } catch (exception) {
-      if (mounted) setState(() => error = _actionError(exception));
+      if (mounted) {
+        setState(() {
+          error = _actionError(exception);
+          loadingRecords = false;
+        });
+      }
     }
   }
 
@@ -640,9 +654,27 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             ),
           ),
           if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(error!, style: const TextStyle(color: Colors.red)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(error!, style: const TextStyle(color: Colors.red)),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: loadingRecords ? null : load,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('إعادة تحميل السجل'),
+                  ),
+                ),
+              ],
+            ),
+          if (loadingRecords)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Center(child: CircularProgressIndicator()),
             ),
           const SizedBox(height: 10),
           Wrap(
@@ -668,7 +700,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
               ),
             ],
           ),
-          if (routes.isNotEmpty) ...[
+          if (!loadingRecords && routes.isNotEmpty) ...[
             const Divider(height: 28),
             const Text(
               'مسار الاستلام والإحالات',
@@ -676,7 +708,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
             ),
             ...routes.map(_routeTile),
           ],
-          if (busy || actions.isNotEmpty) ...[
+          if (busy || (!loadingRecords && actions.isNotEmpty)) ...[
             const Divider(height: 28),
             if (busy) ...[
               Container(
@@ -771,7 +803,12 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           ],
           const Divider(height: 28),
           const Text('المرفقات', style: TextStyle(fontWeight: FontWeight.w800)),
-          if (attachments.isEmpty)
+          if (loadingRecords)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('جارٍ تحميل المرفقات…'),
+            )
+          else if (attachments.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text('لا توجد مرفقات لهذه البرقية.'),

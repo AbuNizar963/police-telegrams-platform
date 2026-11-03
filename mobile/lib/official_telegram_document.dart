@@ -1069,9 +1069,7 @@ class _OfficialTelegramDocumentPageState
                 ? const Color(0xFF10233F)
                 : const Color(0xFFD8DCE2),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 6),
           visualDensity: VisualDensity.compact,
@@ -1082,7 +1080,11 @@ class _OfficialTelegramDocumentPageState
           fit: BoxFit.scaleDown,
           child: Text(
             label,
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),

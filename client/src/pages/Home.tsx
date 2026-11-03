@@ -19,6 +19,14 @@ import {
   ArrowUpLeft,
   Building2,
   CheckCircle2,
+  Check,
+  ClipboardCheck,
+  CornerUpLeft,
+  Copy,
+  Download,
+  Pencil,
+  Play,
+  XCircle,
   ChevronDown,
   ChevronLeft,
   Clock3,
@@ -3866,8 +3874,8 @@ function TelegramDetail({
           .page-watermark { position: fixed; }
         }
       </style>
-      ${watermark}
       <article class="telegram-export-page" dir="rtl" lang="ar">
+        ${watermark}
         <header class="official-header">
           <div class="header-government">
             <p class="government-name">الجمهورية العربية السورية</p>
@@ -4031,11 +4039,26 @@ function TelegramDetail({
 
         if (watermarkTemplate) {
           const watermark = watermarkTemplate.cloneNode(true) as HTMLElement;
+          // Each preview sheet is a physical A4 page. Keep the watermark in
+          // millimetre coordinates so every cloned sheet uses the same page
+          // origin as the print/export layout.
           watermark.style.position = "absolute";
-          watermark.style.inset = "0";
+          watermark.style.top = "0";
+          watermark.style.left = "0";
           watermark.style.width = `${PRINT_PAGE_WIDTH_MM}mm`;
           watermark.style.height = `${PRINT_PAGE_HEIGHT_MM}mm`;
           watermark.style.transform = "none";
+          const watermarkLogo =
+            watermark.querySelector<HTMLImageElement>(".watermark-logo");
+          if (watermarkLogo) {
+            watermarkLogo.style.position = "absolute";
+            watermarkLogo.style.top = "148.5mm";
+            watermarkLogo.style.left = "105mm";
+            watermarkLogo.style.width = "93.75%";
+            watermarkLogo.style.height = "93.75%";
+            watermarkLogo.style.transform = "translate(-50%, -50%)";
+            watermarkLogo.style.objectFit = "contain";
+          }
           sheet.appendChild(watermark);
         }
         sheet.appendChild(pageContent);
@@ -4667,7 +4690,7 @@ function TelegramDetail({
       )}
       <div
         ref={paperRef}
-        className="telegram-preview-stage w-full overflow-hidden rounded-sm bg-white"
+        className="telegram-preview-stage w-full overflow-hidden rounded-xl bg-[#eef1f5]"
         dir="rtl"
         lang="ar"
         aria-label="معاينة البرقية بحجم الورقة"
@@ -5002,10 +5025,19 @@ function TelegramDetail({
           close={() => setAttachmentPreview(null)}
         />
       )}
-      <div className="mt-5 rounded-xl border bg-muted/20 p-2 print:hidden">
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-semibold sm:flex-none">
-            {uploadAttachment.isPending ? "جارٍ رفع المرفق..." : "إرفاق ملف"}
+      <div className="mt-3 print:hidden">
+        <div
+          className="grid w-full grid-cols-3 items-center gap-2 rounded-xl border bg-muted/20 p-2"
+          aria-label="إجراءات البرقية"
+          dir="rtl"
+        >
+          <label
+            title="إرفاق ملف"
+            aria-label="إرفاق ملف"
+            className="inline-flex h-11 w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[11px] whitespace-nowrap font-semibold text-foreground transition hover:bg-muted"
+          >
+            <Paperclip className="h-4 w-4" aria-hidden="true" />
+            <span>إرفاق</span>
             <input
               type="file"
               className="hidden"
@@ -5017,330 +5049,285 @@ function TelegramDetail({
               }}
             />
           </label>
+
           <Button
+            type="button"
             onClick={printTelegram}
             disabled={!!exporting || documentSettingsUnavailable}
-            className="h-10 flex-1 rounded-lg bg-[#10233f] text-white sm:flex-none"
+            title="طباعة البرقية"
+            aria-label="طباعة البرقية"
+            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-[#10233f] px-1.5 text-[11px] whitespace-nowrap text-white hover:bg-[#18375f]"
           >
-            <Printer className="ml-2 h-4 w-4" />
-            طباعة
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span>طباعة</span>
           </Button>
+
+          <details className="group relative w-full min-w-0">
+            <summary
+              title="تنزيل"
+              aria-label="خيارات تنزيل البرقية"
+              className="flex h-11 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[11px] whitespace-nowrap font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              <span>تنزيل</span>
+              <ChevronDown className="h-3 w-3" aria-hidden="true" />
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-1 grid min-w-36 gap-1 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-sm">
+              <button
+                type="button"
+                disabled={!!exporting || documentSettingsUnavailable}
+                onClick={event => {
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
+                  void exportPdf();
+                }}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
+              >
+                <FileDown className="h-4 w-4" />
+                تنزيل PDF
+              </button>
+              <button
+                type="button"
+                disabled={!!exporting || documentSettingsUnavailable}
+                onClick={event => {
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
+                  void downloadImage();
+                }}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
+              >
+                <FileImage className="h-4 w-4" />
+                تنزيل صورة
+              </button>
+            </div>
+          </details>
+
+          <details className="group relative w-full">
+            <summary
+              title="مشاركة"
+              aria-label="خيارات مشاركة البرقية"
+              className="flex h-10 w-full min-w-0 cursor-pointer list-none items-center justify-center gap-1 rounded-lg border bg-background px-1.5 text-[10px] font-semibold marker:hidden transition hover:bg-muted [&::-webkit-details-marker]:hidden"
+            >
+              <Share2 className="h-4 w-4" aria-hidden="true" />
+              <span>مشاركة</span>
+              <ChevronDown className="h-3 w-3" aria-hidden="true" />
+            </summary>
+            <div className="absolute right-0 top-full z-40 mt-1 grid min-w-40 gap-1 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl">
+              <button
+                type="button"
+                disabled={!!exporting || documentSettingsUnavailable}
+                onClick={event => {
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
+                  void prepareDocumentShare("pdf");
+                }}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
+              >
+                <FileDown className="h-4 w-4" />
+                مشاركة PDF
+              </button>
+              <button
+                type="button"
+                disabled={!!exporting || documentSettingsUnavailable}
+                onClick={event => {
+                  event.currentTarget
+                    .closest("details")
+                    ?.removeAttribute("open");
+                  void prepareDocumentShare("png");
+                }}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-right text-xs hover:bg-muted disabled:opacity-50"
+              >
+                <FileImage className="h-4 w-4" />
+                مشاركة صورة
+              </button>
+            </div>
+          </details>
+
           <Button
-            onClick={exportPdf}
-            disabled={!!exporting || documentSettingsUnavailable}
+            type="button"
             variant="outline"
-            className="h-10 flex-1 rounded-lg sm:flex-none"
-          >
-            <FileDown className="ml-2 h-4 w-4" />
-            {exporting === "pdf" ? "جارٍ فتح الطباعة..." : "تنزيل PDF"}
-          </Button>
-          <Button
-            onClick={downloadImage}
-            disabled={!!exporting || documentSettingsUnavailable}
-            variant="outline"
-            className="h-10 flex-1 rounded-lg sm:flex-none"
-          >
-            <FileImage className="ml-2 h-4 w-4" />
-            {exporting === "image" ? "جارٍ التجهيز..." : "تنزيل كصورة"}
-          </Button>
-          <Button
-            onClick={() => void prepareDocumentShare("pdf")}
-            disabled={!!exporting || documentSettingsUnavailable}
-            variant="outline"
-            className="h-10 flex-1 rounded-lg sm:flex-none"
-          >
-            <Share2 className="ml-2 h-4 w-4" />
-            {exporting === "share"
-              ? "جارٍ التحضير..."
-              : preparedShare?.telegramId === telegram.id &&
-                  preparedShare.format === "pdf"
-                ? "اضغط مرة أخرى للمشاركة"
-                : "مشاركة PDF"}
-          </Button>
-          <Button
-            onClick={() => void prepareDocumentShare("png")}
-            disabled={!!exporting || documentSettingsUnavailable}
-            variant="outline"
-            className="h-10 flex-1 rounded-lg sm:flex-none"
-          >
-            <Share2 className="ml-2 h-4 w-4" />
-            {exporting === "image-share"
-              ? "جارٍ التحضير..."
-              : preparedShare?.telegramId === telegram.id &&
-                  preparedShare.format === "png"
-                ? "اضغط مرة أخرى للمشاركة"
-                : "مشاركة صورة"}
-          </Button>
-          <Button
             onClick={() =>
               toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
             }
-            variant="outline"
-            className="h-10 flex-1 rounded-lg sm:flex-none"
+            title="موقع البرقية"
+            aria-label="موقع البرقية"
+            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
           >
-            <LocateFixed className="ml-2 h-4 w-4" />
-            الموقع
+            <LocateFixed className="h-4 w-4" aria-hidden="true" />
+            <span>الموقع</span>
           </Button>
-          {isAdmin && (
+
+          {canManageContent && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                managementExpired
+                  ? notifyManagementExpired()
+                  : setEditOpen(true)
+              }
+              aria-disabled={managementExpired}
+              title={
+                managementExpired
+                  ? "انتهت مهلة التعديل البالغة 48 ساعة"
+                  : "تعديل البرقية"
+              }
+              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              <span>تعديل</span>
+            </Button>
+          )}
+
+          {canManageContent && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={requestReissue}
+              disabled={reissueTelegram.isPending || managementExpired}
+              title="إعادة إصدار بنفس الرقم"
+              className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"
+            >
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              <span>
+                {reissueTelegram.isPending ? "جارٍ الإصدار…" : "إعادة إصدار"}
+              </span>
+            </Button>
+          )}
+
+          {(isAdmin || canOperate) && telegram.status === "draft" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("submitted")}
+              disabled={transition.isPending}
+              title="إرسال للمراجعة"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
+              <Send className="h-4 w-4" aria-hidden="true" />
+              <span>إرسال للمراجعة</span>
+            </Button>
+          )}
+          {(isAdmin || canOperate) && telegram.status === "submitted" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("in_review")}
+              disabled={transition.isPending}
+              title="بدء المراجعة"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
+              <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+              <span>بدء المراجعة</span>
+            </Button>
+          )}
+          {(isAdmin || canOperate) && telegram.status === "pending" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => requestTransition("in_progress")}
+              disabled={transition.isPending}
+              title="بدء الإجراء"
+              className="h-10 w-full justify-start gap-2 rounded-lg px-3 text-xs"
+            >
+              <Play className="h-4 w-4" aria-hidden="true" />
+              <span>بدء الإجراء</span>
+            </Button>
+          )}
+          {(isAdmin || canOperate) &&
+            ["in_progress", "approved", "forwarded"].includes(
+              telegram.status
+            ) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("completed")}
+                disabled={transition.isPending}
+                title="إكمال المعالجة"
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                <span>إكمال المعالجة</span>
+              </Button>
+            )}
+          {(isAdmin || canOperate) && telegram.status === "in_review" && (
             <>
-              {canManageContent && (
-                <Button
-                  onClick={() =>
-                    managementExpired
-                      ? notifyManagementExpired()
-                      : setEditOpen(true)
-                  }
-                  variant="outline"
-                  className={`h-10 flex-1 rounded-lg sm:flex-none ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
-                  aria-disabled={managementExpired}
-                  title={
-                    managementExpired
-                      ? "انتهت مهلة التعديل البالغة 48 ساعة"
-                      : undefined
-                  }
-                >
-                  <Save className="ml-2 h-4 w-4" />
-                  تعديل البرقية
-                </Button>
-              )}
-              {canManageContent && (
-                <Button
-                  onClick={requestReissue}
-                  disabled={reissueTelegram.isPending || managementExpired}
-                  variant="outline"
-                  className="order-last col-span-2 h-10 w-full rounded-lg"
-                >
-                  {reissueTelegram.isPending
-                    ? "جارٍ إنشاء الإصدار..."
-                    : "إعادة إصدار بنفس الرقم"}
-                </Button>
-              )}
-              {telegram.status === "draft" && (
-                <Button
-                  onClick={() => requestTransition("submitted")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  إرسال للمراجعة
-                </Button>
-              )}
-              {telegram.status === "submitted" && (
-                <Button
-                  onClick={() => requestTransition("in_review")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  بدء المراجعة
-                </Button>
-              )}
-              {telegram.status === "pending" && (
-                <Button
-                  onClick={() => requestTransition("in_progress")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  بدء الإجراء
-                </Button>
-              )}
-              {(telegram.status === "in_progress" ||
-                telegram.status === "approved" ||
-                telegram.status === "forwarded") && (
-                <Button
-                  onClick={() =>
-                    requestTransition(
-                      telegram.status === "in_progress"
-                        ? "completed"
-                        : "completed"
-                    )
-                  }
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  إكمال المعالجة
-                </Button>
-              )}
-              {telegram.status === "in_review" && (
-                <>
-                  <Button
-                    onClick={() => requestTransition("approved")}
-                    disabled={transition.isPending}
-                    className="h-10 flex-1 rounded-lg bg-emerald-600 text-white sm:flex-none"
-                  >
-                    اعتماد
-                  </Button>
-                  <Button
-                    onClick={() => requestTransition("returned")}
-                    disabled={transition.isPending}
-                    variant="outline"
-                    className="h-10 flex-1 rounded-lg sm:flex-none"
-                  >
-                    إرجاع بسبب
-                  </Button>
-                  <Button
-                    onClick={() => requestTransition("rejected")}
-                    disabled={transition.isPending}
-                    variant="destructive"
-                    className="h-10 flex-1 rounded-lg sm:flex-none"
-                  >
-                    رفض
-                  </Button>
-                </>
-              )}
-              {telegram.status === "resolved" ||
-              telegram.status === "completed" ? (
-                <Button
-                  onClick={() => requestTransition("archived")}
-                  disabled={transition.isPending}
-                  variant="outline"
-                  className="h-10 flex-1 rounded-lg sm:flex-none"
-                >
-                  أرشفة
-                </Button>
-              ) : null}
-              {canManageContent && (
-                <Button
-                  onClick={requestPermanentDelete}
-                  disabled={deleteTelegram.isPending}
-                  variant="destructive"
-                  className={`h-10 flex-1 rounded-lg sm:flex-none ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
-                  aria-disabled={managementExpired}
-                  title={
-                    managementExpired
-                      ? "انتهت مهلة الحذف البالغة 48 ساعة"
-                      : undefined
-                  }
-                >
-                  <Trash2 className="ml-2 h-4 w-4" />
-                  {deleteTelegram.isPending
-                    ? "جارٍ الحذف النهائي..."
-                    : "حذف نهائي"}
-                </Button>
-              )}
+              <Button
+                type="button"
+                onClick={() => requestTransition("approved")}
+                disabled={transition.isPending}
+                className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-emerald-600 px-1.5 text-[11px] text-white whitespace-nowrap"
+              >
+                <Check className="h-4 w-4" aria-hidden="true" />
+                <span>اعتماد</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("returned")}
+                disabled={transition.isPending}
+                className="col-span-3 h-11 w-full justify-center gap-2 rounded-lg px-3 text-sm"
+              >
+                <CornerUpLeft className="h-4 w-4" aria-hidden="true" />
+                <span>إرجاع</span>
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => requestTransition("rejected")}
+                disabled={transition.isPending}
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
+                <XCircle className="h-4 w-4" aria-hidden="true" />
+                <span>رفض</span>
+              </Button>
             </>
           )}
-          {!isAdmin && (
-            <>
-              {canManageContent && (
-                <Button
-                  onClick={requestReissue}
-                  disabled={reissueTelegram.isPending || managementExpired}
-                  variant="outline"
-                  className="order-last col-span-2 h-10 w-full rounded-lg"
-                >
-                  {reissueTelegram.isPending
-                    ? "جارٍ إنشاء الإصدار..."
-                    : "إعادة إصدار بنفس الرقم"}
-                </Button>
-              )}
-              {canManageContent && (
-                <Button
-                  onClick={() =>
-                    managementExpired
-                      ? notifyManagementExpired()
-                      : setEditOpen(true)
-                  }
-                  variant="outline"
-                  className={`h-10 rounded-lg ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
-                  aria-disabled={managementExpired}
-                  title={
-                    managementExpired
-                      ? "انتهت مهلة التعديل البالغة 48 ساعة"
-                      : undefined
-                  }
-                >
-                  <Save className="ml-2 h-4 w-4" />
-                  تعديل البرقية
-                </Button>
-              )}
-              {canManageContent && (
-                <Button
-                  onClick={requestPermanentDelete}
-                  disabled={deleteTelegram.isPending}
-                  variant="destructive"
-                  className={`h-10 rounded-lg ${managementExpired ? "cursor-not-allowed opacity-60" : ""}`}
-                  aria-disabled={managementExpired}
-                  title={
-                    managementExpired
-                      ? "انتهت مهلة الحذف البالغة 48 ساعة"
-                      : undefined
-                  }
-                >
-                  <Trash2 className="ml-2 h-4 w-4" />
-                  {deleteTelegram.isPending
-                    ? "جارٍ الحذف النهائي..."
-                    : "حذف نهائي"}
-                </Button>
-              )}
-              {canOperate && (
-                <>
-                  {telegram.status === "draft" && (
-                    <Button
-                      onClick={() => requestTransition("submitted")}
-                      disabled={transition.isPending}
-                      variant="outline"
-                      className="h-10 rounded-lg"
-                    >
-                      إرسال للمراجعة
-                    </Button>
-                  )}
-                  {telegram.status === "submitted" && (
-                    <Button
-                      onClick={() => requestTransition("in_review")}
-                      disabled={transition.isPending}
-                      variant="outline"
-                      className="h-10 rounded-lg"
-                    >
-                      بدء المراجعة
-                    </Button>
-                  )}
-                  {telegram.status === "in_review" && (
-                    <>
-                      <Button
-                        onClick={() => requestTransition("approved")}
-                        disabled={transition.isPending}
-                        className="h-10 rounded-lg bg-emerald-600 text-white"
-                      >
-                        اعتماد
-                      </Button>
-                      <Button
-                        onClick={() => requestTransition("returned")}
-                        disabled={transition.isPending}
-                        variant="outline"
-                        className="h-10 rounded-lg"
-                      >
-                        إرجاع بسبب
-                      </Button>
-                      <Button
-                        onClick={() => requestTransition("rejected")}
-                        disabled={transition.isPending}
-                        variant="destructive"
-                        className="h-10 rounded-lg"
-                      >
-                        رفض
-                      </Button>
-                    </>
-                  )}
-                  {(telegram.status === "approved" ||
-                    telegram.status === "in_progress" ||
-                    telegram.status === "forwarded") && (
-                    <Button
-                      onClick={() => requestTransition("completed")}
-                      disabled={transition.isPending}
-                      variant="outline"
-                      className="h-10 rounded-lg"
-                    >
-                      إكمال المعالجة
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
+          {(isAdmin || canOperate) &&
+            ["resolved", "completed"].includes(telegram.status) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestTransition("archived")}
+                disabled={transition.isPending}
+                title="أرشفة البرقية"
+                className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+              >
+                <Archive className="h-4 w-4" aria-hidden="true" />
+                <span>أرشفة</span>
+              </Button>
+            )}
+
+          {canManageContent && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={requestPermanentDelete}
+              disabled={deleteTelegram.isPending}
+              aria-disabled={managementExpired}
+              title={
+                managementExpired
+                  ? "انتهت مهلة الحذف البالغة 48 ساعة"
+                  : "حذف نهائي"
+              }
+              className="h-10 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[10px]"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <span>
+                {deleteTelegram.isPending ? "جارٍ الحذف…" : "حذف نهائي"}
+              </span>
+            </Button>
           )}
         </div>
+        {preparedShare?.telegramId === telegram.id && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            {preparedShare.format === "pdf" ? "ملف PDF" : "صورة"} جاهز للمشاركة؛
+            اضغط زر المشاركة مرة أخرى لإرسال الملف.
+          </p>
+        )}
       </div>
       {routeableTargets.length > 0 &&
         ["approved", "in_progress", "forwarded"].includes(telegram.status) && (

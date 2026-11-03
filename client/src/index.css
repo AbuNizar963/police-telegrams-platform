@@ -211,7 +211,7 @@
 [data-sonner-toaster].toaster [data-sonner-toast] {
   position: relative;
   min-height: 96px;
-  padding: 16px 68px 16px 64px;
+  padding: 16px 84px 16px 64px;
   overflow: hidden;
   direction: rtl;
   text-align: right;
@@ -271,19 +271,44 @@
   text-align: right;
 }
 
+[data-sonner-toaster].toaster [data-sonner-toast] [data-content] {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: right;
+}
+
 [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
   width: 52px;
   height: 52px;
   min-width: 52px;
   flex: 0 0 52px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
   border-radius: 999px;
   color: #fff;
   background: var(--toast-accent);
-  margin-inline: 0 8px;
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  left: auto;
+  transform: translateY(-50%);
+  order: 0;
+  margin: 0;
 }
 
+[data-sonner-toaster].toaster [data-sonner-toast] [data-icon] > svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: 0 auto;
+  flex: 0 0 auto;
+}
 [data-sonner-toaster].toaster [data-sonner-toast] [data-close-button] {
   width: 40px;
   height: 40px;
@@ -347,7 +372,7 @@
 
   [data-sonner-toaster].toaster [data-sonner-toast] {
     min-height: 96px;
-    padding: 16px 68px 16px 64px;
+    padding: 16px 84px 16px 64px;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-icon] {
@@ -355,6 +380,13 @@
     height: 52px;
     min-width: 52px;
     flex-basis: 52px;
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    left: auto;
+    transform: translateY(-50%);
+    order: 0;
+    margin: 0;
   }
 
   [data-sonner-toaster].toaster [data-sonner-toast] [data-title] {

@@ -21,13 +21,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
   getManagementMenuHeading,
   hasOrganizationSettingsMenuAccess,
   hasUserManagementMenuAccess,
-} from "@/lib/menuAccess";
+} from "@/features/admin/menuAccess";
 import { toast } from "@/lib/notifications";
 import { useEffect, useState } from "react";
 

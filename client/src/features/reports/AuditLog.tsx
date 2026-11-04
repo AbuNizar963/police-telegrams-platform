@@ -23,7 +23,7 @@ import {
   auditUserAgentSummary,
   rawAuditDetails,
   readableAuditFields,
-} from "@/lib/auditPresentation";
+} from "@/features/reports/auditPresentation";
 
 type Filters = {
   search: string;

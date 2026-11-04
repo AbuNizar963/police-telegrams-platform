@@ -7,7 +7,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { getOrganizationTreeVisibleIds } from "@shared/organizationHierarchy";
+import { getOrganizationTreeVisibleIds } from "@shared/features/organizations/organizationHierarchy";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

@@ -2,12 +2,12 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import type { TrpcContext } from "./context";
-import { getUserOrganizationMembership } from "../organization";
+import { getUserOrganizationMembership } from "../features/organizations/organization";
 import { isPlatformOwner } from "../ownerAccess";
 import {
   assertScopedUserManagementAccess,
   canManageAllOrganizations,
-} from "../organizationScope";
+} from "../features/organizations/organizationScope";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,

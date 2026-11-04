@@ -3,7 +3,7 @@ import { toast } from "@/lib/notifications";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
+import { OrganizationTreePicker } from "@/features/organizations/OrganizationTreePicker";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import {
   Ban,

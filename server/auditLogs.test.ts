@@ -14,8 +14,10 @@ vi.mock("./db", async importOriginal => ({
   searchAuditLogs: mocked.searchAuditLogs,
 }));
 
-vi.mock("./organization", async importOriginal => ({
-  ...(await importOriginal<typeof import("./organization")>()),
+vi.mock("./features/organizations/organization", async importOriginal => ({
+  ...(await importOriginal<
+    typeof import("./features/organizations/organization")
+  >()),
   getUserOrganizationMembership: mocked.getUserOrganizationMembership,
 }));
 

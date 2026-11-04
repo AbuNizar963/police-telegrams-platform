@@ -4,7 +4,7 @@ import {
   getOrganizationTreeVisibleIds,
   wouldCreateOrganizationCycle,
   type OrganizationParentLink,
-} from "../shared/organizationHierarchy";
+} from "../../../shared/features/organizations/organizationHierarchy";
 
 const organizations: OrganizationParentLink[] = [
   { id: "ministry", parentOrganizationId: null },

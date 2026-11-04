@@ -1,8 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { getQueryKey } from "@trpc/react-query";
-import OwnerUserManagement from "@/components/OwnerUserManagement";
-import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
+import OwnerUserManagement from "@/features/users/OwnerUserManagement";
+import { OrganizationTreePicker } from "@/features/organizations/OrganizationTreePicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

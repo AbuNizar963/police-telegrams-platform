@@ -20,8 +20,8 @@ import {
   addOrganizationMembership,
   getPrimaryOrganization,
   getUserOrganizationMembership,
-} from "./organization";
-import { resolveOrganizationLetterhead } from "./organizationLetterhead";
+} from "./features/organizations/organization";
+import { resolveOrganizationLetterhead } from "./features/organizations/organizationLetterhead";
 import {
   countUrgentTelegramsAwaitingReceipt,
   type DashboardTelegramRoute,

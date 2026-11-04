@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TrpcContext } from "./_core/context";
+import type { TrpcContext } from "../../_core/context";
 
 const mocks = vi.hoisted(() => ({
   usersInsert: vi.fn(),
@@ -10,16 +10,16 @@ const mocks = vi.hoisted(() => ({
   writeAuditLog: vi.fn(),
 }));
 
-vi.mock("./_core/auth", () => ({
+vi.mock("../../_core/auth", () => ({
   hashPassword: mocks.hashPassword,
 }));
-vi.mock("./organization", () => ({
+vi.mock("../organizations/organization", () => ({
   addOrganizationMembership: mocks.addOrganizationMembership,
 }));
-vi.mock("./db", () => ({
+vi.mock("../../db", () => ({
   writeAuditLog: mocks.writeAuditLog,
 }));
-vi.mock("./_core/supabase", () => ({
+vi.mock("../../_core/supabase", () => ({
   getSupabaseAdmin: () => ({
     from: (table: string) => {
       if (table === "organizations") {

@@ -12,7 +12,7 @@ import {
   isDepartmentLogoExclusiveToOrganization,
 } from "../db";
 import { isPlatformOwner } from "../ownerAccess";
-import { getUserOrganizationMembership } from "../organization";
+import { getUserOrganizationMembership } from "../features/organizations/organization";
 import {
   StorageAccessDeniedError,
   organizationAttachmentKeyMatches,

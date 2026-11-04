@@ -3,16 +3,16 @@ import type {
   OrganizationMembership,
   OrganizationMemberRole,
   TelegramRoute,
-} from "../drizzle/schema";
+} from "../../../drizzle/schema";
 import {
   canOrganizationHaveParent,
   wouldCreateOrganizationCycle,
-} from "../shared/organizationHierarchy";
+} from "../../../shared/features/organizations/organizationHierarchy";
 import { randomBytes, randomUUID } from "node:crypto";
-import { hashPassword } from "./_core/auth";
-import { getSupabaseAdmin } from "./_core/supabase";
-import { writeAuditLog } from "./db";
-import { isPlatformOwner } from "./ownerAccess";
+import { hashPassword } from "../../_core/auth";
+import { getSupabaseAdmin } from "../../_core/supabase";
+import { writeAuditLog } from "../../db";
+import { isPlatformOwner } from "../../ownerAccess";
 
 function throwIfError(
   error: { message: string } | null,

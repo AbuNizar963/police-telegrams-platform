@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("./_core/supabase", () => ({
+vi.mock("../../_core/supabase", () => ({
   getSupabaseAdmin: vi.fn(() => ({
     from: mocks.from,
     rpc: mocks.rpc,
@@ -54,8 +54,8 @@ import {
 import {
   canOrganizationHaveParent,
   getAllowedOrganizationChildTypes,
-} from "../shared/organizationHierarchy";
-import { ENV } from "./_core/env";
+} from "../../../shared/features/organizations/organizationHierarchy";
+import { ENV } from "../../_core/env";
 
 describe("organization repository", () => {
   beforeEach(() => {

@@ -34,8 +34,8 @@ import {
   organizationManagerProcedure,
 } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
-import { profileRouter } from "./profileRouter";
-import { userManagementRouter } from "./userManagementRouter";
+import { profileRouter } from "./features/users/profileRouter";
+import { userManagementRouter } from "./features/users/userManagementRouter";
 import {
   allocateSerialNumber,
   allocateOrganizationSerialNumber,
@@ -115,11 +115,11 @@ import {
   selectPlatformOwnerWorkplace,
   updateOrganization,
   updateOrganizationAccount,
-} from "./organization";
+} from "./features/organizations/organization";
 import {
   assertCanManageOrganization,
   getManagedOrganizationIds,
-} from "./organizationScope";
+} from "./features/organizations/organizationScope";
 import {
   StorageAccessDeniedError,
   storageCreateSignedUrl,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/organization_logo_resolution.dart';
+import 'package:police_telegrams/features/organizations/organization_logo_resolution.dart';
 
 void main() {
   test('prefers the authenticated account organization', () {

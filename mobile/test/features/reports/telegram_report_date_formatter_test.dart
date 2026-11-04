@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/telegram_report_date_formatter.dart';
+import 'package:police_telegrams/features/reports/telegram_report_date_formatter.dart';
 
 void main() {
   const timestamp = '2026-01-02T15:04:05.000Z';

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/advanced_create_telegram_page.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/mobile_pages.dart';
-import 'package:police_telegrams/native_organization_management_page.dart';
+import 'package:police_telegrams/features/organizations/native_organization_management_page.dart';
 import 'package:police_telegrams/public_pages.dart';
 import 'package:police_telegrams/telegram_actions.dart';
 

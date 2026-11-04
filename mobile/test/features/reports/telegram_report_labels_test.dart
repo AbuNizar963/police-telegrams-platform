@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/telegram_report_labels.dart';
+import 'package:police_telegrams/features/reports/telegram_report_labels.dart';
 
 void main() {
   test('Arabic report labels match the web canonical labels', () {

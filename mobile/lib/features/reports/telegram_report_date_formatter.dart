@@ -1,7 +1,7 @@
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'telegram_display.dart';
+import '../../telegram_display.dart';
 
 const _arabicMonths = <String>[
   'يناير',

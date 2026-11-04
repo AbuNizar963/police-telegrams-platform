@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'api.dart';
-import 'toast.dart';
+import '../../api.dart';
+import '../../toast.dart';
 
 const _userGold = Color(0xFFD8C38E);
 

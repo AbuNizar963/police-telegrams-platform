@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:police_telegrams/mobile_access_policy.dart';
+import 'package:police_telegrams/features/admin/mobile_access_policy.dart';
 
 void main() {
   group('hasMobileTelegramReportAccess', () {

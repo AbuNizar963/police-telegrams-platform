@@ -5,12 +5,12 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import 'app_lock.dart';
+import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
-import 'audit_log_presentation.dart';
-import 'telegram_report_date_formatter.dart';
-import 'telegram_report_labels.dart';
+import './features/reports/audit_log_presentation.dart';
+import './features/reports/telegram_report_date_formatter.dart';
+import './features/reports/telegram_report_labels.dart';
 import 'toast.dart';
 
 const _navy = Color(0xFF10233F);

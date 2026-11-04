@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:police_telegrams/app_lock.dart';
+import 'package:police_telegrams/features/auth_session/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';

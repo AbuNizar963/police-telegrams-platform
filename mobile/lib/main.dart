@@ -6,17 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import 'app_lock.dart';
+import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
 import 'app_update_service.dart';
-import 'mobile_access_policy.dart';
+import './features/admin/mobile_access_policy.dart';
 import 'mobile_pages.dart';
-import 'native_operations_page.dart';
-import 'native_organization_management_page.dart';
-import 'native_user_management_page.dart';
+import './features/admin/native_operations_page.dart';
+import './features/organizations/native_organization_management_page.dart';
+import './features/users/native_user_management_page.dart';
 
 import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 
@@ -24,7 +24,7 @@ import 'push_notifications.dart';
 import 'public_pages.dart';
 import 'telegram_display.dart';
 import 'telegram_actions.dart';
-import 'telegram_report_labels.dart';
+import './features/reports/telegram_report_labels.dart';
 import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 import 'telegram_outbox.dart';

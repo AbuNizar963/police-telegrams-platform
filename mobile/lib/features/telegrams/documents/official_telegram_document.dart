@@ -14,9 +14,9 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:police_telegrams/api.dart';
-import 'package:police_telegrams/organization_logo_resolution.dart';
+import 'package:police_telegrams/features/organizations/organization_logo_resolution.dart';
 import 'package:police_telegrams/telegram_display.dart';
-import 'package:police_telegrams/telegram_report_labels.dart';
+import 'package:police_telegrams/features/reports/telegram_report_labels.dart';
 import 'package:police_telegrams/toast.dart';
 
 const _documentPageWidth = 794;

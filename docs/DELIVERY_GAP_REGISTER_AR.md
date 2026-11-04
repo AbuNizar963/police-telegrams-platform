@@ -33,5 +33,5 @@
 - `pnpm test`: ناجح، ويشمل اختبارات الحذف النهائي في طبقة قاعدة البيانات وفي مسار tRPC.
 - `pnpm build`: ناجح.
 - فحص الملفات المعدلة عبر Prettier و`git diff --check`: ناجح.
-- فحص GitHub Actions الحالي: آخر تشغيل منشور على `origin/main` ناجح، لكن الالتزامات الجديدة لم تُرفع لأن صلاحية GitHub الحالية قراءة فقط.
+- فحص GitHub Actions الحالي: نجحت CI وCodeQL وSecret Scanning للـcommit `8b1a3a3` بعد دفعه إلى `main`، كما اكتمل نشر Vercel المرتبط به بنجاح.
 - لم يُنفذ `supabase db reset` لأن CLI وDocker غير متاحين في بيئة التنفيذ الحالية.

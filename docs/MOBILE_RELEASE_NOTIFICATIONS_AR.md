@@ -28,7 +28,7 @@
 
 يجب أن تكون القيمة طويلة وعشوائية، ولا تُحفظ في ملفات المستودع أو داخل التطبيق.
 
-قبل إرسال إشعارات الإصدار، يجب أيضًا إعداد Firebase Admin على الخادم ثم ضبط GitHub Actions repository secret باسم `PUSH_NOTIFICATIONS_SERVER_READY` وقيمته `true`. هذا مؤشر جاهزية يدوي؛ إذا لم يكن جاهزًا، يتخطى workflow خطوة الإشعار. راجع [دليل إعداد Firebase للهاتف](../mobile/FIREBASE_SETUP_AR.md) للتفاصيل، ولا تضبط المؤشر قبل نشر إعدادات الخادم.
+قبل إرسال إشعارات الإصدار، يجب أيضًا إعداد Firebase Admin على الخادم ثم ضبط GitHub Actions repository secret باسم `PUSH_NOTIFICATIONS_SERVER_READY` وقيمته `true`. هذا مؤشر جاهزية يدوي؛ إذا لم يكن جاهزًا، يتخطى workflow خطوة الإشعار. راجع [دليل إعداد Firebase للهاتف](https://github.com/AbuNizar963/police-telegrams-platform/blob/flutter-mobile-app/mobile/FIREBASE_SETUP_AR.md) للتفاصيل، ولا تضبط المؤشر قبل نشر إعدادات الخادم.
 
 اختياريًا يمكن تغيير عنوان الخادم عبر GitHub Actions Variable باسم:
 

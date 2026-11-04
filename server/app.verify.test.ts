@@ -7,7 +7,7 @@ const mocked = vi.hoisted(() => ({
 vi.mock("./_core/supabase", () => ({
   getSupabaseAdmin: mocked.getSupabaseAdmin,
 }));
-vi.mock("./_core/storageRoutes", () => ({
+vi.mock("./features/storage/storageRoutes", () => ({
   registerStorageRoutes: vi.fn(),
 }));
 vi.mock("./telegramExport", () => ({

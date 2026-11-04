@@ -2,7 +2,7 @@ import {
   HEX_COLOR_PATTERN,
   MAX_WATERMARK_OPACITY_PERCENT,
   type PlatformDocumentSettings,
-} from "@shared/platformDocumentSettings";
+} from "@shared/features/platform-settings/platformDocumentSettings";
 
 export const DOCUMENT_SETTINGS_LOAD_ERROR =
   "تعذر تحميل إعدادات وثائق النظام. أعد المحاولة قبل الطباعة أو التصدير.";

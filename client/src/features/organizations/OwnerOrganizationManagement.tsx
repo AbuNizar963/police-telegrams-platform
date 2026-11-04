@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "@/lib/notifications";
+import { toast } from "@/features/notifications/notifications";
 import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";

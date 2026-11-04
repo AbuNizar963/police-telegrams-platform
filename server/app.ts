@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerStorageRoutes } from "./_core/storageRoutes";
+import { registerStorageRoutes } from "./features/storage/storageRoutes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/static";
@@ -11,7 +11,7 @@ import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { assertProductionEnvironment, ENV } from "./_core/env";
 import { getContentSecurityPolicy } from "./_core/csp";
-import { notifyMobileRelease } from "./_core/notification";
+import { notifyMobileRelease } from "./features/notifications/notification";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
 import { createRateLimit } from "./_core/rateLimit";
 

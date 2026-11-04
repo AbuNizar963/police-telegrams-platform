@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
-import { toast } from "@/lib/notifications";
+import { toast } from "@/features/notifications/notifications";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_PLATFORM_DOCUMENT_SETTINGS,
   MAX_WATERMARK_OPACITY_PERCENT,
-} from "@shared/platformDocumentSettings";
+} from "@shared/features/platform-settings/platformDocumentSettings";
 
 export default function PlatformDocumentSettings() {
   const me = trpc.auth.me.useQuery(undefined, { retry: false });

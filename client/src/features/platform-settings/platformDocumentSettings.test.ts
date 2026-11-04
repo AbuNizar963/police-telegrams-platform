@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PLATFORM_DOCUMENT_SETTINGS,
   type PlatformDocumentSettings,
-} from "@shared/platformDocumentSettings";
+} from "@shared/features/platform-settings/platformDocumentSettings";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,

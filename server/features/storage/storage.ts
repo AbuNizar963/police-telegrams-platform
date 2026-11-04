@@ -1,6 +1,6 @@
-import type { User } from "../drizzle/schema";
-import type { AllowedAttachmentType } from "./fileSecurity";
-import { getStorageProvider } from "./storageProvider";
+import type { User } from "../../../drizzle/schema";
+import type { AllowedAttachmentType } from "../../fileSecurity";
+import { getStorageProvider } from "../../_core/storageProvider";
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");

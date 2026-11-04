@@ -35,8 +35,9 @@ vi.mock("./features/organizations/organization", async importOriginal => {
   };
 });
 
-vi.mock("./storage", async importOriginal => {
-  const actual = await importOriginal<typeof import("./storage")>();
+vi.mock("./features/storage/storage", async importOriginal => {
+  const actual =
+    await importOriginal<typeof import("./features/storage/storage")>();
   return { ...actual, storageDownload: mocks.storageDownload };
 });
 

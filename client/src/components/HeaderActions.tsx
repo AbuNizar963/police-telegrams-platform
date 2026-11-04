@@ -28,7 +28,7 @@ import {
   hasOrganizationSettingsMenuAccess,
   hasUserManagementMenuAccess,
 } from "@/features/admin/menuAccess";
-import { toast } from "@/lib/notifications";
+import { toast } from "@/features/notifications/notifications";
 import { useEffect, useState } from "react";
 
 function decodeVapidKey(value: string): Uint8Array {

@@ -11,7 +11,7 @@ const { upload, createSignedUrl, download, from, getSupabaseAdmin } =
     return { upload, createSignedUrl, download, from, getSupabaseAdmin };
   });
 
-vi.mock("./_core/supabase", () => ({ getSupabaseAdmin }));
+vi.mock("./supabase", () => ({ getSupabaseAdmin }));
 
 import {
   getStorageProvider,

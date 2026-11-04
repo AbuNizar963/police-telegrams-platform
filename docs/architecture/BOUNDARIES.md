@@ -7,7 +7,8 @@
 ## حدود المجال
 
 - **المصادقة والجلسات:** `server/_core/auth.ts` و`server/_core/loginRateLimit.ts`. لا يُسمح لأي وحدة بتفسير الجلسة أو إنشاء صلاحيات بديلة محليًا.
-- **المؤسسات والعضويات:** `server/organization.ts` و`server/organizationScope.ts`. كل عملية متعددة المؤسسات يجب أن تتحقق من المؤسسة المحددة، لا من وجود عضوية عامة فقط.
+- **المستخدمون:** `server/features/users/profileRouter.ts` و`server/features/users/userManagementRouter.ts`. تبقى إجراءات `profile.*` و`userManagement.*` مسجلة من `server/routers.ts` دون تغيير عقدها.
+- **المؤسسات والعضويات:** `server/features/organizations/organization.ts` و`organizationScope.ts`. كل عملية متعددة المؤسسات يجب أن تتحقق من المؤسسة المحددة، لا من وجود عضوية عامة فقط.
 - **البرقيات ومساراتها:** `server/routers.ts` و`server/db.ts` حاليًا. تُفصل لاحقًا إلى خدمات مجال دون تغيير قواعد العمل في خطوة نقل الملفات نفسها.
 - **التخزين:** `server/storage.ts` و`server/storageProvider.ts` و`server/_core/storageRoutes.ts`. مسار الملف ليس بديلًا عن التفويض؛ القراءة والكتابة تتطلبان تحققًا في طبقة API من المستخدم والمالك/المؤسسة.
 - **التصدير والتحقق:** `server/telegramExport.ts` وواجهات التحقق في `server/app.ts`. يجب أن تظل بيانات التحقق العامة مقتصرة على ما يحتاجه حامل رمز التحقق.
@@ -27,7 +28,11 @@
 
 ```text
 client/src/features/
-  auth/
+  auth-session/
+  users/
+  organizations/
+  reports/
+  admin/
   telegrams/
     import-export/
     display/
@@ -36,29 +41,33 @@ client/src/features/
       telegramWatermark.ts
       telegramPrintLayout.ts       # إذا كان متوفرًا في نسخة الفرع
       telegramPageImageArchive.ts  # إذا كان متوفرًا في نسخة الفرع
-  organizations/
   notifications/
 
 mobile/lib/features/
+  auth_session/
+  users/
+  organizations/
+  reports/
+  admin/
   telegrams/documents/
     official_telegram_document.dart
 
-server/
-  auth/
+server/_core/                        مصادقة وتشغيل وتخزين مشترك؛ لا تنقل جزئيًا
+server/features/
+  users/
   organizations/
-  telegrams/
-  storage/
-  exports/
-  notifications/
-  verification/
+  telegrams/                         هدف مرحلي لاحق
+  storage/                           هدف مرحلي لاحق
+  notifications/                     هدف مرحلي لاحق
 
 shared/
+  features/organizations/
   schemas/
   domain/
   utils/
 ```
 
-بدأ تطبيق الخريطة تدريجيًا بنقل وحدات وثائق البرقيات واختباراتها إلى مسارات `features/telegrams/documents/` في العميلين؛ لا تتوفر جميع وحدات الويب في كل نسخة فرع. تبقى وحدات المجال الأخرى في مواقعها الحالية إلى أن تُنقل كوحدة مستقلة قابلة للاختبار؛ لا تنقل الشجرة كلها دفعة واحدة. راجع `docs/architecture/REPOSITORY_STRUCTURE_AR.md` لملكية المجلدات ومسارات البناء.
+نُقلت وحدات الويب للمصادقة والجلسات والمستخدمين والمؤسسات والتقارير وصلاحيات الإدارة إلى `client/src/features/`، ووحدات المستخدمين والمؤسسات واختباراتها إلى `server/features/`، والتسلسل الهرمي المشترك إلى `shared/features/organizations/`. نُقلت الوحدات المناظرة للهاتف واختباراتها إلى `mobile/lib/features/` و`mobile/test/features/`، كما نُظمت وثائق البرقيات في العميلين. بقيت وحدات الإشعارات والتخزين وإعدادات المنصة وأدوات البرقيات المتشابكة خارج هذه الدفعة؛ تُنقل لاحقًا كوحدات كاملة قابلة للاختبار بدل تحريك ملفات مترابطة جزئيًا. راجع `docs/architecture/REPOSITORY_STRUCTURE_AR.md` لملكية المجلدات ومسارات البناء.
 
 ## بوابات القبول
 

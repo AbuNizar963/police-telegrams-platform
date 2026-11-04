@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TrpcContext } from "./_core/context";
+import type { TrpcContext } from "../../_core/context";
 
 const getMembershipMock = vi.hoisted(() => vi.fn());
 
@@ -7,7 +7,7 @@ vi.mock("./organization", () => ({
   getUserOrganizationMembership: getMembershipMock,
 }));
 
-import { organizationAdminProcedure, router } from "./_core/trpc";
+import { organizationAdminProcedure, router } from "../../_core/trpc";
 
 const protectedRouter = router({
   manage: organizationAdminProcedure.query(({ ctx }) => ({

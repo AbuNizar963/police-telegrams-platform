@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { getUserOrganizationMembership } from "./organization";
+import { getUserOrganizationMembership } from "./features/organizations/organization";
 import { isPlatformOwner } from "./ownerAccess";
 
 export type TelegramOrganizationScope = {

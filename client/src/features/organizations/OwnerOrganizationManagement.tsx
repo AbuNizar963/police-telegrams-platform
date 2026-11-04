@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
   hasOrganizationSettingsEditAccess,
   hasOrganizationStructureEditAccess,
-} from "@/lib/menuAccess";
+} from "@/features/admin/menuAccess";
 import { organizationTypeLabels } from "@/lib/uiLabels";
-import { OrganizationTreePicker } from "@/components/OrganizationTreePicker";
+import { OrganizationTreePicker } from "@/features/organizations/OrganizationTreePicker";
 import {
   canOrganizationHaveParent,
   getAllowedOrganizationChildTypes,
-} from "@shared/organizationHierarchy";
+} from "@shared/features/organizations/organizationHierarchy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

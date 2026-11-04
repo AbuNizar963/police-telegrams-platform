@@ -1,21 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { getRequestAuditContext } from "./auditContext";
+import { getRequestAuditContext } from "../../auditContext";
 import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
   organizationManagerProcedure,
   router,
-} from "./_core/trpc";
-import { hashPassword, verifyPassword } from "./_core/auth";
-import { getSupabaseAdmin } from "./_core/supabase";
-import { getUserById, writeAuditLog } from "./db";
-import { addOrganizationMembership } from "./organization";
-import { isPlatformOwner } from "./ownerAccess";
+} from "../../_core/trpc";
+import { hashPassword, verifyPassword } from "../../_core/auth";
+import { getSupabaseAdmin } from "../../_core/supabase";
+import { getUserById, writeAuditLog } from "../../db";
+import { addOrganizationMembership } from "../organizations/organization";
+import { isPlatformOwner } from "../../ownerAccess";
 import {
   assertCanManageOrganization,
   getManagedOrganizationIds,
-} from "./organizationScope";
+} from "../organizations/organizationScope";
 
 async function getActiveOrganizationForAccount(organizationId: string) {
   const { data, error } = await getSupabaseAdmin()

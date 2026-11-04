@@ -12,7 +12,7 @@ import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { assertProductionEnvironment, ENV } from "./_core/env";
 import { getContentSecurityPolicy } from "./_core/csp";
 import { notifyMobileRelease } from "./_core/notification";
-import { getUserOrganizationMembership } from "./organization";
+import { getUserOrganizationMembership } from "./features/organizations/organization";
 import { createRateLimit } from "./_core/rateLimit";
 
 const verificationAttempts = new Map<

@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { getSupabaseAdmin } from "./_core/supabase";
+import { getSupabaseAdmin } from "../../_core/supabase";
 import {
   getUserOrganizationMembership,
   listAllOrganizations,
 } from "./organization";
-import { isPlatformOwner } from "./ownerAccess";
+import { isPlatformOwner } from "../../ownerAccess";
 
 type ScopedMembership = {
   organizationId: string;

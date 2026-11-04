@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   isPlatformOwner: vi.fn(),
 }));
 
-vi.mock("./organization", () => ({
+vi.mock("./features/organizations/organization", () => ({
   getUserOrganizationMembership: mocks.getUserOrganizationMembership,
 }));
 

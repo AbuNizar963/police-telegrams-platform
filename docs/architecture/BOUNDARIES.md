@@ -10,9 +10,9 @@
 - **المستخدمون:** `server/features/users/profileRouter.ts` و`server/features/users/userManagementRouter.ts`. تبقى إجراءات `profile.*` و`userManagement.*` مسجلة من `server/routers.ts` دون تغيير عقدها.
 - **المؤسسات والعضويات:** `server/features/organizations/organization.ts` و`organizationScope.ts`. كل عملية متعددة المؤسسات يجب أن تتحقق من المؤسسة المحددة، لا من وجود عضوية عامة فقط.
 - **البرقيات ومساراتها:** `server/routers.ts` و`server/db.ts` حاليًا. تُفصل لاحقًا إلى خدمات مجال دون تغيير قواعد العمل في خطوة نقل الملفات نفسها.
-- **التخزين:** `server/storage.ts` و`server/storageProvider.ts` و`server/_core/storageRoutes.ts`. مسار الملف ليس بديلًا عن التفويض؛ القراءة والكتابة تتطلبان تحققًا في طبقة API من المستخدم والمالك/المؤسسة.
+- **التخزين:** `server/features/storage/storage.ts` و`server/_core/storageProvider.ts` و`server/features/storage/storageRoutes.ts`. مسار الملف ليس بديلًا عن التفويض؛ القراءة والكتابة تتطلبان تحققًا في طبقة API من المستخدم والمالك/المؤسسة.
 - **التصدير والتحقق:** `server/telegramExport.ts` وواجهات التحقق في `server/app.ts`. يجب أن تظل بيانات التحقق العامة مقتصرة على ما يحتاجه حامل رمز التحقق.
-- **إعدادات الوثائق:** `shared/platformDocumentSettings.ts` و`client/src/lib/platformDocumentSettings.ts`. يجب منع الطباعة/التصدير عند تعذر تحميل إعدادات موثوقة، وإظهار الخطأ للمستخدم.
+- **إعدادات الوثائق:** `shared/features/platform-settings/platformDocumentSettings.ts` و`client/src/features/platform-settings/platformDocumentSettings.ts`. يجب منع الطباعة/التصدير عند تعذر تحميل إعدادات موثوقة، وإظهار الخطأ للمستخدم.
 - **استيراد الجداول:** `client/src/lib/telegramSpreadsheet.ts` و`server/telegramImportWorkbook.ts`. يجب أن تكون مطابقة الأعمدة صريحة، مع أخطاء قابلة للفهم وبيانات صف المصدر، وألا تحذف قواعد التكرار سجلات مختلفة المحتوى.
 - **التطبيق المحمول:** مجلد `mobile/` على الفرع `flutter-mobile-app`، وليس ضمن `main`. يجب توثيق كل نقطة API يستخدمها التطبيق وإضافة اختبار عقد على فرع الهاتف قبل تغيير شكل الطلب أو الاستجابة.
 
@@ -48,17 +48,19 @@ server/features/
   users/
   organizations/
   telegrams/                         هدف مرحلي لاحق
-  storage/                           هدف مرحلي لاحق
-  notifications/                     هدف مرحلي لاحق
+  storage/                           منظم حاليًا مع بقاء واجهات التوافق
+  notifications/                     منظم حاليًا
+  platform-settings/                 منظم حاليًا
 
 shared/
   features/organizations/
+  features/platform-settings/
   schemas/
   domain/
   utils/
 ```
 
-طُبقت الخريطة على وحدات المصادقة الأمامية، المستخدمين، المؤسسات، التقارير/التدقيق، وصلاحيات الإدارة في الويب وFlutter؛ ونُقلت وحدات المستخدمين والمؤسسات الخادمية واختباراتها إلى `server/features/`، ووحدة التسلسل الهرمي المشتركة إلى `shared/features/organizations/`. بقيت الواجهات والعقود وأسماء إجراءات API كما هي. لم تُنقل وحدات الإشعارات والتخزين والإعدادات وأدوات البرقيات المساندة لأنها متشابكة مع البنية الأساسية أو مشتركة عبر مجالات؛ تُنظم لاحقًا كوحدات كاملة قابلة للاختبار بدل نقل جزئي. راجع `docs/architecture/REPOSITORY_STRUCTURE_AR.md` لملكية المجلدات ومسارات البناء.
+طُبقت الخريطة على وحدات المصادقة الأمامية، المستخدمين، المؤسسات، التقارير/التدقيق، وصلاحيات الإدارة في الويب وFlutter؛ ونُقلت وحدات المستخدمين والمؤسسات الخادمية واختباراتها إلى `server/features/`، ووحدتا التخزين والإشعارات وإعدادات المنصة إلى مجلدات الميزات المقابلة، ووحدة التسلسل الهرمي وإعدادات الوثائق المشتركة إلى `shared/features/`. بقيت الواجهات والعقود وأسماء إجراءات API كما هي، مع بقاء طبقات توافق لبعض المستدعين. تظل مسارات البرقيات الأساسية في `server/routers.ts` و`server/db.ts` هدفًا مرحليًا لاحقًا. راجع `docs/architecture/REPOSITORY_STRUCTURE_AR.md` لملكية المجلدات ومسارات البناء.
 
 ## بوابات القبول
 

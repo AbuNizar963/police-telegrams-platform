@@ -9,8 +9,7 @@ import 'package:police_telegrams/features/auth_session/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 import 'package:police_telegrams/main.dart';
-import 'package:police_telegrams/mobile_pages.dart'
-    show DepartmentSettingsPage;
+import 'package:police_telegrams/mobile_pages.dart' show DepartmentSettingsPage;
 import 'package:police_telegrams/features/platform_settings/platform_document_settings_page.dart';
 import 'package:police_telegrams/features/notifications/push_notifications.dart';
 import 'package:police_telegrams/telegram_outbox.dart';

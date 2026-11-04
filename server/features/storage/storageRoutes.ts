@@ -1,18 +1,18 @@
 import type { Express } from "express";
-import { ENV } from "./env";
-import { getAuthenticatedUserFromRequest } from "./auth";
+import { ENV } from "../../_core/env";
+import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
   getTelegramAttachmentByStorageKey,
   getTelegramById,
   getTelegramVersion,
-} from "../db";
-import { canAccessTelegramScope } from "../telegramAccess";
+} from "../../db";
+import { canAccessTelegramScope } from "../../telegramAccess";
 import {
   getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
-} from "../db";
-import { isPlatformOwner } from "../ownerAccess";
-import { getUserOrganizationMembership } from "../features/organizations/organization";
+} from "../../db";
+import { isPlatformOwner } from "../../ownerAccess";
+import { getUserOrganizationMembership } from "../organizations/organization";
 import {
   StorageAccessDeniedError,
   organizationAttachmentKeyMatches,
@@ -21,7 +21,7 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
-} from "../storage";
+} from "./storage";
 
 const ORGANIZATION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

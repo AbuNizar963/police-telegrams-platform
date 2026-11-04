@@ -6,7 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import OwnerUserManagement from "./features/users/OwnerUserManagement";
 import OwnerOrganizationManagement from "./features/organizations/OwnerOrganizationManagement";
-import PlatformDocumentSettings from "./components/PlatformDocumentSettings";
+import PlatformDocumentSettings from "./features/platform-settings/PlatformDocumentSettings";
 import OperationsWorkspace from "./features/admin/OperationsWorkspace";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";

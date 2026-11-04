@@ -36,6 +36,7 @@ import {
 import { systemRouter } from "./_core/systemRouter";
 import { profileRouter } from "./features/users/profileRouter";
 import { userManagementRouter } from "./features/users/userManagementRouter";
+import { platformDocumentSettingsRouter } from "./features/platform-settings/platformDocumentSettingsRouter";
 import {
   allocateSerialNumber,
   allocateOrganizationSerialNumber,
@@ -47,7 +48,6 @@ import {
   getDashboardStats,
   getMaxSerialNumber,
   getOrCreateSettings,
-  getPlatformDocumentSettings,
   getOrganizationSettings,
   getTelegramById,
   findTelegramByOfficialSerial,
@@ -65,7 +65,6 @@ import {
   recordTelegramVersion,
   transitionTelegram,
   updateDepartmentSettings,
-  updatePlatformDocumentSettings,
   upsertOrganizationSettingsForOrganization,
   updateRouteIncomingSerial,
   updateRouteOutgoingSerial,
@@ -82,10 +81,6 @@ import {
   upsertPushSubscription,
   upsertMobilePushToken,
 } from "./db";
-import {
-  HEX_COLOR_PATTERN,
-  MAX_WATERMARK_OPACITY_PERCENT,
-} from "../shared/platformDocumentSettings";
 import {
   addOrganizationMembership,
   approveTelegramRoute,
@@ -130,7 +125,7 @@ import {
   storagePutOrganizationAttachment,
   storagePutDepartmentLogo,
   storageStableUrl,
-} from "./storage";
+} from "./features/storage/storage";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 import {
   ALLOWED_ATTACHMENT_TYPES,
@@ -141,7 +136,7 @@ import {
   getWebPushPublicKey,
   notifyOrganizationRouteEvent,
   notifyOrganizationTelegramCreated,
-} from "./_core/notification";
+} from "./features/notifications/notification";
 import {
   buildTelegramWorkbook,
   formatTelegramWorkbookDateTime,
@@ -1677,43 +1672,7 @@ export const appRouter = router({
       }),
   }),
 
-  platformDocumentSettings: router({
-    get: protectedProcedure.query(() => getPlatformDocumentSettings()),
-
-    update: protectedProcedure
-      .input(
-        z.object({
-          showMinistryWatermarkText: z.boolean(),
-          watermarkOpacityPercent: z
-            .number()
-            .int()
-            .min(0)
-            .max(MAX_WATERMARK_OPACITY_PERCENT),
-          headerDividerColor: z.string().regex(HEX_COLOR_PATTERN),
-          showVerificationQr: z.boolean(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        if (!isPlatformOwner(ctx.user)) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "إعدادات النظام متاحة لمالك المنصة فقط",
-          });
-        }
-
-        const saved = await updatePlatformDocumentSettings(input, ctx.user.id);
-        await writeAuditLog({
-          ...getRequestAuditContext(ctx.req),
-          actorUserId: ctx.user.id,
-          actorName: ctx.user.name ?? ctx.user.email ?? "Platform owner",
-          action: "platform.document_settings.update",
-          entityType: "platform_document_settings",
-          entityId: "1",
-          metadata: JSON.stringify(input),
-        });
-        return saved;
-      }),
-  }),
+  platformDocumentSettings: platformDocumentSettingsRouter,
 
   telegrams: router({
     uploadAttachment: protectedProcedure

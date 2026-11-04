@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/push_notifications.dart';
+import 'package:police_telegrams/features/notifications/push_notifications.dart';
 
 void main() {
   test('registers the same device token again when the active organization changes', () async {

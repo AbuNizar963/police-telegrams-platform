@@ -1,5 +1,5 @@
-import { ENV } from "./_core/env";
-import { getSupabaseAdmin } from "./_core/supabase";
+import { ENV } from "./env";
+import { getSupabaseAdmin } from "./supabase";
 
 /**
  * Provider boundary for private object storage.

@@ -17,10 +17,11 @@ import 'mobile_pages.dart';
 import './features/admin/native_operations_page.dart';
 import './features/organizations/native_organization_management_page.dart';
 import './features/users/native_user_management_page.dart';
+import './features/platform_settings/platform_document_settings_page.dart';
 
 import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 
-import 'push_notifications.dart';
+import './features/notifications/push_notifications.dart';
 import 'public_pages.dart';
 import 'telegram_display.dart';
 import 'telegram_actions.dart';
@@ -29,7 +30,7 @@ import 'telegram_excel_page.dart';
 import 'telegram_edit_dialog.dart';
 import 'telegram_outbox.dart';
 import 'telegram_outbox_page.dart';
-import 'toast.dart';
+import './features/notifications/toast.dart';
 
 const navy = Color(0xFF10233F);
 const gold = Color(0xFFD8C38E);

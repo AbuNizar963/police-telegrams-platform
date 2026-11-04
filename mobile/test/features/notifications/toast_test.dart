@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/toast.dart';
+import 'package:police_telegrams/features/notifications/toast.dart';
 
 void main() {
   testWidgets('shows semantic toast at top and replaces previous message', (

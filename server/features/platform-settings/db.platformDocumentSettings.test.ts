@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PLATFORM_DOCUMENT_SETTINGS } from "../shared/platformDocumentSettings";
+import { DEFAULT_PLATFORM_DOCUMENT_SETTINGS } from "../../../shared/features/platform-settings/platformDocumentSettings";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
@@ -10,14 +10,14 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
 }));
 
-vi.mock("./_core/supabase", () => ({
+vi.mock("../../_core/supabase", () => ({
   getSupabaseAdmin: () => ({ from: mocks.from }),
 }));
 
 import {
   getPlatformDocumentSettings,
   updatePlatformDocumentSettings,
-} from "./db";
+} from "../../db";
 
 const ownerSettings = {
   showMinistryWatermarkText: false,

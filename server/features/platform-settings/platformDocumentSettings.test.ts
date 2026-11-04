@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { appRouter } from "./routers";
-import type { TrpcContext } from "./_core/context";
-import { ENV } from "./_core/env";
+import { appRouter } from "../../routers";
+import type { TrpcContext } from "../../_core/context";
+import { ENV } from "../../_core/env";
 
 const mocks = vi.hoisted(() => ({
   getPlatformDocumentSettings: vi.fn(),
@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   writeAuditLog: vi.fn(),
 }));
 
-vi.mock("./db", () => mocks);
+vi.mock("../../db", () => mocks);
 
 function context(input: {
   id: number;

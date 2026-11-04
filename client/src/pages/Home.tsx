@@ -49,7 +49,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { showLocalTelegramNotification } from "@/lib/notifications";
+import { showLocalTelegramNotification } from "@/features/notifications/notifications";
 import {
   getTelegramDisplayNumber,
   getTelegramDisplaySerial,
@@ -69,8 +69,8 @@ import { getCachedOfficialDocumentLogo } from "@/features/telegrams/documents/of
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
-} from "@/lib/platformDocumentSettings";
-import type { PlatformDocumentSettings } from "@shared/platformDocumentSettings";
+} from "@/features/platform-settings/platformDocumentSettings";
+import type { PlatformDocumentSettings } from "@shared/features/platform-settings/platformDocumentSettings";
 import { getTelegramSerialCode } from "@shared/telegramSerial";
 import { isTelegramManagementWindowOpen } from "@shared/telegramPermissions";
 import {

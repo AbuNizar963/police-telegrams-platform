@@ -64,8 +64,9 @@ const storageMocks = vi.hoisted(() => ({
   storageCreateSignedUrl: vi.fn(),
   storagePutOrganizationAttachment: vi.fn(),
 }));
-vi.mock("./storage", async importOriginal => {
-  const actual = await importOriginal<typeof import("./storage")>();
+vi.mock("./features/storage/storage", async importOriginal => {
+  const actual =
+    await importOriginal<typeof import("./features/storage/storage")>();
   return {
     ...actual,
     storageDelete: storageMocks.storageDelete,

@@ -7,7 +7,7 @@ const { upload, createSignedUrl, provider } = vi.hoisted(() => {
   return { upload, createSignedUrl, provider };
 });
 
-vi.mock("./storageProvider", () => ({
+vi.mock("../../_core/storageProvider", () => ({
   getStorageProvider: () => provider,
 }));
 

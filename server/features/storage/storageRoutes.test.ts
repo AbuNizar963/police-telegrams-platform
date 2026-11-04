@@ -28,21 +28,18 @@ const {
   canAccessTelegramScope: vi.fn(),
 }));
 
-vi.mock("./auth", () => ({ getAuthenticatedUserFromRequest }));
-vi.mock("../features/organizations/organization", async importOriginal => {
+vi.mock("../../_core/auth", () => ({ getAuthenticatedUserFromRequest }));
+vi.mock("../organizations/organization", async importOriginal => {
   const actual =
-    await importOriginal<
-      typeof import("../features/organizations/organization")
-    >();
+    await importOriginal<typeof import("../organizations/organization")>();
   return {
     ...actual,
     getUserOrganizationMembership,
   };
 });
-vi.mock("../ownerAccess", () => ({ isPlatformOwner }));
-vi.mock("../storage", async () => {
-  const actual =
-    await vi.importActual<typeof import("../storage")>("../storage");
+vi.mock("../../ownerAccess", () => ({ isPlatformOwner }));
+vi.mock("./storage", async () => {
+  const actual = await vi.importActual<typeof import("./storage")>("./storage");
   return {
     ...actual,
     storageDownload,
@@ -50,8 +47,8 @@ vi.mock("../storage", async () => {
     storageCreateSignedUrl,
   };
 });
-vi.mock("../db", async importOriginal => {
-  const actual = await importOriginal<typeof import("../db")>();
+vi.mock("../../db", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../db")>();
   return {
     ...actual,
     getOrganizationSettings,
@@ -61,9 +58,9 @@ vi.mock("../db", async importOriginal => {
     getTelegramVersion,
   };
 });
-vi.mock("../telegramAccess", () => ({ canAccessTelegramScope }));
+vi.mock("../../telegramAccess", () => ({ canAccessTelegramScope }));
 
-import { canAccessStorageKey } from "../storage";
+import { canAccessStorageKey } from "./storage";
 import { registerStorageRoutes } from "./storageRoutes";
 
 type FakeResponse = {

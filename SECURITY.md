@@ -5,6 +5,7 @@
 Please do not report exploitable security issues in public issues or pull requests.
 
 Use GitHub's private vulnerability reporting feature for this repository when available. Include:
+
 - A concise description and impact.
 - Steps to reproduce in a non-production environment.
 - Affected branch, commit, component, and configuration.

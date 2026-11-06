@@ -332,185 +332,186 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     }).toList();
 
     return Directionality(
-    textDirection: TextDirection.rtl,
-    child: Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        title: const Text(
-          'إدارة المستخدمين',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            onPressed: _loading || _saving ? null : load,
-            icon: const Icon(Icons.refresh),
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          title: const Text(
+            'إدارة المستخدمين',
+            style: TextStyle(fontWeight: FontWeight.w900),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _userGold,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        onPressed: _loading || _saving ? null : _createUser,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('إضافة حساب'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'بحث بالاسم أو اسم المستخدم أو الرقم الوظيفي',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _search.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchDebounce?.cancel();
-                          setState(() {
-                            _search = '';
-                            _page = 1;
-                          });
-                          load();
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
+          actions: [
+            IconButton(
+              tooltip: 'تحديث',
+              onPressed: _loading || _saving ? null : load,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: _userGold,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          onPressed: _loading || _saving ? null : _createUser,
+          icon: const Icon(Icons.person_add_alt_1),
+          label: const Text('إضافة حساب'),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: TextField(
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'بحث بالاسم أو اسم المستخدم أو الرقم الوظيفي',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _search.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchDebounce?.cancel();
+                            setState(() {
+                              _search = '';
+                              _page = 1;
+                            });
+                            load();
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _UserSummaryCard(
-                    label: 'في الصفحة الحالية',
-                    value: _users.length,
-                    icon: Icons.people_outline,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _UserSummaryCard(
-                    label: 'نشطة',
-                    value: activeCount,
-                    icon: Icons.verified_user_outlined,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _UserSummaryCard(
-                    label: 'معطّلة',
-                    value: disabledCount,
-                    icon: Icons.person_off_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                ChoiceChip(
-                  label: const Text('الكل'),
-                  selected: _statusFilter == 'all',
-                  onSelected: (_) => setState(() => _statusFilter = 'all'),
-                ),
-                ChoiceChip(
-                  label: const Text('النشطة'),
-                  selected: _statusFilter == 'active',
-                  onSelected: (_) => setState(() => _statusFilter = 'active'),
-                ),
-                ChoiceChip(
-                  label: const Text('المعطّلة'),
-                  selected: _statusFilter == 'disabled',
-                  onSelected: (_) => setState(() => _statusFilter = 'disabled'),
-                ),
-              ],
-            ),
-          ),
-          if (_error != null)
-            MaterialBanner(
-              content: Text(_error!),
-              leading: const Icon(Icons.error_outline, color: Colors.red),
-              actions: [
-                TextButton(
-                  onPressed: load,
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: load,
-                    child: filteredUsers.isEmpty
-                        ? ListView(
-                            children: [
-                              const SizedBox(height: 90),
-                              const Icon(Icons.people_outline, size: 44),
-                              const SizedBox(height: 12),
-                              Center(
-                                child: Text(
-                                  _error == null
-                                      ? (_users.isEmpty
-                                              ? 'لا توجد حسابات مطابقة.'
-                                              : 'لا توجد حسابات ضمن حالة التصفية المختارة.')
-                                      : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 90),
-                            itemCount: filteredUsers.length,
-                            itemBuilder: (context, index) {
-                              final user = filteredUsers[index];
-                              return _userCard(user);
-                            },
-                          ),
-                  ),
-          ),
-          if (!_loading && _totalPages > 1)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  OutlinedButton(
-                    onPressed: _page > 1 && !_saving
-                        ? () {
-                            setState(() => _page--);
-                            load();
-                          }
-                        : null,
-                    child: const Text('السابق'),
+                  Expanded(
+                    child: _UserSummaryCard(
+                      label: 'في الصفحة الحالية',
+                      value: _users.length,
+                      icon: Icons.people_outline,
+                    ),
                   ),
-                  Text('صفحة $_page من $_totalPages'),
-                  OutlinedButton(
-                    onPressed: _page < _totalPages && !_saving
-                        ? () {
-                            setState(() => _page++);
-                            load();
-                          }
-                        : null,
-                    child: const Text('التالي'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _UserSummaryCard(
+                      label: 'نشطة',
+                      value: activeCount,
+                      icon: Icons.verified_user_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _UserSummaryCard(
+                      label: 'معطّلة',
+                      value: disabledCount,
+                      icon: Icons.person_off_outlined,
+                    ),
                   ),
                 ],
               ),
             ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  ChoiceChip(
+                    label: const Text('الكل'),
+                    selected: _statusFilter == 'all',
+                    onSelected: (_) => setState(() => _statusFilter = 'all'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('النشطة'),
+                    selected: _statusFilter == 'active',
+                    onSelected: (_) => setState(() => _statusFilter = 'active'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('المعطّلة'),
+                    selected: _statusFilter == 'disabled',
+                    onSelected: (_) =>
+                        setState(() => _statusFilter = 'disabled'),
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null)
+              MaterialBanner(
+                content: Text(_error!),
+                leading: const Icon(Icons.error_outline, color: Colors.red),
+                actions: [
+                  TextButton(
+                    onPressed: load,
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: load,
+                      child: filteredUsers.isEmpty
+                          ? ListView(
+                              children: [
+                                const SizedBox(height: 90),
+                                const Icon(Icons.people_outline, size: 44),
+                                const SizedBox(height: 12),
+                                Center(
+                                  child: Text(
+                                    _error == null
+                                        ? (_users.isEmpty
+                                              ? 'لا توجد حسابات مطابقة.'
+                                              : 'لا توجد حسابات ضمن حالة التصفية المختارة.')
+                                        : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 90),
+                              itemCount: filteredUsers.length,
+                              itemBuilder: (context, index) {
+                                final user = filteredUsers[index];
+                                return _userCard(user);
+                              },
+                            ),
+                    ),
+            ),
+            if (!_loading && _totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    OutlinedButton(
+                      onPressed: _page > 1 && !_saving
+                          ? () {
+                              setState(() => _page--);
+                              load();
+                            }
+                          : null,
+                      child: const Text('السابق'),
+                    ),
+                    Text('صفحة $_page من $_totalPages'),
+                    OutlinedButton(
+                      onPressed: _page < _totalPages && !_saving
+                          ? () {
+                              setState(() => _page++);
+                              load();
+                            }
+                          : null,
+                      child: const Text('التالي'),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _userCard(Map<String, dynamic> user) {

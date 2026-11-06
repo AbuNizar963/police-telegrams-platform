@@ -548,7 +548,9 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username, loginMethod, isActive, isPlatformOwner")
+        .select(
+          "id, role, username, loginMethod, isActive, isPlatformOwner"
+        )
         .eq("id", input.id)
         .maybeSingle();
       if (target.error) {

@@ -30,6 +30,7 @@ type ManagedUser = {
   rank: string | null;
   unit: string | null;
   role: string;
+  isActive: boolean;
   membershipRole?: string | null;
   loginMethod: string | null;
 };
@@ -126,6 +127,7 @@ export default function OwnerUserManagement() {
       | "auditor"
   );
   const [userSearch, setUserSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [userPage, setUserPage] = useState(1);
   const [userPageSize, setUserPageSize] = useState(25);
   const [organizationRootFilter, setOrganizationRootFilter] = useState("");
@@ -146,16 +148,20 @@ export default function OwnerUserManagement() {
       search: userSearch,
       organizationId:
         organizationBranchFilter || organizationRootFilter || undefined,
+      includeInactive: showInactive,
     },
     {
       enabled: open,
       refetchOnWindowFocus: false,
     }
   );
-  const organizations = trpc.organizations.all.useQuery(undefined, {
-    enabled: open,
-    refetchOnWindowFocus: false,
-  });
+  const organizations = trpc.organizations.all.useQuery(
+    showInactive ? { includeDeleted: true } : undefined,
+    {
+      enabled: open,
+      refetchOnWindowFocus: false,
+    }
+  );
   const utils = trpc.useUtils();
 
   const managedUsers = (users.data?.items ?? []) as ManagedUser[];
@@ -315,6 +321,7 @@ export default function OwnerUserManagement() {
     setUserPage(1);
   }, [
     userSearch,
+    showInactive,
     userPageSize,
     organizationRootFilter,
     organizationBranchFilter,
@@ -601,6 +608,15 @@ export default function OwnerUserManagement() {
               />
             </div>
           </div>
+          <label className="mb-3 flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={event => setShowInactive(event.target.checked)}
+              className="h-4 w-4 accent-current"
+            />
+            عرض الحسابات المعطلة والمؤرشفة (مالك النظام)
+          </label>
           <div className="mb-4 grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px]">
             <label className="grid gap-1 text-xs font-semibold">
               المحافظة أو الجهة العليا

@@ -30,6 +30,8 @@ class NativeUserManagementPage extends StatefulWidget {
 class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   bool _loading = true;
   bool _saving = false;
+  bool _isOwner = false;
+  bool _showInactive = false;
   String? _error;
   String _search = '';
   int _page = 1;
@@ -74,15 +76,26 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
       final results = await Future.wait([
         widget.api.call(
           'userManagement.list',
-          input: {'page': _page, 'pageSize': 25, 'search': _search.trim()},
+          input: {
+            'page': _page,
+            'pageSize': 25,
+            'search': _search.trim(),
+            'includeInactive': _showInactive,
+          },
         ),
-        widget.api.call('organizations.all'),
+        widget.api.call(
+          'organizations.all',
+          input: _showInactive ? {'includeDeleted': true} : null,
+        ),
+        widget.api.call('organizations.context'),
       ]);
       if (!mounted || generation != _loadGeneration) return;
       final userResult = results[0];
+      final contextData = results[2];
       setState(() {
         _users = _rows(userResult);
         _organizations = _rows(results[1]);
+        _isOwner = contextData is Map && contextData['isOwner'] == true;
         _totalPages = userResult is Map
             ? int.tryParse('${userResult['totalPages']}') ?? 1
             : 1;
@@ -371,6 +384,24 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
               ),
             ),
           ),
+          if (_isOwner)
+            SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: const Text('عرض الحسابات المعطلة والمؤرشفة'),
+              subtitle: const Text(
+                'يظهر هذا الخيار الحسابات التي أُوقفت مع الاحتفاظ بسجلاتها',
+              ),
+              value: _showInactive,
+              onChanged: _loading || _saving
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _showInactive = value;
+                        _page = 1;
+                      });
+                      load();
+                    },
+            ),
           if (_error != null)
             MaterialBanner(
               content: Text(_error!),

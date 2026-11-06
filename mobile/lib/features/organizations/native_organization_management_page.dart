@@ -441,7 +441,8 @@ class _NativeOrganizationManagementPageState
                                   (widget.canEditStructure && !archived) ||
                                       ((_isOwner || widget.isPlatformOwner) &&
                                           !archived &&
-                                          organization['type'] != 'central') ||
+                                          organization['type'] != 'central' &&
+                                          organization['parentOrganizationId'] != null) ||
                                       ((_isOwner || widget.isPlatformOwner) &&
                                           archived)
                                   ? Row(
@@ -459,7 +460,8 @@ class _NativeOrganizationManagementPageState
                                           ),
                                         if ((_isOwner || widget.isPlatformOwner) &&
                                             !archived &&
-                                            organization['type'] != 'central')
+                                            organization['type'] != 'central' &&
+                                          organization['parentOrganizationId'] != null)
                                           IconButton(
                                             tooltip: 'إخفاء الجهة مع حفظ السجلات',
                                             onPressed: _loading || _saving

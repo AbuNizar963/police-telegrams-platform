@@ -15,6 +15,7 @@ import VerifyTelegram from "./pages/VerifyTelegram";
 import Profile from "./features/users/Profile";
 import About from "./pages/About";
 import Terms from "./pages/Terms";
+import OwnerDashboardPage from "./pages/OwnerDashboard";
 
 function DashboardPage({ children }: { children: React.ReactNode }) {
   return (
@@ -32,6 +33,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/verify/:token" component={VerifyTelegram} />
+      <Route path="/owner-dashboard">
+        <DashboardPage>
+          <OwnerDashboardPage />
+        </DashboardPage>
+      </Route>
       <Route path="/audit-log">
         <DashboardPage>
           <AuditLogPage />

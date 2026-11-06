@@ -1518,6 +1518,50 @@ export async function searchAuditLogs(input: AuditLogSearchInput) {
   };
 }
 
+export type OwnerDashboardSummary = {
+  periodDays: number;
+  from: string;
+  generatedAt: string;
+  totalOperations: number;
+  sensitiveOperations: number;
+  activeOrganizations: number;
+  activeUsers: number;
+  operationsByDay: Array<{ date: string; count: number }>;
+  operationsByCategory: Array<{ category: string; count: number }>;
+  topOrganizations: Array<{
+    organizationName: string;
+    count: number;
+  }>;
+  recentOperations: Array<{
+    id: string;
+    createdAt: string;
+    action: string;
+    actorName: string;
+    organizationName: string;
+    entityType: string;
+    entityId: string | null;
+  }>;
+};
+
+export async function getOwnerDashboardSummary(input: {
+  ownerUserId: number;
+  days: number;
+}): Promise<OwnerDashboardSummary> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "owner_dashboard_summary",
+    {
+      p_owner_user_id: input.ownerUserId,
+      p_days: input.days,
+      p_configured_owner_username: ENV.ownerUsername,
+    }
+  );
+  throwIfError(error, "Failed to load owner dashboard summary");
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Owner dashboard summary returned an invalid response");
+  }
+  return data as unknown as OwnerDashboardSummary;
+}
+
 type WriteAuditLogInput = Omit<
   AuditLog,
   | "id"

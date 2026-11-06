@@ -5,6 +5,7 @@ import { appRouter } from "./routers";
 const mocked = vi.hoisted(() => ({
   listAuditLogs: vi.fn(),
   searchAuditLogs: vi.fn(),
+  getOwnerDashboardSummary: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
 }));
 
@@ -12,6 +13,7 @@ vi.mock("./db", async importOriginal => ({
   ...(await importOriginal<typeof import("./db")>()),
   listAuditLogs: mocked.listAuditLogs,
   searchAuditLogs: mocked.searchAuditLogs,
+  getOwnerDashboardSummary: mocked.getOwnerDashboardSummary,
 }));
 
 vi.mock("./features/organizations/organization", async importOriginal => ({
@@ -59,6 +61,7 @@ describe("audit log access control", () => {
       pageSize: 25,
       totalPages: 1,
     });
+    mocked.getOwnerDashboardSummary.mockResolvedValue({ periodDays: 30 });
   });
 
   it("allows system administrators to read the audit log", async () => {
@@ -124,5 +127,32 @@ describe("audit log access control", () => {
       action: "telegram.update",
       organizationId: "00000000-0000-4000-8000-000000000099",
     });
+  });
+
+  it("allows only a platform owner to read the aggregate dashboard", async () => {
+    const ownerContext = contextFor("admin");
+    ownerContext.user.isPlatformOwner = true;
+    const caller = appRouter.createCaller(ownerContext);
+
+    await expect(
+      caller.ownerDashboard.summary({ days: 30 })
+    ).resolves.toMatchObject({
+      periodDays: 30,
+    });
+    expect(mocked.getOwnerDashboardSummary).toHaveBeenCalledWith({
+      ownerUserId: ownerContext.user.id,
+      days: 30,
+    });
+  });
+
+  it("rejects an administrator without platform-owner status", async () => {
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await expect(
+      caller.ownerDashboard.summary({ days: 30 })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(mocked.getOwnerDashboardSummary).not.toHaveBeenCalled();
   });
 });

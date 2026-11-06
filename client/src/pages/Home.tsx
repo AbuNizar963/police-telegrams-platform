@@ -65,6 +65,7 @@ import {
   getTelegramDisplaySerial,
   getTelegramExportFileBaseName,
 } from "@/lib/telegramDisplay";
+import { renderTelegramBodyHtml } from "@/features/telegrams/documents/telegramBodyHtml";
 import {
   buildTelegramWatermarkCss,
   buildTelegramWatermarkHtml,
@@ -1944,6 +1945,9 @@ function ExcelImportPreviewModal({
                   <td className="max-w-48 p-2">
                     <Input
                       value={row.sender}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="off"
                       onChange={event =>
                         setRows(current =>
                           current.map((item, itemIndex) =>
@@ -1960,6 +1964,9 @@ function ExcelImportPreviewModal({
                     <Textarea
                       value={row.body}
                       rows={2}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="off"
                       onChange={event =>
                         setRows(current =>
                           current.map((item, itemIndex) =>
@@ -2629,6 +2636,9 @@ function TelegramComposer({
           الموضوع
           <Input
             value={subject}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={event => setSubject(event.target.value)}
             placeholder="عنوان مختصر ودقيق للبلاغ"
             className="h-11 w-full min-w-0 max-w-full rounded-lg"
@@ -3796,6 +3806,11 @@ function TelegramDetail({
           font-size: 20px;
           font-weight: 500;
         }
+        .telegram-export-page .telegram-date-token {
+          direction: ltr;
+          unicode-bidi: isolate;
+          white-space: nowrap;
+        }
         .telegram-export-page .signature {
           display: flex;
           flex-direction: column;
@@ -3908,7 +3923,7 @@ function TelegramDetail({
             </div>
           </section>
           <h2 class="body-heading">نص البرقية</h2>
-          <div class="telegram-body">${escapeHtml(localizeDigits(documentTelegram.body, numberSystem))}</div>
+          <div class="telegram-body" dir="rtl">${renderTelegramBodyHtml(documentTelegram.body, numberSystem)}</div>
           <section class="signature">
             <p><strong>${escapeHtml(localizeDigits(historicalLetterhead?.unitChiefRank ?? settings?.unitChiefRank ?? "رئيس الوحدة", numberSystem))} ${escapeHtml(localizeDigits(historicalLetterhead?.unitChiefName ?? settings?.unitChiefName ?? "", numberSystem))}</strong></p>
             <p><strong>رئيس ${escapeHtml(departmentName)}</strong></p>
@@ -5453,6 +5468,9 @@ function TelegramEditModal({
             minLength={2}
             maxLength={255}
             value={subject}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={event => setSubject(event.target.value)}
           />
         </label>
@@ -5463,6 +5481,9 @@ function TelegramEditModal({
             minLength={2}
             maxLength={255}
             value={recipient}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={event => setRecipient(event.target.value)}
           />
         </label>
@@ -5474,6 +5495,9 @@ function TelegramEditModal({
             maxLength={20000}
             rows={8}
             value={body}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             onChange={event => setBody(event.target.value)}
             className="font-medium"
           />

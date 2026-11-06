@@ -1468,7 +1468,7 @@ export default function OwnerOrganizationManagement() {
             <p className="mt-1 text-xs leading-5 text-muted-foreground">ابدأ بالبحث أو تصفية الجهات، ثم اختر جهة لعرض تفاصيلها وإجراءاتها. الإضافة والتعديل وإدارة الحسابات تظهر بحسب صلاحيتك.</p>
           </div>
           <section className="min-w-0 rounded-xl border p-3 sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <Building2 className="h-4 w-4 text-[#9b7c3d]" />
               <h3 className="font-bold">الهيكل التنظيمي</h3>
               <Button

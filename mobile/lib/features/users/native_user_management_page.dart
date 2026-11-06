@@ -286,8 +286,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     }
     final accepted = await _confirmAction(
       title: 'حذف الحساب نهائيًا',
-      message:
-          'سيُفحص كل ارتباط قبل الحذف. إذا كان الحساب مرتبطًا ببرقيات أو مرفقات أو إشعارات أو سجل تدقيق فسيُمنع الحذف، ولن تُحذف أي سجلات تاريخية.',
+      message: 'سيُفحص كل ارتباط قبل الحذف. إذا كان الحساب مرتبطًا ببرقيات أو مرفقات أو إشعارات أو سجل تدقيق فسيُمنع الحذف، ولن تُحذف أي سجلات تاريخية.',
     );
     if (!accepted) return;
     final password = await _confirmPassword('تأكيد الحذف النهائي');

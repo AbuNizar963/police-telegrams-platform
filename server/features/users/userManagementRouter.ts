@@ -564,9 +564,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select(
-          "id, role, username, loginMethod, isActive, isPlatformOwner",
-        )
+        .select("id, role, username, loginMethod, isActive, isPlatformOwner")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error) {
@@ -628,7 +626,7 @@ export const userManagementRouter = router({
         const blockerSummary = (result?.blockers ?? [])
           .map(
             item =>
-              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`,
+              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
           )
           .join("، ");
         throw new TRPCError({

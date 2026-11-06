@@ -16,7 +16,7 @@ SET search_path = pg_catalog, public
 AS $function$
 DECLARE
   v_days integer := p_days;
-  v_generated_at timestamptz := now();
+  v_generated_at timestamptz := statement_timestamp();
   v_from timestamptz;
 BEGIN
   IF p_days IS NULL OR p_days NOT BETWEEN 7 AND 90 THEN

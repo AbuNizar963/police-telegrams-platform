@@ -836,6 +836,7 @@ export default function OwnerUserManagement() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8 text-emerald-700 hover:bg-emerald-500/10"
+                                      disabled={user.isActive === false}
                                       title="تعديل الحساب"
                                       aria-label={`تعديل حساب ${user.name ?? user.username ?? "المستخدم"}`}
                                       onClick={() => {

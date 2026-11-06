@@ -260,11 +260,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
       await widget.api.call(
         'userManagement.transfer',
         mutation: true,
-        input: {
-          'id': user['id'],
-          ...form,
-          'confirmPassword': password,
-        },
+        input: {'id': user['id'], ...form, 'confirmPassword': password},
       );
       _showMessage('تم نقل الموظف وتحديث صلاحياته مع حفظ سجل النقل.');
     });
@@ -585,9 +581,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                 runSpacing: 4,
                 alignment: WrapAlignment.end,
                 children: [
-                  if (user['isActive'] != false &&
-                      !disabled &&
-                      !isOwner)
+                  if (user['isActive'] != false && !disabled && !isOwner)
                     OutlinedButton.icon(
                       onPressed: _saving ? null : () => _transferUser(user),
                       icon: const Icon(Icons.drive_file_move_outline, size: 18),
@@ -896,9 +890,7 @@ class _TransferUserDialogState extends State<_TransferUserDialog> {
                   initialValue: _organizationId.isEmpty
                       ? null
                       : _organizationId,
-                  decoration: const InputDecoration(
-                    labelText: 'الجهة الجديدة',
-                  ),
+                  decoration: const InputDecoration(labelText: 'الجهة الجديدة'),
                   items: _destinations
                       .map(
                         (organization) => DropdownMenuItem(

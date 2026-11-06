@@ -92,7 +92,7 @@ export const userManagementRouter = router({
         .range(
           (input.page - 1) * input.pageSize,
           input.page * input.pageSize - 1
-        )
+        );
       if (!input.includeInactive) {
         query = query.eq("isActive", true);
       }

@@ -377,7 +377,8 @@ export const userManagementRouter = router({
       if (target.data.isActive === false) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "لا يمكن تعديل حساب تابع لجهة مؤرشفة؛ الحساب للقراءة فقط.",
+          message:
+            "لا يمكن تعديل حساب تابع لجهة مؤرشفة؛ الحساب للقراءة فقط.",
         });
       }
       if (typeof target.data.organizationId === "string") {
@@ -500,7 +501,8 @@ export const userManagementRouter = router({
       if (target.data.isActive === false) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "لا يمكن إعادة تفعيل حساب تابع لجهة مؤرشفة؛ استخدم الحذف الآمن إذا لم توجد ارتباطات.",
+          message:
+            "لا يمكن إعادة تفعيل حساب تابع لجهة مؤرشفة؛ استخدم الحذف الآمن إذا لم توجد ارتباطات.",
         });
       }
       if (typeof target.data.organizationId === "string") {
@@ -630,8 +632,9 @@ export const userManagementRouter = router({
       } | null;
       if (result?.deleted !== true) {
         const blockerSummary = (result?.blockers ?? [])
-          .map(item =>
-            `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
+          .map(
+            item =>
+              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
           )
           .join("، ");
         throw new TRPCError({

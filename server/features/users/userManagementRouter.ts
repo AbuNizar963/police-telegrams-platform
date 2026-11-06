@@ -63,9 +63,16 @@ export const userManagementRouter = router({
         pageSize: z.number().int().min(10).max(100).default(25),
         search: z.string().trim().max(120).default(""),
         organizationId: z.string().uuid().optional(),
+        includeInactive: z.boolean().default(false),
       })
     )
     .query(async ({ ctx, input }) => {
+      if (input.includeInactive && !isPlatformOwner(ctx.user)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "عرض الحسابات المعطلة أو المؤرشفة متاح لمالك النظام فقط",
+        });
+      }
       const client = getSupabaseAdmin();
       const managedOrganizationIds = await getManagedOrganizationIds(ctx.user);
       if (input.organizationId) {
@@ -77,16 +84,18 @@ export const userManagementRouter = router({
       let query = client
         .from("users")
         .select(
-          "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn",
+          "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, isActive, createdAt, lastSignedIn",
           { count: "exact" }
         )
-        .eq("isActive", true)
         .in("organizationId", scopedOrganizationIds)
         .order("createdAt", { ascending: false })
         .range(
           (input.page - 1) * input.pageSize,
           input.page * input.pageSize - 1
         );
+      if (!input.includeInactive) {
+        query = query.eq("isActive", true);
+      }
       const search = input.search.toLowerCase();
       if (search) {
         query = query.or(

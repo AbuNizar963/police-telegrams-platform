@@ -239,6 +239,37 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
     });
   }
 
+  Future<void> _transferUser(Map<String, dynamic> user) async {
+    if (user['loginMethod'] == 'disabled' || user['isActive'] == false) {
+      _showMessage('لا يمكن نقل حساب معطّل أو مؤرشف.');
+      return;
+    }
+    final form = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _TransferUserDialog(
+        organizations: _organizations,
+        currentOrganizationId: '${user['organizationId'] ?? ''}',
+        currentRole: '${user['membershipRole'] ?? 'dispatcher'}',
+      ),
+    );
+    if (form == null) return;
+    final password = await _confirmPassword('تأكيد نقل الموظف');
+    if (password == null) return;
+    await _run(() async {
+      await widget.api.call(
+        'userManagement.transfer',
+        mutation: true,
+        input: {
+          'id': user['id'],
+          ...form,
+          'confirmPassword': password,
+        },
+      );
+      _showMessage('تم نقل الموظف وتحديث صلاحياته مع حفظ سجل النقل.');
+    });
+  }
+
   Future<void> _disableUser(Map<String, dynamic> user) async {
     final accepted = await _confirmAction(
       title: 'تعطيل الحساب',
@@ -554,6 +585,14 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                 runSpacing: 4,
                 alignment: WrapAlignment.end,
                 children: [
+                  if (user['isActive'] != false &&
+                      !disabled &&
+                      !isOwner)
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : () => _transferUser(user),
+                      icon: const Icon(Icons.drive_file_move_outline, size: 18),
+                      label: const Text('نقل'),
+                    ),
                   if (user['isActive'] != false)
                     OutlinedButton.icon(
                       onPressed: _saving ? null : () => _editUser(user),
@@ -783,6 +822,150 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             });
           },
           child: Text(_editing ? 'حفظ التعديلات' : 'إنشاء الحساب'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _TransferUserDialog extends StatefulWidget {
+  const _TransferUserDialog({
+    required this.organizations,
+    required this.currentOrganizationId,
+    required this.currentRole,
+  });
+
+  final List<Map<String, dynamic>> organizations;
+  final String currentOrganizationId;
+  final String currentRole;
+
+  @override
+  State<_TransferUserDialog> createState() => _TransferUserDialogState();
+}
+
+class _TransferUserDialogState extends State<_TransferUserDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _reason = TextEditingController();
+  late final List<Map<String, dynamic>> _destinations;
+  late String _organizationId;
+  late String _role;
+
+  @override
+  void initState() {
+    super.initState();
+    _destinations = widget.organizations
+        .where(
+          (organization) =>
+              organization['isActive'] == true &&
+              organization['deletedAt'] == null &&
+              '${organization['id']}' != widget.currentOrganizationId,
+        )
+        .toList();
+    _organizationId = _destinations.isEmpty
+        ? ''
+        : '${_destinations.first['id']}';
+    _role = _roles.containsKey(widget.currentRole)
+        ? widget.currentRole
+        : 'dispatcher';
+  }
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: AlertDialog(
+      title: const Text('نقل الموظف بين الجهات'),
+      content: SizedBox(
+        width: MediaQuery.sizeOf(context).width * 0.82,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'سيبقى حساب الموظف ورقمه الوظيفي كما هما. ستُنهى عضويته في الجهة السابقة، وتُمنح صلاحيات الجهة الجديدة، ويُحفظ سبب النقل في سجل التدقيق. سيحتاج الموظف إلى تسجيل الدخول مجدداً.',
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _organizationId.isEmpty
+                      ? null
+                      : _organizationId,
+                  decoration: const InputDecoration(
+                    labelText: 'الجهة الجديدة',
+                  ),
+                  items: _destinations
+                      .map(
+                        (organization) => DropdownMenuItem(
+                          value: '${organization['id']}',
+                          child: Text('${organization['name']}'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _organizationId = value ?? ''),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'اختر الجهة.' : null,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: _role,
+                  decoration: const InputDecoration(
+                    labelText: 'الصلاحية في الجهة الجديدة',
+                  ),
+                  items: _roles.entries
+                      .where((entry) => entry.key != 'system_admin')
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.key,
+                          child: Text(entry.value),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _role = value ?? 'dispatcher'),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _reason,
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 2000,
+                  decoration: const InputDecoration(
+                    labelText: 'سبب النقل',
+                    hintText: 'اذكر القرار أو المبرر الإداري للنقل',
+                  ),
+                  validator: (value) => (value ?? '').trim().length < 8
+                      ? 'سبب النقل يجب ألا يقل عن 8 محارف.'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: _destinations.isEmpty
+              ? null
+              : () {
+                  if (!_formKey.currentState!.validate()) return;
+                  Navigator.pop(context, {
+                    'targetOrganizationId': _organizationId,
+                    'role': _role,
+                    'reason': _reason.text.trim(),
+                  });
+                },
+          child: const Text('متابعة'),
         ),
       ],
     ),

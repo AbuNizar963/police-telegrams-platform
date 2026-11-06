@@ -150,11 +150,11 @@ BEGIN
          username = NULL,
          email = NULL,
          phone = NULL,
-         badgeNumber = NULL,
+         "badgeNumber" = NULL,
          bio = NULL,
          rank = NULL,
          unit = NULL,
-         avatarKey = NULL,
+         "avatarKey" = NULL,
          "mustChangePassword" = false,
          "updatedAt" = clock_timestamp()
    WHERE account."organizationId" = p_organization_id

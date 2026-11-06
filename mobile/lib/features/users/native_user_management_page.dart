@@ -267,11 +267,14 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   }
 
   Future<void> _deleteUser(Map<String, dynamic> user) async {
+    if (user['loginMethod'] != 'disabled') {
+      _showMessage('عطّل الحساب أولاً قبل طلب الحذف النهائي.');
+      return;
+    }
     final accepted = await _confirmAction(
       title: 'حذف الحساب نهائيًا',
       message:
-          'قد يرفض الخادم الحذف إذا كان الحساب مرتبطًا ببرقيات أو سجلات تدقيق. '
-          'لن تُحذف أي برقيات تلقائيًا.',
+          'سيُفحص كل ارتباط قبل الحذف. إذا كان الحساب مرتبطًا ببرقيات أو مرفقات أو إشعارات أو سجل تدقيق فسيُمنع الحذف، ولن تُحذف أي سجلات تاريخية.',
     );
     if (!accepted) return;
     final password = await _confirmPassword('تأكيد الحذف النهائي');

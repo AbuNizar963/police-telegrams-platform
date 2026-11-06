@@ -320,7 +320,9 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _users.where((user) => user['loginMethod'] != 'disabled').length;
+    final activeCount = _users
+        .where((user) => user['loginMethod'] != 'disabled')
+        .length;
     final disabledCount = _users.length - activeCount;
     final filteredUsers = _users.where((user) {
       final disabled = user['loginMethod'] == 'disabled';
@@ -383,11 +385,29 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(
               children: [
-                Expanded(child: _UserSummaryCard(label: 'في الصفحة الحالية', value: _users.length, icon: Icons.people_outline)),
+                Expanded(
+                  child: _UserSummaryCard(
+                    label: 'في الصفحة الحالية',
+                    value: _users.length,
+                    icon: Icons.people_outline,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _UserSummaryCard(label: 'نشطة', value: activeCount, icon: Icons.verified_user_outlined)),
+                Expanded(
+                  child: _UserSummaryCard(
+                    label: 'نشطة',
+                    value: activeCount,
+                    icon: Icons.verified_user_outlined,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _UserSummaryCard(label: 'معطّلة', value: disabledCount, icon: Icons.person_off_outlined)),
+                Expanded(
+                  child: _UserSummaryCard(
+                    label: 'معطّلة',
+                    value: disabledCount,
+                    icon: Icons.person_off_outlined,
+                  ),
+                ),
               ],
             ),
           ),
@@ -397,9 +417,21 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                ChoiceChip(label: const Text('الكل'), selected: _statusFilter == 'all', onSelected: (_) => setState(() => _statusFilter = 'all')),
-                ChoiceChip(label: const Text('النشطة'), selected: _statusFilter == 'active', onSelected: (_) => setState(() => _statusFilter = 'active')),
-                ChoiceChip(label: const Text('المعطّلة'), selected: _statusFilter == 'disabled', onSelected: (_) => setState(() => _statusFilter = 'disabled')),
+                ChoiceChip(
+                  label: const Text('الكل'),
+                  selected: _statusFilter == 'all',
+                  onSelected: (_) => setState(() => _statusFilter = 'all'),
+                ),
+                ChoiceChip(
+                  label: const Text('النشطة'),
+                  selected: _statusFilter == 'active',
+                  onSelected: (_) => setState(() => _statusFilter = 'active'),
+                ),
+                ChoiceChip(
+                  label: const Text('المعطّلة'),
+                  selected: _statusFilter == 'disabled',
+                  onSelected: (_) => setState(() => _statusFilter = 'disabled'),
+                ),
               ],
             ),
           ),

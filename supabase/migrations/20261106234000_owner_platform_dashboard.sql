@@ -57,7 +57,10 @@ BEGIN
           ELSE COALESCE(organization.name, 'جهة مؤرشفة')
         END AS organization_name,
         event."entityType" AS entity_type,
-        event."entityId" AS entity_id,
+        CASE
+          WHEN event."entityType" = 'user' THEN NULL::text
+          ELSE event."entityId"::text
+        END AS entity_id,
         (
           event.action IN (
             'telegram.delete',
@@ -90,6 +93,24 @@ BEGIN
         receipt."organizationCode" AS entity_id,
         true AS is_sensitive
       FROM public.audit_purge_receipts AS receipt
+      LEFT JOIN public.users AS owner_account
+        ON owner_account.id = receipt."ownerUserId"
+      WHERE receipt."createdAt" >= v_from
+        AND receipt."createdAt" <= v_generated_at
+
+      UNION ALL
+
+      SELECT
+        'user-purge:' || receipt.id::text AS event_id,
+        receipt."createdAt" AS created_at,
+        'user.purge_inactive'::text AS action,
+        COALESCE(owner_account.name, owner_account.username, 'مالك النظام') AS actor_name,
+        NULL::text AS organization_key,
+        'جهة غير متاحة بعد حذف الحساب'::text AS organization_name,
+        'user'::text AS entity_type,
+        NULL::text AS entity_id,
+        true AS is_sensitive
+      FROM public.user_purge_receipts AS receipt
       LEFT JOIN public.users AS owner_account
         ON owner_account.id = receipt."ownerUserId"
       WHERE receipt."createdAt" >= v_from

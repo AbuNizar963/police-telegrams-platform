@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(10);
+SELECT plan(12);
 
 CREATE TEMP TABLE owner_dashboard_test_context (
   organization_id uuid NOT NULL,
@@ -78,6 +78,17 @@ SELECT 'PGTAP-PURGED-' || substr(gen_random_uuid()::text, 1, 8),
        now() - interval '1 minute'
   FROM owner_dashboard_test_context;
 
+INSERT INTO public.user_purge_receipts (
+  "userIdHash", "organizationIdHash", "ownerUserId", reason, "deletedCounts", "createdAt"
+)
+SELECT substr(md5(gen_random_uuid()::text) || md5(now()::text), 1, 64),
+       substr(md5(gen_random_uuid()::text) || md5(now()::text), 1, 64),
+       owner_user_id,
+       'اختبار تجميع إيصال حذف الحساب الدائم',
+       '{}'::jsonb,
+       now() - interval '1 minute'
+  FROM owner_dashboard_test_context;
+
 INSERT INTO public.audit_purge_receipts (
   "organizationCode", "organizationName", "organizationIdHash", "ownerUserId", reason, "deletedCounts", "createdAt"
 )
@@ -98,14 +109,14 @@ SELECT is(
 
 SELECT is(
   (public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) ->> 'totalOperations')::integer,
-  3,
-  'audit events and permanent-purge receipts inside the period are counted'
+  4,
+  'audit events and organization and account purge receipts inside the period are counted'
 );
 
 SELECT is(
   (public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) ->> 'sensitiveOperations')::integer,
-  2,
-  'sensitive account changes and permanent purges are counted'
+  3,
+  'sensitive account changes and both permanent purge types are counted'
 );
 
 SELECT is(
@@ -126,8 +137,14 @@ SELECT ok(
       FROM jsonb_array_elements(public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) -> 'operationsByCategory') AS category(item)
      WHERE category.item ->> 'category' = 'organization'
        AND (category.item ->> 'count')::integer = 1
+  )
+  AND EXISTS (
+    SELECT 1
+      FROM jsonb_array_elements(public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) -> 'operationsByCategory') AS category(item)
+     WHERE category.item ->> 'category' = 'user'
+       AND (category.item ->> 'count')::integer = 2
   ),
-  'audit activity and purge receipts are categorized in the same aggregate'
+  'audit activity and both purge receipt types are categorized in the same aggregate'
 );
 
 SELECT ok(
@@ -142,8 +159,8 @@ SELECT ok(
 
 SELECT is(
   jsonb_array_length(public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) -> 'recentOperations'),
-  3,
-  'the recent activity list includes audit events and purge receipts in the period'
+  4,
+  'the recent activity list includes audit events and both purge receipt types in the period'
 );
 
 SELECT ok(
@@ -154,6 +171,26 @@ SELECT ok(
        AND operation.item ->> 'organizationName' = 'جهة محذوفة للاختبار'
   ),
   'permanent-purge receipts have an identifiable owner-facing activity label and organization'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1
+      FROM jsonb_array_elements(public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) -> 'recentOperations') AS operation(item)
+     WHERE operation.item ->> 'action' = 'user.purge_inactive'
+       AND operation.item ->> 'entityType' = 'user'
+  ),
+  'permanently purged accounts appear in owner-facing recent activity without exposing their identifiers'
+);
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1
+      FROM jsonb_array_elements(public.owner_dashboard_summary((SELECT owner_user_id FROM owner_dashboard_test_context), 7, NULL) -> 'recentOperations') AS operation(item)
+     WHERE operation.item ->> 'entityType' = 'user'
+       AND operation.item ->> 'entityId' IS NOT NULL
+  ),
+  'user identifiers are omitted from both audit events and permanent-purge receipts'
 );
 
 SELECT is(

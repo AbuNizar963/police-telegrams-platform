@@ -536,6 +536,8 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                   label: Text(
                     isOwner
                         ? 'مالك النظام'
+                        : user['isActive'] == false
+                        ? 'مؤرشف'
                         : disabled
                         ? 'معطّل'
                         : _roles[user['membershipRole']] ?? 'حساب جهة',
@@ -553,18 +555,19 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                 runSpacing: 4,
                 alignment: WrapAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _saving ? null : () => _editUser(user),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('تعديل'),
-                  ),
-                  if (disabled)
+                  if (user['isActive'] != false)
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : () => _editUser(user),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('تعديل'),
+                    ),
+                  if (disabled && user['isActive'] != false)
                     OutlinedButton.icon(
                       onPressed: _saving ? null : () => _enableUser(user),
                       icon: const Icon(Icons.person_add_alt, size: 18),
                       label: const Text('إعادة تفعيل'),
                     )
-                  else
+                  else if (!disabled)
                     OutlinedButton.icon(
                       onPressed: _saving ? null : () => _disableUser(user),
                       icon: const Icon(Icons.person_off_outlined, size: 18),

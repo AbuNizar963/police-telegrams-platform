@@ -180,13 +180,13 @@ class _NativeOrganizationManagementPageState
   @override
   Widget build(BuildContext context) {
     final activeCount = _organizations
-        .where(
-          (item) => item['deletedAt'] == null && item['isActive'] != false,
-        )
+        .where((item) => item['deletedAt'] == null && item['isActive'] != false)
         .length;
     final inactiveCount = _organizations.length - activeCount;
     final filtered = _organizations.where((organization) {
-      final active = organization['deletedAt'] == null && organization['isActive'] != false;
+      final active =
+          organization['deletedAt'] == null &&
+          organization['isActive'] != false;
       if (_statusFilter == 'active' && !active) return false;
       if (_statusFilter == 'inactive' && active) return false;
       final query = _search.trim().toLowerCase();
@@ -289,7 +289,8 @@ class _NativeOrganizationManagementPageState
                   ChoiceChip(
                     label: const Text('غير النشطة'),
                     selected: _statusFilter == 'inactive',
-                    onSelected: (_) => setState(() => _statusFilter = 'inactive'),
+                    onSelected: (_) =>
+                        setState(() => _statusFilter = 'inactive'),
                   ),
                 ],
               ),
@@ -371,7 +372,11 @@ class _NativeOrganizationManagementPageState
                                   '${_text(organization['code'])} • '
                                   '${_organizationTypes[type] ?? type}\n'
                                   'الأب: ${_organizationParentName(organization)} • '
-                                  '${organization['deletedAt'] != null ? 'مؤرشفة' : active ? 'نشطة' : 'معطلة'}',
+                                  '${organization['deletedAt'] != null
+                                      ? 'مؤرشفة'
+                                      : active
+                                      ? 'نشطة'
+                                      : 'معطلة'}',
                                 ),
                               ),
                               isThreeLine: true,
@@ -400,7 +405,11 @@ class _NativeOrganizationManagementPageState
 }
 
 class _OrganizationSummaryCard extends StatelessWidget {
-  const _OrganizationSummaryCard({required this.label, required this.value, required this.icon});
+  const _OrganizationSummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   final String label;
   final int value;
@@ -418,9 +427,19 @@ class _OrganizationSummaryCard extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: colors.primary),
             const SizedBox(height: 8),
-            Text('$value', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              '$value',
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: colors.onSurfaceVariant),
+            ),
           ],
         ),
       ),

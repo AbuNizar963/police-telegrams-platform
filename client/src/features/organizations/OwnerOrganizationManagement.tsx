@@ -1684,6 +1684,31 @@ export default function OwnerOrganizationManagement() {
                           : "إخفاء الجهة"}
                       </Button>
                     )}
+                  {isPlatformOwner &&
+                    Boolean(selectedOrganization.deletedAt) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={purgeOrganization.isPending}
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `تنبيه نهائي: هل تريد حذف الجهة «${selectedOrganization.name}» مادياً؟ سيُرفض الحذف إذا بقي أي ارتباط ببرقيات أو حسابات أو إشعارات أو مرفقات أو سجل تدقيق، ولن تُحذف السجلات المرتبطة.`
+                          );
+                          if (confirmed) {
+                            purgeOrganization.mutate({
+                              id: selectedOrganization.id,
+                              reason: "حذف نهائي بطلب مالك النظام بعد التأكيد",
+                            });
+                          }
+                        }}
+                      >
+                        <Trash2 className="ml-1 h-4 w-4" />
+                        {purgeOrganization.isPending
+                          ? "جارٍ التحقق والحذف..."
+                          : "حذف نهائي"}
+                      </Button>
+                    )}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3">

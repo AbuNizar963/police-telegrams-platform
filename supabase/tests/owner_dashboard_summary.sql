@@ -63,8 +63,7 @@ SELECT context.owner_user_id, 'مالك اختبار اللوحة', context.orga
  CROSS JOIN (
    VALUES
      ('telegram.create'::varchar, 'telegram'::varchar, '101'::varchar, now() - interval '1 hour'),
-     ('user.disable'::varchar, 'user'::varchar, '102'::varchar, now() - interval '1 day'),
-     ('telegram.create'::varchar, 'telegram'::varchar, '103'::varchar, now() - interval '10 days')
+     ('user.disable'::varchar, 'user'::varchar, '102'::varchar, now() - interval '1 day')
  ) AS activity(action, entity_type, entity_id, created_at);
 
 INSERT INTO public.audit_purge_receipts (
@@ -77,6 +76,18 @@ SELECT 'PGTAP-PURGED-' || substr(gen_random_uuid()::text, 1, 8),
        'اختبار تجميع إيصال الحذف الدائم',
        '{}'::jsonb,
        now() - interval '1 minute'
+  FROM owner_dashboard_test_context;
+
+INSERT INTO public.audit_purge_receipts (
+  "organizationCode", "organizationName", "organizationIdHash", "ownerUserId", reason, "deletedCounts", "createdAt"
+)
+SELECT 'PGTAP-OLD-PURGED-' || substr(gen_random_uuid()::text, 1, 8),
+       'إيصال قديم للاختبار',
+       substr(md5(gen_random_uuid()::text) || md5(now()::text), 1, 64),
+       owner_user_id,
+       'اختبار استبعاد سجل خارج الفترة',
+       '{}'::jsonb,
+       now() - interval '100 days'
   FROM owner_dashboard_test_context;
 
 SELECT is(

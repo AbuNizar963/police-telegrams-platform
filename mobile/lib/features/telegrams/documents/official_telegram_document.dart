@@ -2074,12 +2074,14 @@ String _renderTelegramBodyHtml(Object? value, Object? numberSystem) {
     _localizeDigits(_value(value, fallback: 'لا يوجد نص'), numberSystem),
   );
   final datePattern = RegExp(
-    r'(^|[^0-9٠-٩۰-۹])([0-9٠-٩۰-۹]{1,2}[/.-][0-9٠-٩۰-۹]{1,2}[/.-][0-9٠-٩۰-۹]{4})(?=$|[^0-9٠-٩۰-۹])',
+    r'(^|[^0-9٠-٩۰-۹])([0-9٠-٩۰-۹]{1,2})[/.-]([0-9٠-٩۰-۹]{1,2})[/.-]([0-9٠-٩۰-۹]{4})(?=$|[^0-9٠-٩۰-۹])',
   );
   return escapedBody.replaceAllMapped(datePattern, (match) {
     final prefix = match.group(1) ?? '';
-    final date = match.group(2) ?? '';
-    return '$prefix<bdi class="telegram-date-token" dir="ltr">$date</bdi>';
+    final day = match.group(2) ?? '';
+    final month = match.group(3) ?? '';
+    final year = match.group(4) ?? '';
+    return '$prefix<bdi class="telegram-date-token" dir="ltr">$year/$month/$day</bdi>';
   });
 }
 

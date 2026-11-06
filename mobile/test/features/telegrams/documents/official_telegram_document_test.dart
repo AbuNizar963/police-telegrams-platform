@@ -514,23 +514,20 @@ void main() {
     expect(html, isNot(contains('<script>alert')));
   });
 
-  test(
-    'keeps Arabic slash-separated dates in entered order in RTL exports',
-    () {
-      final html = buildOfficialTelegramHtml(
-        telegram: telegram(body: 'تاريخ الواقعة ٢٥/٤/٢٠٢٦'),
-        settings: const {'numberSystem': 'arabic'},
-        routingDirectory: const [],
-        verificationUrl: 'https://example.test/verify/token',
-        fontDataUrls: fonts,
-      );
+  test('exports Arabic day/month/year dates as year/month/day', () {
+    final html = buildOfficialTelegramHtml(
+      telegram: telegram(body: 'تاريخ الواقعة ٢٥/٤/٢٠٢٦'),
+      settings: const {'numberSystem': 'arabic'},
+      routingDirectory: const [],
+      verificationUrl: 'https://example.test/verify/token',
+      fontDataUrls: fonts,
+    );
 
-      expect(
-        html,
-        contains(
-          '<div class="telegram-body" dir="rtl">تاريخ الواقعة <bdi class="telegram-date-token" dir="ltr">٢٥/٤/٢٠٢٦</bdi></div>',
-        ),
-      );
-    },
-  );
+    expect(
+      html,
+      contains(
+        '<div class="telegram-body" dir="rtl">تاريخ الواقعة <bdi class="telegram-date-token" dir="ltr">٢٠٢٦/٤/٢٥</bdi></div>',
+      ),
+    );
+  });
 }

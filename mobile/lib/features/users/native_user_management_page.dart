@@ -32,6 +32,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   bool _saving = false;
   String? _error;
   String _search = '';
+  String _statusFilter = 'all';
   int _page = 1;
   int _totalPages = 1;
   List<Map<String, dynamic>> _users = [];
@@ -318,7 +319,17 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Directionality(
+  Widget build(BuildContext context) {
+    final activeCount = _users.where((user) => user['loginMethod'] != 'disabled').length;
+    final disabledCount = _users.length - activeCount;
+    final filteredUsers = _users.where((user) {
+      final disabled = user['loginMethod'] == 'disabled';
+      if (_statusFilter == 'active' && disabled) return false;
+      if (_statusFilter == 'disabled' && !disabled) return false;
+      return true;
+    }).toList();
+
+    return Directionality(
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
@@ -368,6 +379,30 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Row(
+              children: [
+                Expanded(child: _UserSummaryCard(label: 'في الصفحة الحالية', value: _users.length, icon: Icons.people_outline)),
+                const SizedBox(width: 8),
+                Expanded(child: _UserSummaryCard(label: 'نشطة', value: activeCount, icon: Icons.verified_user_outlined)),
+                const SizedBox(width: 8),
+                Expanded(child: _UserSummaryCard(label: 'معطّلة', value: disabledCount, icon: Icons.person_off_outlined)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                ChoiceChip(label: const Text('الكل'), selected: _statusFilter == 'all', onSelected: (_) => setState(() => _statusFilter = 'all')),
+                ChoiceChip(label: const Text('النشطة'), selected: _statusFilter == 'active', onSelected: (_) => setState(() => _statusFilter = 'active')),
+                ChoiceChip(label: const Text('المعطّلة'), selected: _statusFilter == 'disabled', onSelected: (_) => setState(() => _statusFilter = 'disabled')),
+              ],
+            ),
+          ),
           if (_error != null)
             MaterialBanner(
               content: Text(_error!),
@@ -384,7 +419,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: load,
-                    child: _users.isEmpty
+                    child: filteredUsers.isEmpty
                         ? ListView(
                             children: [
                               const SizedBox(height: 90),
@@ -392,7 +427,9 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                               const SizedBox(height: 12),
                               Center(
                                 child: Text(
-                                  _error == null ? 'لا توجد حسابات مطابقة.' : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
+                                  _error == null
+                                      ? (_users.isEmpty ? 'لا توجد حسابات مطابقة.' : 'لا توجد حسابات ضمن حالة التصفية المختارة.')
+                                      : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -400,9 +437,9 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 90),
-                            itemCount: _users.length,
+                            itemCount: filteredUsers.length,
                             itemBuilder: (context, index) {
-                              final user = _users[index];
+                              final user = filteredUsers[index];
                               return _userCard(user);
                             },
                           ),
@@ -440,6 +477,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
       ),
     ),
   );
+  }
 
   Widget _userCard(Map<String, dynamic> user) {
     final disabled = user['loginMethod'] == 'disabled';
@@ -545,6 +583,35 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UserSummaryCard extends StatelessWidget {
+  const _UserSummaryCard({required this.label, required this.value, required this.icon});
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: colors.primary),
+            const SizedBox(height: 8),
+            Text('$value', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
           ],
         ),
       ),

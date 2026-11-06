@@ -1465,7 +1465,10 @@ export default function OwnerOrganizationManagement() {
 
           <div className="mb-3 rounded-xl border bg-muted/20 px-4 py-3">
             <p className="text-sm font-semibold">إدارة الهيكل التنظيمي</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">ابدأ بالبحث أو تصفية الجهات، ثم اختر جهة لعرض تفاصيلها وإجراءاتها. الإضافة والتعديل وإدارة الحسابات تظهر بحسب صلاحيتك.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              ابدأ بالبحث أو تصفية الجهات، ثم اختر جهة لعرض تفاصيلها وإجراءاتها.
+              الإضافة والتعديل وإدارة الحسابات تظهر بحسب صلاحيتك.
+            </p>
           </div>
           <section className="min-w-0 rounded-xl border p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">

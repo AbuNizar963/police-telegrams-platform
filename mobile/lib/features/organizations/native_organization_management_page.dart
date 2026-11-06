@@ -59,6 +59,17 @@ class _NativeOrganizationManagementPageState
     return result.isEmpty || result == 'null' ? fallback : result;
   }
 
+  String _organizationParentName(Map<String, dynamic> organization) {
+    final parentId = organization['parentOrganizationId']?.toString();
+    if (parentId == null || parentId.isEmpty) return 'جهة جذرية';
+    for (final candidate in _organizations) {
+      if (candidate['id']?.toString() == parentId) {
+        return _text(candidate['name']);
+      }
+    }
+    return 'جهة أب غير متاحة';
+  }
+
   Future<void> load() async {
     setState(() {
       _loading = true;
@@ -359,6 +370,7 @@ class _NativeOrganizationManagementPageState
                                 child: Text(
                                   '${_text(organization['code'])} • '
                                   '${_organizationTypes[type] ?? type}\n'
+                                  'الأب: ${_organizationParentName(organization)} • '
                                   '${organization['deletedAt'] != null ? 'مؤرشفة' : active ? 'نشطة' : 'معطلة'}',
                                 ),
                               ),

@@ -664,6 +664,64 @@ export async function archiveOrganizationSafely(input: {
   };
 }
 
+export async function purgeOrganizationPermanently(input: {
+  organizationId: string;
+  actorUserId: number;
+  actorName: string;
+  actorRank?: string | null;
+  actorRole: string;
+  reason: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  deviceType?: string | null;
+}): Promise<{
+  deleted: boolean;
+  canDelete: boolean;
+  reason: string;
+  blockers: Array<{
+    table: string;
+    column: string;
+    constraint: string;
+    count: number | null;
+    reason: string;
+  }>;
+}> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "purge_organization_permanently",
+    {
+      p_organization_id: input.organizationId,
+      p_actor_user_id: input.actorUserId,
+      p_actor_name: input.actorName,
+      p_actor_rank: input.actorRank ?? null,
+      p_actor_role: input.actorRole,
+      p_reason: input.reason,
+      p_ip_address: input.ipAddress ?? null,
+      p_user_agent: input.userAgent ?? null,
+      p_device_type: input.deviceType ?? "unknown",
+    }
+  );
+  throwIfError(error, "Failed to permanently delete organization");
+  if (!data || typeof data !== "object") {
+    throw new Error("لم يُرجع إجراء الحذف النهائي نتيجة صالحة");
+  }
+  const result = data as Record<string, unknown>;
+  const blockers = Array.isArray(result.blockers)
+    ? result.blockers as Array<{
+        table: string;
+        column: string;
+        constraint: string;
+        count: number | null;
+        reason: string;
+      }>
+    : [];
+  return {
+    deleted: result.deleted === true,
+    canDelete: result.canDelete === true,
+    reason: typeof result.reason === "string" ? result.reason : "",
+    blockers,
+  };
+}
+
 export async function updateOrganizationAccount(input: {
   organizationId: string;
   username: string;

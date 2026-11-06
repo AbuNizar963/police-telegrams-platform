@@ -587,7 +587,8 @@ export const userManagementRouter = router({
         p_reason: "حذف نهائي بطلب مالك النظام",
         p_ip_address: getRequestAuditContext(ctx.req).ipAddress ?? null,
         p_user_agent: getRequestAuditContext(ctx.req).userAgent ?? null,
-        p_device_type: getRequestAuditContext(ctx.req).deviceType ?? "unknown",
+        p_device_type:
+          getRequestAuditContext(ctx.req).deviceType ?? "unknown",
       });
       if (error) {
         console.error("[userManagement.delete] Guarded purge failed", error);
@@ -618,7 +619,9 @@ export const userManagementRouter = router({
             result?.reason || "الحساب مرتبط بسجلات يجب الاحتفاظ بها.",
             blockerSummary ? `الارتباطات: ${blockerSummary}` : "",
             "لم يتم حذف أي بيانات.",
-          ].filter(Boolean).join(" "),
+          ]
+            .filter(Boolean)
+            .join(" "),
         });
       }
       return { success: true };

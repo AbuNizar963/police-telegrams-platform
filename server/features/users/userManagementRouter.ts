@@ -377,8 +377,7 @@ export const userManagementRouter = router({
       if (target.data.isActive === false) {
         throw new TRPCError({
           code: "CONFLICT",
-          message:
-            "لا يمكن تعديل حساب تابع لجهة مؤرشفة؛ الحساب للقراءة فقط.",
+          message: "لا يمكن تعديل حساب تابع لجهة مؤرشفة؛ الحساب للقراءة فقط.",
         });
       }
       if (typeof target.data.organizationId === "string") {

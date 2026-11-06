@@ -529,6 +529,7 @@ export const userManagementRouter = router({
       z.object({
         id: z.number().int().positive(),
         confirmPassword: z.string().min(1).max(256),
+        confirmation: z.string().trim().min(12).max(160),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -546,46 +547,22 @@ export const userManagementRouter = router({
         });
       }
 
-      const client = getSupabaseAdmin();
-      const target = await client
-        .from("users")
-        .select("id, role, username")
-        .eq("id", input.id)
-        .maybeSingle();
-      if (target.error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "تعذر تحميل الحساب المطلوب للحذف",
-        });
-      }
-      if (!target.data) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
-      }
-      if (target.data.role === "admin") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "لا يمكن حذف حساب مالك النظام",
-        });
-      }
-
-      const { error } = await client.from("users").delete().eq("id", input.id);
+      const { data, error } = await getSupabaseAdmin().rpc(
+        "purge_inactive_user_safely",
+        {
+          p_user_id: input.id,
+          p_owner_user_id: ctx.user.id,
+          p_reason: "حذف نهائي لحساب بطلب مالك النظام",
+          p_confirmation: input.confirmation,
+        }
+      );
       if (error) {
         throw new TRPCError({
           code: "CONFLICT",
-          message:
-            "لا يمكن حذف هذا الحساب نهائيًا لأنه مرتبط ببرقيات أو سجلات تدقيق. استخدم التعطيل بدلًا من الحذف.",
+          message: error.message || "تعذر حذف الحساب نهائيًا",
         });
       }
-      await writeAuditLog({
-        ...getRequestAuditContext(ctx.req),
-        actorUserId: ctx.user.id,
-        actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
-        action: "user.delete",
-        entityType: "user",
-        entityId: String(input.id),
-        metadata: JSON.stringify({ username: target.data.username }),
-      });
-      return { success: true };
+      return data;
     }),
 
   disable: organizationManagerProcedure

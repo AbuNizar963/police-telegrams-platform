@@ -968,9 +968,22 @@ export default function OwnerUserManagement() {
                                             "أدخل كلمة المرور الحالية لتأكيد الحذف النهائي"
                                           );
                                           if (!confirmPassword) return;
+                                          const confirmation = window.prompt(
+                                            `اكتب حرفيًا: DELETE USER ${user.id} PERMANENTLY`
+                                          );
+                                          if (
+                                            confirmation !==
+                                            `DELETE USER ${user.id} PERMANENTLY`
+                                          ) {
+                                            toast.error(
+                                              "عبارة التأكيد غير صحيحة"
+                                            );
+                                            return;
+                                          }
                                           deleteUser.mutate({
                                             id: user.id,
                                             confirmPassword,
+                                            confirmation,
                                           });
                                         }
                                       }}

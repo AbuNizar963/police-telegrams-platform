@@ -664,6 +664,51 @@ export async function archiveOrganizationSafely(input: {
   };
 }
 
+export type ArchivedOrganizationPurgeResult = {
+  deleted: true;
+  organizationId: string;
+  organizationCode: string;
+  deletedCounts: Record<string, number>;
+};
+
+export async function purgeArchivedOrganizationPermanently(input: {
+  organizationId: string;
+  ownerUserId: number;
+  reason: string;
+  confirmation: string;
+}): Promise<ArchivedOrganizationPurgeResult> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "purge_archived_organization_safely",
+    {
+      p_organization_id: input.organizationId,
+      p_owner_user_id: input.ownerUserId,
+      p_reason: input.reason,
+      p_confirmation: input.confirmation,
+    }
+  );
+  throwIfError(error, "Failed to purge archived organization");
+  if (!data || typeof data !== "object") {
+    throw new Error("لم يُرجع إجراء الحذف النهائي نتيجة صالحة");
+  }
+  const result = data as Record<string, unknown>;
+  if (
+    result.deleted !== true ||
+    result.organizationId !== input.organizationId ||
+    typeof result.organizationCode !== "string"
+  ) {
+    throw new Error("لم يكتمل الحذف النهائي للجهة المؤرشفة");
+  }
+  return {
+    deleted: true,
+    organizationId: input.organizationId,
+    organizationCode: result.organizationCode,
+    deletedCounts:
+      result.deletedCounts && typeof result.deletedCounts === "object"
+        ? (result.deletedCounts as Record<string, number>)
+        : {},
+  };
+}
+
 export async function updateOrganizationAccount(input: {
   organizationId: string;
   username: string;

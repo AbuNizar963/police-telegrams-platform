@@ -38,6 +38,7 @@ class _NativeOrganizationManagementPageState
   String? _error;
   String _search = '';
   String _statusFilter = 'all';
+  String _typeFilter = 'all';
   List<Map<String, dynamic>> _organizations = [];
 
   @override
@@ -189,6 +190,9 @@ class _NativeOrganizationManagementPageState
           organization['isActive'] != false;
       if (_statusFilter == 'active' && !active) return false;
       if (_statusFilter == 'inactive' && active) return false;
+      if (_typeFilter != 'all' && organization['type'] != _typeFilter) {
+        return false;
+      }
       final query = _search.trim().toLowerCase();
       if (query.isEmpty) return true;
       return _text(organization['name'], '').toLowerCase().contains(query) ||
@@ -293,6 +297,35 @@ class _NativeOrganizationManagementPageState
                         setState(() => _statusFilter = 'inactive'),
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: DropdownButtonFormField<String>(
+                initialValue: _typeFilter,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'تصفية حسب نوع الجهة',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: 'all',
+                    child: Text('جميع أنواع الجهات'),
+                  ),
+                  ..._organizationTypes.entries.map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _typeFilter = value);
+                },
               ),
             ),
             if (!widget.canEditStructure)

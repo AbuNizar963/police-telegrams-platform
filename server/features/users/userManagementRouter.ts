@@ -549,7 +549,9 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username, loginMethod, isActive, isPlatformOwner")
+        .select(
+          "id, role, username, loginMethod, isActive, isPlatformOwner"
+        )
         .eq("id", input.id)
         .maybeSingle();
       if (target.error) {
@@ -578,6 +580,7 @@ export const userManagementRouter = router({
         });
       }
 
+      const auditContext = getRequestAuditContext(ctx.req);
       const { data, error } = await client.rpc("purge_user_permanently", {
         p_user_id: input.id,
         p_actor_user_id: ctx.user.id,
@@ -585,10 +588,9 @@ export const userManagementRouter = router({
         p_actor_rank: ctx.user.rank ?? null,
         p_actor_role: ctx.user.role,
         p_reason: "حذف نهائي بطلب مالك النظام",
-        p_ip_address: getRequestAuditContext(ctx.req).ipAddress ?? null,
-        p_user_agent: getRequestAuditContext(ctx.req).userAgent ?? null,
-        p_device_type:
-          getRequestAuditContext(ctx.req).deviceType ?? "unknown",
+        p_ip_address: auditContext.ipAddress ?? null,
+        p_user_agent: auditContext.userAgent ?? null,
+        p_device_type: auditContext.deviceType ?? "unknown",
       });
       if (error) {
         console.error("[userManagement.delete] Guarded purge failed", error);

@@ -169,6 +169,53 @@ class _NativeOrganizationManagementPageState
     });
   }
 
+  Future<void> _archiveOrganization(
+    Map<String, dynamic> organization,
+  ) async {
+    if (!_isOwner && !widget.isPlatformOwner) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إخفاء الجهة'),
+          content: Text(
+            'سيتم إخفاء «${_text(organization['name'])}» من القوائم النشطة وتعطيل حساباتها، مع الاحتفاظ بالبرقيات وسجل التدقيق. يمكن مراجعتها من قائمة الجهات المحذوفة.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('إخفاء الجهة'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _run(() async {
+      await widget.api.call(
+        'organizations.delete',
+        mutation: true,
+        input: {
+          'id': organization['id'],
+          'reason': 'إخفاء الجهة بطلب مالك النظام',
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إخفاء الجهة وتعطيل حساباتها مع حفظ السجلات'),
+          ),
+        );
+      }
+    });
+  }
+
   Future<void> _purgeOrganization(
     Map<String, dynamic> organization,
   ) async {
@@ -393,6 +440,9 @@ class _NativeOrganizationManagementPageState
                               trailing:
                                   (widget.canEditStructure && !archived) ||
                                       ((_isOwner || widget.isPlatformOwner) &&
+                                          !archived &&
+                                          organization['type'] != 'central') ||
+                                      ((_isOwner || widget.isPlatformOwner) &&
                                           archived)
                                   ? Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -406,6 +456,20 @@ class _NativeOrganizationManagementPageState
                                                     organization,
                                                   ),
                                             icon: const Icon(Icons.edit_outlined),
+                                          ),
+                                        if ((_isOwner || widget.isPlatformOwner) &&
+                                            !archived &&
+                                            organization['type'] != 'central')
+                                          IconButton(
+                                            tooltip: 'إخفاء الجهة مع حفظ السجلات',
+                                            onPressed: _loading || _saving
+                                                ? null
+                                                : () => _archiveOrganization(
+                                                    organization,
+                                                  ),
+                                            icon: const Icon(
+                                              Icons.archive_outlined,
+                                            ),
                                           ),
                                         if ((_isOwner || widget.isPlatformOwner) &&
                                             archived)

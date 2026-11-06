@@ -955,13 +955,19 @@ export default function OwnerUserManagement() {
                                       title="حذف نهائي"
                                       aria-label={`حذف حساب ${user.name ?? user.username ?? "المستخدم"} نهائيًا`}
                                       onClick={() => {
+                                        if (user.loginMethod !== "disabled") {
+                                          toast.error(
+                                            "عطّل الحساب أولاً؛ لا يسمح بالحذف النهائي للحسابات النشطة."
+                                          );
+                                          return;
+                                        }
                                         const label =
                                           user.name ??
                                           user.username ??
                                           "هذا الحساب";
                                         if (
                                           window.confirm(
-                                            `سيتم حذف حساب ${label} نهائيًا. إذا كان مرتبطًا ببرقيات أو سجل تدقيق سيُرفض الحذف حفاظًا على السجلات. هل تريد المتابعة؟`
+                                            `سيتم حذف حساب ${label} نهائيًا فقط بعد فحص جميع الارتباطات. ستبقى البرقيات وسجلات التدقيق المرتبطة محفوظة وسيُمنع الحذف عند وجودها. هل تريد المتابعة؟`
                                           )
                                         ) {
                                           const confirmPassword = window.prompt(

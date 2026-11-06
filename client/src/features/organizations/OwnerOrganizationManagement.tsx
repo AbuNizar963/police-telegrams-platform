@@ -225,6 +225,20 @@ export default function OwnerOrganizationManagement() {
     },
     onError: error => toast.error(error.message || "تعذر حذف الجهة"),
   });
+  const purgeArchivedOrganization =
+    trpc.organizations.purgeArchived.useMutation({
+      onSuccess: async result => {
+        await Promise.all([
+          utils.organizations.all.invalidate(),
+          utils.organizations.allAccounts.invalidate(),
+          utils.organizations.accounts.invalidate(),
+        ]);
+        setSelectedOrganizationId(null);
+        toast.success(`تم حذف الجهة نهائيًا (${result.organizationCode})`);
+      },
+      onError: error =>
+        toast.error(error.message || "تعذر الحذف النهائي للجهة"),
+    });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
   const uploadLogo = trpc.settings.uploadLogo.useMutation();
@@ -1655,6 +1669,43 @@ export default function OwnerOrganizationManagement() {
                         {deleteOrganization.isPending
                           ? "جارٍ الحذف..."
                           : "حذف الجهة"}
+                      </Button>
+                    )}
+                  {isPlatformOwner &&
+                    Boolean(selectedOrganization.deletedAt) &&
+                    selectedOrganization.type !== "central" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={purgeArchivedOrganization.isPending}
+                        onClick={() => {
+                          const password = window.prompt(
+                            "أدخل كلمة مرور مالك النظام لإعادة التحقق. سيتم حذف الجهة نهائيًا ولا تُحفظ كلمة المرور."
+                          );
+                          if (!password) return;
+                          const confirmation = window.prompt(
+                            `اكتب حرفيًا: DELETE ${selectedOrganization.code} PERMANENTLY`
+                          );
+                          if (
+                            confirmation !==
+                            `DELETE ${selectedOrganization.code} PERMANENTLY`
+                          ) {
+                            toast.error("عبارة التأكيد غير صحيحة");
+                            return;
+                          }
+                          purgeArchivedOrganization.mutate({
+                            id: selectedOrganization.id,
+                            password,
+                            confirmation,
+                            reason: "حذف نهائي لجهة مؤرشفة بطلب مالك النظام",
+                          });
+                        }}
+                      >
+                        <Trash2 className="ml-1 h-4 w-4" />
+                        {purgeArchivedOrganization.isPending
+                          ? "جارٍ الحذف النهائي..."
+                          : "حذف الجهة نهائيًا"}
                       </Button>
                     )}
                 </div>

@@ -71,6 +71,7 @@ import {
   updateRouteOutgoingSerial,
   writeAuditLog,
   createLocalOwnerUser,
+  getUserById,
   getUserByUsername,
   deletePushSubscription,
   deleteMobilePushToken,
@@ -104,6 +105,7 @@ import {
   listPendingRouteApprovals,
   listRoutingDirectory,
   listRoutingTargets,
+  purgeArchivedOrganizationPermanently,
   receiveTelegramRoute,
   routeTelegram,
   routeTelegramBroadcastAtomic,
@@ -1335,6 +1337,54 @@ export const appRouter = router({
           reason: input.reason,
           ...getRequestAuditContext(ctx.req),
         });
+      }),
+
+    purgeArchived: adminProcedure
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          password: z.string().min(8).max(256),
+          reason: z.string().trim().min(8).max(2000),
+          confirmation: z.string().trim().min(12).max(160),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "الحذف النهائي متاح لمالك النظام فقط",
+          });
+        }
+        const owner = await getUserById(ctx.user.id);
+        if (
+          !owner ||
+          owner.isActive === false ||
+          owner.role !== "admin" ||
+          owner.isPlatformOwner !== true ||
+          !owner.passwordHash ||
+          !(await verifyPassword(input.password, owner.passwordHash))
+        ) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "إعادة التحقق من كلمة مرور مالك النظام فشلت",
+          });
+        }
+        try {
+          return await purgeArchivedOrganizationPermanently({
+            organizationId: input.id,
+            ownerUserId: ctx.user.id,
+            reason: input.reason,
+            confirmation: input.confirmation,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              error instanceof Error
+                ? error.message
+                : "تعذر تنفيذ الحذف النهائي للجهة التجريبية",
+          });
+        }
       }),
 
     ensureAccounts: adminProcedure.mutation(({ ctx }) =>

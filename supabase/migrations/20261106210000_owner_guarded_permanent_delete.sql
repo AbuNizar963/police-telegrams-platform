@@ -46,8 +46,12 @@ BEGIN
      AND target_column.attnum = constraint_row.confkey[1]
     WHERE constraint_row.contype = 'f'
       AND constraint_row.confrelid = p_target_table
-      AND source_ns.nspname = 'public'
-      AND NOT (source_table.relname = ANY(p_ignored_tables))
+      AND source_ns.nspname NOT IN (
+        'pg_catalog',
+        'information_schema',
+        'pg_toast'
+      )
+      AND (source_ns.nspname || '.' || source_table.relname) <> ALL(p_ignored_tables)
     ORDER BY source_table.relname, constraint_row.conname
   LOOP
     IF v_constraint.source_key_count <> 1
@@ -148,7 +152,11 @@ BEGIN
   v_blockers := private.get_permanent_delete_blockers(
     'public.organizations'::regclass,
     p_organization_id::text,
-    ARRAY['organization_memberships', 'push_subscriptions', 'mobile_push_tokens']
+    ARRAY[
+      'public.organization_memberships',
+      'public.push_subscriptions',
+      'public.mobile_push_tokens'
+    ]
   );
 
   RETURN jsonb_build_object(
@@ -327,11 +335,11 @@ BEGIN
     'public.users'::regclass,
     p_user_id::text,
     ARRAY[
-      'organization_memberships',
-      'push_subscriptions',
-      'mobile_push_tokens',
-      'department_settings',
-      'platform_document_settings'
+      'public.organization_memberships',
+      'public.push_subscriptions',
+      'public.mobile_push_tokens',
+      'public.department_settings',
+      'public.platform_document_settings'
     ]
   );
 

@@ -559,7 +559,7 @@ export const userManagementRouter = router({
       const target = await client
         .from("users")
         .select(
-          "id, role, username, loginMethod, isActive, isPlatformOwner"
+          "id, role, username, loginMethod, isActive, isPlatformOwner",
         )
         .eq("id", input.id)
         .maybeSingle();
@@ -622,7 +622,7 @@ export const userManagementRouter = router({
         const blockerSummary = (result?.blockers ?? [])
           .map(
             item =>
-              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
+              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`,
           )
           .join("، ");
         throw new TRPCError({

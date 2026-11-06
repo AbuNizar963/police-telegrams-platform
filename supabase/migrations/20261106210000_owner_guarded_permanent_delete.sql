@@ -114,6 +114,8 @@ AS $function$
 DECLARE
   v_organization public.organizations%ROWTYPE;
   v_blockers jsonb;
+  v_setting record;
+  v_settings_blockers jsonb;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.users
@@ -156,9 +158,23 @@ BEGIN
     ARRAY[
       'public.organization_memberships',
       'public.push_subscriptions',
-      'public.mobile_push_tokens'
+      'public.mobile_push_tokens',
+      'public.department_settings'
     ]
   );
+
+  FOR v_setting IN
+    SELECT id
+      FROM public.department_settings
+     WHERE "organizationId" = p_organization_id
+  LOOP
+    v_settings_blockers := private.get_permanent_delete_blockers(
+      'public.department_settings'::regclass,
+      v_setting.id::text,
+      ARRAY[]::text[]
+    );
+    v_blockers := v_blockers || v_settings_blockers;
+  END LOOP;
 
   RETURN jsonb_build_object(
     'canDelete', jsonb_array_length(v_blockers) = 0,

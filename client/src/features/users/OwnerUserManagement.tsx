@@ -136,7 +136,8 @@ export default function OwnerUserManagement() {
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [transferring, setTransferring] = useState<ManagedUser | null>(null);
   const [transferOrganizationId, setTransferOrganizationId] = useState("");
-  const [transferRole, setTransferRole] = useState<EditForm["role"]>("dispatcher");
+  const [transferRole, setTransferRole] =
+    useState<EditForm["role"]>("dispatcher");
   const [transferReason, setTransferReason] = useState("");
   const [transferConfirmPassword, setTransferConfirmPassword] = useState("");
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
@@ -1264,7 +1265,8 @@ export default function OwnerUserManagement() {
                     نقل الموظف بين الجهات
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {transferring.name ?? transferring.username} · {transferring.organizationName ?? "الجهة الحالية"}
+                    {transferring.name ?? transferring.username} ·{" "}
+                    {transferring.organizationName ?? "الجهة الحالية"}
                   </p>
                 </div>
                 <Button
@@ -1278,7 +1280,10 @@ export default function OwnerUserManagement() {
                 </Button>
               </div>
               <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 text-xs leading-5 text-muted-foreground">
-                سيبقى حساب الموظف ورقمه الوظيفي كما هما. ستُنهى عضويته في الجهة السابقة، وتُمنح صلاحيات الجهة الجديدة، وتُسجّل عملية النقل وسببها. ستُنهى الجلسات الحالية ويحتاج الموظف إلى تسجيل الدخول مجدداً.
+                سيبقى حساب الموظف ورقمه الوظيفي كما هما. ستُنهى عضويته في الجهة
+                السابقة، وتُمنح صلاحيات الجهة الجديدة، وتُسجّل عملية النقل
+                وسببها. ستُنهى الجلسات الحالية ويحتاج الموظف إلى تسجيل الدخول
+                مجدداً.
               </div>
               <label className="grid gap-1.5 text-sm font-medium">
                 الجهة الجديدة
@@ -1359,7 +1364,9 @@ export default function OwnerUserManagement() {
                     !transferConfirmPassword
                   }
                 >
-                  {transferUser.isPending ? "جارٍ تنفيذ النقل..." : "تأكيد النقل"}
+                  {transferUser.isPending
+                    ? "جارٍ تنفيذ النقل..."
+                    : "تأكيد النقل"}
                 </Button>
               </div>
             </form>

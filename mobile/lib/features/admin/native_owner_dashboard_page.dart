@@ -24,6 +24,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   Map<String, dynamic> _summary = const {};
   List<Map<String, dynamic>> _notifications = const [];
   int _unreadCount = 0;
+  String _priorityFilter = 'all';
   Timer? _notificationTimer;
 
   @override
@@ -148,6 +149,8 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       if (_error != null) _errorCard(),
                       _metrics(),
                       const SizedBox(height: 14),
+                      _flowCard(),
+                      const SizedBox(height: 14),
                       _performanceCard(),
                       const SizedBox(height: 14),
                       _activityCard(),
@@ -247,53 +250,63 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
         ),
       );
 
-  Widget _notificationsCard() => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _CardHeader(
-                icon: Icons.notifications_active_outlined,
-                title: 'التنبيهات الفورية',
-                subtitle: 'تتحدث تلقائيًا كل 20 ثانية',
-                badge: '$_unreadCount جديدة',
-              ),
-              const SizedBox(height: 10),
-              if (_notifications.isEmpty)
-                const _EmptyState(text: 'لا توجد تنبيهات جديدة حاليًا.')
-              else
-                ..._notifications.map(
-                  (item) => ListTile(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 2),
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFF7F1DF),
-                      foregroundColor: Color(0xFF8B6D22),
-                      child: Icon(Icons.priority_high, size: 17),
-                    ),
-                    title: Text(
-                      _text(item['title'], 'تنبيه إداري'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                    ),
-                    subtitle: Text(
-                      _text(item['body'], 'يوجد تحديث جديد على مستوى المنصة.'),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                    trailing: IconButton(
-                      tooltip: 'تحديد كمقروء',
-                      onPressed: () => _markNotificationRead(item),
-                      icon: const Icon(Icons.done, color: Color(0xFF2B765C), size: 18),
-                    ),
+  String _notificationPriority(Map<String, dynamic> item) {
+    final value = '${item['priority'] ?? item['type'] ?? ''} ${item['title'] ?? ''} ${item['body'] ?? ''}'.toLowerCase();
+    if (value.contains('urgent') || value.contains('عاجل') || value.contains('critical') || value.contains('حرج')) return 'urgent';
+    if (value.contains('route') || value.contains('approval') || value.contains('موافقة') || value.contains('توجيه')) return 'action';
+    return 'normal';
+  }
+
+  Widget _notificationsCard() {
+    final filtered = _priorityFilter == 'all'
+        ? _notifications
+        : _notifications.where((item) => _notificationPriority(item) == _priorityFilter).toList();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CardHeader(
+              icon: Icons.notifications_active_outlined,
+              title: 'التنبيهات الفورية',
+              subtitle: 'تتحدث تلقائيًا كل 20 ثانية',
+              badge: '$_unreadCount جديدة',
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'all', label: Text('الكل')),
+                ButtonSegment(value: 'urgent', label: Text('عاجل')),
+                ButtonSegment(value: 'action', label: Text('يتطلب إجراء')),
+                ButtonSegment(value: 'normal', label: Text('عادي')),
+              ],
+              selected: {_priorityFilter},
+              onSelectionChanged: (value) => setState(() => _priorityFilter = value.first),
+              style: ButtonStyle(textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 10, fontWeight: FontWeight.w700))),
+            ),
+            const SizedBox(height: 10),
+            if (filtered.isEmpty)
+              const _EmptyState(text: 'لا توجد تنبيهات بهذا التصنيف حاليًا.')
+            else
+              ...filtered.map(
+                (item) => ListTile(
+                  contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                  leading: CircleAvatar(
+                    backgroundColor: _notificationPriority(item) == 'urgent' ? const Color(0xFFFAECEF) : const Color(0xFFF7F1DF),
+                    foregroundColor: _notificationPriority(item) == 'urgent' ? const Color(0xFF9A4458) : const Color(0xFF8B6D22),
+                    child: Icon(_notificationPriority(item) == 'urgent' ? Icons.priority_high : Icons.notifications_none, size: 17),
                   ),
+                  title: Text(_text(item['title'], 'تنبيه إداري'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  subtitle: Text(_text(item['body'], 'يوجد تحديث جديد على مستوى المنصة.'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10)),
+                  trailing: IconButton(tooltip: 'تحديد كمقروء', onPressed: () => _markNotificationRead(item), icon: const Icon(Icons.done, color: Color(0xFF2B765C), size: 18)),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   Widget _metrics() => GridView.count(
         shrinkWrap: true,
@@ -329,6 +342,33 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
           ),
         ),
       );
+
+  Widget _flowCard() {
+    final rows = [
+      {'label': 'واردة', 'value': _number('incoming'), 'icon': Icons.south_west, 'color': const Color(0xFF2B765C)},
+      {'label': 'صادرة', 'value': _number('outgoing'), 'icon': Icons.north_east, 'color': const Color(0xFF24506A)},
+      {'label': 'قيد المعالجة', 'value': _number('pending') + _number('inProgress'), 'icon': Icons.pending_actions_outlined, 'color': const Color(0xFF8B6D22)},
+      {'label': 'منجزة', 'value': _number('resolved'), 'icon': Icons.check_circle_outline, 'color': const Color(0xFF4F927F)},
+    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const _CardHeader(icon: Icons.route_outlined, title: 'الرصد المباشر لتدفق البرقيات', subtitle: 'حركة العمل الحالية حسب المسار'),
+          const SizedBox(height: 13),
+          ...rows.map((row) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(children: [
+                  Icon(row['icon'] as IconData, color: row['color'] as Color, size: 18),
+                  const SizedBox(width: 9),
+                  Expanded(child: Text('${row['label']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                  Text('${row['value']}', style: const TextStyle(color: _navy, fontSize: 14, fontWeight: FontWeight.w900)),
+                ]),
+              )),
+        ]),
+      ),
+    );
+  }
 
   Widget _performanceCard() {
     final total = _number('totalOperations');

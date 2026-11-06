@@ -460,7 +460,9 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                               Center(
                                 child: Text(
                                   _error == null
-                                      ? (_users.isEmpty ? 'لا توجد حسابات مطابقة.' : 'لا توجد حسابات ضمن حالة التصفية المختارة.')
+                                      ? (_users.isEmpty
+                                              ? 'لا توجد حسابات مطابقة.'
+                                              : 'لا توجد حسابات ضمن حالة التصفية المختارة.')
                                       : 'تعذر تحميل الحسابات. أعد المحاولة أعلاه.',
                                   textAlign: TextAlign.center,
                                 ),
@@ -623,7 +625,11 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
 }
 
 class _UserSummaryCard extends StatelessWidget {
-  const _UserSummaryCard({required this.label, required this.value, required this.icon});
+  const _UserSummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   final String label;
   final int value;
@@ -641,9 +647,19 @@ class _UserSummaryCard extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: colors.primary),
             const SizedBox(height: 8),
-            Text('$value', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              '$value',
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: colors.onSurfaceVariant),
+            ),
           ],
         ),
       ),

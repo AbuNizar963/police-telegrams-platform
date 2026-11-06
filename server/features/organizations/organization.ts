@@ -706,13 +706,13 @@ export async function purgeOrganizationPermanently(input: {
   }
   const result = data as Record<string, unknown>;
   const blockers = Array.isArray(result.blockers)
-    ? result.blockers as Array<{
+    ? (result.blockers as Array<{
         table: string;
         column: string;
         constraint: string;
         count: number | null;
         reason: string;
-      }>
+      }>)
     : [];
   return {
     deleted: result.deleted === true,

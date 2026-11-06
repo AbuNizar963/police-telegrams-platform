@@ -190,6 +190,9 @@ AS $function$
 DECLARE
   v_organization public.organizations%ROWTYPE;
   v_blockers jsonb;
+  v_settings jsonb := '[]'::jsonb;
+  v_setting record;
+  v_settings_blockers jsonb;
 BEGIN
   IF p_reason IS NULL OR length(btrim(p_reason)) < 8 THEN
     RAISE EXCEPTION 'A deletion reason of at least 8 characters is required'
@@ -229,8 +232,39 @@ BEGIN
   v_blockers := private.get_permanent_delete_blockers(
     'public.organizations'::regclass,
     p_organization_id::text,
-    ARRAY['organization_memberships', 'push_subscriptions', 'mobile_push_tokens']
+    ARRAY[
+      'public.organization_memberships',
+      'public.push_subscriptions',
+      'public.mobile_push_tokens',
+      'public.department_settings'
+    ]
   );
+
+  PERFORM 1
+    FROM public.department_settings
+   WHERE "organizationId" = p_organization_id
+   FOR UPDATE;
+
+  SELECT coalesce(
+    jsonb_agg(to_jsonb(settings) ORDER BY settings.id),
+    '[]'::jsonb
+  )
+    INTO v_settings
+    FROM public.department_settings AS settings
+   WHERE settings."organizationId" = p_organization_id;
+
+  FOR v_setting IN
+    SELECT id
+      FROM public.department_settings
+     WHERE "organizationId" = p_organization_id
+  LOOP
+    v_settings_blockers := private.get_permanent_delete_blockers(
+      'public.department_settings'::regclass,
+      v_setting.id::text,
+      ARRAY[]::text[]
+    );
+    v_blockers := v_blockers || v_settings_blockers;
+  END LOOP;
 
   IF jsonb_array_length(v_blockers) > 0 THEN
     RETURN jsonb_build_object(
@@ -246,6 +280,8 @@ BEGIN
   DELETE FROM public.push_subscriptions
    WHERE "organizationId" = p_organization_id;
   DELETE FROM public.mobile_push_tokens
+   WHERE "organizationId" = p_organization_id;
+  DELETE FROM public.department_settings
    WHERE "organizationId" = p_organization_id;
 
   DELETE FROM public.organizations WHERE id = p_organization_id;
@@ -264,6 +300,7 @@ BEGIN
       'organizationCode', v_organization.code,
       'organizationName', v_organization.name,
       'organizationType', v_organization.type,
+      'settingsSnapshot', v_settings,
       'deletionMode', 'permanent'
     )::text,
     left(btrim(p_reason), 2000),
@@ -272,7 +309,8 @@ BEGIN
       'code', v_organization.code,
       'name', v_organization.name,
       'type', v_organization.type,
-      'deletedAt', v_organization."deletedAt"
+      'deletedAt', v_organization."deletedAt",
+      'settings', v_settings
     )::text,
     jsonb_build_object('deleted', true, 'auditHistoryRetained', true)::text,
     left(p_ip_address, 80), left(p_user_agent, 512),
@@ -414,11 +452,11 @@ BEGIN
     'public.users'::regclass,
     p_user_id::text,
     ARRAY[
-      'organization_memberships',
-      'push_subscriptions',
-      'mobile_push_tokens',
-      'department_settings',
-      'platform_document_settings'
+      'public.organization_memberships',
+      'public.push_subscriptions',
+      'public.mobile_push_tokens',
+      'public.department_settings',
+      'public.platform_document_settings'
     ]
   );
 

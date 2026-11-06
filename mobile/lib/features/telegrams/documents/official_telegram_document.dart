@@ -1841,7 +1841,7 @@ $fontFaces
 .telegram-export-page .routing{padding-bottom:14px;border-bottom:1px dotted #7b8493;line-height:2}.telegram-export-page .routing-layout{display:grid;grid-template-columns:${showVerificationQr ? 'minmax(0,1fr) 113px' : '1fr'};align-items:start;gap:16px;direction:rtl}
 .telegram-export-page .routing p{margin:0}.telegram-export-page .routing-details{font-weight:500}.telegram-export-page .routing-qr{width:113px;height:113px;justify-self:start;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
 .telegram-export-page .routing-qr svg{display:block;width:100%;height:100%;shape-rendering:crispEdges}
-.telegram-export-page .body-heading{margin:20px 0 14px;text-align:center;font-size:17px;font-weight:700}.telegram-export-page .telegram-body{min-height:150px;white-space:pre-wrap;overflow-wrap:anywhere;text-align:justify;line-height:2;font-size:20px;font-weight:500}
+.telegram-export-page .body-heading{margin:20px 0 14px;text-align:center;font-size:17px;font-weight:700}.telegram-export-page .telegram-body{min-height:150px;white-space:pre-wrap;overflow-wrap:anywhere;text-align:justify;line-height:2;font-size:20px;font-weight:500}.telegram-export-page .telegram-date-token{direction:ltr;unicode-bidi:isolate;white-space:nowrap}
 .telegram-export-page .signature{display:flex;flex-direction:column;align-items:stretch;align-self:flex-end;width:min(48%,320px);margin-top:auto;margin-right:auto;margin-left:0;padding-top:26px;text-align:center;line-height:1.9}
 .telegram-export-page .signature p{width:100%;margin:0;font-size:16px;font-weight:700;text-align:center}.telegram-export-page .signature-label{margin-top:14px!important;color:#667085;font-size:12px}
 .telegram-export-page .document-footer {
@@ -1955,7 +1955,7 @@ $watermark
 <p><strong>الموضوع:</strong> ${_escapeHtml(_localizeDigits(_value(telegram['subject']), numberSystem))}</p>
 </div>${showVerificationQr ? '<div class="routing-qr" role="img" aria-label="رمز QR للتحقق من أصالة البرقية">$qrSvg</div>' : ''}</div></section>
 <h2 class="body-heading">نص البرقية</h2>
-<div class="telegram-body">${_escapeHtml(_localizeDigits(_value(telegram['body'], fallback: 'لا يوجد نص'), numberSystem))}</div>
+<div class="telegram-body" dir="rtl">${_renderTelegramBodyHtml(telegram['body'], numberSystem)}</div>
 <section class="signature">
 <p><strong>${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefRank'] ?? settings['unitChiefRank'], fallback: 'رئيس الوحدة'), numberSystem))} ${_escapeHtml(_localizeDigits(_value(letterhead['unitChiefName'] ?? settings['unitChiefName'], fallback: ''), numberSystem))}</strong></p>
 <p><strong>رئيس ${_escapeHtml(departmentName)}</strong></p>
@@ -2066,6 +2066,20 @@ String _localizeDigits(String value, Object? numberSystem) {
         ? 0x966
         : 0x30;
     return String.fromCharCode(0x660 + code - zero);
+  });
+}
+
+String _renderTelegramBodyHtml(Object? value, Object? numberSystem) {
+  final escapedBody = _escapeHtml(
+    _localizeDigits(_value(value, fallback: 'لا يوجد نص'), numberSystem),
+  );
+  final datePattern = RegExp(
+    r'(^|[^0-9٠-٩۰-۹])([0-9٠-٩۰-۹]{1,2}[/.-][0-9٠-٩۰-۹]{1,2}[/.-][0-9٠-٩۰-۹]{4})(?=$|[^0-9٠-٩۰-۹])',
+  );
+  return escapedBody.replaceAllMapped(datePattern, (match) {
+    final prefix = match.group(1) ?? '';
+    final date = match.group(2) ?? '';
+    return '$prefix<bdi class="telegram-date-token" dir="ltr">$date</bdi>';
   });
 }
 

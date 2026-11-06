@@ -169,6 +169,10 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                 controller: _subjectController,
                 enabled: !_saving,
                 maxLength: 255,
+                spellCheckConfiguration:
+                    const SpellCheckConfiguration.disabled(),
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(labelText: 'موضوع البرقية'),
               ),
               const SizedBox(height: 8),
@@ -176,6 +180,10 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                 controller: _recipientController,
                 enabled: !_saving,
                 maxLength: 255,
+                spellCheckConfiguration:
+                    const SpellCheckConfiguration.disabled(),
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(labelText: 'الجهة المستلمة'),
               ),
               const SizedBox(height: 8),
@@ -241,6 +249,10 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                 minLines: 5,
                 maxLines: 9,
                 maxLength: 20000,
+                spellCheckConfiguration:
+                    const SpellCheckConfiguration.disabled(),
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(
                   labelText: 'نص البرقية',
                   alignLabelWithHint: true,

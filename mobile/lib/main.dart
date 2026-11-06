@@ -4770,6 +4770,9 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
             ),
             TextField(
               controller: subject,
+              spellCheckConfiguration: const SpellCheckConfiguration.disabled(),
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: const InputDecoration(
                 labelText: 'موضوع البرقية',
                 border: OutlineInputBorder(),
@@ -4778,6 +4781,9 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
             const SizedBox(height: 10),
             TextField(
               controller: recipient,
+              spellCheckConfiguration: const SpellCheckConfiguration.disabled(),
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: const InputDecoration(
                 labelText: 'الجهة المستلمة',
                 border: OutlineInputBorder(),
@@ -4864,6 +4870,9 @@ class _CreateTelegramSheetState extends State<CreateTelegramSheet> {
               textInputAction: TextInputAction.newline,
               textDirection: TextDirection.rtl,
               textAlignVertical: TextAlignVertical.top,
+              spellCheckConfiguration: const SpellCheckConfiguration.disabled(),
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: const InputDecoration(
                 labelText: 'نص البرقية',
                 alignLabelWithHint: true,

@@ -143,6 +143,31 @@ void main() {
     expect(api.calls, contains('organizations.routingDirectory'));
   });
 
+  testWidgets(
+    'advanced composer allows free typing without spelling suggestions',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(AdvancedCreateTelegramSheet(api: _ScreenTestApi())),
+      );
+      await tester.pumpAndSettle();
+
+      for (final hint in [
+        'عنوان مختصر ودقيق للبلاغ',
+        'اكتب تفاصيل البلاغ...',
+      ]) {
+        final field = tester.widget<TextField>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is TextField && widget.decoration?.hintText == hint,
+          ),
+        );
+        expect(field.autocorrect, isFalse);
+        expect(field.enableSuggestions, isFalse);
+        expect(field.spellCheckConfiguration?.spellCheckEnabled, isFalse);
+      }
+    },
+  );
+
   testWidgets('advanced composer validates required values before submission', (
     tester,
   ) async {

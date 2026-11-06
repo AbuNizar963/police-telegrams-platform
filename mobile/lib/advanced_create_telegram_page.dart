@@ -585,6 +585,10 @@ class _AdvancedCreateTelegramSheetState
                             TextField(
                               controller: _subject,
                               textInputAction: TextInputAction.next,
+                              spellCheckConfiguration:
+                                  const SpellCheckConfiguration.disabled(),
+                              autocorrect: false,
+                              enableSuggestions: false,
                               decoration: const InputDecoration(
                                 hintText: 'عنوان مختصر ودقيق للبلاغ',
                                 prefixIcon: Icon(Icons.title_outlined),
@@ -608,7 +612,10 @@ class _AdvancedCreateTelegramSheetState
                               textDirection: TextDirection.rtl,
                               textAlignVertical: TextAlignVertical.top,
                               textCapitalization: TextCapitalization.none,
+                              spellCheckConfiguration:
+                                  const SpellCheckConfiguration.disabled(),
                               autocorrect: false,
+                              enableSuggestions: false,
                               decoration: const InputDecoration(
                                 hintText: 'اكتب تفاصيل البلاغ...',
                                 alignLabelWithHint: true,

@@ -4,6 +4,7 @@ export const auditActionLabels: Record<string, string> = {
   "organization.settings.update": "تحديث إعدادات الجهة",
   "organization.create": "إنشاء جهة",
   "organization.update": "تعديل جهة",
+  "organization.purge_archived": "حذف نهائي لجهة مؤرشفة",
   "settings.update": "تحديث الإعدادات",
   "platform.document_settings.update": "تحديث إعدادات الوثائق",
   "attachment.upload": "رفع مرفق",

@@ -13,6 +13,9 @@ describe("audit log presentation", () => {
     expect(auditActionLabel("telegram.document.print")).toBe(
       "طباعة وثيقة برقية"
     );
+    expect(auditActionLabel("organization.purge_archived")).toBe(
+      "حذف نهائي لجهة مؤرشفة"
+    );
     expect(auditActionLabel("unknown.action_code")).toBe("إجراء مسجل");
   });
 

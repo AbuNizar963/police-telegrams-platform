@@ -44,6 +44,13 @@ const menuItems = [
     path: "/",
   },
   {
+    key: "owner-dashboard",
+    icon: Activity,
+    label: "لوحة قيادة المالك",
+    path: "/owner-dashboard",
+    ownerOnly: true,
+  },
+  {
     key: "audit-log",
     icon: History,
     label: "سجل الإجراءات",
@@ -386,6 +393,7 @@ function DashboardLayoutContent({
     enabled: Boolean(user),
     staleTime: 30_000,
   });
+  const isPlatformOwnerAccount = organizationContext.data?.isOwner === true;
   const canManageUsers =
     user?.role === "admin" ||
     [
@@ -493,6 +501,7 @@ function DashboardLayoutContent({
                 .filter(
                   item =>
                     (!item.adminOnly || canManageUsers) &&
+                    (!item.ownerOnly || isPlatformOwnerAccount) &&
                     (!item.auditOnly || canViewAuditLogs)
                 )
                 .map(item => {

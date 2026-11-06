@@ -1362,8 +1362,9 @@ export const appRouter = router({
             message: "الحذف النهائي للجهات متاح لمالك النظام فقط",
           });
         }
-        const organization =
-          await getOrganizationByIdIncludingInactive(input.id);
+        const organization = await getOrganizationByIdIncludingInactive(
+          input.id
+        );
         if (!organization) {
           throw new TRPCError({
             code: "NOT_FOUND",

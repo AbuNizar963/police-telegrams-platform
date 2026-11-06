@@ -22,6 +22,8 @@ BEGIN
     SELECT
       source_ns.nspname AS source_schema,
       source_table.relname AS source_table,
+      target_ns.nspname AS target_schema,
+      target_table.relname AS target_table,
       source_column.attname AS source_column,
       target_column.attname AS target_column,
       constraint_row.conname AS constraint_name,
@@ -32,6 +34,10 @@ BEGIN
       ON source_table.oid = constraint_row.conrelid
     JOIN pg_catalog.pg_namespace AS source_ns
       ON source_ns.oid = source_table.relnamespace
+    JOIN pg_catalog.pg_class AS target_table
+      ON target_table.oid = constraint_row.confrelid
+    JOIN pg_catalog.pg_namespace AS target_ns
+      ON target_ns.oid = target_table.relnamespace
     LEFT JOIN pg_catalog.pg_attribute AS source_column
       ON source_column.attrelid = source_table.oid
      AND source_column.attnum = constraint_row.conkey[1]
@@ -59,10 +65,16 @@ BEGIN
     END IF;
 
     EXECUTE format(
-      'SELECT count(*) FROM %I.%I WHERE %I::text = $1',
+      'SELECT count(*) FROM %I.%I AS source WHERE EXISTS (' ||
+      'SELECT 1 FROM %I.%I AS target WHERE target.%I::text = $1 ' ||
+      'AND source.%I IS NOT DISTINCT FROM target.%I)',
       v_constraint.source_schema,
       v_constraint.source_table,
-      v_constraint.source_column
+      v_constraint.target_schema,
+      v_constraint.target_table,
+      'id',
+      v_constraint.source_column,
+      v_constraint.target_column
     )
     INTO v_count
     USING p_target_id;

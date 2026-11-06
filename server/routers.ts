@@ -939,9 +939,9 @@ export const appRouter = router({
     ),
 
     all: organizationManagerProcedure
-      .input(z.object({ includeDeleted: z.boolean().optional() }))
+      .input(z.object({ includeDeleted: z.boolean().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        if (input.includeDeleted && !isPlatformOwner(ctx.user)) {
+        if (input?.includeDeleted && !isPlatformOwner(ctx.user)) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "عرض الجهات المحذوفة متاح لمالك النظام فقط",
@@ -952,9 +952,7 @@ export const appRouter = router({
         return organizations.filter(
           organization =>
             allowedIds.has(organization.id) &&
-            (input.includeDeleted
-              ? Boolean(organization.deletedAt)
-              : !organization.deletedAt)
+            (input?.includeDeleted === true || !organization.deletedAt)
         );
       }),
     accounts: organizationManagerProcedure

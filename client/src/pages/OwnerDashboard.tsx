@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   Activity,
+  AlarmClock,
   ArrowUpLeft,
   ArrowUpRight,
   BellRing,
@@ -9,13 +10,16 @@ import {
   ChevronLeft,
   Clock3,
   Database,
+  FileBarChart2,
   History,
   Landmark,
+  TrendingUp,
   RefreshCw,
   ShieldCheck,
   UserCog,
   Users,
   Zap,
+  CheckCircle2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -134,6 +138,8 @@ export default function OwnerDashboardPage() {
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const context = trpc.organizations.context.useQuery(undefined, { staleTime: 30_000 });
   const summaryQuery = trpc.ownerDashboard.summary.useQuery({ days }, { enabled: context.data?.isOwner === true, refetchInterval: 60_000, refetchOnWindowFocus: true });
+  const notificationsQuery = trpc.notifications.inbox.useQuery(undefined, { enabled: context.data?.isOwner === true, refetchInterval: 15_000, refetchOnWindowFocus: true });
+  const markNotificationRead = trpc.notifications.markRead.useMutation({ onSuccess: () => void notificationsQuery.refetch() });
 
   if (context.isLoading || (summaryQuery.isLoading && !summaryQuery.data)) return <DashboardSkeleton />;
   if (context.error) return <Notice title="تعذر التحقق من صلاحية الحساب" message={context.error.message} action={<Button variant="outline" onClick={() => void context.refetch()}>إعادة المحاولة</Button>} />;
@@ -161,8 +167,26 @@ export default function OwnerDashboardPage() {
     <div className="grid gap-4 xl:grid-cols-12"><Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-5"><CardContent className="p-5"><SectionTitle icon={Landmark} title="الجهات الأعلى نشاطًا" subtitle="بحسب عدد العمليات في الفترة المحددة" action={<span className="rounded-xl bg-[#f7f1df] p-2 text-[#8b6d22]"><Building2 className="h-4 w-4" /></span>} />{summary.topOrganizations.length > 0 ? <div className="h-72 min-w-0"><ResponsiveContainer width="100%" height="100%"><BarChart data={summary.topOrganizations} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-[#e8edf1]" /><XAxis type="number" allowDecimals={false} tickFormatter={formatCount} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis type="category" dataKey="organizationName" orientation="right" width={110} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><Tooltip formatter={value => [formatCount(value), "عملية"]} contentStyle={{ direction: "rtl", borderRadius: 12, borderColor: "#e1e5eb", background: "#fffefc" }} /><Bar dataKey="count" name="العمليات" fill="#d8c38e" radius={[5, 5, 5, 5]} maxBarSize={22} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="لا توجد عمليات مرتبطة بجهة خلال هذه الفترة." />}</CardContent></Card>
       <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-7"><CardContent className="p-5"><SectionTitle icon={Clock3} title="أحدث العمليات" subtitle="لقطة مختصرة من سجل التدقيق الموحّد" action={<Button type="button" variant="ghost" size="sm" onClick={() => setLocation("/audit-log")} className="text-[#24506a]">عرض الكل<ChevronLeft className="mr-1 h-4 w-4" /></Button>} />{summary.recentOperations.length > 0 ? <ul className="divide-y divide-[#edf0f3]">{summary.recentOperations.map(operation => <li key={operation.id} className="flex gap-3 py-3 first:pt-0 last:pb-0"><span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef2f5] text-[#10233f]"><UserCog className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-[#24344d]">{auditActionLabel(operation.action)}</p><p className="mt-1 truncate text-xs text-[#7d8998]">{operation.actorName} <span aria-hidden="true">·</span> {operation.organizationName ?? "النظام"} <span aria-hidden="true">·</span> {auditEntitySummary(operation.entityType, operation.entityId)}</p></div><time className="flex shrink-0 items-center gap-1 text-[11px] text-[#8b96a6]" dateTime={operation.createdAt}><Clock3 className="h-3.5 w-3.5" />{formatDate(operation.createdAt, true)}</time></li>)}</ul> : <EmptyChart message="لا توجد عمليات مسجلة في هذه الفترة." />}</CardContent></Card></div>
 
+    <div className="grid gap-4 xl:grid-cols-12"><NotificationPanel data={notificationsQuery.data} loading={notificationsQuery.isLoading} onRead={id => markNotificationRead.mutate({ id })} /><PerformanceReport summary={summary} /></div>
+
     <p className="flex items-start gap-2 rounded-2xl border border-[#e1e5eb] bg-[#f8fafb] px-4 py-3 text-xs leading-5 text-[#718096]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#24506a]" />المؤشرات مبنية على سجلات الإجراءات الموثقة؛ لا تعرض هذه الصفحة نصوص البرقيات أو بيانات الشبكة أو تفاصيل المرفقات.</p>
   </section>;
+}
+
+
+type NotificationItem = { id: number; title: string; body: string; type: string; createdAt: Date | string };
+function NotificationPanel({ data, loading, onRead }: { data?: { items?: NotificationItem[]; unreadCount?: number }; loading: boolean; onRead: (id: number) => void }) {
+  const items = (data?.items ?? []).slice(0, 4);
+  return <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-5"><CardContent className="p-5"><SectionTitle icon={AlarmClock} title="التنبيهات الفورية" subtitle="تتحدث تلقائيًا كل 15 ثانية" action={<span className="inline-flex items-center gap-1.5 rounded-full bg-[#faecef] px-2.5 py-1 text-[11px] font-bold text-[#9a4458]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d6516d]" />{formatCount(data?.unreadCount ?? 0)} جديدة</span>} />{loading ? <div className="space-y-3">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-14 rounded-xl" />)}</div> : items.length ? <ul className="space-y-2">{items.map(item => <li key={item.id} className="flex items-start gap-3 rounded-xl border border-[#edf0f3] bg-[#fbfcfd] p-3"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f7f1df] text-[#8b6d22]"><BellRing className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#24344d]">{item.title}</p><p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[#718096]">{item.body}</p></div><button type="button" aria-label="تحديد التنبيه كمقروء" onClick={() => onRead(item.id)} className="rounded-lg p-1 text-[#8b96a6] hover:bg-[#e9f5f0] hover:text-[#2b765c]"><CheckCircle2 className="h-4 w-4" /></button></li>)}</ul> : <EmptyChart message="لا توجد تنبيهات جديدة حاليًا." />}</CardContent></Card>;
+}
+
+function PerformanceReport({ summary }: { summary: any }) {
+  const top = summary.topOrganizations ?? [];
+  const total = Number(summary.totalOperations ?? 0);
+  const sensitive = Number(summary.sensitiveOperations ?? 0);
+  const average = summary.operationsByDay?.length ? Math.round(total / summary.operationsByDay.length) : 0;
+  const rows = [{ label: "معدل العمليات اليومي", value: average, detail: "متوسط الفترة المحددة", tone: "#24506a" }, { label: "مؤشر العمليات الحساسة", value: total ? Math.round((sensitive / total) * 100) : 0, detail: "نسبة من إجمالي النشاط", tone: "#9a4458", suffix: "%" }, { label: "الجهة الأعلى نشاطًا", value: top[0]?.count ?? 0, detail: top[0]?.organizationName ?? "لا توجد بيانات", tone: "#8b6d22" }];
+  return <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-7"><CardContent className="p-5"><SectionTitle icon={FileBarChart2} title="تقرير الأداء التفصيلي" subtitle="قراءة تنفيذية سريعة لمؤشرات الكفاءة" action={<span className="rounded-xl bg-[#e9f2f7] p-2 text-[#24506a]"><TrendingUp className="h-4 w-4" /></span>} /><div className="grid gap-3 sm:grid-cols-3">{rows.map(row => <div key={row.label} className="rounded-2xl border border-[#edf0f3] bg-[#fbfcfd] p-4"><div className="mb-4 h-1.5 rounded-full bg-[#e8edf1]"><div className="h-1.5 rounded-full" style={{ width: `${row.suffix ? Math.min(100, row.value) : Math.min(100, row.value ? 76 : 8)}%`, background: row.tone }} /></div><p className="text-[11px] font-bold leading-5 text-[#718096]">{row.label}</p><p className="mt-2 truncate text-2xl font-bold text-[#10233f]">{formatCount(row.value)}{row.suffix ?? ""}</p><p className="mt-1 truncate text-[10px] text-[#8b96a6]">{row.detail}</p></div>)}</div><div className="mt-4 flex items-center gap-2 rounded-xl bg-[#f7f1df] px-3 py-2 text-[11px] font-semibold text-[#725b20]"><FileBarChart2 className="h-4 w-4" />يتم احتساب التقرير من سجلات التدقيق والعمليات الموثقة فقط.</div></CardContent></Card>;
 }
 
 function EmptyChart({ message }: { message: string }) {

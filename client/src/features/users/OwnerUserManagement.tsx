@@ -855,7 +855,7 @@ export default function OwnerUserManagement() {
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
-                                    {user.loginMethod === "disabled" ? (
+                                    {user.loginMethod === "disabled" && user.isActive !== false ? (
                                       <>
                                         <Button
                                           type="button"
@@ -925,6 +925,10 @@ export default function OwnerUserManagement() {
                                           </div>
                                         )}
                                       </>
+                                    ) : user.loginMethod === "disabled" ? (
+                                      <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                        حساب مؤرشف
+                                      </span>
                                     ) : (
                                       <Button
                                         type="button"

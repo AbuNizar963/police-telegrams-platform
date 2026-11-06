@@ -550,7 +550,7 @@ function DashboardLayoutContent({
         {!isMobile ? (
           <div
             dir="rtl"
-            className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+            className="flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur supports-[backdrop-filter]:backdrop-blur"
           >
             <div className="flex items-center gap-3">
               <SidebarTrigger
@@ -590,7 +590,7 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
+          className="min-w-0 flex-1 bg-background p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
         >
           {children}
         </main>

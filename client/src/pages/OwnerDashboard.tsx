@@ -96,21 +96,21 @@ function MetricCard({
   tone: "blue" | "gold" | "green" | "rose";
 }) {
   const tones = {
-    blue: "bg-[#e9f2f7] text-[#24506a]",
-    gold: "bg-[#f7f1df] text-[#8b6d22]",
-    green: "bg-[#e9f5f0] text-[#2b765c]",
-    rose: "bg-[#faecef] text-[#9a4458]",
+    blue: "bg-[#193247] text-[#6bc7ff]",
+    gold: "bg-[#44391f] text-[#e7c45d]",
+    green: "bg-[#173b31] text-[#69dfb0]",
+    rose: "bg-[#452936] text-[#ff91ad]",
   };
   return (
-    <Card className="group relative overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-[0_12px_32px_rgba(16,35,63,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(16,35,63,0.09)]">
+    <Card className="group relative overflow-hidden border-[#2a3444] bg-[#151b26] shadow-[0_18px_48px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#d8c38e] to-transparent opacity-70" />
       <CardContent className="flex min-h-[142px] items-start justify-between gap-3 p-5">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-[#718096]">{label}</p>
-          <p className="mt-4 text-[2rem] font-bold tracking-tight text-[#10233f]">
+          <p className="text-xs font-semibold text-[#9aa7ba]">{label}</p>
+          <p className="mt-4 text-[2rem] font-bold tracking-tight text-[#f5f7fb]">
             {formatCount(value)}
           </p>
-          <p className="mt-1 text-[11px] text-[#8b96a6]">{detail}</p>
+          <p className="mt-1 text-[11px] text-[#7f8ca2]">{detail}</p>
         </div>
         <span
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${tones[tone]}`}
@@ -136,12 +136,12 @@ function SectionTitle({
   return (
     <div className="mb-5 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#eef2f5] text-[#10233f]">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#202a39] text-[#f5f7fb]">
           <Icon className="h-4 w-4" />
         </span>
         <div>
-          <h2 className="font-bold text-[#10233f]">{title}</h2>
-          <p className="mt-1 text-xs text-[#7d8998]">{subtitle}</p>
+          <h2 className="font-bold text-[#f5f7fb]">{title}</h2>
+          <p className="mt-1 text-xs text-[#8e9bad]">{subtitle}</p>
         </div>
       </div>
       {action}
@@ -160,7 +160,7 @@ function Notice({
 }) {
   return (
     <section dir="rtl" className="mx-auto w-full max-w-[1600px]">
-      <Card className="mx-auto max-w-2xl border-[#e1e5eb]">
+      <Card className="mx-auto max-w-2xl border-[#2a3444]">
         <CardContent className="flex items-start gap-3 p-6 sm:p-8">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#9a7d31]" />
           <div className="space-y-2">
@@ -267,7 +267,7 @@ export default function OwnerDashboardPage() {
   return (
     <section
       dir="rtl"
-      className="mx-auto w-full max-w-[1600px] space-y-5 sm:space-y-6"
+      className="owner-dashboard-shell mx-auto w-full max-w-[1600px] space-y-5 sm:space-y-6"
     >
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
@@ -276,21 +276,21 @@ export default function OwnerDashboardPage() {
               <ShieldCheck className="ml-1.5 h-3.5 w-3.5" />
               مالك النظام
             </Badge>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e9f5f0] px-3 py-1 text-xs font-semibold text-[#2b765c]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#173b31] px-3 py-1 text-xs font-semibold text-[#69dfb0]">
               <span className="h-2 w-2 rounded-full bg-[#35a56d]" />
               النظام يعمل بشكل طبيعي
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#10233f] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f5f7fb] sm:text-3xl">
             مركز قيادة المنصة
           </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#718096]">
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#9aa7ba]">
             صورة تشغيلية موحدة تساعدك على متابعة الجهات، الحسابات، وسجل
             الإجراءات من مكان واحد.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="grid gap-1.5 text-xs font-semibold text-[#718096]">
+          <label className="grid gap-1.5 text-xs font-semibold text-[#9aa7ba]">
             الفترة الزمنية
             <select
               aria-label="الفترة الزمنية للوحة القيادة"
@@ -298,7 +298,7 @@ export default function OwnerDashboardPage() {
               onChange={event =>
                 setDays(Number(event.target.value) as 7 | 30 | 90)
               }
-              className="h-10 min-w-36 rounded-xl border border-[#dfe4ea] bg-white px-3 text-sm font-semibold text-[#10233f] outline-none focus-visible:ring-2 focus-visible:ring-[#d8c38e]"
+              className="h-10 min-w-36 rounded-xl border border-[#2d3849] bg-[#151b26] px-3 text-sm font-semibold text-[#f5f7fb] outline-none focus-visible:ring-2 focus-visible:ring-[#d8c38e]"
             >
               <option value={7}>آخر 7 أيام</option>
               <option value={30}>آخر 30 يومًا</option>
@@ -310,7 +310,7 @@ export default function OwnerDashboardPage() {
             variant="outline"
             onClick={() => void summaryQuery.refetch()}
             disabled={summaryQuery.isFetching}
-            className="h-10 rounded-xl border-[#dfe4ea] bg-white"
+            className="h-10 rounded-xl border-[#2d3849] bg-[#151b26]"
           >
             <RefreshCw
               className={`ml-2 h-4 w-4 ${summaryQuery.isFetching ? "animate-spin" : ""}`}
@@ -320,7 +320,7 @@ export default function OwnerDashboardPage() {
           <Button
             type="button"
             onClick={() => setLocation("/audit-log")}
-            className="h-10 rounded-xl bg-[#10233f] text-white hover:bg-[#18375f]"
+            className="h-10 rounded-xl bg-[#d8c38e] text-[#111827] hover:bg-[#ead69a]"
           >
             <History className="ml-2 h-4 w-4" />
             سجل الإجراءات
@@ -341,12 +341,12 @@ export default function OwnerDashboardPage() {
             <p className="text-xl font-bold sm:text-2xl">
               كل الجهات ضمن صورة تشغيلية واحدة
             </p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c7d2df]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c5cfdd]">
               تجمع اللوحة النشاط الموثق، وتفصل بين حجم العمل والحالة الحالية
               للجهات والحسابات، دون عرض محتوى البرقيات الحساسة.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#dbe5ef]">
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#e1e8f2]">
             <Database className="h-4 w-4 text-[#d8c38e]" />
             آخر مزامنة: {formatDate(summary.generatedAt, true)}
           </div>
@@ -385,14 +385,14 @@ export default function OwnerDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-8">
+        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-8">
           <CardContent className="p-5">
             <SectionTitle
               icon={Activity}
               title="وتيرة العمليات اليومية"
               subtitle={`عدد سجلات التدقيق خلال ${periodLabel}`}
               action={
-                <span className="rounded-xl bg-[#e9f2f7] p-2 text-[#24506a]">
+                <span className="rounded-xl bg-[#193247] p-2 text-[#6bc7ff]">
                   <BellRing className="h-4 w-4" />
                 </span>
               }
@@ -473,7 +473,7 @@ export default function OwnerDashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-4">
+        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-4">
           <CardContent className="p-5">
             <SectionTitle
               icon={History}
@@ -513,7 +513,7 @@ export default function OwnerDashboardPage() {
                       verticalAlign="bottom"
                       iconType="circle"
                       formatter={value => (
-                        <span className="text-xs text-[#718096]">{value}</span>
+                        <span className="text-xs text-[#9aa7ba]">{value}</span>
                       )}
                     />
                   </PieChart>
@@ -527,14 +527,14 @@ export default function OwnerDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-5">
+        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-5">
           <CardContent className="p-5">
             <SectionTitle
               icon={Landmark}
               title="الجهات الأعلى نشاطًا"
               subtitle="بحسب عدد العمليات في الفترة المحددة"
               action={
-                <span className="rounded-xl bg-[#f7f1df] p-2 text-[#8b6d22]">
+                <span className="rounded-xl bg-[#44391f] p-2 text-[#e7c45d]">
                   <Building2 className="h-4 w-4" />
                 </span>
               }
@@ -593,7 +593,7 @@ export default function OwnerDashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-7">
+        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-7">
           <CardContent className="p-5">
             <SectionTitle
               icon={Clock3}
@@ -605,7 +605,7 @@ export default function OwnerDashboardPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setLocation("/audit-log")}
-                  className="text-[#24506a]"
+                  className="text-[#6bc7ff]"
                 >
                   عرض الكل
                   <ChevronLeft className="mr-1 h-4 w-4" />
@@ -619,14 +619,14 @@ export default function OwnerDashboardPage() {
                     key={operation.id}
                     className="flex gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef2f5] text-[#10233f]">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#202a39] text-[#f5f7fb]">
                       <UserCog className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-[#24344d]">
                         {auditActionLabel(operation.action)}
                       </p>
-                      <p className="mt-1 truncate text-xs text-[#7d8998]">
+                      <p className="mt-1 truncate text-xs text-[#8e9bad]">
                         {operation.actorName} <span aria-hidden="true">·</span>{" "}
                         {operation.organizationName ?? "النظام"}{" "}
                         <span aria-hidden="true">·</span>{" "}
@@ -637,7 +637,7 @@ export default function OwnerDashboardPage() {
                       </p>
                     </div>
                     <time
-                      className="flex shrink-0 items-center gap-1 text-[11px] text-[#8b96a6]"
+                      className="flex shrink-0 items-center gap-1 text-[11px] text-[#7f8ca2]"
                       dateTime={operation.createdAt}
                     >
                       <Clock3 className="h-3.5 w-3.5" />
@@ -662,8 +662,8 @@ export default function OwnerDashboardPage() {
         <PerformanceReport summary={summary} />
       </div>
 
-      <p className="flex items-start gap-2 rounded-2xl border border-[#e1e5eb] bg-[#f8fafb] px-4 py-3 text-xs leading-5 text-[#718096]">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#24506a]" />
+      <p className="flex items-start gap-2 rounded-2xl border border-[#2a3444] bg-[#f8fafb] px-4 py-3 text-xs leading-5 text-[#9aa7ba]">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#6bc7ff]" />
         المؤشرات مبنية على سجلات الإجراءات الموثقة؛ لا تعرض هذه الصفحة نصوص
         البرقيات أو بيانات الشبكة أو تفاصيل المرفقات.
       </p>
@@ -689,14 +689,14 @@ function NotificationPanel({
 }) {
   const items = (data?.items ?? []).slice(0, 4);
   return (
-    <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-5">
+    <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-5">
       <CardContent className="p-5">
         <SectionTitle
           icon={AlarmClock}
           title="التنبيهات الفورية"
           subtitle="تتحدث تلقائيًا كل 15 ثانية"
           action={
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faecef] px-2.5 py-1 text-[11px] font-bold text-[#9a4458]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#452936] px-2.5 py-1 text-[11px] font-bold text-[#ff91ad]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d6516d]" />
               {formatCount(data?.unreadCount ?? 0)} جديدة
             </span>
@@ -715,14 +715,14 @@ function NotificationPanel({
                 key={item.id}
                 className="flex items-start gap-3 rounded-xl border border-[#edf0f3] bg-[#fbfcfd] p-3"
               >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f7f1df] text-[#8b6d22]">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#44391f] text-[#e7c45d]">
                   <BellRing className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold text-[#24344d]">
                     {item.title}
                   </p>
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[#718096]">
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[#9aa7ba]">
                     {item.body}
                   </p>
                 </div>
@@ -730,7 +730,7 @@ function NotificationPanel({
                   type="button"
                   aria-label="تحديد التنبيه كمقروء"
                   onClick={() => onRead(item.id)}
-                  className="rounded-lg p-1 text-[#8b96a6] hover:bg-[#e9f5f0] hover:text-[#2b765c]"
+                  className="rounded-lg p-1 text-[#7f8ca2] hover:bg-[#173b31] hover:text-[#69dfb0]"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                 </button>
@@ -774,14 +774,14 @@ function PerformanceReport({ summary }: { summary: any }) {
     },
   ];
   return (
-    <Card className="overflow-hidden border-[#e1e5eb] bg-[#fffefc] shadow-sm xl:col-span-7">
+    <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-7">
       <CardContent className="p-5">
         <SectionTitle
           icon={FileBarChart2}
           title="تقرير الأداء التفصيلي"
           subtitle="قراءة تنفيذية سريعة لمؤشرات الكفاءة"
           action={
-            <span className="rounded-xl bg-[#e9f2f7] p-2 text-[#24506a]">
+            <span className="rounded-xl bg-[#193247] p-2 text-[#6bc7ff]">
               <TrendingUp className="h-4 w-4" />
             </span>
           }
@@ -801,20 +801,20 @@ function PerformanceReport({ summary }: { summary: any }) {
                   }}
                 />
               </div>
-              <p className="text-[11px] font-bold leading-5 text-[#718096]">
+              <p className="text-[11px] font-bold leading-5 text-[#9aa7ba]">
                 {row.label}
               </p>
-              <p className="mt-2 truncate text-2xl font-bold text-[#10233f]">
+              <p className="mt-2 truncate text-2xl font-bold text-[#f5f7fb]">
                 {formatCount(row.value)}
                 {row.suffix ?? ""}
               </p>
-              <p className="mt-1 truncate text-[10px] text-[#8b96a6]">
+              <p className="mt-1 truncate text-[10px] text-[#7f8ca2]">
                 {row.detail}
               </p>
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#f7f1df] px-3 py-2 text-[11px] font-semibold text-[#725b20]">
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#44391f] px-3 py-2 text-[11px] font-semibold text-[#725b20]">
           <FileBarChart2 className="h-4 w-4" />
           يتم احتساب التقرير من سجلات التدقيق والعمليات الموثقة فقط.
         </div>
@@ -825,12 +825,12 @@ function PerformanceReport({ summary }: { summary: any }) {
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#dfe4ea] bg-[#f8fafb] px-5 text-center sm:h-72">
+    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#2d3849] bg-[#f8fafb] px-5 text-center sm:h-72">
       <Activity className="h-7 w-7 text-[#9aa6b5]" />
       <p className="text-sm font-semibold text-[#4e5d71]">
         لا توجد بيانات كافية للرسم
       </p>
-      <p className="max-w-sm text-xs leading-5 text-[#8b96a6]">{message}</p>
+      <p className="max-w-sm text-xs leading-5 text-[#7f8ca2]">{message}</p>
     </div>
   );
 }

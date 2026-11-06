@@ -559,7 +559,7 @@ export const userManagementRouter = router({
       const target = await client
         .from("users")
         .select(
-          "id, role, username, loginMethod, isActive, isPlatformOwner"
+          "id, role, username, loginMethod, isActive, isPlatformOwner",
         )
         .eq("id", input.id)
         .maybeSingle();

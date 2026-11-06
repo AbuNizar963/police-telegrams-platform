@@ -47,6 +47,50 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  -- Read the current organization first, then lock organization rows before
+  -- the employee row. This matches the organization-archive lock order and
+  -- avoids a transfer/archive deadlock.
+  SELECT *
+    INTO v_employee
+    FROM public.users
+   WHERE id = p_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Employee account not found'
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_employee."organizationId" = p_target_organization_id THEN
+    RAISE EXCEPTION 'The employee already belongs to the selected organization'
+      USING ERRCODE = '22023';
+  END IF;
+
+  PERFORM 1
+    FROM public.organizations
+   WHERE id IN (v_employee."organizationId", p_target_organization_id)
+   ORDER BY id
+   FOR SHARE;
+
+  SELECT *
+    INTO v_source
+    FROM public.organizations
+   WHERE id = v_employee."organizationId";
+
+  IF NOT FOUND OR v_source."isActive" IS DISTINCT FROM true OR v_source."deletedAt" IS NOT NULL THEN
+    RAISE EXCEPTION 'The employee current organization is inactive or archived'
+      USING ERRCODE = '22023';
+  END IF;
+
+  SELECT *
+    INTO v_target
+    FROM public.organizations
+   WHERE id = p_target_organization_id;
+
+  IF NOT FOUND OR v_target."isActive" IS DISTINCT FROM true OR v_target."deletedAt" IS NOT NULL THEN
+    RAISE EXCEPTION 'The destination organization is missing, inactive, or archived'
+      USING ERRCODE = '22023';
+  END IF;
+
   SELECT *
     INTO v_employee
     FROM public.users
@@ -58,6 +102,11 @@ BEGIN
       USING ERRCODE = 'P0002';
   END IF;
 
+  IF v_employee."organizationId" IS DISTINCT FROM v_source.id THEN
+    RAISE EXCEPTION 'Employee organization changed during transfer; retry the operation'
+      USING ERRCODE = '40001';
+  END IF;
+
   IF v_employee."isPlatformOwner" = true OR v_employee.role = 'admin'::public.user_role THEN
     RAISE EXCEPTION 'Platform owner accounts cannot be transferred through employee management'
       USING ERRCODE = '42501';
@@ -66,33 +115,6 @@ BEGIN
   IF v_employee."isActive" IS DISTINCT FROM true
      OR v_employee."loginMethod" = 'disabled' THEN
     RAISE EXCEPTION 'Only active employee accounts can be transferred'
-      USING ERRCODE = '22023';
-  END IF;
-
-  IF v_employee."organizationId" = p_target_organization_id THEN
-    RAISE EXCEPTION 'The employee already belongs to the selected organization'
-      USING ERRCODE = '22023';
-  END IF;
-
-  SELECT *
-    INTO v_source
-    FROM public.organizations
-   WHERE id = v_employee."organizationId"
-   FOR SHARE;
-
-  IF NOT FOUND OR v_source."isActive" IS DISTINCT FROM true OR v_source."deletedAt" IS NOT NULL THEN
-    RAISE EXCEPTION 'The employee current organization is inactive or archived'
-      USING ERRCODE = '22023';
-  END IF;
-
-  SELECT *
-    INTO v_target
-    FROM public.organizations
-   WHERE id = p_target_organization_id
-   FOR SHARE;
-
-  IF NOT FOUND OR v_target."isActive" IS DISTINCT FROM true OR v_target."deletedAt" IS NOT NULL THEN
-    RAISE EXCEPTION 'The destination organization is missing, inactive, or archived'
       USING ERRCODE = '22023';
   END IF;
 

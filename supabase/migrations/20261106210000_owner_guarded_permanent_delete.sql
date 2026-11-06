@@ -1,5 +1,5 @@
 -- Guarded permanent deletion. This is intentionally separate from logical archiving.
--- Every remaining public-schema FK reference blocks the operation; no CASCADE is used.
+-- Every remaining application-schema FK reference blocks deletion; no CASCADE is used.
 CREATE SCHEMA IF NOT EXISTS private;
 REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;
 
@@ -51,7 +51,8 @@ BEGIN
         'information_schema',
         'pg_toast'
       )
-      AND (source_ns.nspname || '.' || source_table.relname) <> ALL(p_ignored_tables)
+      AND (source_ns.nspname || '.' || source_table.relname)
+        <> ALL(p_ignored_tables)
     ORDER BY source_table.relname, constraint_row.conname
   LOOP
     IF v_constraint.source_key_count <> 1

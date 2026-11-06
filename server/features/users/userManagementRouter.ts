@@ -585,7 +585,9 @@ export const userManagementRouter = router({
         p_actor_rank: ctx.user.rank ?? null,
         p_actor_role: ctx.user.role,
         p_reason: "حذف نهائي بطلب مالك النظام",
-        ...getRequestAuditContext(ctx.req),
+        p_ip_address: getRequestAuditContext(ctx.req).ipAddress ?? null,
+        p_user_agent: getRequestAuditContext(ctx.req).userAgent ?? null,
+        p_device_type: getRequestAuditContext(ctx.req).deviceType ?? "unknown",
       });
       if (error) {
         console.error("[userManagement.delete] Guarded purge failed", error);

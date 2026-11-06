@@ -16,6 +16,9 @@ describe("audit log presentation", () => {
     expect(auditActionLabel("organization.purge_archived")).toBe(
       "حذف نهائي لجهة مؤرشفة"
     );
+    expect(auditActionLabel("user.purge_inactive")).toBe(
+      "حذف نهائي لحساب معطّل"
+    );
     expect(auditActionLabel("unknown.action_code")).toBe("إجراء مسجل");
   });
 

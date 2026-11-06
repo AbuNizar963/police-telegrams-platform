@@ -27,6 +27,7 @@ export const auditActionLabels: Record<string, string> = {
   "user.disable": "تعطيل حساب مستخدم",
   "user.enable": "تفعيل حساب مستخدم",
   "user.delete": "حذف حساب مستخدم",
+  "user.purge_inactive": "حذف نهائي لحساب معطّل",
   "platform.owner_workplace.switch": "تغيير جهة عمل المالك",
 };
 

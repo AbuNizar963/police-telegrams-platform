@@ -958,7 +958,12 @@ export const appRouter = router({
     ),
 
     all: organizationManagerProcedure
-      .input(z.object({ includeDeleted: z.boolean().optional() }).nullable().optional())
+      .input(
+        z
+          .object({ includeDeleted: z.boolean().optional() })
+          .nullable()
+          .optional()
+      )
       .query(async ({ ctx, input }) => {
         if (input?.includeDeleted && !isPlatformOwner(ctx.user)) {
           throw new TRPCError({

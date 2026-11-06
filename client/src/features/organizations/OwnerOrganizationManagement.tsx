@@ -226,6 +226,25 @@ export default function OwnerOrganizationManagement() {
     },
     onError: error => toast.error(error.message || "تعذر إخفاء الجهة"),
   });
+  const purgeOrganization = trpc.organizations.purge.useMutation({
+    onSuccess: async result => {
+      if (!result.deleted) {
+        const blockers = (result.blockers ?? [])
+          .map(item => `${item.table} (${item.count ?? "غير محدد"})`)
+          .join("، ");
+        toast.error([result.reason, blockers].filter(Boolean).join(" — "));
+        return;
+      }
+      await Promise.all([
+        utils.organizations.all.invalidate(),
+        utils.organizations.allAccounts.invalidate(),
+        utils.organizations.accounts.invalidate(),
+      ]);
+      setSelectedOrganizationId(null);
+      toast.success("تم الحذف النهائي مع الاحتفاظ بسجل التدقيق");
+    },
+    onError: error => toast.error(error.message || "تعذر الحذف النهائي"),
+  });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
   const uploadLogo = trpc.settings.uploadLogo.useMutation();

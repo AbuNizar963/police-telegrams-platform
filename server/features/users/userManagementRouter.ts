@@ -548,7 +548,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username")
+        .select("id, role, username, loginMethod, isActive, isPlatformOwner")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error) {
@@ -567,23 +567,62 @@ export const userManagementRouter = router({
         });
       }
 
-      const { error } = await client.from("users").delete().eq("id", input.id);
-      if (error) {
+      if (
+        target.data.isActive === true &&
+        target.data.loginMethod !== "disabled"
+      ) {
         throw new TRPCError({
-          code: "CONFLICT",
-          message:
-            "لا يمكن حذف هذا الحساب نهائيًا لأنه مرتبط ببرقيات أو سجلات تدقيق. استخدم التعطيل بدلًا من الحذف.",
+          code: "PRECONDITION_FAILED",
+          message: "عطّل الحساب أولاً قبل طلب الحذف النهائي",
         });
       }
-      await writeAuditLog({
-        ...getRequestAuditContext(ctx.req),
-        actorUserId: ctx.user.id,
-        actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
-        action: "user.delete",
-        entityType: "user",
-        entityId: String(input.id),
-        metadata: JSON.stringify({ username: target.data.username }),
+
+      const auditContext = getRequestAuditContext(ctx.req);
+      const { data, error } = await client.rpc("purge_user_permanently", {
+        p_user_id: input.id,
+        p_actor_user_id: ctx.user.id,
+        p_actor_name: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
+        p_actor_rank: ctx.user.rank ?? null,
+        p_actor_role: ctx.user.role,
+        p_reason: "حذف نهائي بطلب مالك النظام",
+        p_ip_address: auditContext.ipAddress ?? null,
+        p_user_agent: auditContext.userAgent ?? null,
+        p_device_type: auditContext.deviceType ?? "unknown",
       });
+      if (error) {
+        console.error("[userManagement.delete] Guarded purge failed", error);
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "تعذر التحقق من ارتباطات الحساب؛ لم يتم حذف أي بيانات.",
+        });
+      }
+      const result = data as {
+        deleted?: boolean;
+        reason?: string;
+        blockers?: Array<{
+          table?: string;
+          column?: string;
+          count?: number | null;
+          reason?: string;
+        }>;
+      } | null;
+      if (result?.deleted !== true) {
+        const blockerSummary = (result?.blockers ?? [])
+          .map(item =>
+            `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
+          )
+          .join("، ");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: [
+            result?.reason || "الحساب مرتبط بسجلات يجب الاحتفاظ بها.",
+            blockerSummary ? `الارتباطات: ${blockerSummary}` : "",
+            "لم يتم حذف أي بيانات.",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        });
+      }
       return { success: true };
     }),
 

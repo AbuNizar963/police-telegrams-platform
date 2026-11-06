@@ -855,7 +855,8 @@ export default function OwnerUserManagement() {
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
-                                    {user.loginMethod === "disabled" && user.isActive !== false ? (
+                                    {user.loginMethod === "disabled" &&
+                                    user.isActive !== false ? (
                                       <>
                                         <Button
                                           type="button"

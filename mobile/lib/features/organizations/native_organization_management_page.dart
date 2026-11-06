@@ -168,7 +168,11 @@ class _NativeOrganizationManagementPageState
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _organizations.where((item) => item['deletedAt'] == null && item['isActive'] != false).length;
+    final activeCount = _organizations
+        .where(
+          (item) => item['deletedAt'] == null && item['isActive'] != false,
+        )
+        .length;
     final inactiveCount = _organizations.length - activeCount;
     final filtered = _organizations.where((organization) {
       final active = organization['deletedAt'] == null && organization['isActive'] != false;
@@ -229,11 +233,29 @@ class _NativeOrganizationManagementPageState
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Row(
                 children: [
-                  Expanded(child: _OrganizationSummaryCard(label: 'إجمالي الجهات', value: _organizations.length, icon: Icons.account_tree_outlined)),
+                  Expanded(
+                    child: _OrganizationSummaryCard(
+                      label: 'إجمالي الجهات',
+                      value: _organizations.length,
+                      icon: Icons.account_tree_outlined,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _OrganizationSummaryCard(label: 'مفعّلة', value: activeCount, icon: Icons.check_circle_outline)),
+                  Expanded(
+                    child: _OrganizationSummaryCard(
+                      label: 'مفعّلة',
+                      value: activeCount,
+                      icon: Icons.check_circle_outline,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _OrganizationSummaryCard(label: 'موقوفة', value: inactiveCount, icon: Icons.pause_circle_outline)),
+                  Expanded(
+                    child: _OrganizationSummaryCard(
+                      label: 'غير نشطة',
+                      value: inactiveCount,
+                      icon: Icons.pause_circle_outline,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -243,9 +265,21 @@ class _NativeOrganizationManagementPageState
                 spacing: 8,
                 runSpacing: 4,
                 children: [
-                  ChoiceChip(label: const Text('الكل'), selected: _statusFilter == 'all', onSelected: (_) => setState(() => _statusFilter = 'all')),
-                  ChoiceChip(label: const Text('المفعّلة'), selected: _statusFilter == 'active', onSelected: (_) => setState(() => _statusFilter = 'active')),
-                  ChoiceChip(label: const Text('غير النشطة'), selected: _statusFilter == 'inactive', onSelected: (_) => setState(() => _statusFilter = 'inactive')),
+                  ChoiceChip(
+                    label: const Text('الكل'),
+                    selected: _statusFilter == 'all',
+                    onSelected: (_) => setState(() => _statusFilter = 'all'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('المفعّلة'),
+                    selected: _statusFilter == 'active',
+                    onSelected: (_) => setState(() => _statusFilter = 'active'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('غير النشطة'),
+                    selected: _statusFilter == 'inactive',
+                    onSelected: (_) => setState(() => _statusFilter = 'inactive'),
+                  ),
                 ],
               ),
             ),

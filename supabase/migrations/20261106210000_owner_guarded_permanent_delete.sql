@@ -303,7 +303,7 @@ BEGIN
     );
   END IF;
 
-  IF v_user."isActive" THEN
+  IF v_user."isActive" AND v_user."loginMethod" IS DISTINCT FROM 'disabled' THEN
     RETURN jsonb_build_object(
       'canDelete', false,
       'reason', 'عطّل الحساب أولاً قبل طلب الحذف النهائي',
@@ -384,7 +384,7 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  IF v_user."isActive" THEN
+  IF v_user."isActive" AND v_user."loginMethod" IS DISTINCT FROM 'disabled' THEN
     RAISE EXCEPTION 'Disable the account before permanent deletion'
       USING ERRCODE = '22023';
   END IF;

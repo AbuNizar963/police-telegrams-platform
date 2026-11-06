@@ -38,11 +38,8 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose formatting and check
-        run: |
-          pnpm exec prettier --write client/src/features/users/OwnerUserManagement.tsx
-          git diff -- client/src/features/users/OwnerUserManagement.tsx
-          pnpm lint
+      - name: Check formatting
+        run: pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

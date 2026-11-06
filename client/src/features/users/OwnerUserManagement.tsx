@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { OrganizationTreePicker } from "@/features/organizations/OrganizationTreePicker";
 import { organizationTypeLabels } from "@/lib/uiLabels";
 import {
+  ArrowLeftRight,
   Ban,
   Building2,
   CheckCircle2,
@@ -133,6 +134,11 @@ export default function OwnerUserManagement() {
   const [organizationRootFilter, setOrganizationRootFilter] = useState("");
   const [organizationBranchFilter, setOrganizationBranchFilter] = useState("");
   const [editing, setEditing] = useState<ManagedUser | null>(null);
+  const [transferring, setTransferring] = useState<ManagedUser | null>(null);
+  const [transferOrganizationId, setTransferOrganizationId] = useState("");
+  const [transferRole, setTransferRole] = useState<EditForm["role"]>("dispatcher");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferConfirmPassword, setTransferConfirmPassword] = useState("");
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [enablePassword, setEnablePassword] = useState<Record<number, string>>(
     {}
@@ -309,6 +315,21 @@ export default function OwnerUserManagement() {
       await utils.userManagement.list.invalidate();
     },
     onError: error => toast.error(error.message || "تعذر حذف الحساب"),
+  });
+  const transferUser = trpc.userManagement.transfer.useMutation({
+    onSuccess: async () => {
+      toast.success("تم نقل الموظف وتحديث صلاحياته مع حفظ سجل النقل");
+      setTransferring(null);
+      setTransferOrganizationId("");
+      setTransferRole("dispatcher");
+      setTransferReason("");
+      setTransferConfirmPassword("");
+      await Promise.all([
+        utils.userManagement.list.invalidate(),
+        utils.organizations.all.invalidate(),
+      ]);
+    },
+    onError: error => toast.error(error.message || "تعذر نقل الموظف"),
   });
 
   useEffect(() => {
@@ -831,6 +852,29 @@ export default function OwnerUserManagement() {
                                   )}
                                 {user.role !== "admin" && (
                                   <div className="flex flex-wrap items-center justify-end gap-1">
+                                    {user.isActive !== false &&
+                                      user.loginMethod !== "disabled" && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-8 w-8 text-blue-700 hover:bg-blue-500/10"
+                                          title="نقل الموظف إلى جهة أخرى"
+                                          aria-label={`نقل الموظف ${user.name ?? user.username ?? ""}`}
+                                          onClick={() => {
+                                            setTransferring(user);
+                                            setTransferOrganizationId("");
+                                            setTransferRole(
+                                              (user.membershipRole ??
+                                                "dispatcher") as EditForm["role"]
+                                            );
+                                            setTransferReason("");
+                                            setTransferConfirmPassword("");
+                                          }}
+                                        >
+                                          <ArrowLeftRight className="h-4 w-4" />
+                                        </Button>
+                                      )}
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -1186,6 +1230,136 @@ export default function OwnerUserManagement() {
                 </Button>
                 <Button type="submit" disabled={updateUser.isPending}>
                   {updateUser.isPending ? "جارٍ الحفظ..." : "حفظ التعديلات"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+        {transferring && (
+          <div className="fixed inset-0 z-[85] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4">
+            <form
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="transfer-user-title"
+              dir="rtl"
+              onSubmit={event => {
+                event.preventDefault();
+                if (!transferOrganizationId) {
+                  toast.error("اختر الجهة الجديدة للموظف");
+                  return;
+                }
+                transferUser.mutate({
+                  id: transferring.id,
+                  targetOrganizationId: transferOrganizationId,
+                  role: transferRole,
+                  reason: transferReason.trim(),
+                  confirmPassword: transferConfirmPassword,
+                });
+              }}
+              className="w-full max-w-lg space-y-4 rounded-2xl bg-background p-5 shadow-xl"
+            >
+              <div className="flex items-center justify-between border-b pb-3">
+                <div>
+                  <h3 id="transfer-user-title" className="text-lg font-bold">
+                    نقل الموظف بين الجهات
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {transferring.name ?? transferring.username} · {transferring.organizationName ?? "الجهة الحالية"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTransferring(null)}
+                  aria-label="إغلاق"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 text-xs leading-5 text-muted-foreground">
+                سيبقى حساب الموظف ورقمه الوظيفي كما هما. ستُنهى عضويته في الجهة السابقة، وتُمنح صلاحيات الجهة الجديدة، وتُسجّل عملية النقل وسببها. ستُنهى الجلسات الحالية ويحتاج الموظف إلى تسجيل الدخول مجدداً.
+              </div>
+              <label className="grid gap-1.5 text-sm font-medium">
+                الجهة الجديدة
+                <OrganizationTreePicker
+                  options={managedOrganizations
+                    .filter(
+                      organization =>
+                        organization.isActive &&
+                        organization.id !== transferring.organizationId
+                    )
+                    .map(organization => ({
+                      ...organization,
+                      isSelectable: true,
+                    }))}
+                  value={transferOrganizationId}
+                  onValueChange={setTransferOrganizationId}
+                  placeholder="اختر الجهة التي سينتقل إليها الموظف"
+                  ariaLabel="اختيار الجهة الجديدة"
+                  emptyMessage="لا توجد جهات أخرى متاحة ضمن نطاق صلاحياتك."
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm font-medium">
+                الصلاحية في الجهة الجديدة
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  value={transferRole}
+                  onChange={event =>
+                    setTransferRole(event.target.value as EditForm["role"])
+                  }
+                >
+                  {Object.entries(membershipRoleLabels)
+                    .filter(([role]) => role !== "system_admin")
+                    .map(([role, label]) => (
+                      <option key={role} value={role}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm font-medium">
+                سبب النقل
+                <textarea
+                  className="min-h-20 rounded-md border bg-background p-3 text-sm"
+                  value={transferReason}
+                  onChange={event => setTransferReason(event.target.value)}
+                  minLength={8}
+                  maxLength={2000}
+                  required
+                  placeholder="اذكر القرار أو المبرر الإداري للنقل"
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm font-medium">
+                كلمة مرورك الحالية لتأكيد العملية
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  value={transferConfirmPassword}
+                  onChange={event =>
+                    setTransferConfirmPassword(event.target.value)
+                  }
+                  required
+                />
+              </label>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setTransferring(null)}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    transferUser.isPending ||
+                    !transferOrganizationId ||
+                    transferReason.trim().length < 8 ||
+                    !transferConfirmPassword
+                  }
+                >
+                  {transferUser.isPending ? "جارٍ تنفيذ النقل..." : "تأكيد النقل"}
                 </Button>
               </div>
             </form>

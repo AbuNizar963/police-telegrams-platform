@@ -389,10 +389,32 @@ export default function OwnerUserManagement() {
         </header>
 
         <div className="mt-4 grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-3">
-          <div><p className="text-xs text-muted-foreground">الحسابات في الصفحة الحالية</p><p className="mt-1 text-lg font-bold tabular-nums">{managedUsers.length}</p></div>
-          <div><p className="text-xs text-muted-foreground">الجهات المتاحة ضمن نطاقك</p><p className="mt-1 text-lg font-bold tabular-nums">{managedOrganizations.length}</p></div>
-          <div><p className="text-xs text-muted-foreground">التنقل بين النتائج</p><p className="mt-1 text-sm font-semibold">صفحة {userPage} من {totalUserPages}</p></div>
-          <p className="text-xs leading-5 text-muted-foreground sm:col-span-3">اختر الجهة لتحديد نطاق الحساب، ثم اضبط الدور الوظيفي. حالة الحساب وإجراءات تعديله أو تعطيله تظهر داخل بطاقة الموظف.</p>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              الحسابات في الصفحة الحالية
+            </p>
+            <p className="mt-1 text-lg font-bold tabular-nums">
+              {managedUsers.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              الجهات المتاحة ضمن نطاقك
+            </p>
+            <p className="mt-1 text-lg font-bold tabular-nums">
+              {managedOrganizations.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">التنقل بين النتائج</p>
+            <p className="mt-1 text-sm font-semibold">
+              صفحة {userPage} من {totalUserPages}
+            </p>
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground sm:col-span-3">
+            اختر الجهة لتحديد نطاق الحساب، ثم اضبط الدور الوظيفي. حالة الحساب
+            وإجراءات تعديله أو تعطيله تظهر داخل بطاقة الموظف.
+          </p>
         </div>
 
         {showCreateForm && (

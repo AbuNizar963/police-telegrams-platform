@@ -46,6 +46,7 @@ vi.mock("../../_core/supabase", () => ({
 
 import {
   addOrganizationMembership,
+  archiveOrganizationSafely,
   getUserOrganizationMembership,
   routeTelegram,
   selectPlatformOwnerWorkplace,
@@ -292,5 +293,36 @@ describe("organization repository", () => {
       })
     ).rejects.toThrow("الجهة غير موجودة أو غير مفعّلة");
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("archives an organization through the atomic audited database procedure", async () => {
+    const organizationId = "00000000-0000-4000-8000-000000000009";
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        organizationId,
+        accountsDisabled: 1,
+        deleted: true,
+        auditHistoryRetained: true,
+      },
+      error: null,
+    });
+
+    await expect(
+      archiveOrganizationSafely({
+        organizationId,
+        actorUserId: 1,
+        actorName: "مالك النظام",
+        actorRole: "admin",
+        reason: "طلب مالك النظام",
+      })
+    ).resolves.toEqual({ organizationId, accountsDisabled: 1 });
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "archive_organization_safely",
+      expect.objectContaining({
+        p_organization_id: organizationId,
+        p_actor_user_id: 1,
+        p_reason: "طلب مالك النظام",
+      })
+    );
   });
 });

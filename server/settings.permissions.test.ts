@@ -99,5 +99,12 @@ describe("department branding permissions", () => {
         createAccount: false,
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      caller.organizations.delete({
+        id: organizationId,
+        reason: "اختبار منع الحذف لغير المالك",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

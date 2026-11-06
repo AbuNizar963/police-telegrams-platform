@@ -28,6 +28,7 @@ function mapOrganization(row: Record<string, unknown>): Organization {
     ...(row as unknown as Organization),
     createdAt: new Date(String(row.createdAt)),
     updatedAt: new Date(String(row.updatedAt)),
+    deletedAt: row.deletedAt ? new Date(String(row.deletedAt)) : null,
   };
 }
 
@@ -322,6 +323,7 @@ export async function listOrganizationAccountSummaries(
   let query = getSupabaseAdmin()
     .from("users")
     .select("id, organizationId, username, loginMethod, mustChangePassword")
+    .eq("isActive", true)
     .order("id", { ascending: true });
   if (organizationId) query = query.eq("organizationId", organizationId);
   const { data, error } = await query;
@@ -572,6 +574,15 @@ export async function updateOrganization(input: {
   type: Organization["type"];
   isActive: boolean;
 }): Promise<Organization> {
+  const existingOrganization = await getOrganizationByIdIncludingInactive(
+    input.id
+  );
+  if (!existingOrganization) {
+    throw new Error("الجهة غير موجودة");
+  }
+  if (existingOrganization.deletedAt) {
+    throw new Error("لا يمكن تعديل جهة محذوفة منطقيًا");
+  }
   await validateOrganizationParent(
     input.parentOrganizationId ?? null,
     input.type,
@@ -605,6 +616,52 @@ export async function updateOrganization(input: {
     .single();
   throwIfError(error, "Failed to update organization");
   return mapOrganization(data as Record<string, unknown>);
+}
+
+export async function archiveOrganizationSafely(input: {
+  organizationId: string;
+  actorUserId: number;
+  actorName: string;
+  actorRank?: string | null;
+  actorRole: string;
+  reason: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  deviceType?: string | null;
+}): Promise<{ organizationId: string; accountsDisabled: number }> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "archive_organization_safely",
+    {
+      p_organization_id: input.organizationId,
+      p_actor_user_id: input.actorUserId,
+      p_actor_name: input.actorName,
+      p_actor_rank: input.actorRank ?? null,
+      p_actor_role: input.actorRole,
+      p_reason: input.reason,
+      p_ip_address: input.ipAddress ?? null,
+      p_user_agent: input.userAgent ?? null,
+      p_device_type: input.deviceType ?? "unknown",
+    }
+  );
+  throwIfError(error, "Failed to delete organization safely");
+  if (!data || typeof data !== "object") {
+    throw new Error("لم يُرجع إجراء حذف الجهة نتيجة صالحة");
+  }
+  const result = data as {
+    organizationId?: unknown;
+    accountsDisabled?: unknown;
+    deleted?: unknown;
+  };
+  if (
+    result.deleted !== true ||
+    result.organizationId !== input.organizationId
+  ) {
+    throw new Error("لم يكتمل حذف الجهة بأمان");
+  }
+  return {
+    organizationId: input.organizationId,
+    accountsDisabled: Number(result.accountsDisabled ?? 0),
+  };
 }
 
 export async function updateOrganizationAccount(input: {

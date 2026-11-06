@@ -105,6 +105,7 @@ export const organizations = pgTable(
     updatedAt: timestamp("updatedAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    deletedAt: timestamp("deletedAt", { withTimezone: true }),
   },
   table => [
     index("organizations_parent_idx").on(table.parentOrganizationId),
@@ -139,6 +140,7 @@ export const users = pgTable(
     loginMethod: varchar("loginMethod", { length: 64 }),
     isPlatformOwner: boolean("isPlatformOwner").default(false).notNull(),
     mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
     role: userRole("role").default("user").notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()

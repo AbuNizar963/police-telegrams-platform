@@ -15,6 +15,7 @@ import 'app_update_service.dart';
 import './features/admin/mobile_access_policy.dart';
 import 'mobile_pages.dart';
 import './features/admin/native_operations_page.dart';
+import './features/admin/native_owner_dashboard_page.dart';
 import './features/organizations/native_organization_management_page.dart';
 import './features/users/native_user_management_page.dart';
 import './features/platform_settings/platform_document_settings_page.dart';
@@ -1306,6 +1307,11 @@ class _DashboardPageState extends State<DashboardPage>
           _pushPage(DepartmentSettingsPage(api: widget.api));
         }
         break;
+      case 'owner_dashboard':
+        if (_isPlatformOwner) {
+          _pushPage(NativeOwnerDashboardPage(api: widget.api));
+        }
+        break;
       case 'platform_document_settings':
         if (_isPlatformOwner) {
           _pushPage(PlatformDocumentSettingsPage(api: widget.api));
@@ -2573,7 +2579,14 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                 ),
-                if (_isPlatformOwner)
+                if (_isPlatformOwner) ...[
+                  const PopupMenuItem(
+                    value: 'owner_dashboard',
+                    child: _AccountMenuItem(
+                      icon: Icons.dashboard_customize_outlined,
+                      title: 'لوحة قيادة المالك',
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'platform_document_settings',
                     child: _AccountMenuItem(
@@ -2581,6 +2594,7 @@ class _DashboardPageState extends State<DashboardPage>
                       title: 'إعدادات النظام والوثائق',
                     ),
                   ),
+                ],
                 const PopupMenuItem(
                   value: 'users',
                   child: _AccountMenuItem(
@@ -2744,6 +2758,16 @@ class _DashboardPageState extends State<DashboardPage>
                     );
                   },
                 ),
+                if (_isPlatformOwner)
+                  ListTile(
+                    leading: const Icon(LucideIcons.layoutDashboard),
+                    title: const Text('لوحة قيادة المالك'),
+                    subtitle: const Text('مؤشرات المنصة وسجل العمليات'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pushPage(NativeOwnerDashboardPage(api: widget.api));
+                    },
+                  ),
                 if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),

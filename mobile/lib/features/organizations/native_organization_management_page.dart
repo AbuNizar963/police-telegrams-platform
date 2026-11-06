@@ -169,6 +169,71 @@ class _NativeOrganizationManagementPageState
     });
   }
 
+  Future<void> _purgeOrganization(
+    Map<String, dynamic> organization,
+  ) async {
+    if (!_isOwner && !widget.isPlatformOwner) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف النهائي'),
+          content: Text(
+            'سيُحذف سجل «${_text(organization['name'])}» نهائياً فقط إذا لم توجد أي روابط تاريخية. '
+            'إذا وُجدت برقيات أو حسابات أو إشعارات أو مرفقات مرتبطة فسيُمنع الحذف دون المساس بها.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('تأكيد الحذف النهائي'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _run(() async {
+      final result = await widget.api.call(
+        'organizations.purge',
+        mutation: true,
+        input: {
+          'id': organization['id'],
+          'reason': 'حذف نهائي بطلب مالك النظام بعد التأكيد',
+        },
+      );
+      if (result is! Map || result['deleted'] != true) {
+        final blockers = result is Map && result['blockers'] is List
+            ? (result['blockers'] as List)
+                .whereType<Map>()
+                .map((item) =>
+                    '${_text(item['table'])} (${_text(item['count'], 'غير محدد')})')
+                .join('، ')
+            : '';
+        final reason = result is Map
+            ? _text(result['reason'], 'توجد ارتباطات تمنع الحذف')
+            : 'تعذر التحقق من الارتباطات';
+        throw Exception(
+          [reason, if (blockers.isNotEmpty) 'الارتباطات: $blockers']
+              .join(' — '),
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم الحذف النهائي مع حفظ سجل التدقيق')),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _organizations.where((organization) {
@@ -325,14 +390,40 @@ class _NativeOrganizationManagementPageState
                                 ),
                               ),
                               isThreeLine: true,
-                              trailing: widget.canEditStructure && !archived
-                                  ? IconButton(
-                                      tooltip: 'تعديل الجهة',
-                                      onPressed: _loading || _saving
-                                          ? null
-                                          : () =>
-                                                _editOrganization(organization),
-                                      icon: const Icon(Icons.edit_outlined),
+                              trailing:
+                                  (widget.canEditStructure && !archived) ||
+                                      ((_isOwner || widget.isPlatformOwner) &&
+                                          archived)
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (widget.canEditStructure && !archived)
+                                          IconButton(
+                                            tooltip: 'تعديل الجهة',
+                                            onPressed: _loading || _saving
+                                                ? null
+                                                : () => _editOrganization(
+                                                    organization,
+                                                  ),
+                                            icon: const Icon(Icons.edit_outlined),
+                                          ),
+                                        if ((_isOwner || widget.isPlatformOwner) &&
+                                            archived)
+                                          IconButton(
+                                            tooltip: 'حذف نهائي بعد فحص الارتباطات',
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            onPressed: _loading || _saving
+                                                ? null
+                                                : () => _purgeOrganization(
+                                                    organization,
+                                                  ),
+                                            icon: const Icon(
+                                              Icons.delete_forever_outlined,
+                                            ),
+                                          ),
+                                      ],
                                     )
                                   : null,
                             ),

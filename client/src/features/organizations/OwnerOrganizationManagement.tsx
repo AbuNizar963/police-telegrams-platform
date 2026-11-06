@@ -141,7 +141,7 @@ export default function OwnerOrganizationManagement() {
     "all" | OrganizationType
   >("all");
   const [organizationStatusFilter, setOrganizationStatusFilter] = useState<
-    "all" | "active" | "inactive"
+    "all" | "active" | "inactive" | "deleted"
   >("all");
   const [online, setOnline] = useState(
     () => typeof navigator === "undefined" || navigator.onLine
@@ -163,9 +163,10 @@ export default function OwnerOrganizationManagement() {
     accountRole: user?.role,
     isPlatformOwner,
   });
-  const organizations = trpc.organizations.all.useQuery(undefined, {
-    enabled: open,
-  });
+  const organizations = trpc.organizations.all.useQuery(
+    { includeDeleted: organizationStatusFilter === "deleted" },
+    { enabled: open }
+  );
   const accounts = trpc.organizations.accounts.useQuery(
     {
       organizationId:
@@ -221,9 +222,9 @@ export default function OwnerOrganizationManagement() {
         utils.organizations.accounts.invalidate(),
       ]);
       setSelectedOrganizationId(null);
-      toast.success("تم حذف الجهة وتعطيل حساباتها مع حفظ سجل التدقيق");
+      toast.success("تم إخفاء الجهة وتعطيل حساباتها مع حفظ السجل التاريخي");
     },
-    onError: error => toast.error(error.message || "تعذر حذف الجهة"),
+    onError: error => toast.error(error.message || "تعذر إخفاء الجهة"),
   });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
@@ -589,10 +590,14 @@ export default function OwnerOrganizationManagement() {
       const matchesType =
         organizationTypeFilter === "all" ||
         item.type === organizationTypeFilter;
+      const isDeleted = Boolean(item.deletedAt);
       const matchesStatus =
-        organizationStatusFilter === "all" ||
-        (organizationStatusFilter === "active" && item.isActive) ||
-        (organizationStatusFilter === "inactive" && !item.isActive);
+        organizationStatusFilter === "deleted"
+          ? isDeleted
+          : !isDeleted &&
+            (organizationStatusFilter === "all" ||
+              (organizationStatusFilter === "active" && item.isActive) ||
+              (organizationStatusFilter === "inactive" && !item.isActive));
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [
@@ -1507,6 +1512,9 @@ export default function OwnerOrganizationManagement() {
                   <option value="all">كل الحالات</option>
                   <option value="active">مفعلة فقط</option>
                   <option value="inactive">موقوفة فقط</option>
+                  {isPlatformOwner && (
+                    <option value="deleted">محذوفة (سجل محفوظ)</option>
+                  )}
                 </select>
               </label>
             </div>
@@ -1641,7 +1649,7 @@ export default function OwnerOrganizationManagement() {
                         disabled={deleteOrganization.isPending}
                         onClick={() => {
                           const confirmed = window.confirm(
-                            `هل تريد حذف الجهة «${selectedOrganization.name}»؟ سيتم تعطيل حساباتها وإبطال جلساتها، مع الاحتفاظ بسجل التدقيق والسجلات التاريخية. لا يمكن إتمام الحذف إذا كانت للجهة جهات فرعية أو كانت وجهة برقيات مفعلة.`
+                            `هل تريد إخفاء الجهة «${selectedOrganization.name}»؟ سيتم تعطيل حساباتها وإبطال جلساتها، مع الاحتفاظ بسجل التدقيق والسجلات التاريخية. لا يمكن إتمام الحذف إذا كانت للجهة جهات فرعية أو كانت وجهة برقيات مفعلة.`
                           );
                           if (confirmed) {
                             deleteOrganization.mutate({
@@ -1654,7 +1662,7 @@ export default function OwnerOrganizationManagement() {
                         <Trash2 className="ml-1 h-4 w-4" />
                         {deleteOrganization.isPending
                           ? "جارٍ الحذف..."
-                          : "حذف الجهة"}
+                          : "إخفاء الجهة"}
                       </Button>
                     )}
                 </div>

@@ -956,13 +956,23 @@ export const appRouter = router({
       listRoutingDirectory(ctx.user.id)
     ),
 
-    all: organizationManagerProcedure.query(async ({ ctx }) => {
-      const allowedIds = new Set(await getManagedOrganizationIds(ctx.user));
-      const organizations = await listAllOrganizations();
-      return organizations.filter(organization =>
-        allowedIds.has(organization.id)
-      );
-    }),
+    all: organizationManagerProcedure
+      .input(z.object({ includeDeleted: z.boolean().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (input?.includeDeleted && !isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "عرض سجل الجهات المحذوفة متاح لمالك النظام فقط",
+          });
+        }
+        const allowedIds = new Set(await getManagedOrganizationIds(ctx.user));
+        const organizations = await listAllOrganizations();
+        return organizations.filter(
+          organization =>
+            allowedIds.has(organization.id) &&
+            (input?.includeDeleted === true || !organization.deletedAt)
+        );
+      }),
     accounts: organizationManagerProcedure
       .input(z.object({ organizationId: z.string().uuid() }))
       .query(async ({ ctx, input }) => {

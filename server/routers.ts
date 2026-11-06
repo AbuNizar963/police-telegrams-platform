@@ -85,6 +85,7 @@ import {
 import {
   addOrganizationMembership,
   archiveOrganizationSafely,
+  purgeOrganizationPermanently,
   approveTelegramRoute,
   createOrganization,
   decideTelegramRouteAsReceiver,
@@ -1345,6 +1346,48 @@ export const appRouter = router({
           reason: input.reason,
           ...getRequestAuditContext(ctx.req),
         });
+      }),
+
+    purge: adminProcedure
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          reason: z.string().trim().min(8).max(2000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "الحذف النهائي للجهات متاح لمالك النظام فقط",
+          });
+        }
+        const organization = await getOrganizationByIdIncludingInactive(input.id);
+        if (!organization) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "الجهة غير موجودة",
+          });
+        }
+        if (!organization.deletedAt) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "يجب إخفاء الجهة أولاً قبل الحذف النهائي",
+          });
+        }
+        const result = await purgeOrganizationPermanently({
+          organizationId: input.id,
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
+          actorRank: ctx.user.rank,
+          actorRole: ctx.user.role,
+          reason: input.reason,
+          ...getRequestAuditContext(ctx.req),
+        });
+        if (!result.deleted) {
+          return result;
+        }
+        return result;
       }),
 
     ensureAccounts: adminProcedure.mutation(({ ctx }) =>

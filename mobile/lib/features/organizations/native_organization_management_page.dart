@@ -35,6 +35,7 @@ class _NativeOrganizationManagementPageState
   bool _loading = true;
   bool _saving = false;
   bool _isOwner = false;
+  bool _showArchived = false;
   String? _error;
   String _search = '';
   List<Map<String, dynamic>> _organizations = [];
@@ -65,7 +66,10 @@ class _NativeOrganizationManagementPageState
     });
     try {
       final results = await Future.wait([
-        widget.api.call('organizations.all'),
+        widget.api.call(
+          'organizations.all',
+          input: _showArchived ? {'includeDeleted': true} : null,
+        ),
         widget.api.call('organizations.context'),
       ]);
       if (!mounted) return;
@@ -168,6 +172,8 @@ class _NativeOrganizationManagementPageState
   @override
   Widget build(BuildContext context) {
     final filtered = _organizations.where((organization) {
+      final isArchived = organization['deletedAt'] != null;
+      if (_showArchived != isArchived) return false;
       final query = _search.trim().toLowerCase();
       if (query.isEmpty) return true;
       return _text(organization['name'], '').toLowerCase().contains(query) ||
@@ -219,6 +225,24 @@ class _NativeOrganizationManagementPageState
                 ),
               ),
             ),
+            if (_isOwner || widget.isPlatformOwner)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('عرض الجهات المحذوفة'),
+                  subtitle: const Text(
+                    'إظهار السجلات المحفوظة بدل الجهات النشطة والمعطلة.',
+                  ),
+                  value: _showArchived,
+                  onChanged: _loading || _saving
+                      ? null
+                      : (value) {
+                          setState(() => _showArchived = value);
+                          load();
+                        },
+                ),
+              ),
             if (!widget.canEditStructure)
               Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -270,7 +294,9 @@ class _NativeOrganizationManagementPageState
                             organization['type'],
                             'department',
                           );
-                          final active = organization['isActive'] != false;
+                          final archived = organization['deletedAt'] != null;
+                          final active = !archived &&
+                              organization['isActive'] != false;
                           return Card(
                             child: ListTile(
                               leading: CircleAvatar(
@@ -295,11 +321,11 @@ class _NativeOrganizationManagementPageState
                                 child: Text(
                                   '${_text(organization['code'])} • '
                                   '${_organizationTypes[type] ?? type}\n'
-                                  '${active ? 'نشطة' : 'معطلة'}',
+                                  '${archived ? 'محذوفة — السجل محفوظ' : active ? 'نشطة' : 'معطلة'}',
                                 ),
                               ),
                               isThreeLine: true,
-                              trailing: widget.canEditStructure
+                              trailing: widget.canEditStructure && !archived
                                   ? IconButton(
                                       tooltip: 'تعديل الجهة',
                                       onPressed: _loading || _saving

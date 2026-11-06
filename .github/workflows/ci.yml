@@ -38,8 +38,11 @@ jobs:
             exit 1
           fi
 
-      - name: Check formatting
-        run: pnpm lint
+      - name: Diagnose and check formatting
+        run: |
+          pnpm exec prettier --write client/src/features/users/OwnerUserManagement.tsx server/features/users/userManagementRouter.ts server/routers.ts
+          git diff -- client/src/features/users/OwnerUserManagement.tsx server/features/users/userManagementRouter.ts server/routers.ts
+          pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

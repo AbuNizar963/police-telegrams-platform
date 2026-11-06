@@ -174,7 +174,8 @@ export async function getAuthenticatedUserFromRequest(
     if (!Number.isInteger(userId) || userId < 1) return null;
 
     const user = await db.getUserById(userId);
-    if (!user || user.loginMethod === "disabled") return null;
+    if (!user || user.isActive === false || user.loginMethod === "disabled")
+      return null;
     if (
       typeof payload.authUserId !== "string" ||
       payload.authUserId !== user.authUserId
@@ -191,7 +192,12 @@ export async function authenticateLocalUser(
   password: string
 ): Promise<PublicUser | null> {
   const user = await db.getUserByUsername(username);
-  if (!user?.passwordHash || user.loginMethod === "disabled") return null;
+  if (
+    !user?.passwordHash ||
+    user.isActive === false ||
+    user.loginMethod === "disabled"
+  )
+    return null;
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;

@@ -84,6 +84,7 @@ import {
 } from "./db";
 import {
   addOrganizationMembership,
+  archiveOrganizationSafely,
   approveTelegramRoute,
   createOrganization,
   decideTelegramRouteAsReceiver,
@@ -1290,6 +1291,50 @@ export const appRouter = router({
             })
           : null;
         return { organization, account };
+      }),
+    delete: adminProcedure
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          reason: z
+            .string()
+            .trim()
+            .min(8)
+            .max(2000)
+            .default("حذف الجهة بطلب مالك النظام"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "حذف الجهات متاح لمالك النظام فقط",
+          });
+        }
+        const organization = await getOrganizationByIdIncludingInactive(
+          input.id
+        );
+        if (!organization) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "الجهة غير موجودة",
+          });
+        }
+        if (organization.deletedAt) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "الجهة محذوفة مسبقًا",
+          });
+        }
+        return archiveOrganizationSafely({
+          organizationId: input.id,
+          actorUserId: ctx.user.id,
+          actorName: ctx.user.name ?? ctx.user.username ?? "مالك النظام",
+          actorRank: ctx.user.rank,
+          actorRole: ctx.user.role,
+          reason: input.reason,
+          ...getRequestAuditContext(ctx.req),
+        });
       }),
 
     ensureAccounts: adminProcedure.mutation(({ ctx }) =>

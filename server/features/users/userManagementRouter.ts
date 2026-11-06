@@ -80,6 +80,7 @@ export const userManagementRouter = router({
           "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn",
           { count: "exact" }
         )
+        .eq("isActive", true)
         .in("organizationId", scopedOrganizationIds)
         .order("createdAt", { ascending: false })
         .range(

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { renderTelegramBodyHtml } from "./telegramBodyHtml";
 
 describe("official telegram body HTML", () => {
-  it("isolates slash-separated Arabic dates without changing their written order", () => {
+  it("exports Arabic day/month/year dates as year/month/day", () => {
     expect(
       renderTelegramBodyHtml("وردت بتاريخ ٢٥/٤/٢٠٢٦ وتمت المراجعة", "arabic")
     ).toBe(
-      'وردت بتاريخ <bdi class="telegram-date-token" dir="ltr">٢٥/٤/٢٠٢٦</bdi> وتمت المراجعة'
+      'وردت بتاريخ <bdi class="telegram-date-token" dir="ltr">٢٠٢٦/٤/٢٥</bdi> وتمت المراجعة'
     );
   });
 
@@ -14,7 +14,7 @@ describe("official telegram body HTML", () => {
     expect(
       renderTelegramBodyHtml("<script>تاريخ 25/4/2026</script>", "arabic")
     ).toBe(
-      '&lt;script&gt;تاريخ <bdi class="telegram-date-token" dir="ltr">٢٥/٤/٢٠٢٦</bdi>&lt;/script&gt;'
+      '&lt;script&gt;تاريخ <bdi class="telegram-date-token" dir="ltr">٢٠٢٦/٤/٢٥</bdi>&lt;/script&gt;'
     );
   });
 

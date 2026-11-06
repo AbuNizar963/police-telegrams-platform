@@ -257,7 +257,7 @@ class _NativeOrganizationManagementPageState
         final blockers = result is Map && result['blockers'] is List
             ? (result['blockers'] as List)
                 .whereType<Map>()
-                  .map(
+                    .map(
                     (item) =>
                         '${_text(item['table'])} (${_text(item['count'], 'غير محدد')})',
                   )
@@ -267,8 +267,10 @@ class _NativeOrganizationManagementPageState
             ? _text(result['reason'], 'توجد ارتباطات تمنع الحذف')
             : 'تعذر التحقق من الارتباطات';
         throw Exception(
-          [reason, if (blockers.isNotEmpty) 'الارتباطات: $blockers']
-              .join(' — '),
+          [
+            reason,
+            if (blockers.isNotEmpty) 'الارتباطات: $blockers',
+          ].join(' — '),
         );
       }
       if (mounted) {
@@ -470,7 +472,8 @@ class _NativeOrganizationManagementPageState
                                             organization['type'] != 'central' &&
                                           organization['parentOrganizationId'] != null)
                                           IconButton(
-                                            tooltip: 'إخفاء الجهة مع حفظ السجلات',
+                                            tooltip:
+                                                'إخفاء الجهة مع حفظ السجلات',
                                             onPressed: _loading || _saving
                                                 ? null
                                                 : () => _archiveOrganization(
@@ -480,10 +483,12 @@ class _NativeOrganizationManagementPageState
                                               Icons.archive_outlined,
                                             ),
                                           ),
-                                        if ((_isOwner || widget.isPlatformOwner) &&
+                                        if ((_isOwner ||
+                                                widget.isPlatformOwner) &&
                                             archived)
                                           IconButton(
-                                            tooltip: 'حذف نهائي بعد فحص الارتباطات',
+                                            tooltip:
+                                                'حذف نهائي بعد فحص الارتباطات',
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .error,

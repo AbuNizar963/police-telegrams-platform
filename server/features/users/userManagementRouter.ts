@@ -374,6 +374,12 @@ export const userManagementRouter = router({
         });
       if (!target.data)
         throw new TRPCError({ code: "NOT_FOUND", message: "الحساب غير موجود" });
+      if (target.data.isActive === false) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "لا يمكن إعادة تفعيل حساب تابع لجهة مؤرشفة؛ استخدم الحذف الآمن إذا لم توجد ارتباطات.",
+        });
+      }
       if (typeof target.data.organizationId === "string") {
         await assertCanManageOrganization(ctx.user, target.data.organizationId);
       }
@@ -481,7 +487,7 @@ export const userManagementRouter = router({
       const client = getSupabaseAdmin();
       const target = await client
         .from("users")
-        .select("id, role, username, loginMethod, organizationId")
+        .select("id, role, username, loginMethod, organizationId, isActive")
         .eq("id", input.id)
         .maybeSingle();
       if (target.error)

@@ -474,6 +474,139 @@ export const userManagementRouter = router({
       return data;
     }),
 
+  transfer: organizationManagerProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        targetOrganizationId: z.string().uuid(),
+        role: z.enum([
+          "regional_admin",
+          "organization_supervisor",
+          "organization_admin",
+          "dispatcher",
+          "reviewer",
+          "reader",
+          "auditor",
+        ]),
+        reason: z.string().trim().min(8).max(2000),
+        confirmPassword: z.string().min(1).max(256),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireCurrentPassword(ctx.user.id, input.confirmPassword);
+      if (input.id === ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا يمكنك نقل حسابك الحالي من شاشة إدارة الموظفين",
+        });
+      }
+
+      const client = getSupabaseAdmin();
+      const target = await client
+        .from("users")
+        .select(
+          "id, role, username, organizationId, isActive, loginMethod, isPlatformOwner"
+        )
+        .eq("id", input.id)
+        .maybeSingle();
+      if (target.error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "تعذر تحميل حساب الموظف المطلوب نقله",
+        });
+      }
+      if (!target.data) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "حساب الموظف غير موجود",
+        });
+      }
+      if (
+        target.data.role === "admin" ||
+        target.data.isPlatformOwner === true
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "لا يمكن نقل حساب مالك النظام من إدارة الموظفين",
+        });
+      }
+      if (
+        target.data.isActive !== true ||
+        target.data.loginMethod === "disabled"
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "يجب أن يكون حساب الموظف نشطاً قبل نقله",
+        });
+      }
+      if (typeof target.data.organizationId !== "string") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "حساب الموظف غير مرتبط بجهة حالية",
+        });
+      }
+
+      await assertCanManageOrganization(ctx.user, target.data.organizationId);
+      const destination = await getActiveOrganizationForAccount(
+        input.targetOrganizationId
+      );
+      await assertCanManageOrganization(ctx.user, destination.id);
+      if (destination.id === target.data.organizationId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "الجهة المختارة هي جهة الموظف الحالية بالفعل",
+        });
+      }
+
+      if (
+        [
+          "regional_admin",
+          "organization_supervisor",
+          "organization_admin",
+        ].includes(input.role) &&
+        !isPlatformOwner(ctx.user) &&
+        ctx.user.role !== "admin"
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "تعيين الأدوار الإدارية العليا متاح لمالك النظام فقط",
+        });
+      }
+
+      const auditContext = getRequestAuditContext(ctx.req);
+      const { data, error } = await client.rpc(
+        "transfer_employee_to_organization",
+        {
+          p_user_id: input.id,
+          p_target_organization_id: destination.id,
+          p_target_role: input.role,
+          p_actor_user_id: ctx.user.id,
+          p_actor_name: ctx.user.name ?? ctx.user.username ?? "مسؤول النظام",
+          p_actor_rank: ctx.user.rank ?? null,
+          p_actor_role: ctx.user.role,
+          p_reason: input.reason,
+          p_ip_address: auditContext.ipAddress ?? null,
+          p_user_agent: auditContext.userAgent ?? null,
+          p_device_type: auditContext.deviceType ?? "unknown",
+        }
+      );
+      if (error) {
+        console.error("[userManagement.transfer] Transfer failed", error);
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "تعذر إتمام النقل بأمان؛ لم يتم تغيير الجهة أو الصلاحيات. تحقق من حالة الجهتين وعضوية الموظف ثم أعد المحاولة.",
+        });
+      }
+      if (!data || typeof data !== "object" || data.success !== true) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "لم يؤكد النظام اكتمال نقل الموظف؛ لم نعتبر العملية ناجحة.",
+        });
+      }
+      return data;
+    }),
+
   enable: organizationManagerProcedure
     .input(
       z.object({

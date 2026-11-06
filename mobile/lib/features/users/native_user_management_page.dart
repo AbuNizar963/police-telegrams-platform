@@ -85,7 +85,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
         ),
         widget.api.call(
           'organizations.all',
-          input: _showInactive ? {'includeDeleted': true} : null,
+          input: _showInactive ? {'includeDeleted': true} : {},
         ),
         widget.api.call('organizations.context'),
       ]);

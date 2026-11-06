@@ -168,10 +168,10 @@ class _NativeOrganizationManagementPageState
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _organizations.where((item) => item['isActive'] != false).length;
+    final activeCount = _organizations.where((item) => item['deletedAt'] == null && item['isActive'] != false).length;
     final inactiveCount = _organizations.length - activeCount;
     final filtered = _organizations.where((organization) {
-      final active = organization['isActive'] != false;
+      final active = organization['deletedAt'] == null && organization['isActive'] != false;
       if (_statusFilter == 'active' && !active) return false;
       if (_statusFilter == 'inactive' && active) return false;
       final query = _search.trim().toLowerCase();
@@ -245,7 +245,7 @@ class _NativeOrganizationManagementPageState
                 children: [
                   ChoiceChip(label: const Text('الكل'), selected: _statusFilter == 'all', onSelected: (_) => setState(() => _statusFilter = 'all')),
                   ChoiceChip(label: const Text('المفعّلة'), selected: _statusFilter == 'active', onSelected: (_) => setState(() => _statusFilter = 'active')),
-                  ChoiceChip(label: const Text('الموقوفة'), selected: _statusFilter == 'inactive', onSelected: (_) => setState(() => _statusFilter = 'inactive')),
+                  ChoiceChip(label: const Text('غير النشطة'), selected: _statusFilter == 'inactive', onSelected: (_) => setState(() => _statusFilter = 'inactive')),
                 ],
               ),
             ),
@@ -325,7 +325,7 @@ class _NativeOrganizationManagementPageState
                                 child: Text(
                                   '${_text(organization['code'])} • '
                                   '${_organizationTypes[type] ?? type}\n'
-                                  '${active ? 'نشطة' : 'معطلة'}',
+                                  '${organization['deletedAt'] != null ? 'مؤرشفة' : active ? 'نشطة' : 'معطلة'}',
                                 ),
                               ),
                               isThreeLine: true,

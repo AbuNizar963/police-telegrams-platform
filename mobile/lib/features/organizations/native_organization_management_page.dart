@@ -169,9 +169,7 @@ class _NativeOrganizationManagementPageState
     });
   }
 
-  Future<void> _archiveOrganization(
-    Map<String, dynamic> organization,
-  ) async {
+  Future<void> _archiveOrganization(Map<String, dynamic> organization) async {
     if (!_isOwner && !widget.isPlatformOwner) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -216,9 +214,7 @@ class _NativeOrganizationManagementPageState
     });
   }
 
-  Future<void> _purgeOrganization(
-    Map<String, dynamic> organization,
-  ) async {
+  Future<void> _purgeOrganization(Map<String, dynamic> organization) async {
     if (!_isOwner && !widget.isPlatformOwner) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -261,9 +257,11 @@ class _NativeOrganizationManagementPageState
         final blockers = result is Map && result['blockers'] is List
             ? (result['blockers'] as List)
                 .whereType<Map>()
-                .map((item) =>
-                    '${_text(item['table'])} (${_text(item['count'], 'غير محدد')})')
-                .join('، ')
+                  .map(
+                    (item) =>
+                        '${_text(item['table'])} (${_text(item['count'], 'غير محدد')})',
+                  )
+                  .join('، ')
             : '';
         final reason = result is Map
             ? _text(result['reason'], 'توجد ارتباطات تمنع الحذف')
@@ -407,8 +405,8 @@ class _NativeOrganizationManagementPageState
                             'department',
                           );
                           final archived = organization['deletedAt'] != null;
-                          final active = !archived &&
-                              organization['isActive'] != false;
+                          final active =
+                              !archived && organization['isActive'] != false;
                           return Card(
                             child: ListTile(
                               leading: CircleAvatar(
@@ -433,7 +431,11 @@ class _NativeOrganizationManagementPageState
                                 child: Text(
                                   '${_text(organization['code'])} • '
                                   '${_organizationTypes[type] ?? type}\n'
-                                  '${archived ? 'محذوفة — السجل محفوظ' : active ? 'نشطة' : 'معطلة'}',
+                                  '${archived
+                                      ? 'محذوفة — السجل محفوظ'
+                                      : active
+                                      ? 'نشطة'
+                                      : 'معطلة'}',
                                 ),
                               ),
                               isThreeLine: true,
@@ -442,13 +444,15 @@ class _NativeOrganizationManagementPageState
                                       ((_isOwner || widget.isPlatformOwner) &&
                                           !archived &&
                                           organization['type'] != 'central' &&
-                                          organization['parentOrganizationId'] != null) ||
+                                          organization['parentOrganizationId'] !=
+                                              null) ||
                                       ((_isOwner || widget.isPlatformOwner) &&
                                           archived)
                                   ? Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        if (widget.canEditStructure && !archived)
+                                        if (widget.canEditStructure &&
+                                            !archived)
                                           IconButton(
                                             tooltip: 'تعديل الجهة',
                                             onPressed: _loading || _saving
@@ -456,9 +460,12 @@ class _NativeOrganizationManagementPageState
                                                 : () => _editOrganization(
                                                     organization,
                                                   ),
-                                            icon: const Icon(Icons.edit_outlined),
+                                            icon: const Icon(
+                                              Icons.edit_outlined,
+                                            ),
                                           ),
-                                        if ((_isOwner || widget.isPlatformOwner) &&
+                                        if ((_isOwner ||
+                                                widget.isPlatformOwner) &&
                                             !archived &&
                                             organization['type'] != 'central' &&
                                           organization['parentOrganizationId'] != null)

@@ -37,6 +37,7 @@ class _NativeOrganizationManagementPageState
   bool _isOwner = false;
   String? _error;
   String _search = '';
+  String _statusFilter = 'all';
   List<Map<String, dynamic>> _organizations = [];
 
   @override
@@ -167,7 +168,12 @@ class _NativeOrganizationManagementPageState
 
   @override
   Widget build(BuildContext context) {
+    final activeCount = _organizations.where((item) => item['isActive'] != false).length;
+    final inactiveCount = _organizations.length - activeCount;
     final filtered = _organizations.where((organization) {
+      final active = organization['isActive'] != false;
+      if (_statusFilter == 'active' && !active) return false;
+      if (_statusFilter == 'inactive' && active) return false;
       final query = _search.trim().toLowerCase();
       if (query.isEmpty) return true;
       return _text(organization['name'], '').toLowerCase().contains(query) ||
@@ -217,6 +223,30 @@ class _NativeOrganizationManagementPageState
                   ),
                   isDense: true,
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(child: _OrganizationSummaryCard(label: 'إجمالي الجهات', value: _organizations.length, icon: Icons.account_tree_outlined)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _OrganizationSummaryCard(label: 'مفعّلة', value: activeCount, icon: Icons.check_circle_outline)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _OrganizationSummaryCard(label: 'موقوفة', value: inactiveCount, icon: Icons.pause_circle_outline)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  ChoiceChip(label: const Text('الكل'), selected: _statusFilter == 'all', onSelected: (_) => setState(() => _statusFilter = 'all')),
+                  ChoiceChip(label: const Text('المفعّلة'), selected: _statusFilter == 'active', onSelected: (_) => setState(() => _statusFilter = 'active')),
+                  ChoiceChip(label: const Text('الموقوفة'), selected: _statusFilter == 'inactive', onSelected: (_) => setState(() => _statusFilter = 'inactive')),
+                ],
               ),
             ),
             if (!widget.canEditStructure)
@@ -316,6 +346,35 @@ class _NativeOrganizationManagementPageState
                     ),
             ),
             if (_saving) const LinearProgressIndicator(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrganizationSummaryCard extends StatelessWidget {
+  const _OrganizationSummaryCard({required this.label, required this.value, required this.icon});
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: colors.primary),
+            const SizedBox(height: 8),
+            Text('$value', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
           ],
         ),
       ),

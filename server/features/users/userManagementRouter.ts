@@ -609,8 +609,9 @@ export const userManagementRouter = router({
       } | null;
       if (result?.deleted !== true) {
         const blockerSummary = (result?.blockers ?? [])
-          .map(item =>
-            `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
+          .map(
+            item =>
+              `${item.table ?? "جدول غير معروف"} (${item.count ?? "غير محدد"})`
           )
           .join("، ");
         throw new TRPCError({

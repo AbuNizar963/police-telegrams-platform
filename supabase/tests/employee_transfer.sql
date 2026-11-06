@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(10);
+SELECT plan(11);
 
 SELECT has_function(
   'public',
@@ -198,8 +198,8 @@ SELECT ok(
       AND audit."actorUserId" = context.actor_user_id
       AND audit."organizationId" = context.target_organization_id
       AND audit.reason = 'قرار إداري تجريبي لنقل الموظف'
-      AND audit."beforeState" LIKE '%source%'
-      AND audit."afterState" LIKE '%target%'
+      AND audit."beforeState" LIKE '%' || context.source_organization_id::text || '%'
+      AND audit."afterState" LIKE '%' || context.target_organization_id::text || '%'
       AND audit."entryHash" IS NOT NULL
   ),
   'transfer is recorded in the immutable audit chain with before/after snapshots'

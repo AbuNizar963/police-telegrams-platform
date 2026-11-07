@@ -301,7 +301,10 @@ export default function HeaderActions() {
             aria-label="اتباع مظهر الجهاز"
           >
             <Monitor className="h-4 w-4" />
-            <span>تلقائي حسب الجهاز{preference === "system" ? " · مفعّل" : ""}</span>
+            <span>
+              تلقائي حسب الجهاز
+              {preference === "system" ? " · مفعّل" : ""}
+            </span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => setThemePreference("light")}
@@ -309,7 +312,10 @@ export default function HeaderActions() {
             aria-label="تفعيل الوضع الفاتح"
           >
             <Sun className="h-4 w-4" />
-            <span>الوضع الفاتح{preference === "light" ? " · مفعّل" : ""}</span>
+            <span>
+              الوضع الفاتح
+              {preference === "light" ? " · مفعّل" : ""}
+            </span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => setThemePreference("dark")}
@@ -317,7 +323,10 @@ export default function HeaderActions() {
             aria-label="تفعيل الوضع الداكن"
           >
             <Moon className="h-4 w-4" />
-            <span>الوضع الداكن{preference === "dark" ? " · مفعّل" : ""}</span>
+            <span>
+              الوضع الداكن
+              {preference === "dark" ? " · مفعّل" : ""}
+            </span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => void togglePushNotifications()}

@@ -40,8 +40,15 @@ const menuItems = [
   {
     key: "dashboard",
     icon: LayoutDashboard,
-    label: "لوحة المتابعة",
+    label: "لوحة التحكم",
     path: "/",
+  },
+  {
+    key: "owner-dashboard",
+    icon: Activity,
+    label: "لوحة قيادة المالك",
+    path: "/owner-dashboard",
+    ownerOnly: true,
   },
   {
     key: "audit-log",
@@ -53,19 +60,19 @@ const menuItems = [
   {
     key: "create-telegram",
     icon: Plus,
-    label: "البرقيات · إنشاء",
+    label: "إنشاء برقية",
     action: "open-telegram-composer",
   },
   {
     key: "telegram-excel-tools",
     icon: FileSpreadsheet,
-    label: "التقارير والتصدير",
+    label: "استيراد وتصدير السجل",
     action: "open-telegram-excel-tools",
   },
   {
     key: "accounts",
     icon: Users,
-    label: "الحسابات والصلاحيات",
+    label: "إدارة المستخدمين",
     action: "open-owner-user-management",
     adminOnly: true,
   },
@@ -79,20 +86,20 @@ const menuItems = [
   {
     key: "locations",
     icon: MapPinned,
-    label: "مركز العمليات والمواقع",
+    label: "خريطة البلاغات والمواقع الجغرافية",
     tab: "locations",
   },
-  { key: "units", icon: Users, label: "الوحدات والإحالات", tab: "units" },
+  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
   {
     key: "resources",
     icon: Activity,
-    label: "متابعة توزيع العمل",
+    label: "إدارة الموارد",
     tab: "resources",
   },
   {
     key: "archive",
     icon: Archive,
-    label: "أرشيف البرقيات",
+    label: "الأرشيف والسجلات المغلقة",
     tab: "archive",
   },
 ];
@@ -386,6 +393,7 @@ function DashboardLayoutContent({
     enabled: Boolean(user),
     staleTime: 30_000,
   });
+  const isPlatformOwnerAccount = organizationContext.data?.isOwner === true;
   const canManageUsers =
     user?.role === "admin" ||
     [
@@ -493,6 +501,7 @@ function DashboardLayoutContent({
                 .filter(
                   item =>
                     (!item.adminOnly || canManageUsers) &&
+                    (!item.ownerOnly || isPlatformOwnerAccount) &&
                     (!item.auditOnly || canViewAuditLogs)
                 )
                 .map(item => {
@@ -541,7 +550,7 @@ function DashboardLayoutContent({
         {!isMobile ? (
           <div
             dir="rtl"
-            className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+            className="flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur supports-[backdrop-filter]:backdrop-blur"
           >
             <div className="flex items-center gap-3">
               <SidebarTrigger
@@ -581,7 +590,7 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
+          className="min-w-0 flex-1 bg-background p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
         >
           {children}
         </main>

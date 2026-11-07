@@ -59,6 +59,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { showLocalTelegramNotification } from "@/features/notifications/notifications";
 import {
   getTelegramDisplayNumber,
@@ -1548,10 +1549,7 @@ export default function Home() {
         <DepartmentSettingsModal
           settings={settings.data}
           organizationName={organizationContext.data?.organizationName}
-          isOwner={
-            organizationContext.data?.isOwner === true ||
-            me.data?.isPlatformOwner === true
-          }
+          isOwner={organizationContext.data?.isOwner === true}
           activeOrganizationId={organizationContext.data?.organizationId}
           organizations={workplaceOrganizations.data ?? []}
           onWorkplaceChanged={clearWorkplaceSensitiveState}
@@ -5710,6 +5708,7 @@ function DepartmentSettingsModal({
   onWorkplaceChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const [selectedWorkplaceId, setSelectedWorkplaceId] = useState(
     activeOrganizationId ?? ""
   );
@@ -5876,6 +5875,24 @@ function DepartmentSettingsModal({
                 emptyMessage="لا توجد جهات عمل مفعّلة حاليًا."
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full justify-between rounded-xl border-[#b49a55]/40 bg-white/70 text-right hover:bg-white dark:bg-black/10 dark:hover:bg-black/20"
+              onClick={() => {
+                setOpen(false);
+                setLocation("/owner-dashboard");
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <Activity
+                  className="h-4 w-4 text-[#9b7c3d]"
+                  aria-hidden="true"
+                />
+                لوحة قيادة المنصة · جميع الجهات
+              </span>
+              <span className="text-xs text-muted-foreground">عرض شامل</span>
+            </Button>
             <p className="mt-2 text-[11px] font-normal text-muted-foreground">
               يحدد هذا الاختيار الجهة المستخدمة في إعدادات العمل والترقيم
               والبرقيات الجديدة، مع بقاء صلاحية المالك لإدارة جميع الجهات.

@@ -4,6 +4,7 @@ export const auditActionLabels: Record<string, string> = {
   "organization.settings.update": "تحديث إعدادات الجهة",
   "organization.create": "إنشاء جهة",
   "organization.update": "تعديل جهة",
+  "organization.purge_archived": "حذف نهائي لجهة مؤرشفة",
   "settings.update": "تحديث الإعدادات",
   "platform.document_settings.update": "تحديث إعدادات الوثائق",
   "attachment.upload": "رفع مرفق",
@@ -26,6 +27,7 @@ export const auditActionLabels: Record<string, string> = {
   "user.disable": "تعطيل حساب مستخدم",
   "user.enable": "تفعيل حساب مستخدم",
   "user.delete": "حذف حساب مستخدم",
+  "user.purge_inactive": "حذف نهائي لحساب معطّل",
   "platform.owner_workplace.switch": "تغيير جهة عمل المالك",
 };
 

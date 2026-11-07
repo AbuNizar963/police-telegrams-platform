@@ -730,7 +730,6 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       ),
                     ),
                   ),
-
           ],
         ),
       ),

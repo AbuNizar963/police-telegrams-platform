@@ -221,7 +221,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             ),
             const SizedBox(width: 7),
             Text(
-              'مالك النظام  ·  نظرة شاملة لآخر $_days يومًا',
+              'مالك المنصة  ·  نظرة شاملة لآخر $_days يومًا',
               style: const TextStyle(
                 color: _gold,
                 fontSize: 12,

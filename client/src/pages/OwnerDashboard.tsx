@@ -102,9 +102,9 @@ function MetricCard({
     rose: "bg-[#452936] text-[#ff91ad]",
   };
   return (
-    <Card className="group relative overflow-hidden border-[#2a3444] bg-[#151b26] shadow-[0_18px_48px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <Card className="group relative overflow-hidden rounded-2xl border-[#2a3444] bg-gradient-to-br from-[#192332] to-[#111722] shadow-[0_18px_48px_rgba(0,0,0,0.22)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d8c38e]/40 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#d8c38e] to-transparent opacity-70" />
-      <CardContent className="flex min-h-[142px] items-start justify-between gap-3 p-5">
+      <CardContent className="flex min-h-[136px] items-start justify-between gap-3 p-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-muted-foreground">{label}</p>
           <p className="mt-4 text-[2rem] font-bold tracking-tight text-foreground">
@@ -274,7 +274,7 @@ export default function OwnerDashboardPage() {
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Badge className="border-0 bg-[#10233f] px-3 py-1 text-white hover:bg-[#10233f]">
               <ShieldCheck className="ml-1.5 h-3.5 w-3.5" />
-              مالك النظام
+              مالك المنصة
             </Badge>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#173b31] px-3 py-1 text-xs font-semibold text-[#69dfb0]">
               <span className="h-2 w-2 rounded-full bg-[#35a56d]" />
@@ -618,7 +618,7 @@ export default function OwnerDashboardPage() {
               }
             />
             {summary.recentOperations.length > 0 ? (
-              <ul className="divide-y divide-[#edf0f3]">
+              <ul className="divide-y divide-[#2a3444]">
                 {summary.recentOperations.map(operation => (
                   <li
                     key={operation.id}
@@ -819,7 +819,7 @@ function PerformanceReport({ summary }: { summary: any }) {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#44391f] px-3 py-2 text-[11px] font-semibold text-[#725b20]">
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#44391f]/70 px-3 py-2 text-[11px] font-semibold text-[#e7c45d]">
           <FileBarChart2 className="h-4 w-4" />
           يتم احتساب التقرير من سجلات التدقيق والعمليات الموثقة فقط.
         </div>

@@ -80,7 +80,7 @@ function Router() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light" switchable>
+      <ThemeProvider defaultTheme="system" switchable>
         <TooltipProvider>
           <Toaster />
           <Router />

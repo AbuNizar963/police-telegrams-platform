@@ -32,7 +32,10 @@ function readThemePreference(fallback: ThemePreference): ThemePreference {
   return fallback;
 }
 
-function resolveTheme(preference: ThemePreference, systemIsDark: boolean): Theme {
+function resolveTheme(
+  preference: ThemePreference,
+  systemIsDark: boolean
+): Theme {
   if (preference === "system") {
     return systemIsDark ? "dark" : "light";
   }

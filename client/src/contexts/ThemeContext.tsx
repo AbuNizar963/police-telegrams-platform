@@ -98,7 +98,13 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider
-      value={{ theme, preference, setThemePreference, toggleTheme, switchable }}
+      value={{
+        theme,
+        preference,
+        setThemePreference,
+        toggleTheme,
+        switchable,
+      }}
     >
       {children}
     </ThemeContext.Provider>

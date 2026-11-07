@@ -65,7 +65,7 @@ function requiresNotificationAction(type: string): boolean {
  * service worker; it never sends subscription secrets to the client UI.
  */
 export default function HeaderActions() {
-  const { theme, preference, setThemePreference } = useTheme();
+  const { preference, setThemePreference } = useTheme();
   const { user, logout } = useAuth();
   const organizationContext = trpc.organizations.context.useQuery(undefined, {
     enabled: Boolean(user),

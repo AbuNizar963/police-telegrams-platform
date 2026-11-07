@@ -286,6 +286,30 @@ class PoliceTelegramsApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppPalette.darkCanvas,
         colorScheme: AppPalette.darkScheme,
+        iconTheme: const IconThemeData(color: AppPalette.darkInk),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: gold,
+          selectionColor: gold.withValues(alpha: 0.28),
+          selectionHandleColor: gold,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          contentTextStyle: TextStyle(
+            color: AppPalette.darkInk,
+            fontFamily: 'Cairo',
+          ),
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: gold,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppPalette.darkCanvas,
           foregroundColor: AppPalette.darkInk,
@@ -293,6 +317,14 @@ class PoliceTelegramsApp extends StatelessWidget {
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           toolbarHeight: 58,
+          iconTheme: IconThemeData(color: AppPalette.darkInk, size: 22),
+          actionsIconTheme: IconThemeData(color: AppPalette.darkInk, size: 21),
+          titleTextStyle: TextStyle(
+            color: AppPalette.darkInk,
+            fontFamily: 'Cairo',
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
           shape: Border(bottom: BorderSide(color: AppPalette.darkBorder)),
         ),
         filledButtonTheme: FilledButtonThemeData(

@@ -28,7 +28,16 @@ function readThemePreference(fallback: ThemePreference): ThemePreference {
   } catch {
     // Continue with the configured default when browser storage is unavailable.
   }
+
   return fallback;
+}
+
+function resolveTheme(preference: ThemePreference, systemIsDark: boolean): Theme {
+  if (preference === "system") {
+    return systemIsDark ? "dark" : "light";
+  }
+
+  return preference;
 }
 
 export function ThemeProvider({
@@ -40,11 +49,14 @@ export function ThemeProvider({
     switchable ? readThemePreference(defaultTheme) : defaultTheme
   );
   const [theme, setTheme] = useState<Theme>(() => {
-    if (preference !== "system") return preference;
-    const followsDarkPreference =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return followsDarkPreference ? "dark" : "light";
+    if (typeof window === "undefined") {
+      return "light";
+    }
+
+    return resolveTheme(
+      preference,
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
   });
 
   useEffect(() => {
@@ -52,12 +64,7 @@ export function ThemeProvider({
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     const applyTheme = () => {
-      const resolved: Theme =
-        preference === "system"
-          ? media.matches
-            ? "dark"
-            : "light"
-          : preference;
+      const resolved = resolveTheme(preference, media.matches);
       setTheme(resolved);
       root.classList.toggle("dark", resolved === "dark");
       root.style.colorScheme = resolved;
@@ -67,6 +74,7 @@ export function ThemeProvider({
     if (preference === "system") {
       media.addEventListener("change", applyTheme);
     }
+
     if (switchable) {
       try {
         window.localStorage.setItem("theme", preference);
@@ -79,21 +87,17 @@ export function ThemeProvider({
   }, [preference, switchable]);
 
   const setThemePreference = (next: ThemePreference) => {
-    if (switchable) setPreference(next);
+    if (switchable) {
+      setPreference(next);
+    }
   };
 
   const toggleTheme = switchable
-    ? () =>
-        setPreference(current => {
-          const media = window.matchMedia("(prefers-color-scheme: dark)");
-          const resolved =
-            current === "system"
-              ? media.matches
-                ? "dark"
-                : "light"
-              : current;
-          return resolved === "dark" ? "light" : "dark";
-        })
+    ? () => {
+        const media = window.matchMedia("(prefers-color-scheme: dark)");
+        const resolved = resolveTheme(preference, media.matches);
+        setPreference(resolved === "dark" ? "light" : "dark");
+      }
     : undefined;
 
   return (
@@ -116,5 +120,6 @@ export function useTheme() {
   if (!context) {
     throw new Error("useTheme must be used within ThemeProvider");
   }
+
   return context;
 }

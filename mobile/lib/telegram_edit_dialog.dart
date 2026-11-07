@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import './features/reports/telegram_report_labels.dart';
 
 const _categories = <MapEntry<String, String>>[
   MapEntry('administrative', 'إداري'),
@@ -227,7 +228,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _category,
-                decoration: const InputDecoration(labelText: 'الفئة'),
+                decoration: const InputDecoration(labelText: 'التصنيف'),
                 items: _categories
                     .map(
                       (option) => DropdownMenuItem(
@@ -241,6 +242,26 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                     : (value) {
                         if (value != null) setState(() => _category = value);
                       },
+              ),
+              const SizedBox(height: 8),
+              InputDecorator(
+                decoration: const InputDecoration(labelText: 'الحالة'),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    telegramStatusLabels[_text(widget.telegram['status'])
+                            .toLowerCase()] ??
+                        'مسودة',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  'تغيير الحالة يتم عبر إجراءات دورة الحياة، وليس من نموذج تعديل البيانات.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF687385)),
+                ),
               ),
               const SizedBox(height: 8),
               TextField(

@@ -1240,7 +1240,7 @@ void main() {
     await tester.tap(drawerButton);
     await _pumpDashboardFrames(tester, frameCount: 5);
 
-    expect(find.text('لوحة المتابعة'), findsWidgets);
+    expect(find.text('لوحة التحكم'), findsWidgets);
     for (final icon in [
       LucideIcons.layoutDashboard,
       LucideIcons.plus,

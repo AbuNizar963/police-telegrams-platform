@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
+import 'app_theme.dart';
 import 'advanced_create_telegram_page.dart';
 import 'app_update_page.dart';
 import 'app_update_service.dart';
@@ -33,9 +34,9 @@ import 'telegram_outbox.dart';
 import 'telegram_outbox_page.dart';
 import './features/notifications/toast.dart';
 
-const navy = Color(0xFF10233F);
-const gold = Color(0xFFD8C38E);
-const canvas = Color(0xFFF5F7FA);
+const navy = AppPalette.navy;
+const gold = AppPalette.gold;
+const canvas = AppPalette.canvas;
 
 void main() {
   PoliceTelegramsApp.restoreThemeMode();
@@ -91,22 +92,22 @@ class PoliceTelegramsApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Cairo',
-        scaffoldBackgroundColor: const Color(0xFFF8F7F2),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: navy,
-          primary: navy,
-          secondary: gold,
-          surface: const Color(0xFFFFFEFC),
-        ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(fontSize: 14, height: 1.55),
-          bodyMedium: TextStyle(fontSize: 13, height: 1.5),
-          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ).apply(fontFamily: 'Cairo'),
+        scaffoldBackgroundColor: AppPalette.canvas,
+        colorScheme: AppPalette.lightScheme,
+        textTheme:
+            const TextTheme(
+              bodyLarge: TextStyle(fontSize: 14, height: 1.55),
+              bodyMedium: TextStyle(fontSize: 13, height: 1.5),
+              titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ).apply(
+              fontFamily: 'Cairo',
+              bodyColor: AppPalette.ink,
+              displayColor: AppPalette.ink,
+            ),
         appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFFF8F7F2),
+          backgroundColor: AppPalette.canvas,
           foregroundColor: navy,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -116,7 +117,7 @@ class PoliceTelegramsApp extends StatelessWidget {
           titleSpacing: 8,
           iconTheme: const IconThemeData(color: navy, size: 22),
           actionsIconTheme: const IconThemeData(color: navy, size: 21),
-          shape: const Border(bottom: BorderSide(color: Color(0xFFE4E6EA))),
+          shape: const Border(bottom: BorderSide(color: AppPalette.border)),
           titleTextStyle: const TextStyle(
             color: navy,
             fontFamily: 'Cairo',
@@ -125,29 +126,29 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFFFFFEFC),
+          color: AppPalette.surface,
           elevation: 0,
           margin: const EdgeInsets.symmetric(vertical: 5),
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0xFFE1E5EB)),
+            side: const BorderSide(color: AppPalette.border),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFFAFAF8),
+          fillColor: AppPalette.surface,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFD9DEE7)),
+            borderSide: const BorderSide(color: AppPalette.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFD9DEE7)),
+            borderSide: const BorderSide(color: AppPalette.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -175,7 +176,7 @@ class PoliceTelegramsApp extends StatelessWidget {
             foregroundColor: navy,
             minimumSize: const Size(44, 44),
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            side: const BorderSide(color: Color(0xFFD5DAE2)),
+            side: const BorderSide(color: AppPalette.border),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -197,9 +198,9 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         chipTheme: ChipThemeData(
-          backgroundColor: const Color(0xFFEFF1F4),
-          selectedColor: const Color(0xFFE8F0FF),
-          secondarySelectedColor: const Color(0xFFE7F6F7),
+          backgroundColor: AppPalette.muted,
+          selectedColor: const Color(0xFFF1E8D5),
+          secondarySelectedColor: AppPalette.muted,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           labelStyle: const TextStyle(
             fontFamily: 'Cairo',
@@ -212,7 +213,7 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         popupMenuTheme: PopupMenuThemeData(
-          color: const Color(0xFFFFFEFC),
+          color: AppPalette.surface,
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -259,23 +260,21 @@ class PoliceTelegramsApp extends StatelessWidget {
         ),
       ),
       darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-        textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Cairo'),
-        scaffoldBackgroundColor: const Color(0xFF101925),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: gold,
-          brightness: Brightness.dark,
-          primary: gold,
-          secondary: gold,
-          surface: const Color(0xFF182538),
+        textTheme: ThemeData.dark().textTheme.apply(
+          fontFamily: 'Cairo',
+          bodyColor: AppPalette.darkInk,
+          displayColor: AppPalette.darkInk,
         ),
+        scaffoldBackgroundColor: AppPalette.darkCanvas,
+        colorScheme: AppPalette.darkScheme,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF111D2D),
-          foregroundColor: Color(0xFFF5F6F8),
+          backgroundColor: AppPalette.darkCanvas,
+          foregroundColor: AppPalette.darkInk,
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           toolbarHeight: 58,
-          shape: Border(bottom: BorderSide(color: Color(0xFF2A384B))),
+          shape: Border(bottom: BorderSide(color: AppPalette.darkBorder)),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -291,8 +290,8 @@ class PoliceTelegramsApp extends StatelessWidget {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFF5F6F8),
-            side: const BorderSide(color: Color(0xFF52627A)),
+            foregroundColor: AppPalette.darkInk,
+            side: const BorderSide(color: AppPalette.darkOutline),
             minimumSize: const Size(44, 44),
             textStyle: const TextStyle(
               fontFamily: 'Cairo',
@@ -312,8 +311,8 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         chipTheme: ThemeData.dark().chipTheme.copyWith(
-          backgroundColor: const Color(0xFF26364B),
-          selectedColor: const Color(0xFF3B4658),
+          backgroundColor: AppPalette.darkMuted,
+          selectedColor: AppPalette.darkOutline,
           labelStyle: const TextStyle(
             fontFamily: 'Cairo',
             fontSize: 11,
@@ -328,28 +327,28 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF182538),
+          color: AppPalette.darkSurface,
           elevation: 0,
           margin: const EdgeInsets.symmetric(vertical: 5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0xFF2A384B)),
+            side: const BorderSide(color: AppPalette.darkBorder),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF182538),
+          fillColor: AppPalette.darkSurface,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 10,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: Color(0xFF34445B)),
+            borderSide: const BorderSide(color: AppPalette.darkOutline),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: Color(0xFF34445B)),
+            borderSide: const BorderSide(color: AppPalette.darkOutline),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
@@ -363,7 +362,7 @@ class PoliceTelegramsApp extends StatelessWidget {
           textStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13),
         ),
         drawerTheme: const DrawerThemeData(backgroundColor: navy, width: 280),
-        dividerTheme: const DividerThemeData(color: Color(0xFF2A384B)),
+        dividerTheme: const DividerThemeData(color: AppPalette.darkBorder),
       ),
       themeMode: mode,
       home: SessionGate(
@@ -2599,7 +2598,7 @@ class _DashboardPageState extends State<DashboardPage>
                   value: 'users',
                   child: _AccountMenuItem(
                     icon: Icons.manage_accounts_outlined,
-                    title: 'الحسابات والصلاحيات',
+                    title: 'إدارة المستخدمين',
                   ),
                 ),
                 const PopupMenuItem(
@@ -2727,7 +2726,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.layoutDashboard),
-                  title: const Text('لوحة المتابعة'),
+                  title: const Text('لوحة التحكم'),
                   onTap: () {
                     Navigator.pop(context);
                     setState(() {
@@ -2739,7 +2738,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.plus),
-                  title: const Text('البرقيات · إنشاء'),
+                  title: const Text('إنشاء برقية'),
                   onTap: () {
                     Navigator.pop(context);
                     create();
@@ -2747,7 +2746,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.fileSpreadsheet),
-                  title: const Text('التقارير والتصدير'),
+                  title: const Text('استيراد وتصدير السجل'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2771,7 +2770,7 @@ class _DashboardPageState extends State<DashboardPage>
                 if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),
-                    title: const Text('الحسابات والصلاحيات'),
+                    title: const Text('إدارة المستخدمين'),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -2805,7 +2804,7 @@ class _DashboardPageState extends State<DashboardPage>
                 const Divider(color: Color(0xFF29415E)),
                 ListTile(
                   leading: const Icon(LucideIcons.mapPinned),
-                  title: const Text('مركز العمليات والمواقع'),
+                  title: const Text('خريطة البلاغات والمواقع الجغرافية'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2821,7 +2820,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.users),
-                  title: const Text('الوحدات والإحالات'),
+                  title: const Text('الوحدات الميدانية'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2837,7 +2836,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.activity),
-                  title: const Text('متابعة توزيع العمل'),
+                  title: const Text('إدارة الموارد'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -2853,7 +2852,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 ListTile(
                   leading: const Icon(LucideIcons.archive),
-                  title: const Text('أرشيف البرقيات'),
+                  title: const Text('الأرشيف والسجلات المغلقة'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(

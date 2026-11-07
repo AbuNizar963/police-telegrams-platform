@@ -1,8 +1,4 @@
 -- Read-only, owner-validated aggregate for the platform operations dashboard.
--- Keep the aggregate migration self-contained across both service branches.
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS "isActive" boolean NOT NULL DEFAULT true;
-
 -- The tRPC route validates the owner identity; this SECURITY DEFINER function
 -- repeats the check and is executable only by the server's service role.
 DROP FUNCTION IF EXISTS public.owner_dashboard_summary(integer, integer);

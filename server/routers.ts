@@ -54,6 +54,7 @@ import {
   getTelegramAttachmentById,
   getTelegramByIdempotencyKey,
   getTelegramReport,
+  getOwnerDashboardSummary,
   listAuditLogs,
   searchAuditLogs,
   listTelegramActions,
@@ -1325,6 +1326,23 @@ export const appRouter = router({
         }
 
         return addOrganizationMembership(input);
+      }),
+  }),
+
+  ownerDashboard: router({
+    summary: protectedProcedure
+      .input(z.object({ days: z.number().int().min(7).max(90).default(30) }))
+      .query(async ({ ctx, input }) => {
+        if (!isPlatformOwner(ctx.user)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "لوحة قيادة المنصة متاحة لمالك النظام فقط",
+          });
+        }
+        return getOwnerDashboardSummary({
+          ownerUserId: ctx.user.id,
+          days: input.days,
+        });
       }),
   }),
 

@@ -307,9 +307,7 @@ class PoliceTelegramsApp extends StatelessWidget {
             fontFamily: 'Cairo',
           ),
         ),
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: gold,
-        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(color: gold),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppPalette.darkCanvas,
           foregroundColor: AppPalette.darkInk,

@@ -4693,10 +4693,10 @@ function TelegramDetail({
             />
           </div>
           <div className="min-w-0 leading-5">
-            <p className="font-bold text-black dark:text-black">
+            <p className="font-bold text-foreground">
               جارٍ تجهيز الوثيقة الرسمية
             </p>
-            <p className="text-xs text-black dark:text-black">
+            <p className="text-xs text-foreground">
               يجري تحميل الشعار والعلامة المائية والتحقق من جاهزية المعاينة…
             </p>
           </div>

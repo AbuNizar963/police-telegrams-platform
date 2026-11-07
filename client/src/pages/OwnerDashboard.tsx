@@ -106,11 +106,11 @@ function MetricCard({
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#d8c38e] to-transparent opacity-70" />
       <CardContent className="flex min-h-[142px] items-start justify-between gap-3 p-5">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-[#9aa7ba]">{label}</p>
-          <p className="mt-4 text-[2rem] font-bold tracking-tight text-[#f5f7fb]">
+          <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+          <p className="mt-4 text-[2rem] font-bold tracking-tight text-foreground">
             {formatCount(value)}
           </p>
-          <p className="mt-1 text-[11px] text-[#7f8ca2]">{detail}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
         </div>
         <span
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${tones[tone]}`}
@@ -136,12 +136,12 @@ function SectionTitle({
   return (
     <div className="mb-5 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#202a39] text-[#f5f7fb]">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#202a39] text-foreground">
           <Icon className="h-4 w-4" />
         </span>
         <div>
-          <h2 className="font-bold text-[#f5f7fb]">{title}</h2>
-          <p className="mt-1 text-xs text-[#8e9bad]">{subtitle}</p>
+          <h2 className="font-bold text-foreground">{title}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       {action}
@@ -281,16 +281,16 @@ export default function OwnerDashboardPage() {
               النظام يعمل بشكل طبيعي
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#f5f7fb] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             مركز قيادة المنصة
           </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#9aa7ba]">
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
             صورة تشغيلية موحدة تساعدك على متابعة الجهات، الحسابات، وسجل
             الإجراءات من مكان واحد.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="grid gap-1.5 text-xs font-semibold text-[#9aa7ba]">
+          <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">
             الفترة الزمنية
             <select
               aria-label="الفترة الزمنية للوحة القيادة"
@@ -298,7 +298,7 @@ export default function OwnerDashboardPage() {
               onChange={event =>
                 setDays(Number(event.target.value) as 7 | 30 | 90)
               }
-              className="h-10 min-w-36 rounded-xl border border-[#2d3849] bg-[#151b26] px-3 text-sm font-semibold text-[#f5f7fb] outline-none focus-visible:ring-2 focus-visible:ring-[#d8c38e]"
+              className="h-10 min-w-36 rounded-xl border border-[#2d3849] bg-[#151b26] px-3 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[#d8c38e]"
             >
               <option value={7}>آخر 7 أيام</option>
               <option value={30}>آخر 30 يومًا</option>
@@ -452,8 +452,9 @@ export default function OwnerDashboardPage() {
                       contentStyle={{
                         direction: "rtl",
                         borderRadius: 12,
-                        borderColor: "#e1e5eb",
-                        background: "#fffefc",
+                        borderColor: "var(--border)",
+                        background: "var(--popover)",
+                        color: "var(--popover-foreground)",
                       }}
                     />
                     <Area
@@ -505,15 +506,18 @@ export default function OwnerDashboardPage() {
                       contentStyle={{
                         direction: "rtl",
                         borderRadius: 12,
-                        borderColor: "#e1e5eb",
-                        background: "#fffefc",
+                        borderColor: "var(--border)",
+                        background: "var(--popover)",
+                        color: "var(--popover-foreground)",
                       }}
                     />
                     <Legend
                       verticalAlign="bottom"
                       iconType="circle"
                       formatter={value => (
-                        <span className="text-xs text-[#9aa7ba]">{value}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {value}
+                        </span>
                       )}
                     />
                   </PieChart>
@@ -574,8 +578,9 @@ export default function OwnerDashboardPage() {
                       contentStyle={{
                         direction: "rtl",
                         borderRadius: 12,
-                        borderColor: "#e1e5eb",
-                        background: "#fffefc",
+                        borderColor: "var(--border)",
+                        background: "var(--popover)",
+                        color: "var(--popover-foreground)",
                       }}
                     />
                     <Bar
@@ -619,14 +624,14 @@ export default function OwnerDashboardPage() {
                     key={operation.id}
                     className="flex gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#202a39] text-[#f5f7fb]">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#202a39] text-foreground">
                       <UserCog className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[#24344d]">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {auditActionLabel(operation.action)}
                       </p>
-                      <p className="mt-1 truncate text-xs text-[#8e9bad]">
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
                         {operation.actorName} <span aria-hidden="true">·</span>{" "}
                         {operation.organizationName ?? "النظام"}{" "}
                         <span aria-hidden="true">·</span>{" "}
@@ -637,7 +642,7 @@ export default function OwnerDashboardPage() {
                       </p>
                     </div>
                     <time
-                      className="flex shrink-0 items-center gap-1 text-[11px] text-[#7f8ca2]"
+                      className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground"
                       dateTime={operation.createdAt}
                     >
                       <Clock3 className="h-3.5 w-3.5" />
@@ -662,7 +667,7 @@ export default function OwnerDashboardPage() {
         <PerformanceReport summary={summary} />
       </div>
 
-      <p className="flex items-start gap-2 rounded-2xl border border-[#2a3444] bg-[#f8fafb] px-4 py-3 text-xs leading-5 text-[#9aa7ba]">
+      <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted px-4 py-3 text-xs leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#6bc7ff]" />
         المؤشرات مبنية على سجلات الإجراءات الموثقة؛ لا تعرض هذه الصفحة نصوص
         البرقيات أو بيانات الشبكة أو تفاصيل المرفقات.
@@ -713,16 +718,16 @@ function NotificationPanel({
             {items.map(item => (
               <li
                 key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-[#edf0f3] bg-[#fbfcfd] p-3"
+                className="flex items-start gap-3 rounded-xl border border-border bg-card p-3"
               >
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#44391f] text-[#e7c45d]">
                   <BellRing className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-[#24344d]">
+                  <p className="truncate text-xs font-bold text-foreground">
                     {item.title}
                   </p>
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[#9aa7ba]">
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
                     {item.body}
                   </p>
                 </div>
@@ -730,7 +735,7 @@ function NotificationPanel({
                   type="button"
                   aria-label="تحديد التنبيه كمقروء"
                   onClick={() => onRead(item.id)}
-                  className="rounded-lg p-1 text-[#7f8ca2] hover:bg-[#173b31] hover:text-[#69dfb0]"
+                  className="rounded-lg p-1 text-muted-foreground hover:bg-[#173b31] hover:text-[#69dfb0]"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                 </button>
@@ -790,7 +795,7 @@ function PerformanceReport({ summary }: { summary: any }) {
           {rows.map(row => (
             <div
               key={row.label}
-              className="rounded-2xl border border-[#edf0f3] bg-[#fbfcfd] p-4"
+              className="rounded-2xl border border-border bg-card p-4"
             >
               <div className="mb-4 h-1.5 rounded-full bg-[#e8edf1]">
                 <div
@@ -801,14 +806,14 @@ function PerformanceReport({ summary }: { summary: any }) {
                   }}
                 />
               </div>
-              <p className="text-[11px] font-bold leading-5 text-[#9aa7ba]">
+              <p className="text-[11px] font-bold leading-5 text-muted-foreground">
                 {row.label}
               </p>
-              <p className="mt-2 truncate text-2xl font-bold text-[#f5f7fb]">
+              <p className="mt-2 truncate text-2xl font-bold text-foreground">
                 {formatCount(row.value)}
                 {row.suffix ?? ""}
               </p>
-              <p className="mt-1 truncate text-[10px] text-[#7f8ca2]">
+              <p className="mt-1 truncate text-[10px] text-muted-foreground">
                 {row.detail}
               </p>
             </div>
@@ -825,12 +830,14 @@ function PerformanceReport({ summary }: { summary: any }) {
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#2d3849] bg-[#f8fafb] px-5 text-center sm:h-72">
+    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#2d3849] bg-muted px-5 text-center sm:h-72">
       <Activity className="h-7 w-7 text-[#9aa6b5]" />
-      <p className="text-sm font-semibold text-[#4e5d71]">
+      <p className="text-sm font-semibold text-foreground">
         لا توجد بيانات كافية للرسم
       </p>
-      <p className="max-w-sm text-xs leading-5 text-[#7f8ca2]">{message}</p>
+      <p className="max-w-sm text-xs leading-5 text-muted-foreground">
+        {message}
+      </p>
     </div>
   );
 }

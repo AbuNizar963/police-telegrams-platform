@@ -358,7 +358,7 @@ export default function OwnerUserManagement() {
               </span>
               <div>
                 <h2 id="owner-users-title" className="text-xl font-bold">
-                  حسابات الجهات
+                  إدارة المستخدمين
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   لكل جهة مساحة مستقلة تعرض حساباتها وصلاحياتها التشغيلية.
@@ -685,7 +685,7 @@ export default function OwnerUserManagement() {
 
           {users.isLoading || organizations.isLoading ? (
             <p className="rounded-2xl border py-12 text-center text-sm text-muted-foreground">
-              جارٍ تحميل حسابات الجهات...
+              جارٍ تحميل إدارة المستخدمين...
             </p>
           ) : users.isError || organizations.isError ? (
             <div
@@ -694,7 +694,7 @@ export default function OwnerUserManagement() {
             >
               {users.error?.message ||
                 organizations.error?.message ||
-                "تعذر تحميل حسابات الجهات"}
+                "تعذر تحميل إدارة المستخدمين"}
               <div className="mt-3">
                 <Button
                   type="button"

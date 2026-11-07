@@ -353,7 +353,7 @@ function UnitsPanel({
                   {unit.type} · {unit.code}
                 </p>
               </div>
-              <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-700">
+              <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                 متاحة للإحالة
               </span>
             </div>

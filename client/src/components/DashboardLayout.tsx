@@ -40,7 +40,7 @@ const menuItems = [
   {
     key: "dashboard",
     icon: LayoutDashboard,
-    label: "لوحة المتابعة",
+    label: "لوحة التحكم",
     path: "/",
   },
   {
@@ -60,19 +60,19 @@ const menuItems = [
   {
     key: "create-telegram",
     icon: Plus,
-    label: "البرقيات · إنشاء",
+    label: "إنشاء برقية",
     action: "open-telegram-composer",
   },
   {
     key: "telegram-excel-tools",
     icon: FileSpreadsheet,
-    label: "التقارير والتصدير",
+    label: "استيراد وتصدير السجل",
     action: "open-telegram-excel-tools",
   },
   {
     key: "accounts",
     icon: Users,
-    label: "الحسابات والصلاحيات",
+    label: "إدارة المستخدمين",
     action: "open-owner-user-management",
     adminOnly: true,
   },
@@ -86,20 +86,20 @@ const menuItems = [
   {
     key: "locations",
     icon: MapPinned,
-    label: "مركز العمليات والمواقع",
+    label: "خريطة البلاغات والمواقع الجغرافية",
     tab: "locations",
   },
-  { key: "units", icon: Users, label: "الوحدات والإحالات", tab: "units" },
+  { key: "units", icon: Users, label: "الوحدات الميدانية", tab: "units" },
   {
     key: "resources",
     icon: Activity,
-    label: "متابعة توزيع العمل",
+    label: "إدارة الموارد",
     tab: "resources",
   },
   {
     key: "archive",
     icon: Archive,
-    label: "أرشيف البرقيات",
+    label: "الأرشيف والسجلات المغلقة",
     tab: "archive",
   },
 ];

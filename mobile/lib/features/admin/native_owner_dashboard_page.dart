@@ -572,7 +572,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                               ),
                               const SizedBox(height: 7),
                               Text(
-                                '${(point['date'] ?? '').toString().length >= 10 ? (point['date'] as String).substring(8, 10) : ''}',
+                                (point['date'] ?? '').toString().length >= 10
+                                    ? (point['date'] as String).substring(8, 10)
+                                    : '',
                                 style: const TextStyle(
                                   fontSize: 9,
                                   color: Color(0xFF718096),
@@ -773,6 +775,18 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
     );
   }
 
+  Widget _errorCard() => Card(
+    color: const Color(0xFFFFF3F2),
+    child: ListTile(
+      leading: const Icon(Icons.error_outline, color: Colors.red),
+      title: const Text('تعذر تحميل بعض البيانات'),
+      subtitle: Text(_error!),
+      trailing: TextButton(
+        onPressed: _load,
+        child: const Text('إعادة المحاولة'),
+      ),
+    ),
+  );
 }
 
 class _CardHeader extends StatelessWidget {

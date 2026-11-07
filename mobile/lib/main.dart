@@ -2736,6 +2736,26 @@ class _DashboardPageState extends State<DashboardPage>
                     refresh(showLoading: false);
                   },
                 ),
+                if (_isPlatformOwner)
+                  ListTile(
+                    leading: const Icon(LucideIcons.layoutDashboard),
+                    title: const Text('لوحة قيادة المالك'),
+                    subtitle: const Text('مؤشرات المنصة وسجل العمليات'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pushPage(NativeOwnerDashboardPage(api: widget.api));
+                    },
+                  ),
+                if (_canViewAuditLogs)
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: const Text('سجل الإجراءات'),
+                    subtitle: const Text('سجل التدقيق المركزي'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pushPage(AuditLogPage(api: widget.api));
+                    },
+                  ),
                 ListTile(
                   leading: const Icon(LucideIcons.plus),
                   title: const Text('إنشاء برقية'),
@@ -2757,16 +2777,6 @@ class _DashboardPageState extends State<DashboardPage>
                     );
                   },
                 ),
-                if (_isPlatformOwner)
-                  ListTile(
-                    leading: const Icon(LucideIcons.layoutDashboard),
-                    title: const Text('لوحة قيادة المالك'),
-                    subtitle: const Text('مؤشرات المنصة وسجل العمليات'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pushPage(NativeOwnerDashboardPage(api: widget.api));
-                    },
-                  ),
                 if (_canManageUsers)
                   ListTile(
                     leading: const Icon(LucideIcons.users),
@@ -2791,17 +2801,6 @@ class _DashboardPageState extends State<DashboardPage>
                       _handleAccountAction('organizations');
                     },
                   ),
-                if (_canViewAuditLogs)
-                  ListTile(
-                    leading: const Icon(Icons.history),
-                    title: const Text('سجل الإجراءات'),
-                    subtitle: const Text('سجل التدقيق المركزي'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pushPage(AuditLogPage(api: widget.api));
-                    },
-                  ),
-                const Divider(color: Color(0xFF29415E)),
                 ListTile(
                   leading: const Icon(LucideIcons.mapPinned),
                   title: const Text('خريطة البلاغات والمواقع الجغرافية'),

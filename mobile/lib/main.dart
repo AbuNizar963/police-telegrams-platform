@@ -68,7 +68,8 @@ class PoliceTelegramsApp extends StatelessWidget {
     final currentBrightness = switch (_themeMode.value) {
       ThemeMode.dark => Brightness.dark,
       ThemeMode.light => Brightness.light,
-      ThemeMode.system => WidgetsBinding.instance.platformDispatcher.platformBrightness,
+      ThemeMode.system =>
+        WidgetsBinding.instance.platformDispatcher.platformBrightness,
     };
     final next = currentBrightness == Brightness.dark
         ? ThemeMode.light
@@ -387,7 +388,8 @@ class PoliceTelegramsApp extends StatelessWidget {
         api: api,
         onToggleTheme: toggleTheme,
         onUseSystemTheme: useSystemTheme,
-        isDarkMode: mode == ThemeMode.dark ||
+        isDarkMode:
+            mode == ThemeMode.dark ||
             (mode == ThemeMode.system &&
                 WidgetsBinding.instance.platformDispatcher.platformBrightness ==
                     Brightness.dark),

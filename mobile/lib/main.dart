@@ -47,21 +47,31 @@ class PoliceTelegramsApp extends StatelessWidget {
   const PoliceTelegramsApp({super.key, this.api});
 
   static final ValueNotifier<ThemeMode> _themeMode = ValueNotifier<ThemeMode>(
-    ThemeMode.light,
+    ThemeMode.system,
   );
   static const _preferences = FlutterSecureStorage();
 
   static Future<void> restoreThemeMode() async {
     try {
       final saved = await _preferences.read(key: 'mobile_theme_mode');
-      _themeMode.value = saved == 'dark' ? ThemeMode.dark : ThemeMode.light;
+      _themeMode.value = switch (saved) {
+        'dark' => ThemeMode.dark,
+        'light' => ThemeMode.light,
+        _ => ThemeMode.system,
+      };
     } catch (_) {
       // A preference read failure should not prevent the app from starting.
     }
   }
 
   static Future<void> toggleTheme() async {
-    final next = _themeMode.value == ThemeMode.dark
+    final currentBrightness = switch (_themeMode.value) {
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.light => Brightness.light,
+      ThemeMode.system =>
+        WidgetsBinding.instance.platformDispatcher.platformBrightness,
+    };
+    final next = currentBrightness == Brightness.dark
         ? ThemeMode.light
         : ThemeMode.dark;
     _themeMode.value = next;
@@ -72,6 +82,15 @@ class PoliceTelegramsApp extends StatelessWidget {
       );
     } catch (_) {
       // Keep the selected theme for this session if storage is unavailable.
+    }
+  }
+
+  static Future<void> useSystemTheme() async {
+    _themeMode.value = ThemeMode.system;
+    try {
+      await _preferences.write(key: 'mobile_theme_mode', value: 'system');
+    } catch (_) {
+      // The system appearance remains active for this session.
     }
   }
 
@@ -267,6 +286,28 @@ class PoliceTelegramsApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppPalette.darkCanvas,
         colorScheme: AppPalette.darkScheme,
+        iconTheme: const IconThemeData(color: AppPalette.darkInk),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: gold,
+          selectionColor: gold.withValues(alpha: 0.28),
+          selectionHandleColor: gold,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: AppPalette.darkSurface,
+          contentTextStyle: TextStyle(
+            color: AppPalette.darkInk,
+            fontFamily: 'Cairo',
+          ),
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(color: gold),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppPalette.darkCanvas,
           foregroundColor: AppPalette.darkInk,
@@ -274,6 +315,14 @@ class PoliceTelegramsApp extends StatelessWidget {
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           toolbarHeight: 58,
+          iconTheme: IconThemeData(color: AppPalette.darkInk, size: 22),
+          actionsIconTheme: IconThemeData(color: AppPalette.darkInk, size: 21),
+          titleTextStyle: TextStyle(
+            color: AppPalette.darkInk,
+            fontFamily: 'Cairo',
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
           shape: Border(bottom: BorderSide(color: AppPalette.darkBorder)),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -368,7 +417,12 @@ class PoliceTelegramsApp extends StatelessWidget {
       home: SessionGate(
         api: api,
         onToggleTheme: toggleTheme,
-        isDarkMode: mode == ThemeMode.dark,
+        onUseSystemTheme: useSystemTheme,
+        isDarkMode:
+            mode == ThemeMode.dark ||
+            (mode == ThemeMode.system &&
+                WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+                    Brightness.dark),
       ),
     ),
   );
@@ -379,11 +433,13 @@ class SessionGate extends StatefulWidget {
     super.key,
     this.api,
     this.onToggleTheme,
+    this.onUseSystemTheme,
     this.isDarkMode = false,
   });
 
   final PoliceApi? api;
   final VoidCallback? onToggleTheme;
+  final VoidCallback? onUseSystemTheme;
   final bool isDarkMode;
 
   @override
@@ -469,6 +525,7 @@ class _SessionGateState extends State<SessionGate> {
           api: _api,
           account: account,
           onToggleTheme: widget.onToggleTheme,
+          onUseSystemTheme: widget.onUseSystemTheme,
           isDarkMode: widget.isDarkMode,
         );
       }
@@ -778,12 +835,14 @@ class DashboardPage extends StatefulWidget {
     required this.account,
     this.outbox,
     this.onToggleTheme,
+    this.onUseSystemTheme,
     this.isDarkMode = false,
   });
   final PoliceApi api;
   final Map<String, dynamic> account;
   final TelegramOutbox? outbox;
   final VoidCallback? onToggleTheme;
+  final VoidCallback? onUseSystemTheme;
   final bool isDarkMode;
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -1294,6 +1353,9 @@ class _DashboardPageState extends State<DashboardPage>
         break;
       case 'theme':
         widget.onToggleTheme?.call();
+        break;
+      case 'system-theme':
+        widget.onUseSystemTheme?.call();
         break;
       case 'notifications':
         _togglePushNotifications();
@@ -2519,12 +2581,19 @@ class _DashboardPageState extends State<DashboardPage>
               PopupMenuItem(
                 value: 'theme',
                 child: _AccountMenuItem(
-                  icon: widget.isDarkMode
+                  icon: Theme.of(context).brightness == Brightness.dark
                       ? Icons.light_mode_outlined
                       : Icons.dark_mode_outlined,
-                  title: widget.isDarkMode
+                  title: Theme.of(context).brightness == Brightness.dark
                       ? 'تفعيل الوضع الفاتح'
                       : 'تفعيل الوضع الليلي',
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'system-theme',
+                child: _AccountMenuItem(
+                  icon: Icons.brightness_auto_outlined,
+                  title: 'اتباع مظهر الجهاز تلقائياً',
                 ),
               ),
               PopupMenuItem(

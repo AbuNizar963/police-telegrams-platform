@@ -182,12 +182,12 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         bottom: TabBar(
           controller: _tabs,
           isScrollable: true,
-          indicatorColor: _gold,
+          indicatorColor: Theme.of(context).colorScheme.primary,
           indicatorWeight: 3,
           indicatorSize: TabBarIndicatorSize.label,
-          labelColor: _navy,
+          labelColor: Theme.of(context).colorScheme.onSurface,
           labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-          unselectedLabelColor: const Color(0xFF7A8493),
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
             Tab(icon: Icon(Icons.map_outlined), text: 'المواقع'),
@@ -204,7 +204,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 if (_error != null)
                   MaterialBanner(
                     content: Text(_error!),
-                    leading: const Icon(Icons.error_outline, color: Colors.red),
+                    leading: Icon(
+                      Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     actions: [
                       TextButton(
                         onPressed: load,
@@ -250,10 +253,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
           ],
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'مواقع البرقيات',
           style: TextStyle(
-            color: _navy,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
@@ -301,7 +304,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
     children: [
       Text(
         'الجهة الحالية: ${_value(_currentOrganizationId)}',
-        style: const TextStyle(color: Colors.black54),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       const SizedBox(height: 8),
       if (_units.isEmpty)
@@ -315,9 +318,12 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
           final count = _workloadFor(unit);
           return Card(
             child: ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: _navy,
-                child: Icon(Icons.account_tree_outlined, color: _gold),
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.account_tree_outlined,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
               title: Text(_value(unit['name'], 'جهة بدون اسم')),
               subtitle: Text(
@@ -329,8 +335,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 children: [
                   Text(
                     '$count',
-                    style: const TextStyle(
-                      color: _navy,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
@@ -357,10 +363,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'ملخص توزيع العمل',
           style: TextStyle(
-            color: _navy,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.w900,
           ),
@@ -422,7 +428,9 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                       value: progress,
                       minHeight: 7,
                       borderRadius: BorderRadius.circular(8),
-                      backgroundColor: const Color(0xFFE5E7EB),
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
                       color: _gold,
                     ),
                   ],
@@ -460,7 +468,9 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         const SizedBox(height: 10),
         Text(
           'السجلات المعروضة: ${rows.length}',
-          style: const TextStyle(color: Colors.black54),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 6),
         if (rows.isEmpty)
@@ -501,8 +511,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
             const SizedBox(height: 6),
             Text(
               '$value',
-              style: const TextStyle(
-                color: _navy,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
               ),
@@ -543,7 +553,9 @@ class _InfoCard extends StatelessWidget {
           Text(
             detail,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black54),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

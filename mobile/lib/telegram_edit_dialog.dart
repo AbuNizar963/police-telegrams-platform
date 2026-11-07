@@ -185,12 +185,14 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                     const SpellCheckConfiguration.disabled(),
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: const InputDecoration(labelText: 'الجهة المستلمة'),
+                decoration: const InputDecoration(
+                  labelText: 'الجهة الموجهة إليها',
+                ),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _classification,
-                decoration: const InputDecoration(labelText: 'التصنيف'),
+                decoration: const InputDecoration(labelText: 'السرية'),
                 items: _classifications
                     .map(
                       (option) => DropdownMenuItem(

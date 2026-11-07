@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import 'api.dart';
 import './features/notifications/toast.dart';
 
-const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
 String _actionError(Object error) =>
@@ -652,10 +651,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'إجراءات البرقية',
             style: TextStyle(
-              color: _navy,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 17,
               fontWeight: FontWeight.w900,
             ),

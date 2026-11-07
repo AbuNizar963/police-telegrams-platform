@@ -6,7 +6,6 @@ import '../../api.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
-const _canvas = Color(0xFFF8F7F2);
 
 class NativeOwnerDashboardPage extends StatefulWidget {
   const NativeOwnerDashboardPage({super.key, required this.api});
@@ -32,7 +31,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
     super.initState();
     _load();
     _notificationTimer = Timer.periodic(
-      const Duration(seconds: 20),
+      const Duration(seconds: 15),
       (_) => _loadNotifications(),
     );
   }
@@ -121,7 +120,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: Scaffold(
-      backgroundColor: _canvas,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text(
           'مركز قيادة المنصة',
@@ -274,7 +273,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
           _CardHeader(
             icon: Icons.notifications_active_outlined,
             title: 'التنبيهات الفورية',
-            subtitle: 'تتحدث تلقائيًا كل 20 ثانية',
+            subtitle: 'تتحدث تلقائيًا كل 15 ثانية',
             badge: '$_unreadCount جديدة',
           ),
           const SizedBox(height: 10),
@@ -383,16 +382,16 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
           const Spacer(),
           Text(
             '$value',
-            style: const TextStyle(
-              color: _navy,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w900,
               fontSize: 23,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF718096),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -457,10 +456,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                         ),
                         Text(
                           '${row['value']}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
-                            color: _navy,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -471,8 +470,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       child: LinearProgressIndicator(
                         value: row['ratio'] as double,
                         minHeight: 7,
-                        backgroundColor: const Color(0xFFE9EDF1),
-                        color: _navy,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -557,10 +558,14 @@ class _CardHeader extends StatelessWidget {
         width: 34,
         height: 34,
         decoration: BoxDecoration(
-          color: const Color(0xFFEEF2F5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(11),
         ),
-        child: Icon(icon, color: _navy, size: 18),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 18,
+        ),
       ),
       const SizedBox(width: 10),
       Expanded(
@@ -569,12 +574,18 @@ class _CardHeader extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(color: _navy, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: const TextStyle(color: Color(0xFF7D8998), fontSize: 10),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 10,
+              ),
             ),
           ],
         ),
@@ -607,14 +618,17 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFB),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE1E5EB)),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
     ),
     child: Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(color: Color(0xFF7D8998), fontSize: 12),
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontSize: 12,
+      ),
     ),
   );
 }

@@ -41,10 +41,10 @@ export function ThemeProvider({
   );
   const [theme, setTheme] = useState<Theme>(() => {
     if (preference !== "system") return preference;
-    return typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    const followsDarkPreference =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return followsDarkPreference ? "dark" : "light";
   });
 
   useEffect(() => {

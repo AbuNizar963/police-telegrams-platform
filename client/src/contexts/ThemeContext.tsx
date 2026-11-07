@@ -39,7 +39,13 @@ export function ThemeProvider({
   const [preference, setPreference] = useState<ThemePreference>(() =>
     switchable ? readThemePreference(defaultTheme) : defaultTheme
   );
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (preference !== "system") return preference;
+    return typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -77,13 +83,17 @@ export function ThemeProvider({
   };
 
   const toggleTheme = switchable
-    ? () => setPreference(current => {
-        const media = window.matchMedia("(prefers-color-scheme: dark)");
-        const resolved = current === "system"
-          ? media.matches ? "dark" : "light"
-          : current;
-        return resolved === "dark" ? "light" : "dark";
-      })
+    ? () =>
+        setPreference(current => {
+          const media = window.matchMedia("(prefers-color-scheme: dark)");
+          const resolved =
+            current === "system"
+              ? media.matches
+                ? "dark"
+                : "light"
+              : current;
+          return resolved === "dark" ? "light" : "dark";
+        })
     : undefined;
 
   return (

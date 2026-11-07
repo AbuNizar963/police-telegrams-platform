@@ -4,6 +4,7 @@ import {
   Info,
   LogOut,
   Menu,
+  Monitor,
   Moon,
   Settings,
   SlidersHorizontal,
@@ -64,7 +65,7 @@ function requiresNotificationAction(type: string): boolean {
  * service worker; it never sends subscription secrets to the client UI.
  */
 export default function HeaderActions() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, preference, setThemePreference } = useTheme();
   const { user, logout } = useAuth();
   const organizationContext = trpc.organizations.context.useQuery(undefined, {
     enabled: Boolean(user),
@@ -291,18 +292,32 @@ export default function HeaderActions() {
             <UserRound className="h-4 w-4" />
             <span>الملف الشخصي</span>
           </DropdownMenuItem>
+          <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
+            مظهر الواجهة
+          </DropdownMenuLabel>
           <DropdownMenuItem
-            onSelect={toggleTheme}
+            onSelect={() => setThemePreference("system")}
             className="cursor-pointer justify-end gap-2"
+            aria-label="اتباع مظهر الجهاز"
           >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-            <span>
-              {theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}
-            </span>
+            <Monitor className="h-4 w-4" />
+            <span>تلقائي حسب الجهاز{preference === "system" ? " · مفعّل" : ""}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setThemePreference("light")}
+            className="cursor-pointer justify-end gap-2"
+            aria-label="تفعيل الوضع الفاتح"
+          >
+            <Sun className="h-4 w-4" />
+            <span>الوضع الفاتح{preference === "light" ? " · مفعّل" : ""}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setThemePreference("dark")}
+            className="cursor-pointer justify-end gap-2"
+            aria-label="تفعيل الوضع الداكن"
+          >
+            <Moon className="h-4 w-4" />
+            <span>الوضع الداكن{preference === "dark" ? " · مفعّل" : ""}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => void togglePushNotifications()}

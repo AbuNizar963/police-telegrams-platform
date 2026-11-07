@@ -116,6 +116,28 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
         .toList();
   }
 
+  String _actionLabel(dynamic value) {
+    const labels = {
+      'telegram.create': 'إنشاء برقية',
+      'telegram.update': 'تعديل برقية',
+      'telegram.delete': 'حذف برقية',
+      'telegram.route': 'إحالة برقية',
+      'telegram.status.transition': 'تغيير حالة برقية',
+      'telegram.document.print': 'طباعة وثيقة برقية',
+      'telegram.document.download': 'تنزيل أو مشاركة وثيقة برقية',
+      'user.create': 'إنشاء حساب مستخدم',
+      'user.update': 'تعديل بيانات مستخدم',
+      'user.disable': 'تعطيل حساب مستخدم',
+      'user.enable': 'تفعيل حساب مستخدم',
+      'organization.create': 'إنشاء جهة',
+      'organization.update': 'تعديل جهة',
+      'organization.purge_archived': 'حذف نهائي لجهة مؤرشفة',
+      'settings.update': 'تحديث الإعدادات',
+      'platform.document_settings.update': 'تحديث إعدادات الوثائق',
+    };
+    return labels['$value'] ?? 'إجراء مسجل';
+  }
+
   String _text(dynamic value, [String fallback = '—']) {
     final text = '$value'.trim();
     return text.isEmpty || text == 'null' ? fallback : text;
@@ -542,7 +564,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Container(
-                                height: height.clamp(4.0, 104.0),
+                                height: height.clamp(4.0, 104.0).toDouble(),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF2C7892),
                                   borderRadius: BorderRadius.circular(6),
@@ -728,7 +750,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                     child: Icon(Icons.manage_history_outlined, size: 17),
                   ),
                   title: Text(
-                    _text(row['action'], 'إجراء إداري'),
+                    _actionLabel(row['action']),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),

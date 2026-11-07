@@ -526,10 +526,15 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
       total == 0 ? 0.08 : (value / total).clamp(0.08, 1.0).toDouble();
 
   Widget _activityCard() {
-    final points = _rows('operationsByDay').reversed.take(14).toList().reversed.toList();
+    final points = _rows('operationsByDay').reversed
+        .take(14)
+        .toList()
+        .reversed
+        .toList();
     final maximum = points.fold<int>(
       0,
-      (current, point) => current > (int.tryParse('${point['count'] ?? 0}') ?? 0)
+      (current, point) =>
+          current > (int.tryParse('${point['count'] ?? 0}') ?? 0)
           ? current
           : (int.tryParse('${point['count'] ?? 0}') ?? 0),
     );
@@ -694,30 +699,38 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             ),
             const SizedBox(height: 10),
             if (organizations.isEmpty)
-              const _EmptyState(text: 'لا توجد عمليات مرتبطة بالجهات في هذه الفترة.')
+              const _EmptyState(
+                text: 'لا توجد عمليات مرتبطة بالجهات في هذه الفترة.',
+              )
             else
-              ...organizations.take(5).map(
-                (row) => ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 17,
-                    backgroundColor: Color(0xFFF7F1DF),
-                    foregroundColor: Color(0xFF8B6D22),
-                    child: Icon(Icons.account_balance_outlined, size: 17),
+              ...organizations
+                  .take(5)
+                  .map(
+                    (row) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        radius: 17,
+                        backgroundColor: Color(0xFFF7F1DF),
+                        foregroundColor: Color(0xFF8B6D22),
+                        child: Icon(Icons.account_balance_outlined, size: 17),
+                      ),
+                      title: Text(
+                        _text(row['organizationName'], 'جهة غير محددة'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      trailing: Text(
+                        '${row['count'] ?? 0}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
                   ),
-                  title: Text(
-                    _text(row['organizationName'], 'جهة غير محددة'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                  ),
-                  trailing: Text(
-                    '${row['count'] ?? 0}',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
+
           ],
         ),
       ),
@@ -739,36 +752,44 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             ),
             const SizedBox(height: 10),
             if (operations.isEmpty)
-              const _EmptyState(text: 'لا توجد عمليات مسجلة حديثًا.')
+              const _EmptyState(
+                text: 'لا توجد عمليات مسجلة حديثًا.',
+              )
             else
-              ...operations.take(5).map(
-                (row) => ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 17,
-                    backgroundColor: Color(0xFFE9F2F7),
-                    foregroundColor: Color(0xFF24506A),
-                    child: Icon(Icons.manage_history_outlined, size: 17),
+              ...operations
+                  .take(5)
+                  .map(
+                    (row) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        radius: 17,
+                        backgroundColor: Color(0xFFE9F2F7),
+                        foregroundColor: Color(0xFF24506A),
+                        child: Icon(Icons.manage_history_outlined, size: 17),
+                      ),
+                      title: Text(
+                        _actionLabel(row['action']),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        [
+                          _text(row['actorName'], 'مستخدم'),
+                          _text(row['organizationName'], 'النظام'),
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                      trailing: const Icon(Icons.chevron_left, size: 18),
+                    ),
                   ),
-                  title: Text(
-                    _actionLabel(row['action']),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text(
-                    [
-                      _text(row['actorName'], 'مستخدم'),
-                      _text(row['organizationName'], 'النظام'),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                  trailing: const Icon(Icons.chevron_left, size: 18),
-                ),
-              ),
+
           ],
         ),
       ),

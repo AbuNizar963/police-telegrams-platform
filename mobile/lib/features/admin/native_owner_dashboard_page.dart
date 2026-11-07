@@ -752,9 +752,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             ),
             const SizedBox(height: 10),
             if (operations.isEmpty)
-              const _EmptyState(
-                text: 'لا توجد عمليات مسجلة حديثًا.',
-              )
+              const _EmptyState(text: 'لا توجد عمليات مسجلة حديثًا.')
             else
               ...operations
                   .take(5)

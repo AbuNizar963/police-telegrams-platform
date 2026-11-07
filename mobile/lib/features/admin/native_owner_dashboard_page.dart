@@ -48,7 +48,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
       _error = null;
     });
     try {
-      final result = await widget.api.call('dashboard.stats');
+      final result = await widget.api.call(
+        'ownerDashboard.summary',
+        input: {'days': _days},
+      );
       if (!mounted) return;
       setState(() {
         _summary = result is Map ? Map<String, dynamic>.from(result) : {};
@@ -101,14 +104,16 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   }
 
   int _number(String key) {
-    final fallback = switch (key) {
-      'totalOperations' => 'total',
-      'sensitiveOperations' => 'secret',
-      'activeOrganizations' => 'organizations',
-      'activeUsers' => 'users',
-      _ => key,
-    };
-    return int.tryParse('${_summary[key] ?? _summary[fallback] ?? 0}') ?? 0;
+    return int.tryParse('${_summary[key] ?? 0}') ?? 0;
+  }
+
+  List<Map<String, dynamic>> _rows(String key) {
+    final value = _summary[key];
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   String _text(dynamic value, [String fallback = '—']) {
@@ -155,6 +160,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                   _activityCard(),
                   const SizedBox(height: 14),
                   _distributionCard(),
+                  const SizedBox(height: 14),
+                  _organizationsCard(),
+                  const SizedBox(height: 14),
+                  _recentOperationsCard(),
                 ],
               ),
             ),
@@ -403,26 +412,31 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
 
   Widget _performanceCard() {
     final total = _number('totalOperations');
+    final sensitive = _number('sensitiveOperations');
+    final points = _rows('operationsByDay');
+    final organizations = _rows('topOrganizations');
+    final average = points.isEmpty ? 0 : (total / points.length).round();
+    final sensitiveRate = total == 0 ? 0 : (sensitive / total * 100).round();
+    final topOrganization = organizations.isEmpty ? null : organizations.first;
     final rows = [
       {
-        'label': 'معدل النشاط اليوم',
-        'value': _number('today'),
-        'ratio': _ratio(_number('today'), total),
+        'label': 'متوسط العمليات اليومي',
+        'value': average,
+        'ratio': _ratio(average, total),
       },
       {
-        'label': 'قيد المتابعة',
-        'value': _number('pending') + _number('inProgress'),
-        'ratio': _ratio(_number('pending') + _number('inProgress'), total),
+        'label': 'نسبة العمليات الحساسة',
+        'value': sensitiveRate,
+        'ratio': sensitiveRate / 100,
+        'suffix': '%',
       },
       {
-        'label': 'نسبة الإنجاز',
-        'value': _number('resolved'),
-        'ratio': _ratio(_number('resolved'), total),
-      },
-      {
-        'label': 'أولوية عاجلة',
-        'value': _number('urgent'),
-        'ratio': _ratio(_number('urgent'), total),
+        'label': 'عمليات الجهة الأعلى نشاطًا',
+        'value': int.tryParse('${topOrganization?['count'] ?? 0}') ?? 0,
+        'ratio': _ratio(
+          int.tryParse('${topOrganization?['count'] ?? 0}') ?? 0,
+          total,
+        ),
       },
     ];
     return Card(
@@ -434,7 +448,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             const _CardHeader(
               icon: Icons.insert_chart_outlined,
               title: 'تقرير الأداء التفصيلي',
-              subtitle: 'قراءة تنفيذية لمؤشرات الكفاءة',
+              subtitle: 'مؤشرات مستمدة من سجل المنصة الموحد',
             ),
             const SizedBox(height: 14),
             ...rows.map(
@@ -455,7 +469,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                           ),
                         ),
                         Text(
-                          '${row['value']}',
+                          '${row['value']}${row['suffix'] ?? ''}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
@@ -489,54 +503,254 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   double _ratio(int value, int total) =>
       total == 0 ? 0.08 : (value / total).clamp(0.08, 1.0).toDouble();
 
-  Widget _activityCard() => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          _CardHeader(
-            icon: Icons.show_chart_outlined,
-            title: 'وتيرة العمليات اليومية',
-            subtitle: 'النشاط المسجل خلال الفترة المحددة',
-          ),
-          SizedBox(height: 14),
-          _EmptyState(text: 'يظهر التفصيل اليومي الكامل في لوحة الويب.'),
-        ],
+  Widget _activityCard() {
+    final points = _rows('operationsByDay').reversed.take(14).toList().reversed.toList();
+    final maximum = points.fold<int>(
+      0,
+      (current, point) => current > (int.tryParse('${point['count'] ?? 0}') ?? 0)
+          ? current
+          : (int.tryParse('${point['count'] ?? 0}') ?? 0),
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _CardHeader(
+              icon: Icons.show_chart_outlined,
+              title: 'وتيرة العمليات اليومية',
+              subtitle: 'آخر 14 يومًا من الفترة المحددة',
+            ),
+            const SizedBox(height: 16),
+            if (points.isEmpty)
+              const _EmptyState(text: 'لا توجد بيانات نشاط متاحة لهذه الفترة.')
+            else
+              SizedBox(
+                height: 154,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: points.map((point) {
+                    final count = int.tryParse('${point['count'] ?? 0}') ?? 0;
+                    final height = maximum == 0 ? 4.0 : 104 * count / maximum;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Tooltip(
+                          message: '${point['date'] ?? ''} · $count عملية',
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                height: height.clamp(4.0, 104.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2C7892),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                '${(point['date'] ?? '').toString().length >= 10 ? (point['date'] as String).substring(8, 10) : ''}',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: Color(0xFF718096),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _distributionCard() => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          _CardHeader(
-            icon: Icons.donut_large_outlined,
-            title: 'توزيع العمليات',
-            subtitle: 'حسب مجال الإجراء',
-          ),
-          SizedBox(height: 14),
-          _EmptyState(text: 'يظهر التوزيع التفصيلي في لوحة الويب.'),
-        ],
+  Widget _distributionCard() {
+    const labels = {
+      'telegram': 'البرقيات',
+      'user': 'الحسابات',
+      'organization': 'الجهات',
+      'platform': 'المنصة والإعدادات',
+      'other': 'عمليات أخرى',
+    };
+    const colors = [
+      Color(0xFF2C7892),
+      Color(0xFFD8C38E),
+      Color(0xFF4F927F),
+      Color(0xFF9A6476),
+      Color(0xFF7D8BC4),
+    ];
+    final rows = _rows('operationsByCategory');
+    final total = rows.fold<int>(
+      0,
+      (sum, row) => sum + (int.tryParse('${row['count'] ?? 0}') ?? 0),
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _CardHeader(
+              icon: Icons.donut_large_outlined,
+              title: 'توزيع العمليات',
+              subtitle: 'حسب مجال الإجراء',
+            ),
+            const SizedBox(height: 14),
+            if (rows.isEmpty)
+              const _EmptyState(text: 'لا توجد بيانات توزيع متاحة لهذه الفترة.')
+            else
+              ...rows.asMap().entries.map((entry) {
+                final row = entry.value;
+                final count = int.tryParse('${row['count'] ?? 0}') ?? 0;
+                final ratio = total == 0 ? 0.0 : count / total;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              labels[row['category']] ?? 'عمليات أخرى',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '$count',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: ratio,
+                          minHeight: 8,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          color: colors[entry.key % colors.length],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _errorCard() => Card(
-    color: const Color(0xFFFFF3F2),
-    child: ListTile(
-      leading: const Icon(Icons.error_outline, color: Colors.red),
-      title: const Text('تعذر تحميل بعض البيانات'),
-      subtitle: Text(_error!),
-      trailing: TextButton(
-        onPressed: _load,
-        child: const Text('إعادة المحاولة'),
+  Widget _organizationsCard() {
+    final organizations = _rows('topOrganizations');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _CardHeader(
+              icon: Icons.apartment_outlined,
+              title: 'الجهات الأعلى نشاطًا',
+              subtitle: 'بحسب عدد الإجراءات خلال الفترة المحددة',
+            ),
+            const SizedBox(height: 10),
+            if (organizations.isEmpty)
+              const _EmptyState(text: 'لا توجد عمليات مرتبطة بالجهات في هذه الفترة.')
+            else
+              ...organizations.take(5).map(
+                (row) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(
+                    radius: 17,
+                    backgroundColor: Color(0xFFF7F1DF),
+                    foregroundColor: Color(0xFF8B6D22),
+                    child: Icon(Icons.account_balance_outlined, size: 17),
+                  ),
+                  title: Text(
+                    _text(row['organizationName'], 'جهة غير محددة'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                  trailing: Text(
+                    '${row['count'] ?? 0}',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _recentOperationsCard() {
+    final operations = _rows('recentOperations');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _CardHeader(
+              icon: Icons.history_outlined,
+              title: 'أحدث العمليات',
+              subtitle: 'آخر الإجراءات المسجلة على مستوى المنصة',
+            ),
+            const SizedBox(height: 10),
+            if (operations.isEmpty)
+              const _EmptyState(text: 'لا توجد عمليات مسجلة حديثًا.')
+            else
+              ...operations.take(5).map(
+                (row) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(
+                    radius: 17,
+                    backgroundColor: Color(0xFFE9F2F7),
+                    foregroundColor: Color(0xFF24506A),
+                    child: Icon(Icons.manage_history_outlined, size: 17),
+                  ),
+                  title: Text(
+                    _text(row['action'], 'إجراء إداري'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    [
+                      _text(row['actorName'], 'مستخدم'),
+                      _text(row['organizationName'], 'النظام'),
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  trailing: const Icon(Icons.chevron_left, size: 18),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }
 
 class _CardHeader extends StatelessWidget {

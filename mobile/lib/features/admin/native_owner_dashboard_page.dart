@@ -786,7 +786,6 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       trailing: const Icon(Icons.chevron_left, size: 18),
                     ),
                   ),
-
           ],
         ),
       ),

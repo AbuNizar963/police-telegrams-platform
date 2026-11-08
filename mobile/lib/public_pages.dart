@@ -40,16 +40,18 @@ class AboutPage extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => _PublicScaffold(
-    title: 'حول النظام',
-    subtitle: 'ميزات النظام التي تحافظ على موثوقية البرقيات وسلامة التشغيل.',
-    child: Card(
-      clipBehavior: Clip.antiAlias,
-      color: _publicNavy,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return _PublicScaffold(
+      title: 'حول النظام',
+      subtitle: 'ميزات النظام التي تحافظ على موثوقية البرقيات وسلامة التشغيل.',
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        color: colors.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -57,7 +59,7 @@ class AboutPage extends StatelessWidget {
                 Text(
                   'ميزات النظام',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: colors.onPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -65,7 +67,9 @@ class AboutPage extends StatelessWidget {
                 SizedBox(height: 6),
                 Text(
                   'حماية موحدة للهوية والسجل والإجراءات التشغيلية.',
-                  style: TextStyle(color: Color(0xFFD1D9E5)),
+                  style: TextStyle(
+                    color: colors.onPrimary.withValues(alpha: 0.75),
+                  ),
                 ),
               ],
             ),
@@ -85,9 +89,9 @@ class AboutPage extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: colors.onPrimary.withValues(alpha: 0.05),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
+                    color: colors.onPrimary.withValues(alpha: 0.12),
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -97,8 +101,8 @@ class AboutPage extends StatelessWidget {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: _publicGold.withValues(alpha: 0.18),
-                          foregroundColor: _publicGold,
+                          backgroundColor: colors.secondary.withValues(alpha: 0.18),
+                          foregroundColor: colors.onSecondary,
                           child: Icon(feature.$1),
                         ),
                         const SizedBox(width: 10),
@@ -108,15 +112,15 @@ class AboutPage extends StatelessWidget {
                             children: [
                               Text(
                                 feature.$2,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colors.onPrimary,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                               Text(
                                 feature.$3,
-                                style: const TextStyle(
-                                  color: Color(0xFFB9C5D5),
+                                style: TextStyle(
+                                  color: colors.onPrimary.withValues(alpha: 0.7),
                                   fontSize: 12,
                                 ),
                               ),
@@ -128,8 +132,8 @@ class AboutPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       feature.$4,
-                      style: const TextStyle(
-                        color: Color(0xFFD1D9E5),
+                      style: TextStyle(
+                        color: colors.onPrimary.withValues(alpha: 0.75),
                         height: 1.5,
                       ),
                     ),
@@ -319,8 +323,8 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _publicNavy,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         title: const Text(
           'التحقق من صحة البرقية',
           style: TextStyle(fontWeight: FontWeight.w900),
@@ -330,17 +334,21 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
         padding: const EdgeInsets.all(16),
         children: [
           Card(
-            color: _publicNavy,
-            child: const Padding(
+            color: Theme.of(context).colorScheme.primary,
+            child: Padding(
               padding: EdgeInsets.all(18),
               child: Column(
                 children: [
-                  Icon(Icons.verified_outlined, color: _publicGold, size: 46),
+                  Icon(
+                    Icons.verified_outlined,
+                    color: Theme.of(context).colorScheme.secondary,
+                    size: 46,
+                  ),
                   SizedBox(height: 10),
                   Text(
                     'التحقق من الوثيقة الرسمية',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
@@ -349,7 +357,12 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
                   Text(
                     'تؤكد هذه الصفحة صحة المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFD1D9E5), height: 1.5),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(
+                        alpha: 0.75,
+                      ),
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),

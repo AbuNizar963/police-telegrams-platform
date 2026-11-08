@@ -9,6 +9,7 @@ import {
   Settings,
   SlidersHorizontal,
   Sun,
+  SunMoon,
   UserRound,
   Users,
 } from "lucide-react";
@@ -180,6 +181,45 @@ export default function HeaderActions() {
             type="button"
             variant="outline"
             size="icon"
+            aria-label="مظهر الواجهة"
+            title="إعدادات المظهر"
+            className="h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
+          >
+            <SunMoon className="h-[18px] w-[18px]" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" sideOffset={8} className="w-56">
+          <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
+            مظهر الواجهة
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={preference}
+            onValueChange={value =>
+              setThemePreference(value as ThemePreference)
+            }
+          >
+            <DropdownMenuRadioItem value="system" className="cursor-pointer justify-end gap-2">
+              <Monitor className="h-4 w-4" />
+              <span>تلقائي حسب الجهاز</span>
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="light" className="cursor-pointer justify-end gap-2">
+              <Sun className="h-4 w-4" />
+              <span>الوضع الفاتح</span>
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="dark" className="cursor-pointer justify-end gap-2">
+              <Moon className="h-4 w-4" />
+              <span>الوضع الداكن</span>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             aria-label="الإشعارات"
             title="الإشعارات"
             className="relative h-10 w-10 rounded-xl border-border/70 bg-background/95 shadow-sm backdrop-blur hover:bg-accent"
@@ -294,40 +334,6 @@ export default function HeaderActions() {
             <UserRound className="h-4 w-4" />
             <span>الملف الشخصي</span>
           </DropdownMenuItem>
-          <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
-            مظهر الواجهة
-          </DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={preference}
-            onValueChange={value =>
-              setThemePreference(value as ThemePreference)
-            }
-          >
-            <DropdownMenuRadioItem
-              value="system"
-              className="cursor-pointer justify-end gap-2"
-              aria-label="اتباع مظهر الجهاز"
-            >
-              <Monitor className="h-4 w-4" />
-              <span>تلقائي حسب الجهاز</span>
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem
-              value="light"
-              className="cursor-pointer justify-end gap-2"
-              aria-label="تفعيل الوضع الفاتح"
-            >
-              <Sun className="h-4 w-4" />
-              <span>الوضع الفاتح</span>
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem
-              value="dark"
-              className="cursor-pointer justify-end gap-2"
-              aria-label="تفعيل الوضع الداكن"
-            >
-              <Moon className="h-4 w-4" />
-              <span>الوضع الداكن</span>
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
           <DropdownMenuItem
             onSelect={() => void togglePushNotifications()}
             disabled={subscribe.isPending || unsubscribe.isPending}

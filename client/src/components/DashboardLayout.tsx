@@ -25,6 +25,7 @@ import {
   Plus,
   ShieldCheck,
   Users,
+  WifiOff,
   X,
 } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
@@ -413,6 +414,9 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const isMobile = useIsMobile();
   const showSidebarBrand = isMobile || !isCollapsed;
+  const [online, setOnline] = useState(
+    () => typeof navigator === "undefined" || navigator.onLine
+  );
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
@@ -422,6 +426,16 @@ function DashboardLayoutContent({
       setIsResizing(false);
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const updateOnlineState = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -565,9 +579,13 @@ function DashboardLayoutContent({
               <h1 className="text-lg font-bold tracking-tight text-foreground">
                 مركز البرقيات
               </h1>
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                النظام متصل
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold ${online ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${online ? "animate-pulse bg-emerald-500" : "bg-amber-500"}`}
+                />
+                {online ? "النظام متصل" : "وضع عدم الاتصال"}
               </span>
             </div>
             <HeaderActions />
@@ -596,8 +614,23 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 bg-background p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
+          className="min-w-0 flex-1 p-3 sm:p-4 lg:p-8 xl:p-10 2xl:p-12"
         >
+          {!online ? (
+            <div
+              role="status"
+              className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
+              dir="rtl"
+            >
+              <WifiOff className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-bold">أنت تعمل دون اتصال بالإنترنت</p>
+                <p className="mt-1 text-xs leading-5 opacity-85">
+                  ستبقى الواجهة مفتوحة، وستظهر آخر البيانات المحفوظة إن توفرت. ستستأنف المزامنة تلقائياً عند عودة الاتصال.
+                </p>
+              </div>
+            </div>
+          ) : null}
           {children}
         </main>
       </SidebarInset>

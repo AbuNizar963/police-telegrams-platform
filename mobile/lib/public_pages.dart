@@ -46,29 +46,33 @@ class AboutPage extends StatelessWidget {
       subtitle: 'ميزات النظام التي تحافظ على موثوقية البرقيات وسلامة التشغيل.',
       child: Card(
         clipBehavior: Clip.antiAlias,
-        color: colors.primary,
+        color: colors.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
+            Container(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerLow,
+                border: Border(
+                  bottom: BorderSide(color: colors.outlineVariant),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     'ميزات النظام',
                     style: TextStyle(
-                      color: colors.onPrimary,
+                      color: colors.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  SizedBox(height: 6),
+                  const SizedBox(height: 6),
                   Text(
                     'حماية موحدة للهوية والسجل والإجراءات التشغيلية.',
-                    style: TextStyle(
-                      color: colors.onPrimary.withValues(alpha: 0.75),
-                    ),
+                    style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -88,10 +92,8 @@ class AboutPage extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: colors.onPrimary.withValues(alpha: 0.05),
-                    border: Border.all(
-                      color: colors.onPrimary.withValues(alpha: 0.12),
-                    ),
+                    color: colors.surfaceContainerLow,
+                    border: Border.all(color: colors.outlineVariant),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(
@@ -100,10 +102,10 @@ class AboutPage extends StatelessWidget {
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: colors.secondary.withValues(
-                              alpha: 0.18,
+                            backgroundColor: colors.tertiary.withValues(
+                              alpha: 0.12,
                             ),
-                            foregroundColor: colors.onSecondary,
+                            foregroundColor: colors.tertiary,
                             child: Icon(feature.$1),
                           ),
                           const SizedBox(width: 10),
@@ -114,16 +116,14 @@ class AboutPage extends StatelessWidget {
                                 Text(
                                   feature.$2,
                                   style: TextStyle(
-                                    color: colors.onPrimary,
+                                    color: colors.onSurface,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 Text(
                                   feature.$3,
                                   style: TextStyle(
-                                    color: colors.onPrimary.withValues(
-                                      alpha: 0.7,
-                                    ),
+                                    color: colors.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -136,7 +136,7 @@ class AboutPage extends StatelessWidget {
                       Text(
                         feature.$4,
                         style: TextStyle(
-                          color: colors.onPrimary.withValues(alpha: 0.75),
+                          color: colors.onSurfaceVariant,
                           height: 1.5,
                         ),
                       ),

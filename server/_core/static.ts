@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createRateLimit } from "./rateLimit";
+import { rateLimit } from "express-rate-limit";
 
 /**
  * Serves the prebuilt client bundle in production without importing Vite or
@@ -19,15 +19,27 @@ export function serveStatic(app: Express): void {
     );
   }
 
+  // Protect static-file reads before Express accesses the filesystem.
+  app.use(
+    rateLimit({
+      windowMs: 60_000,
+      limit: 1200,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "طلبات كثيرة لملفات التطبيق؛ أعد المحاولة لاحقًا" },
+    })
+  );
   app.use(express.static(distPath));
 
   // Fall through to index.html if the requested asset does not exist.
   app.use(
     "*",
-    createRateLimit({
+    rateLimit({
       windowMs: 60_000,
-      maxRequests: 240,
-      message: "طلبات كثيرة لصفحة التطبيق؛ أعد المحاولة لاحقًا",
+      limit: 240,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "طلبات كثيرة لصفحة التطبيق؛ أعد المحاولة لاحقًا" },
     }),
     (_req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));

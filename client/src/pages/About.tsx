@@ -16,6 +16,9 @@ import {
 } from "@/components/ui/card";
 import { BrandMark } from "@/components/BrandMark";
 
+const featureIconContainerClass =
+  "flex h-10 w-10 items-center justify-center rounded-xl";
+
 const features = [
   {
     icon: ShieldCheck,
@@ -81,7 +84,9 @@ export default function About() {
         </div>
       </div>
 
-      <Card className="overflow-hidden border-border bg-card text-card-foreground shadow-sm">
+      <Card
+        className="overflow-hidden border-border bg-card text-card-foreground shadow-sm"
+      >
         <CardHeader className="border-b border-border bg-muted/40">
           <CardTitle className="text-card-foreground">
             ميزات النظام
@@ -100,7 +105,7 @@ export default function About() {
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${feature.tone}`}
+                    className={`${featureIconContainerClass} ${feature.tone}`}
                   >
                     <Icon className="h-5 w-5" />
                   </div>

@@ -277,7 +277,7 @@ Future<void> checkAndPromptForAppUpdate(
         child: AlertDialog(
           icon: const Icon(
             Icons.system_update_alt_rounded,
-            color: AppPalette.gold,
+            color: AppPalette.brandBlue,
             size: 42,
           ),
           title: const Text(

@@ -310,7 +310,7 @@ void main() {
     );
   });
 
-  test('logout clears offline caches and preserves the outbox', () async {
+  test('logout clears offline caches and invalidates the outbox', () async {
     _secureStorageForTest['session_cookie'] = 'session=value';
     _secureStorageForTest['offline_settings'] = '{"departmentName":"old"}';
     _secureStorageForTest['offline_telegrams_list_e30'] = '{"items":[]}';
@@ -342,7 +342,11 @@ void main() {
       isFalse,
     );
     expect(_secureStorageForTest.containsKey('cached_dashboard'), isFalse);
-    expect(_secureStorageForTest.containsKey('telegram_outbox_v1'), isTrue);
+    expect(_secureStorageForTest.containsKey('telegram_outbox_v1'), isFalse);
+    expect(
+      _secureStorageForTest.containsKey('telegram_outbox_epoch_v1'),
+      isTrue,
+    );
   });
 
   test('logout clears dynamic offline caches when readAll fails', () async {

@@ -157,8 +157,7 @@ export function createApp(
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
-    const token =
-      typeof req.params.token === "string" ? req.params.token : "";
+    const token = typeof req.params.token === "string" ? req.params.token : "";
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         token

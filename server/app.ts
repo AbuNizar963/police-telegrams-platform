@@ -99,6 +99,15 @@ export function createApp(
   app.disable("x-powered-by");
   app.use((req, res, next) => {
     const csp = getContentSecurityPolicy(ENV.isProduction);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (ENV.isProduction) {
+      res.setHeader(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains"
+      );
+    }
     res.setHeader(csp.header, csp.value);
     if (
       ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&

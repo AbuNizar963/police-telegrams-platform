@@ -94,6 +94,9 @@ async function requestVerification(token = verificationToken) {
       status: response.status,
       cacheControl: response.headers.get("cache-control"),
       poweredBy: response.headers.get("x-powered-by"),
+      contentTypeOptions: response.headers.get("x-content-type-options"),
+      frameOptions: response.headers.get("x-frame-options"),
+      referrerPolicy: response.headers.get("referrer-policy"),
       body: await response.json(),
     };
   } finally {
@@ -120,6 +123,9 @@ describe("GET /api/verify/:token", () => {
     expect(response.status).toBe(200);
     expect(response.cacheControl).toBe("no-store");
     expect(response.poweredBy).toBeNull();
+    expect(response.contentTypeOptions).toBe("nosniff");
+    expect(response.frameOptions).toBe("DENY");
+    expect(response.referrerPolicy).toBe("no-referrer");
     expect(response.body).toEqual(
       expect.objectContaining({
         valid: true,

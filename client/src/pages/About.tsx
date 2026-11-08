@@ -85,7 +85,7 @@ export default function About() {
       </div>
 
       <Card
-        className="overflow-hidden border-border bg-card text-card-foreground shadow-sm"
+        className="overflow-hidden"
       >
         <CardHeader className="border-b border-border bg-muted/40">
           <CardTitle className="text-card-foreground">

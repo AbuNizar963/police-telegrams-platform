@@ -76,9 +76,7 @@ export default function About() {
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div>
-          <p className={sectionLabelClass}>
-            إعدادات النظام
-          </p>
+          <p className={sectionLabelClass}>إعدادات النظام</p>
           <h1 className="text-2xl font-bold tracking-tight">حول النظام</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             ميزات النظام التي تحافظ على موثوقية البرقيات وسلامة التشغيل.
@@ -88,9 +86,7 @@ export default function About() {
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b border-border bg-muted/40">
-          <CardTitle className="text-card-foreground">
-            ميزات النظام
-          </CardTitle>
+          <CardTitle className="text-card-foreground">ميزات النظام</CardTitle>
           <CardDescription className="text-muted-foreground">
             حماية موحدة للهوية والسجل والإجراءات التشغيلية.
           </CardDescription>
@@ -110,12 +106,8 @@ export default function About() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {feature.title}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {feature.label}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">{feature.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{feature.label}</p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">

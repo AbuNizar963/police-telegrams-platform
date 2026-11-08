@@ -3,7 +3,7 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
-import { rateLimit } from "express-rate-limit";
+import { createRateLimit } from "./rateLimit";
 
 export async function setupVite(app: Express, server: Server) {
   // Keep Vite and its native Rollup dependencies out of production API startup.
@@ -25,19 +25,14 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  // Limit requests before Vite can transform modules or read files.
-  app.use(
-    rateLimit({
-      windowMs: 60_000,
-      limit: 600,
-      standardHeaders: true,
-      legacyHeaders: false,
-      message: { error: "طلبات كثيرة لصفحة التطوير؛ أعد المحاولة لاحقًا" },
-    })
-  );
   app.use(vite.middlewares);
   app.use(
     "*",
+    createRateLimit({
+      windowMs: 60_000,
+      maxRequests: 240,
+      message: "طلبات كثيرة لصفحة التطوير؛ أعد المحاولة لاحقًا",
+    }),
     async (req, res, next) => {
       const url = req.originalUrl;
 

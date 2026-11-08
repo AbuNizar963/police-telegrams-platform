@@ -13,7 +13,7 @@ import { assertProductionEnvironment, ENV } from "./_core/env";
 import { getContentSecurityPolicy } from "./_core/csp";
 import { notifyMobileRelease } from "./features/notifications/notification";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
-import { rateLimit } from "express-rate-limit";
+import { createRateLimit } from "./_core/rateLimit";
 
 const verificationAttempts = new Map<
   string,
@@ -120,17 +120,13 @@ export function createApp(
     next();
   });
 
-  // Standard Express limiter protects API handlers before parsing bodies or
-  // performing database/storage work. Keep the Vercel edge limit as the
-  // shared, cross-instance protection; this in-process store is defense-in-depth.
+  // Defense-in-depth per-instance request limit; retain shared edge limits in production.
   app.use(
     "/api",
-    rateLimit({
+    createRateLimit({
       windowMs: 60_000,
-      limit: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-      message: { error: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا" },
+      maxRequests: 300,
+      message: "طلبات كثيرة إلى واجهة النظام؛ أعد المحاولة لاحقًا",
     })
   );
 

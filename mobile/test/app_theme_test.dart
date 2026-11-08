@@ -25,9 +25,18 @@ void main() {
       expect(theme.iconTheme.color, AppPalette.navy);
       expect(theme.textTheme.bodyMedium?.fontFamily, 'Cairo');
       expect(theme.cardTheme.color, AppPalette.surface);
-      expect(_contrastRatio(AppPalette.mutedInk, AppPalette.muted), greaterThanOrEqualTo(4.5));
-      expect(_contrastRatio(AppPalette.success, AppPalette.canvas), greaterThanOrEqualTo(4.5));
-      expect(_contrastRatio(AppPalette.warning, AppPalette.canvas), greaterThanOrEqualTo(4.5));
+      expect(
+        _contrastRatio(AppPalette.mutedInk, AppPalette.muted),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrastRatio(AppPalette.success, AppPalette.canvas),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrastRatio(AppPalette.warning, AppPalette.canvas),
+        greaterThanOrEqualTo(4.5),
+      );
     });
 
     test('dark theme uses readable dark surfaces and Cairo typography', () {
@@ -40,7 +49,10 @@ void main() {
       expect(theme.iconTheme.color, AppPalette.darkInk);
       expect(theme.textTheme.bodyMedium?.fontFamily, 'Cairo');
       expect(theme.cardTheme.color, AppPalette.darkSurface);
-      expect(_contrastRatio(AppPalette.darkMutedInk, AppPalette.darkMuted), greaterThanOrEqualTo(4.5));
+      expect(
+        _contrastRatio(AppPalette.darkMutedInk, AppPalette.darkMuted),
+        greaterThanOrEqualTo(4.5),
+      );
     });
 
     testWidgets('semantic status colors follow the active theme', (
@@ -73,11 +85,9 @@ void main() {
       late Color darkInfo;
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: ThemeMode.dark,
-          home: Builder(
+        Theme(
+          data: AppTheme.dark,
+          child: Builder(
             builder: (context) {
               darkSuccess = context.appSuccess;
               darkWarning = context.appWarning;

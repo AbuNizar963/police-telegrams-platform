@@ -147,6 +147,10 @@ class PoliceApi {
         return 'offline_telegram_$id';
       case 'telegrams.list':
         return _offlineInputResponseKey('offline_telegrams_list', input);
+      case 'telegrams.versions':
+        return _offlineInputResponseKey('offline_telegram_versions', input);
+      case 'telegrams.incomingRoutes':
+        return _offlineInputResponseKey('offline_telegram_routes', input);
       case 'reports.telegrams':
         return _offlineInputResponseKey('offline_telegram_report', input);
       case 'notifications.inbox':
@@ -159,6 +163,10 @@ class PoliceApi {
         return 'offline_platform_document_settings';
       case 'organizations.routingDirectory':
         return 'offline_routing_directory';
+      case 'organizations.descendants':
+        return 'offline_organization_descendants';
+      case 'organizations.all':
+        return 'offline_organizations_all';
       case 'organizations.context':
         return 'offline_organization_context';
       case 'dashboard.stats':
@@ -332,6 +340,8 @@ class PoliceApi {
         'offline_settings',
         'offline_platform_document_settings',
         'offline_routing_directory',
+        'offline_organization_descendants',
+        'offline_organizations_all',
         'offline_organization_context',
         'offline_dashboard_stats',
         'offline_notifications_inbox',

@@ -50,7 +50,7 @@ import { trpc } from "@/lib/trpc";
 const numberFormatter = new Intl.NumberFormat("ar-SY");
 const chartColors = [
   "var(--primary)",
-  "#d8c38e",
+  "var(--brand-accent)",
   "#2c6c86",
   "#4f927f",
   "#9a6476",
@@ -99,17 +99,17 @@ function MetricCard({
   label: string;
   value: number;
   detail: string;
-  tone: "blue" | "gold" | "green" | "rose";
+  tone: "blue" | "accent" | "green" | "rose";
 }) {
   const tones = {
     blue: "bg-primary/10 text-primary",
-    gold: "bg-accent text-accent-foreground",
+    accent: "bg-accent text-accent-foreground",
     green: "bg-secondary text-secondary-foreground",
     rose: "bg-destructive/10 text-destructive",
   };
   return (
     <Card className="group relative overflow-hidden rounded-2xl border-border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#d8c38e] to-transparent opacity-70" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[var(--brand-accent)] to-transparent opacity-70" />
       <CardContent className="flex min-h-[136px] items-start justify-between gap-3 p-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-muted-foreground">{label}</p>
@@ -336,7 +336,7 @@ export default function OwnerDashboardPage() {
       </header>
 
       <div className="relative overflow-hidden rounded-[1.75rem] bg-primary p-5 text-primary-foreground shadow-[0_18px_50px_rgba(16,35,63,0.16)] sm:p-7">
-        <div className="pointer-events-none absolute -left-12 -top-24 h-72 w-72 rounded-full border border-[#d8c38e]/20" />
+        <div className="pointer-events-none absolute -left-12 -top-24 h-72 w-72 rounded-full border border-[var(--brand-accent)]/20" />
         <div className="pointer-events-none absolute -left-4 -top-12 h-48 w-48 rounded-full border border-primary-foreground/10" />
         <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
@@ -379,7 +379,7 @@ export default function OwnerDashboardPage() {
           label="الجهات النشطة"
           value={summary.activeOrganizations}
           detail="حالة الجهات الحالية"
-          tone="gold"
+          tone="accent"
         />
         <MetricCard
           icon={Users}

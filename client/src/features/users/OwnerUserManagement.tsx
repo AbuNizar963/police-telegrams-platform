@@ -353,7 +353,7 @@ export default function OwnerUserManagement() {
         <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[#d8c38e]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10233f] text-[var(--brand-accent)]">
                 <Users className="h-5 w-5" />
               </span>
               <div>

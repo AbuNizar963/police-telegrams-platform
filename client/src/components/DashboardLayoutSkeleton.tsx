@@ -20,10 +20,15 @@ export function DashboardLayoutSkeleton() {
           </p>
         </div>
         <div
-          className="flex items-center gap-2 text-sm font-semibold text-primary"
+          className="flex flex-col items-center gap-3 text-sm font-semibold text-success"
           role="status"
         >
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 ring-1 ring-success/20">
+            <Loader2
+              className="h-7 w-7 animate-spin text-success"
+              aria-hidden="true"
+            />
+          </span>
           <span>لحظات من فضلك</span>
         </div>
       </div>

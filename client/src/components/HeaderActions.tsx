@@ -198,15 +198,24 @@ export default function HeaderActions() {
               setThemePreference(value as ThemePreference)
             }
           >
-            <DropdownMenuRadioItem value="system" className="cursor-pointer justify-end gap-2">
+            <DropdownMenuRadioItem
+              value="system"
+              className="cursor-pointer justify-end gap-2"
+            >
               <Monitor className="h-4 w-4" />
               <span>تلقائي حسب الجهاز</span>
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="light" className="cursor-pointer justify-end gap-2">
+            <DropdownMenuRadioItem
+              value="light"
+              className="cursor-pointer justify-end gap-2"
+            >
               <Sun className="h-4 w-4" />
               <span>الوضع الفاتح</span>
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="dark" className="cursor-pointer justify-end gap-2">
+            <DropdownMenuRadioItem
+              value="dark"
+              className="cursor-pointer justify-end gap-2"
+            >
               <Moon className="h-4 w-4" />
               <span>الوضع الداكن</span>
             </DropdownMenuRadioItem>

@@ -47,6 +47,7 @@
   --accent: #f1e8d5;
   --accent-foreground: #10233f;
   --destructive: #b42332;
+  --destructive-tint: #fff0ef;
   --border: #e1e5eb;
   --input: #e1e5eb;
   --ring: #8a6b36;
@@ -90,6 +91,7 @@
   --accent: #34445b;
   --accent-foreground: #f5f6f8;
   --destructive: #f97066;
+  --destructive-tint: #351d25;
   --border: #2a384b;
   --input: #34445b;
   --ring: #e6cf91;
@@ -270,7 +272,7 @@
 
 [data-sonner-toaster].toaster [data-sonner-toast][data-type="error"] {
   --toast-accent: var(--destructive);
-  --toast-tint: color-mix(in srgb, var(--destructive) 8%, var(--popover));
+  --toast-tint: var(--destructive-tint);
   --toast-icon-foreground: #ffffff;
 }
 
@@ -384,7 +386,7 @@
 }
 
 .dark [data-sonner-toaster].toaster [data-sonner-toast][data-type="error"] {
-  --toast-tint: color-mix(in srgb, var(--destructive) 18%, var(--background));
+  --toast-tint: var(--destructive-tint);
 }
 
 .dark [data-sonner-toaster].toaster [data-sonner-toast][data-type="warning"] {

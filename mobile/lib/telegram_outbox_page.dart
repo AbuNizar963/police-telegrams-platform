@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'telegram_outbox.dart';
 
-const _outboxNavy = Color(0xFF10233F);
 const _outboxGold = Color(0xFFD8C38E);
 
 class TelegramOutboxPage extends StatefulWidget {
@@ -122,7 +121,7 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: _outboxNavy))
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : entries.isEmpty
           ? _emptyState()
           : RefreshIndicator(
@@ -173,7 +172,7 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.pending_actions_outlined, color: _outboxNavy),
+              Icon(Icons.pending_actions_outlined, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -186,9 +185,9 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
               IconButton(
                 tooltip: 'حذف',
                 onPressed: syncing ? null : () => _remove(entry),
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline,
-                  color: Color(0xFFB42332),
+                  color: Theme.of(context).colorScheme.error,
                 ),
               ),
             ],
@@ -201,13 +200,13 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
           const SizedBox(height: 7),
           Text(
             'حُفظت في ${_date(entry.createdAt)} · محاولات المزامنة: ${entry.attempts}',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           if (entry.lastError != null && entry.lastError!.isNotEmpty) ...[
             const SizedBox(height: 5),
             Text(
               'آخر خطأ: ${entry.lastError}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFFB42332)),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.error),
             ),
           ],
         ],
@@ -242,10 +241,10 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
   );
 
   Widget _errorCard(String text) => Card(
-    color: const Color(0xFFFFEEEE),
+    color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(12),
-      child: Text(text, style: const TextStyle(color: Color(0xFFB42332))),
+      child: Text(text, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
     ),
   );
 }

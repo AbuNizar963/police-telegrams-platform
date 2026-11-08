@@ -7,14 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
+import './app_theme.dart';
 import './features/notifications/toast.dart';
 
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
-const _updateNavy = Color(0xFF101C35);
-const _updateGold = Color(0xFFC9A45C);
-
 class _MobileRelease {
   const _MobileRelease({
     required this.version,
@@ -278,7 +276,7 @@ Future<void> checkAndPromptForAppUpdate(
         child: AlertDialog(
           icon: const Icon(
             Icons.system_update_alt_rounded,
-            color: _updateGold,
+            color: AppPalette.gold,
             size: 42,
           ),
           title: const Text(
@@ -305,7 +303,9 @@ Future<void> checkAndPromptForAppUpdate(
                   constraints: const BoxConstraints(maxHeight: 180),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F7FA),
+                    color: Theme.of(dialogContext)
+                        .colorScheme
+                        .surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SingleChildScrollView(child: Text(release.notes)),
@@ -314,7 +314,7 @@ Future<void> checkAndPromptForAppUpdate(
                 const Text(
                   'سيتم تنزيل التحديث داخل التطبيق، ثم سيطلب Android تأكيد التثبيت.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(fontSize: 12),
                 ),
               ],
             ),
@@ -327,8 +327,8 @@ Future<void> checkAndPromptForAppUpdate(
             ),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: _updateNavy,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(dialogContext).colorScheme.primary,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onPrimary,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
               icon: const Icon(Icons.download_rounded),

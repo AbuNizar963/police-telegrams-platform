@@ -1048,26 +1048,31 @@ class _OfficialTelegramDocumentPageState
     bool primary = false,
     bool danger = false,
   }) {
-    final foreground = danger || primary
-        ? Colors.white
-        : const Color(0xFF101C35);
+    final colorScheme = Theme.of(context).colorScheme;
+    final foreground = danger
+        ? colorScheme.onError
+        : primary
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface;
+    final background = danger
+        ? colorScheme.error
+        : primary
+        ? colorScheme.primary
+        : colorScheme.surfaceContainerLow;
+    final borderColor = danger
+        ? colorScheme.error
+        : primary
+        ? colorScheme.primary
+        : colorScheme.outlineVariant;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: danger
-              ? const Color(0xFFE33D3D)
-              : primary
-              ? const Color(0xFF10233F)
-              : Colors.white,
+          backgroundColor: background,
           foregroundColor: foreground,
           side: BorderSide(
-            color: danger
-                ? const Color(0xFFE33D3D)
-                : primary
-                ? const Color(0xFF10233F)
-                : const Color(0xFFD8DCE2),
+            color: borderColor,
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           minimumSize: const Size(0, 44),
@@ -1101,8 +1106,8 @@ class _OfficialTelegramDocumentPageState
         leading: const SizedBox.shrink(),
         toolbarHeight: 80,
         titleSpacing: 12,
-        backgroundColor: const Color(0xFFF8F7F2),
-        foregroundColor: const Color(0xFF101C35),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Column(
@@ -1118,16 +1123,16 @@ class _OfficialTelegramDocumentPageState
                   'برقية رقم : ',
                   style: TextStyle(
                     fontFamily: 'Cairo',
-                    color: Color(0xFF101C35),
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   _displaySerial,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Cairo',
-                    color: Color(0xFF101C35),
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1140,9 +1145,9 @@ class _OfficialTelegramDocumentPageState
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Cairo',
-                color: Color(0xFF111827),
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 height: 1.5,
                 fontWeight: FontWeight.w600,
@@ -1161,7 +1166,7 @@ class _OfficialTelegramDocumentPageState
       ),
       body: loading
           ? ColoredBox(
-              color: const Color(0xFFF6F8F7),
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
@@ -1171,9 +1176,11 @@ class _OfficialTelegramDocumentPageState
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFE5EAE7)),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x120F172A),
@@ -1204,22 +1211,22 @@ class _OfficialTelegramDocumentPageState
                             ),
                           ),
                           const SizedBox(height: 20),
-                          const Text(
+                          Text(
                             'نجهّز معاينة البرقية',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF17251D),
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontFamily: 'Cairo',
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(height: 7),
-                          const Text(
+                          Text(
                             'يتم تحميل شعار الجهة وإعداد الوثيقة الرسمية. سيظهر تنبيه إذا استغرق التجهيز وقتًا أطول من المتوقع.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF647067),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontFamily: 'Cairo',
                               fontSize: 12,
                               height: 1.7,
@@ -1303,7 +1310,7 @@ class _OfficialTelegramDocumentPageState
                   ),
                 Expanded(
                   child: Container(
-                    color: const Color(0xFFE9EDF2),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       transformationController: _previewTransform,
@@ -1501,9 +1508,11 @@ class _OfficialTelegramDocumentPageState
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F3),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE1E5EB)),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {

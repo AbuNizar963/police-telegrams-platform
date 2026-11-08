@@ -13,7 +13,6 @@ import './features/reports/telegram_report_date_formatter.dart';
 import './features/reports/telegram_report_labels.dart';
 import './features/notifications/toast.dart';
 
-const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
 String _errorMessage(Object error) =>
@@ -115,12 +114,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: read ? Colors.grey : _gold,
+                            backgroundColor: read ? Theme.of(context).colorScheme.surfaceContainerHighest : _gold,
                             child: Icon(
                               read
                                   ? Icons.notifications_none
                                   : Icons.notifications_active,
-                              color: _navy,
+                              color: Theme.of(context).colorScheme.onSecondary,
                             ),
                           ),
                           title: Text(
@@ -386,10 +385,10 @@ class _ReportsPageState extends State<ReportsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             'تصفية التقرير',
                             style: TextStyle(
-                              color: _navy,
+                              color: Theme.of(context).colorScheme.primary,
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
                             ),
@@ -767,7 +766,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         children: [
-                          const Icon(Icons.history, color: _navy, size: 28),
+                          Icon(Icons.history, color: Theme.of(context).colorScheme.primary, size: 28),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -780,16 +779,16 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '$total نتيجة · قراءة فقط · يتحدث تلقائياً كل 5 ثوانٍ',
-                                  style: const TextStyle(
-                                    color: Colors.black54,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                const Text(
+                                Text(
                                   'تُعرض الإجراءات والتفاصيل بالعربية؛ أما بيانات الشبكة والمعرّفات الفنية فهي اختيارية للمختصين.',
                                   style: TextStyle(
-                                    color: Colors.black54,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -945,9 +944,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const CircleAvatar(
-                                  backgroundColor: Color(0xFFF1E8D5),
-                                  child: Icon(Icons.history, color: _navy),
+                                CircleAvatar(
+                                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                  child: Icon(Icons.history, color: Theme.of(context).colorScheme.onSecondaryContainer),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -964,9 +963,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                       const SizedBox(height: 4),
                                       Text(
                                         'وقت تسجيل الإجراء: ${_formatDate(entry['createdAt'])}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.black54,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                     ],
@@ -974,9 +973,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 ),
                                 Text(
                                   deviceLabel,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.black54,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -1234,7 +1233,7 @@ class _AuditDetail extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+      Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       const SizedBox(height: 2),
       SelectableText(value, style: const TextStyle(fontSize: 12)),
     ],
@@ -1541,10 +1540,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                     ),
                     OutlinedButton.icon(
                       onPressed: saving ? null : widget.onLogout,
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      label: const Text(
+                      icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+                      label: Text(
                         'تسجيل الخروج',
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                     ),
                   ],
@@ -1591,8 +1590,8 @@ class _FormCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: _navy,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
               fontSize: 17,
               fontWeight: FontWeight.w900,
             ),
@@ -1611,10 +1610,10 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    color: Colors.red.shade50,
+    color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(14),
-      child: Text(message, style: const TextStyle(color: Colors.red)),
+      child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
     ),
   );
 }
@@ -2076,10 +2075,10 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'هوية الجهة وترويسة البرقية',
                           style: TextStyle(
-                            color: _navy,
+                            color: Theme.of(context).colorScheme.primary,
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
                           ),
@@ -2249,8 +2248,8 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Text(
                           'الرقم التالي — صادر: ${_text(_settings['nextOutgoingSerial'], '—')}، وارد: ${_text(_settings['nextIncomingSerial'], '—')}',
-                          style: const TextStyle(
-                            color: _navy,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

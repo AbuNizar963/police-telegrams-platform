@@ -275,9 +275,9 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
             return Card(
               child: ListTile(
                 onTap: () => _openMap(lat, lng),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF1E8D5),
-                  child: Icon(Icons.location_on_outlined, color: _navy),
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                  child: Icon(Icons.location_on_outlined, color: Theme.of(context).colorScheme.onSecondaryContainer),
                 ),
                 title: Text(
                   _value(row['subject'], 'برقية بدون موضوع'),
@@ -290,7 +290,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 ),
                 isThreeLine: true,
                 trailing: row['priority'] == 'urgent'
-                    ? const Icon(Icons.priority_high, color: Colors.red)
+                    ? Icon(Icons.priority_high, color: Theme.of(context).colorScheme.error)
                     : null,
               ),
             );

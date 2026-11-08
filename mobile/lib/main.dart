@@ -3502,8 +3502,9 @@ class _DashboardPageState extends State<DashboardPage>
     int value,
   ) {
     final selected = section == value;
+    final colors = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? navy : const Color(0xFFFFFEFC),
+      color: selected ? colors.primary : colors.surface,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -3520,7 +3521,7 @@ class _DashboardPageState extends State<DashboardPage>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? navy : const Color(0xFFD9DEE7),
+              color: selected ? colors.primary : colors.outlineVariant,
             ),
           ),
           child: Row(
@@ -3529,13 +3530,13 @@ class _DashboardPageState extends State<DashboardPage>
               Icon(
                 icon,
                 size: 14,
-                color: selected ? Colors.white : const Color(0xFF667085),
+                color: selected ? colors.onPrimary : colors.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF344054),
+                  color: selected ? colors.onPrimary : colors.onSurface,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
@@ -3544,7 +3545,9 @@ class _DashboardPageState extends State<DashboardPage>
               Text(
                 '$count',
                 style: TextStyle(
-                  color: selected ? Colors.white70 : const Color(0xFF667085),
+                  color: selected
+                      ? colors.onPrimary.withValues(alpha: 0.72)
+                      : colors.onSurfaceVariant,
                   fontSize: 9,
                 ),
               ),
@@ -4037,28 +4040,31 @@ class _DashboardPageState extends State<DashboardPage>
     String label,
     String value, {
     bool strong = true,
-  }) => RichText(
-    textAlign: TextAlign.right,
-    text: TextSpan(
-      style: TextStyle(
-        fontFamily: 'Cairo',
-        color: strong ? const Color(0xFF626E7D) : const Color(0xFF414B59),
-        fontSize: 14,
-        height: 1.45,
-        fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
-      ),
-      children: [
-        TextSpan(text: '$label '),
-        TextSpan(
-          text: value,
-          style: TextStyle(
-            color: strong ? const Color(0xFF626E7D) : const Color(0xFF263243),
-            fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
-          ),
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return RichText(
+      textAlign: TextAlign.right,
+      text: TextSpan(
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: strong ? colors.onSurfaceVariant : colors.onSurface,
+          fontSize: 14,
+          height: 1.45,
+          fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
         ),
-      ],
-    ),
-  );
+        children: [
+          TextSpan(text: '$label '),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              color: strong ? colors.onSurfaceVariant : colors.onSurface,
+              fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _telegramChip(
     String label,
@@ -4094,7 +4100,10 @@ class _DashboardPageState extends State<DashboardPage>
     builder: (context, constraints) {
       final pageLabel = Text(
         'صفحة $telegramPage',
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 12,
+        ),
       );
       final controls = Wrap(
         spacing: 8,
@@ -4804,7 +4813,10 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
           width: 125,
           child: Text(
             label,
-            style: const TextStyle(color: Colors.black54, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
         ),
         Expanded(

@@ -439,7 +439,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
             if (_error != null)
               MaterialBanner(
                 content: Text(_error!),
-                leading: const Icon(Icons.error_outline, color: Colors.red),
+                leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
                 actions: [
                   TextButton(
                     onPressed: load,
@@ -611,7 +611,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
                     ),
                   TextButton.icon(
                     onPressed: _saving ? null : () => _deleteUser(user),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
                     icon: const Icon(Icons.delete_outline, size: 18),
                     label: const Text('حذف'),
                   ),

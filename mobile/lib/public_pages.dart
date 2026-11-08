@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'api.dart';
+import 'app_theme.dart';
 
 const _publicNavy = Color(0xFF10233F);
 const _publicGold = Color(0xFFC9A45C);
@@ -225,8 +226,8 @@ class TermsPage extends StatelessWidget {
                         children: [
                           Text(
                             section.$1,
-                            style: const TextStyle(
-                              color: _publicNavy,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w900,
                               fontSize: 16,
                             ),
@@ -381,10 +382,15 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
           if (_error != null) ...[
             const SizedBox(height: 12),
             Card(
-              color: const Color(0xFFFFEEEE),
+              color: Theme.of(context).colorScheme.errorContainer,
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
               ),
             ),
           ],
@@ -400,9 +406,10 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
   Widget _resultCard(Map<String, dynamic> result) {
     final valid = result['valid'] == true;
     final archived = result['status'] == 'archived';
+    final colorScheme = Theme.of(context).colorScheme;
     final color = valid
-        ? (archived ? Colors.amber.shade800 : Colors.green.shade700)
-        : Colors.red.shade700;
+        ? (archived ? colorScheme.tertiary : AppPalette.success)
+        : colorScheme.error;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -448,7 +455,10 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
     padding: const EdgeInsets.only(top: 8),
     child: Row(
       children: [
-        Text('$label: ', style: const TextStyle(color: Colors.black54)),
+        Text(
+          '$label: ',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
         Expanded(
           child: Text(
             '${value ?? '—'}',
@@ -484,14 +494,17 @@ class _PublicScaffold extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: _publicNavy,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
               fontSize: 24,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: Colors.black54)),
+          Text(
+            subtitle,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 16),
           child,
         ],

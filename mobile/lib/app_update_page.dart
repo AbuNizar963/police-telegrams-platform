@@ -101,7 +101,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
             'برقيات الشرطة',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _updateNavy,
+              color: Theme.of(context).colorScheme.primary,
               fontSize: 24,
               fontWeight: FontWeight.w900,
             ),
@@ -145,7 +145,10 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                         SizedBox(height: 4),
                         Text(
                           'رقم النسخة المثبتة على هذا الجهاز',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -160,8 +163,8 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                     Text(
                       _version,
                       textDirection: TextDirection.ltr,
-                      style: const TextStyle(
-                        color: _updateNavy,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w900,
                         fontSize: 14,
                       ),
@@ -175,7 +178,10 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
             Text(
               _versionError!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
             ),
             Center(
               child: TextButton.icon(

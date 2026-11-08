@@ -483,10 +483,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                         Expanded(
                           child: Text(
                             '${row['label']}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF718096),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -571,7 +571,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                               Container(
                                 height: height.clamp(4.0, 104.0).toDouble(),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2C7892),
+                                  color: Theme.of(context).colorScheme.primary,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                               ),
@@ -580,9 +580,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                                 (point['date'] ?? '').toString().length >= 10
                                     ? (point['date'] as String).substring(8, 10)
                                     : '',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
-                                  color: Color(0xFF718096),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -607,12 +607,12 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
       'platform': 'المنصة والإعدادات',
       'other': 'عمليات أخرى',
     };
-    const colors = [
-      Color(0xFF2C7892),
-      Color(0xFFD8C38E),
-      Color(0xFF4F927F),
-      Color(0xFF9A6476),
-      Color(0xFF7D8BC4),
+    final colors = [
+      Theme.of(context).colorScheme.primary,
+      Theme.of(context).colorScheme.secondary,
+      Theme.of(context).colorScheme.tertiary,
+      Theme.of(context).colorScheme.error,
+      Theme.of(context).colorScheme.primaryContainer,
     ];
     final rows = _rows('operationsByCategory');
     final total = rows.fold<int>(
@@ -655,7 +655,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                           ),
                           Text(
                             '$count',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
                             ),
@@ -709,10 +709,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                     (row) => ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
+                      leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: Color(0xFFF7F1DF),
-                        foregroundColor: Color(0xFF8B6D22),
+                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                        foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
                         child: Icon(Icons.account_balance_outlined, size: 17),
                       ),
                       title: Text(
@@ -759,10 +759,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                     (row) => ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
+                      leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: Color(0xFFE9F2F7),
-                        foregroundColor: Color(0xFF24506A),
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
                         child: Icon(Icons.manage_history_outlined, size: 17),
                       ),
                       title: Text(
@@ -793,9 +793,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   }
 
   Widget _errorCard() => Card(
-    color: const Color(0xFFFFF3F2),
+    color: Theme.of(context).colorScheme.errorContainer,
     child: ListTile(
-      leading: const Icon(Icons.error_outline, color: Colors.red),
+      leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
       title: const Text('تعذر تحميل بعض البيانات'),
       subtitle: Text(_error!),
       trailing: TextButton(
@@ -861,13 +861,13 @@ class _CardHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFFFAECEF),
+            color: Theme.of(context).colorScheme.errorContainer,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             badge!,
-            style: const TextStyle(
-              color: Color(0xFF9A4458),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer,
               fontSize: 10,
               fontWeight: FontWeight.w800,
             ),

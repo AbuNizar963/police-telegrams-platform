@@ -543,14 +543,9 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark
-        ? const Color(0xFF1C1D2B)
-        : const Color(0xFFF8F7F2);
-    final slotFill = isDark ? const Color(0xFF303242) : const Color(0xFFE9EBF0);
-    final slotBorder = isDark
-        ? const Color(0xFF414354)
-        : const Color(0xFFD9DDE5);
+    final background = colors.surface;
+    final slotFill = colors.surfaceContainerHighest;
+    final slotBorder = colors.outline;
     final pinLength = _legacyPin ? 8 : 4;
 
     return Stack(

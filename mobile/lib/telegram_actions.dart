@@ -667,7 +667,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     error!,
-                    style: const TextStyle(color: Colors.red),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
                 Align(
@@ -753,9 +753,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                         backgroundColor: Theme.of(context)
                             .colorScheme
                             .surfaceContainerHighest,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF4ADE80)
-                            : const Color(0xFF15803D),
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -774,8 +772,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                         ),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF16A34A)
-                                .withValues(alpha: 0.12),
+                            color: Theme.of(context).colorScheme.tertiaryContainer,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Padding(
@@ -786,11 +783,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                             child: Text(
                               'قيد التنفيذ',
                               style: TextStyle(
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? const Color(0xFF4ADE80)
-                                    : const Color(0xFF15803D),
+                                color: Theme.of(context).colorScheme.onTertiaryContainer,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -888,7 +881,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       details.add('وارد الجهة المستقبلة: ${route['incomingSerialCode']}');
     }
     return Card(
-      color: Colors.grey.shade50,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         title: Text(

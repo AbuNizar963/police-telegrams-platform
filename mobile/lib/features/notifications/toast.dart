@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../app_theme.dart';
+
 /// Semantic, top-positioned feedback for the mobile app.
 ///
 /// Place [ToastOverlayHost] above the app navigator (normally in
@@ -183,20 +185,18 @@ class _ToastCard extends StatelessWidget {
   final ToastKind kind;
   final VoidCallback onClose;
 
-  Color get _color => switch (kind) {
-    ToastKind.success => const Color(0xFF35C96B),
-    ToastKind.error => const Color(0xFFF0444F),
-    ToastKind.warning => const Color(0xFFF2BD19),
-    ToastKind.info => const Color(0xFF287BD6),
-    ToastKind.loading => const Color(0xFF64748B),
+  Color _color(BuildContext context) => switch (kind) {
+    ToastKind.success => AppPalette.success,
+    ToastKind.error => Theme.of(context).colorScheme.error,
+    ToastKind.warning => AppPalette.warning,
+    ToastKind.info => AppPalette.info,
+    ToastKind.loading => Theme.of(context).colorScheme.onSurfaceVariant,
   };
 
-  Color get _tint => switch (kind) {
-    ToastKind.success => const Color(0xFFF0FAF3),
-    ToastKind.error => const Color(0xFFFFF0EF),
-    ToastKind.warning => const Color(0xFFFFF8E9),
-    ToastKind.info => const Color(0xFFEEF5FF),
-    ToastKind.loading => const Color(0xFFF1F4F8),
+  Color _tint(BuildContext context) => switch (kind) {
+    ToastKind.error => Theme.of(context).colorScheme.errorContainer,
+    ToastKind.success || ToastKind.warning || ToastKind.info || ToastKind.loading =>
+      Theme.of(context).colorScheme.surfaceContainerHigh,
   };
 
   String get _title => _toastTitle(kind);
@@ -217,9 +217,9 @@ class _ToastCard extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 96),
         decoration: BoxDecoration(
-          color: _tint,
+          color: _tint(context),
           borderRadius: BorderRadius.circular(19),
-          border: Border.all(color: _color, width: 1.5),
+          border: Border.all(color: _color(context), width: 1.5),
           boxShadow: const [
             BoxShadow(
               color: Color(0x120D1B2A),
@@ -242,7 +242,7 @@ class _ToastCard extends StatelessWidget {
               dimension: 52,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: _color,
+                  color: _color(context),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -268,8 +268,8 @@ class _ToastCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: Color(0xFF171717),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         height: 1.3,
                         fontWeight: FontWeight.w800,
@@ -282,8 +282,8 @@ class _ToastCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: Color(0xFF55585D),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                       height: 1.4,
                       fontWeight: FontWeight.w500,
@@ -305,10 +305,10 @@ class _ToastCard extends StatelessWidget {
                 ),
                 padding: EdgeInsets.zero,
                 onPressed: onClose,
-                icon: const Icon(
+                icon: Icon(
                   Icons.close_rounded,
                   size: 23,
-                  color: Color(0xFF62676D),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),

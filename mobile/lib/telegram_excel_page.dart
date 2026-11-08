@@ -8,7 +8,6 @@ import 'api.dart';
 import 'telegram_excel_codec.dart';
 import 'telegram_display.dart';
 
-const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
 bool _hasEncryptedOfficeContainerSignature(Uint8List bytes) {
@@ -634,7 +633,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                     'أدوات سجل البرقيات بصيغة Excel',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: _navy,
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
@@ -655,12 +654,12 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'تصدير السجل',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
-                      color: _navy,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -684,12 +683,12 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'استيراد ملف Excel',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
-                      color: _navy,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -775,7 +774,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: duplicate
-                              ? const TextStyle(color: Colors.deepOrange)
+                              ? TextStyle(color: Theme.of(context).colorScheme.error)
                               : null,
                         ),
                         subtitle: Text(
@@ -810,12 +809,12 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
           if (message != null) ...[
             const SizedBox(height: 12),
             Card(
-              color: const Color(0xFFEAF4EC),
+              color: Theme.of(context).colorScheme.tertiaryContainer,
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   message!,
-                  style: const TextStyle(color: Color(0xFF215A32)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
                 ),
               ),
             ),
@@ -823,10 +822,10 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
           if (error != null) ...[
             const SizedBox(height: 12),
             Card(
-              color: const Color(0xFFFFEEEE),
+              color: Theme.of(context).colorScheme.errorContainer,
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(error!, style: const TextStyle(color: Colors.red)),
+                child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
               ),
             ),
           ],

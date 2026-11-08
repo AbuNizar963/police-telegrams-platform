@@ -262,7 +262,12 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
-        run: flutter build apk --release --build-name "$RELEASE_VERSION" --build-number "$GITHUB_RUN_NUMBER"
+        run: >-
+          flutter build apk --release
+          --obfuscate
+          --split-debug-info=build/symbols/android
+          --build-name "$RELEASE_VERSION"
+          --build-number "$GITHUB_RUN_NUMBER"
 
       - name: Verify APK output and signature
         run: |
@@ -296,6 +301,14 @@ jobs:
           path: |
             mobile/build/app/outputs/flutter-apk/app-release.apk
             mobile/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload private Android obfuscation symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: police-telegrams-android-symbols
+          path: mobile/build/symbols/android
           if-no-files-found: error
           retention-days: 14
 

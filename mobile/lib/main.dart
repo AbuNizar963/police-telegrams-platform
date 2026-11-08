@@ -2247,11 +2247,19 @@ class _DashboardPageState extends State<DashboardPage>
                   width: 216,
                   child: Row(
                     children: [
-                      Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(title)),
                       if (selectedMode == mode)
-                        Icon(Icons.check_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                     ],
                   ),
                 );

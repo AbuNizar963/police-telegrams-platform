@@ -460,25 +460,29 @@ function Kpi({
           onClick();
         }
       }}
-      className={`border-border/60 bg-card shadow-sm transition-all ${
+      className={`rounded-2xl border-border/70 bg-card text-card-foreground shadow-[0_10px_30px_rgba(16,35,63,0.04)] transition-all duration-200 dark:shadow-black/20 ${
         onClick
-          ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           : ""
-      } ${active ? "border-primary bg-primary/[0.04] shadow-md ring-1 ring-primary/30" : ""}`}
+      } ${active ? "border-primary/70 bg-primary/[0.07] shadow-md ring-1 ring-primary/30 dark:bg-primary/[0.12]" : ""}`}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">{label}</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {label}
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl">
               {formatCount(value, numberSystem)}
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
+            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+              {detail}
+            </p>
           </div>
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-[18px] w-[18px]" />
           </div>
         </div>
       </CardContent>

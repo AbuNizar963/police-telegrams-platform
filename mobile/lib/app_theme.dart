@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// keeping the shared visual identity stable.
 abstract final class AppPalette {
   static const navy = Color(0xFF10233F);
-  static const gold = Color(0xFFD8C38E);
+  static const brandBlue = Color(0xFF3390EC);
   static const canvas = Color(0xFFF8F7F2);
   static const surface = Color(0xFFFFFEFC);
   static const ink = Color(0xFF202B3A);
@@ -39,7 +39,7 @@ abstract final class AppPalette {
   static const lightScheme = ColorScheme.light(
     primary: navy,
     onPrimary: surface,
-    secondary: gold,
+    secondary: brandBlue,
     onSecondary: navy,
     surface: surface,
     onSurface: ink,
@@ -48,7 +48,7 @@ abstract final class AppPalette {
     onTertiary: surface,
     primaryContainer: Color(0xFFE8EDF4),
     onPrimaryContainer: navy,
-    secondaryContainer: Color(0xFFF1E8D5),
+    secondaryContainer: Color(0xFFEAF3FF),
     onSecondaryContainer: navy,
     surfaceTint: navy,
     error: danger,
@@ -63,9 +63,9 @@ abstract final class AppPalette {
   );
 
   static const darkScheme = ColorScheme.dark(
-    primary: gold,
+    primary: brandBlue,
     onPrimary: navy,
-    secondary: gold,
+    secondary: brandBlue,
     onSecondary: navy,
     surface: darkSurface,
     onSurface: darkInk,
@@ -74,9 +74,9 @@ abstract final class AppPalette {
     onTertiary: Color(0xFF10233F),
     primaryContainer: Color(0xFF263A55),
     onPrimaryContainer: darkInk,
-    secondaryContainer: Color(0xFF3C301A),
-    onSecondaryContainer: Color(0xFFF2D694),
-    surfaceTint: gold,
+    secondaryContainer: Color(0xFF1D3B5D),
+    onSecondaryContainer: Color(0xFFEAF3FF),
+    surfaceTint: brandBlue,
     error: Color(0xFFF97066),
     onError: Color(0xFF341118),
     outline: darkOutline,
@@ -161,7 +161,7 @@ abstract final class AppTheme {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppPalette.gold, width: 1.5),
+            borderSide: const BorderSide(color: AppPalette.brandBlue, width: 1.5),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -208,7 +208,7 @@ abstract final class AppTheme {
         ),
         chipTheme: ChipThemeData(
           backgroundColor: AppPalette.muted,
-          selectedColor: const Color(0xFFF1E8D5),
+          selectedColor: const Color(0xFFEAF3FF),
           secondarySelectedColor: AppPalette.muted,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           labelStyle: const TextStyle(
@@ -295,9 +295,9 @@ abstract final class AppTheme {
         colorScheme: AppPalette.darkScheme,
         iconTheme: const IconThemeData(color: AppPalette.darkInk),
         textSelectionTheme: TextSelectionThemeData(
-          cursorColor: AppPalette.gold,
-          selectionColor: AppPalette.gold.withValues(alpha: 0.28),
-          selectionHandleColor: AppPalette.gold,
+          cursorColor: AppPalette.brandBlue,
+          selectionColor: AppPalette.brandBlue.withValues(alpha: 0.28),
+          selectionHandleColor: AppPalette.brandBlue,
         ),
         dialogTheme: const DialogThemeData(
           backgroundColor: AppPalette.darkSurface,
@@ -315,7 +315,7 @@ abstract final class AppTheme {
           ),
         ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: AppPalette.gold,
+          color: AppPalette.brandBlue,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppPalette.darkCanvas,
@@ -339,7 +339,7 @@ abstract final class AppTheme {
           minTileHeight: 48,
           iconColor: AppPalette.darkMutedInk,
           textColor: AppPalette.darkInk,
-          selectedColor: AppPalette.gold,
+          selectedColor: AppPalette.brandBlue,
           selectedTileColor: AppPalette.darkSidebarAccent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -353,7 +353,7 @@ abstract final class AppTheme {
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: AppPalette.gold,
+            backgroundColor: AppPalette.brandBlue,
             foregroundColor: AppPalette.navy,
             minimumSize: const Size(48, 46),
             textStyle: const TextStyle(
@@ -377,7 +377,7 @@ abstract final class AppTheme {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: AppPalette.gold,
+            foregroundColor: AppPalette.brandBlue,
             textStyle: const TextStyle(
               fontFamily: 'Cairo',
               fontSize: 13,
@@ -437,10 +437,10 @@ abstract final class AppTheme {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: AppPalette.gold, width: 1.6),
+            borderSide: const BorderSide(color: AppPalette.brandBlue, width: 1.6),
           ),
           labelStyle: const TextStyle(color: Color(0xFFCBD4E1)),
-          floatingLabelStyle: const TextStyle(color: AppPalette.gold),
+          floatingLabelStyle: const TextStyle(color: AppPalette.brandBlue),
         ),
         popupMenuTheme: PopupMenuThemeData(
           color: AppPalette.darkSurface,
@@ -462,16 +462,16 @@ abstract final class AppTheme {
         dividerTheme: const DividerThemeData(color: AppPalette.darkBorder),
       )
       .copyWith(
-        primaryColor: AppPalette.gold,
+        primaryColor: AppPalette.brandBlue,
         iconTheme: const IconThemeData(color: AppPalette.darkInk, size: 20),
         primaryIconTheme: const IconThemeData(
           color: AppPalette.darkInk,
           size: 20,
         ),
         textSelectionTheme: TextSelectionThemeData(
-          cursorColor: AppPalette.gold,
-          selectionColor: AppPalette.gold.withValues(alpha: 0.28),
-          selectionHandleColor: AppPalette.gold,
+          cursorColor: AppPalette.brandBlue,
+          selectionColor: AppPalette.brandBlue.withValues(alpha: 0.28),
+          selectionHandleColor: AppPalette.brandBlue,
         ),
       );
 }

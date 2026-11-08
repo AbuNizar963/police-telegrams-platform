@@ -81,10 +81,12 @@ export default function About() {
         </div>
       </div>
 
-      <Card className="overflow-hidden border-[#203b62] bg-[#10233f] text-white shadow-sm">
-        <CardHeader className="border-b border-white/10 bg-white/[0.03]">
-          <CardTitle className="text-white">ميزات النظام</CardTitle>
-          <CardDescription className="text-slate-300">
+      <Card className="overflow-hidden border-primary/40 bg-primary text-primary-foreground shadow-sm">
+        <CardHeader className="border-b border-primary-foreground/15 bg-primary-foreground/[0.03]">
+          <CardTitle className="text-primary-foreground">
+            ميزات النظام
+          </CardTitle>
+          <CardDescription className="text-primary-foreground/75">
             حماية موحدة للهوية والسجل والإجراءات التشغيلية.
           </CardDescription>
         </CardHeader>
@@ -94,7 +96,7 @@ export default function About() {
             return (
               <div
                 key={feature.title}
-                className="rounded-xl border border-white/10 bg-white/[0.04] p-4"
+                className="rounded-xl border border-primary-foreground/15 bg-primary-foreground/[0.04] p-4"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -103,15 +105,15 @@ export default function About() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-primary-foreground">
                       {feature.title}
                     </p>
-                    <p className="mt-1 text-xs text-slate-300">
+                    <p className="mt-1 text-xs text-primary-foreground/70">
                       {feature.label}
                     </p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-7 text-slate-300">
+                <p className="mt-4 text-sm leading-7 text-primary-foreground/75">
                   {feature.description}
                 </p>
               </div>

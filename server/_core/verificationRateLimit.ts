@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { isIP } from "node:net";
 import type { Request, RequestHandler } from "express";
 import { ENV } from "./env";
 import { getSupabaseAdmin } from "./supabase";
@@ -17,7 +18,14 @@ function hashVerificationKey(req: Request): string {
     throw new Error("AUTH_SESSION_SECRET must contain at least 32 characters");
   }
 
-  const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+  const vercelForwardedFor =
+    process.env.VERCEL === "1"
+      ? req.get("x-vercel-forwarded-for")?.split(",", 1)[0]?.trim()
+      : undefined;
+  const clientIp =
+    vercelForwardedFor && isIP(vercelForwardedFor)
+      ? vercelForwardedFor
+      : req.ip || req.socket.remoteAddress || "unknown";
   return createHmac("sha256", ENV.authSessionSecret)
     .update(`verification:ip:${clientIp}`)
     .digest("hex");

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHmac } from "node:crypto";
 
 const mocked = vi.hoisted(() => ({
   getSupabaseAdmin: vi.fn(),
@@ -85,7 +86,10 @@ function mockVerificationRows(input: {
   });
 }
 
-async function requestVerification(token = verificationToken) {
+async function requestVerification(
+  token = verificationToken,
+  headers: Record<string, string> = {}
+) {
   const server = createApp().listen(0);
   await new Promise<void>((resolve, reject) => {
     server.once("listening", resolve);
@@ -100,7 +104,8 @@ async function requestVerification(token = verificationToken) {
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:${address.port}/api/verify/${encodeURIComponent(token)}`
+      `http://127.0.0.1:${address.port}/api/verify/${encodeURIComponent(token)}`,
+      { headers }
     );
     return {
       status: response.status,
@@ -134,6 +139,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("GET /api/verify/:token", () => {
@@ -215,6 +221,27 @@ describe("GET /api/verify/:token", () => {
       })
     );
     expect(mocked.from).not.toHaveBeenCalled();
+  });
+
+  it("uses Vercel's stable client IP header rather than an instance proxy IP", async () => {
+    const clientIp = "203.0.113.22";
+    const expectedKeyHash = createHmac(
+      "sha256",
+      "test-auth-session-secret-0123456789abcdef"
+    )
+      .update(`verification:ip:${clientIp}`)
+      .digest("hex");
+    vi.stubEnv("VERCEL", "1");
+
+    const response = await requestVerification("not-a-uuid", {
+      "x-vercel-forwarded-for": `${clientIp}, 198.51.100.1`,
+    });
+
+    expect(response.status).toBe(404);
+    expect(mocked.rpc).toHaveBeenCalledWith(
+      "consume_auth_login_rate_limit",
+      expect.objectContaining({ p_key_hash: expectedKeyHash })
+    );
   });
 
   it("returns 429 when the shared limiter blocks the client", async () => {

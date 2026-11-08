@@ -21,6 +21,7 @@ void main() {
 
       expect(theme.useMaterial3, isTrue);
       expect(theme.colorScheme.primary, AppPalette.navy);
+      expect(theme.colorScheme.secondary, AppPalette.brandBlue);
       expect(theme.scaffoldBackgroundColor, AppPalette.canvas);
       expect(theme.iconTheme.color, AppPalette.navy);
       expect(theme.textTheme.bodyMedium?.fontFamily, 'Cairo');
@@ -44,7 +45,8 @@ void main() {
 
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.dark);
-      expect(theme.colorScheme.primary, AppPalette.gold);
+      expect(theme.colorScheme.primary, AppPalette.brandBlue);
+      expect(theme.colorScheme.secondary, AppPalette.brandBlue);
       expect(theme.scaffoldBackgroundColor, AppPalette.darkCanvas);
       expect(theme.iconTheme.color, AppPalette.darkInk);
       expect(theme.textTheme.bodyMedium?.fontFamily, 'Cairo');

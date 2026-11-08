@@ -87,15 +87,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: ThemeMode.dark,
-          home: Builder(
-            builder: (context) {
-              darkSuccess = context.appSuccess;
-              darkWarning = context.appWarning;
-              darkInfo = context.appInfo;
-              return const SizedBox();
-            },
+          home: Theme(
+            data: AppTheme.dark,
+            child: Builder(
+              builder: (context) {
+                darkSuccess = context.appSuccess;
+                darkWarning = context.appWarning;
+                darkInfo = context.appInfo;
+                return const SizedBox();
+              },
+            ),
           ),
         ),
       );

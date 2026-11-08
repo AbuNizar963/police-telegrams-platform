@@ -4369,11 +4369,30 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       _versionsLoading = true;
       _versionsError = null;
     });
+    final input = {'telegramId': widget.telegramId};
+    var hasCachedVersions = false;
+    try {
+      final cached = await widget.api.readCachedResponse(
+        'telegrams.versions',
+        input: input,
+      );
+      if (mounted && cached is List) {
+        setState(() {
+          _versions = cached
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+          _versionsLoading = false;
+        });
+        hasCachedVersions = true;
+      }
+    } catch (_) {
+      // A corrupt cache must never block the authoritative request.
+    }
     try {
       final result = await widget.api.call(
         'telegrams.versions',
-        input: {'telegramId': widget.telegramId},
-        allowOfflineCache: false,
+        input: input,
       );
       if (!mounted) return;
       setState(() {
@@ -4389,7 +4408,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       if (!mounted) return;
       setState(() {
         _versionsLoading = false;
-        _versionsError = exception.toString().replaceFirst('Exception: ', '');
+        _versionsError = hasCachedVersions
+            ? null
+            : exception.toString().replaceFirst('Exception: ', '');
       });
     }
   }

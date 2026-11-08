@@ -35,7 +35,7 @@ import 'telegram_outbox_page.dart';
 import './features/notifications/toast.dart';
 
 const navy = AppPalette.navy;
-const gold = AppPalette.gold;
+const brandBlue = AppPalette.brandBlue;
 const canvas = AppPalette.canvas;
 
 void main() {
@@ -208,16 +208,53 @@ class _SessionGateState extends State<SessionGate> {
     future: _session,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Directionality(
+        final successColor = context.appSuccess;
+        return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: navy),
-                  SizedBox(height: 16),
-                  Text('جارٍ التحقق من جلسة الدخول...'),
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: successColor.withValues(alpha: 0.10),
+                      border: Border.all(
+                        color: successColor.withValues(alpha: 0.20),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3.2,
+                        color: successColor,
+                        backgroundColor: successColor.withValues(alpha: 0.16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'جارٍ التحقق من جلسة الدخول...',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'يرجى الانتظار لحظات',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2864,7 +2901,7 @@ class _DashboardPageState extends State<DashboardPage>
                 if (activeOrganizationIsOwner)
                   const Icon(
                     Icons.workspace_premium_outlined,
-                    color: gold,
+                    color: brandBlue,
                     size: 17,
                   ),
               ],
@@ -4363,7 +4400,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                           'برقية رقم: $displaySerial',
                           style: const TextStyle(
                             fontFamily: 'Cairo',
-                            color: gold,
+                            color: brandBlue,
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),

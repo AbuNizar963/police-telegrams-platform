@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import express, { type Express } from "express";
+import { rateLimit } from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageRoutes } from "./features/storage/storageRoutes";
 import { appRouter } from "./routers";
@@ -114,31 +115,44 @@ export function createApp(
 
   // Authenticate large-payload routes before parsing attacker-controlled bodies.
   // This prevents unauthenticated requests from forcing 16–50 MB JSON allocations.
-  app.use((req, res, next) => {
-    const path = req.path;
-    if (!requiresAuthenticatedLargeBody(path)) return next();
+  app.use(
+    rateLimit({
+      windowMs: 60_000,
+      limit: 60,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: req => !requiresAuthenticatedLargeBody(req.path),
+      handler: (_req, res) =>
+        res
+          .status(429)
+          .json({ error: "طلبات كثيرة لهذه العملية؛ أعد المحاولة لاحقًا" }),
+    }),
+    (req, res, next) => {
+      const path = req.path;
+      if (!requiresAuthenticatedLargeBody(path)) return next();
 
-    void (async () => {
-      const user = await getAuthenticatedUserFromRequest(req);
-      if (!user) {
-        res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
-        return;
-      }
-
-      if (requiresOrganizationAdminLargeBody(path)) {
-        const membership = await getUserOrganizationMembership(user.id);
-        if (
-          !membership ||
-          !["system_admin", "organization_admin"].includes(membership.role)
-        ) {
-          res.status(403).json({ error: "لا تملك صلاحية هذه العملية" });
+      void (async () => {
+        const user = await getAuthenticatedUserFromRequest(req);
+        if (!user) {
+          res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
           return;
         }
-      }
 
-      next();
-    })().catch(next);
-  });
+        if (requiresOrganizationAdminLargeBody(path)) {
+          const membership = await getUserOrganizationMembership(user.id);
+          if (
+            !membership ||
+            !["system_admin", "organization_admin"].includes(membership.role)
+          ) {
+            res.status(403).json({ error: "لا تملك صلاحية هذه العملية" });
+            return;
+          }
+        }
+
+        next();
+      })().catch(next);
+    }
+  );
 
   app.use((req, res, next) =>
     express.json({ limit: getJsonBodyLimit(req.path) })(req, res, next)

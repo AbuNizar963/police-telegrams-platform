@@ -1185,7 +1185,9 @@ class _DashboardPageState extends State<DashboardPage>
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+    // Keep the dashboard live while preserving filters and scroll position.
+    // refresh() coalesces overlapping requests safely.
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       refresh(showLoading: false);
       unawaited(_syncOutbox(showProgress: false));
       _loadUnreadNotificationCount();

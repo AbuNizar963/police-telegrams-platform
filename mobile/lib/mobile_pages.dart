@@ -39,15 +39,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
   bool loading = true;
   String? error;
   List<dynamic> notifications = const [];
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => load(showLoading: false),
+    );
   }
 
-  Future<void> load() async {
-    setState(() => loading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> load({bool showLoading = true}) async {
+    if (showLoading) setState(() => loading = true);
     try {
       final result = await widget.api.call('notifications.inbox');
       if (!mounted) return;
@@ -183,15 +194,21 @@ class _ReportsPageState extends State<ReportsPage> {
   String _status = 'all';
   DateTime? _from;
   DateTime? _to;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => load(showLoading: false),
+    );
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -245,11 +262,13 @@ class _ReportsPageState extends State<ReportsPage> {
     await load();
   }
 
-  Future<void> load() async {
-    setState(() {
-      loading = true;
-      error = null;
-    });
+  Future<void> load({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        loading = true;
+        error = null;
+      });
+    }
     try {
       final input = <String, dynamic>{'page': 1, 'pageSize': 100};
       final search = _searchController.text.trim();

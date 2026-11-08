@@ -18,6 +18,8 @@ import { BrandMark } from "@/components/BrandMark";
 
 const featureIconContainerClass =
   "flex h-10 w-10 items-center justify-center rounded-xl";
+const sectionLabelClass =
+  "text-xs font-semibold tracking-wide text-muted-foreground";
 
 const features = [
   {
@@ -75,7 +77,7 @@ export default function About() {
         </Button>
         <div>
           <p
-            className="text-xs font-semibold tracking-wide text-muted-foreground"
+            className={sectionLabelClass}
           >
             إعدادات النظام
           </p>

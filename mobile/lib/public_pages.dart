@@ -48,104 +48,109 @@ class AboutPage extends StatelessWidget {
       child: Card(
         clipBehavior: Clip.antiAlias,
         color: colors.primary,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'ميزات النظام',
-                  style: TextStyle(
-                    color: colors.onPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'ميزات النظام',
+                    style: TextStyle(
+                      color: colors.onPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'حماية موحدة للهوية والسجل والإجراءات التشغيلية.',
-                  style: TextStyle(
-                    color: colors.onPrimary.withValues(alpha: 0.75),
+                  SizedBox(height: 6),
+                  Text(
+                    'حماية موحدة للهوية والسجل والإجراءات التشغيلية.',
+                    style: TextStyle(
+                      color: colors.onPrimary.withValues(alpha: 0.75),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          GridView.builder(
-            padding: const EdgeInsets.all(14),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 1,
-              mainAxisExtent: 145,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: _features.length,
-            itemBuilder: (context, index) {
-              final feature = _features[index];
-              return Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: colors.onPrimary.withValues(alpha: 0.05),
-                  border: Border.all(
-                    color: colors.onPrimary.withValues(alpha: 0.12),
+            GridView.builder(
+              padding: const EdgeInsets.all(14),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 1,
+                mainAxisExtent: 145,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: _features.length,
+              itemBuilder: (context, index) {
+                final feature = _features[index];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.onPrimary.withValues(alpha: 0.05),
+                    border: Border.all(
+                      color: colors.onPrimary.withValues(alpha: 0.12),
+                    ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: colors.secondary.withValues(alpha: 0.18),
-                          foregroundColor: colors.onSecondary,
-                          child: Icon(feature.$1),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                feature.$2,
-                                style: TextStyle(
-                                  color: colors.onPrimary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              Text(
-                                feature.$3,
-                                style: TextStyle(
-                                  color: colors.onPrimary.withValues(alpha: 0.7),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: colors.secondary.withValues(
+                              alpha: 0.18,
+                            ),
+                            foregroundColor: colors.onSecondary,
+                            child: Icon(feature.$1),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      feature.$4,
-                      style: TextStyle(
-                        color: colors.onPrimary.withValues(alpha: 0.75),
-                        height: 1.5,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  feature.$2,
+                                  style: TextStyle(
+                                    color: colors.onPrimary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  feature.$3,
+                                  style: TextStyle(
+                                    color: colors.onPrimary.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+                      const SizedBox(height: 10),
+                      Text(
+                        feature.$4,
+                        style: TextStyle(
+                          color: colors.onPrimary.withValues(alpha: 0.75),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class TermsPage extends StatelessWidget {
@@ -358,9 +363,8 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
                     'تؤكد هذه الصفحة صحة المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(
-                        alpha: 0.75,
-                      ),
+                      color: Theme.of(context).colorScheme.onPrimary
+                          .withValues(alpha: 0.75),
                       height: 1.5,
                     ),
                   ),

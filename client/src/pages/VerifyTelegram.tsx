@@ -93,10 +93,10 @@ export default function VerifyTelegram() {
           {loading ? (
             <>
               <LoaderCircle
-                className="mx-auto h-12 w-12 animate-spin text-slate-500"
+                className="mx-auto h-12 w-12 animate-spin text-muted-foreground"
                 aria-hidden="true"
               />
-              <p className="font-semibold text-slate-700">
+              <p className="font-semibold text-foreground">
                 جارٍ التحقق من الوثيقة...
               </p>
             </>
@@ -104,36 +104,38 @@ export default function VerifyTelegram() {
             <>
               {result.status === "archived" ? (
                 <CircleHelp
-                  className="mx-auto h-14 w-14 text-amber-600"
+                  className="mx-auto h-14 w-14 text-amber-600 dark:text-amber-400"
                   aria-hidden="true"
                 />
               ) : (
                 <CheckCircle2
-                  className="mx-auto h-14 w-14 text-emerald-600"
+                  className="mx-auto h-14 w-14 text-emerald-600 dark:text-emerald-400"
                   aria-hidden="true"
                 />
               )}
 
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-foreground">
                 {result.status === "archived"
                   ? "الوثيقة صحيحة لكنها مؤرشفة"
                   : "تم التحقق من صحة الوثيقة"}
               </h2>
-              <p className="text-sm leading-7 text-slate-600">
+              <p className="text-sm leading-7 text-muted-foreground">
                 الرمز مرتبط بسجل موجود في منظومة البرقيات. هذه الصفحة تؤكد صحة
                 المرجع فقط ولا تعرض محتوى البرقية أو بياناتها السرية.
               </p>
 
-              <dl className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-right">
+              <dl className="space-y-3 rounded-xl border border-border bg-muted/40 p-4 text-right">
                 <div>
-                  <dt className="text-xs text-slate-500">اسم الوحدة الشرطية</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">
+                  <dt className="text-xs text-muted-foreground">
+                    اسم الوحدة الشرطية
+                  </dt>
+                  <dd className="mt-1 font-semibold text-foreground">
                     {result.unitName || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-slate-500">رقم البرقية</dt>
-                  <dd className="mt-1 font-semibold text-slate-900" dir="ltr">
+                  <dt className="text-xs text-muted-foreground">رقم البرقية</dt>
+                  <dd className="mt-1 font-semibold text-foreground" dir="ltr">
                     {getTelegramDisplayNumber(
                       result.displaySerialCode ||
                         String(result.serialNumber ?? "")
@@ -141,27 +143,29 @@ export default function VerifyTelegram() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-slate-500">تاريخ البرقية</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">
+                  <dt className="text-xs text-muted-foreground">
+                    تاريخ البرقية
+                  </dt>
+                  <dd className="mt-1 font-semibold text-foreground">
                     {formatTelegramDate(result.createdAt)}
                   </dd>
                 </div>
               </dl>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 للاطلاع على التفاصيل، يرجى الرجوع إلى الجهة المخولة.
               </p>
             </>
           ) : (
             <>
               <XCircle
-                className="mx-auto h-14 w-14 text-red-600"
+                className="mx-auto h-14 w-14 text-red-600 dark:text-red-400"
                 aria-hidden="true"
               />
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-foreground">
                 تعذر إثبات صحة البرقية
               </h2>
-              <p className="text-sm leading-7 text-slate-600">
+              <p className="text-sm leading-7 text-muted-foreground">
                 {result?.error ??
                   "الرابط غير صالح أو أن الوثيقة غير موجودة في المنظومة. يرجى مراجعة الجهة المصدرة."}
               </p>
@@ -169,7 +173,7 @@ export default function VerifyTelegram() {
           )}
         </div>
 
-        <footer className="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-500">
+        <footer className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground">
           خدمة تحقق رسمية — لا تشارك رابط التحقق مع غير المخولين.
         </footer>
       </section>

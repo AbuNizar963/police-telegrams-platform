@@ -1136,7 +1136,7 @@ export default function Home() {
           value={data.today}
           detail="من بداية اليوم"
           icon={Activity}
-          tone="bg-blue-500/10 text-blue-600"
+          tone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
           active={activeKpi === "today"}
           onClick={() => selectKpi("today")}
         />
@@ -1146,7 +1146,7 @@ export default function Home() {
           value={data.todayUrgent}
           detail="من بداية اليوم"
           icon={Siren}
-          tone="bg-red-500/10 text-red-600"
+          tone="bg-red-500/10 text-red-600 dark:text-red-400"
           active={activeKpi === "urgent"}
           onClick={() => selectKpi("urgent")}
         />
@@ -1156,7 +1156,7 @@ export default function Home() {
           value={data.todayIncoming}
           detail="إلى جهتك منذ بداية اليوم"
           icon={Inbox}
-          tone="bg-emerald-500/10 text-emerald-600"
+          tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           active={activeKpi === "incoming"}
           onClick={() => selectKpi("incoming")}
         />
@@ -1166,7 +1166,7 @@ export default function Home() {
           value={data.inProgress}
           detail="قيد المعالجة"
           icon={Radio}
-          tone="bg-cyan-500/10 text-cyan-600"
+          tone="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
           active={activeKpi === "in-progress"}
           onClick={() => selectKpi("in-progress")}
         />
@@ -1176,7 +1176,7 @@ export default function Home() {
           value={data.resolved}
           detail="تم إغلاقها"
           icon={CheckCircle2}
-          tone="bg-emerald-500/10 text-emerald-600"
+          tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           active={activeKpi === "resolved"}
           onClick={() => selectKpi("resolved")}
         />
@@ -1874,7 +1874,7 @@ function ExcelImportPreviewModal({
             <p className="mt-1 text-xl font-bold">{duplicateRows}</p>
           </div>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
           سيُنشئ النظام رقمًا جديدًا لكل سجل داخل المنصة، ويحفظ رقم الصف والورقة
           والوقت الأصلي في سجل التدقيق. لن تُحذف البرقيات الموجودة، وإعادة رفع
           الملف نفسه ستتخطى الصفوف المستوردة سابقًا.
@@ -1932,7 +1932,7 @@ function ExcelImportPreviewModal({
                       }
                     />
                     {duplicateIndexes.has(index) && (
-                      <span className="mr-2 text-[10px] text-amber-700">
+                      <span className="mr-2 text-[10px] text-amber-700 dark:text-amber-300">
                         مكرر
                       </span>
                     )}
@@ -2188,7 +2188,7 @@ function TelegramReportModal({
         {report.isError && (
           <div
             role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+            className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
           >
             تعذر تحميل التقرير المركزي.
           </div>

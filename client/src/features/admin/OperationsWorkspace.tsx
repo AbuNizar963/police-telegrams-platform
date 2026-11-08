@@ -178,6 +178,8 @@ export default function OperationsWorkspace() {
               locations={locations}
               markers={markers}
               loading={allTelegrams.isLoading}
+              error={allTelegrams.isError}
+              onRetry={() => void allTelegrams.refetch()}
             />
           )}
           {tab === "units" && (
@@ -185,6 +187,8 @@ export default function OperationsWorkspace() {
               units={unitWorkload}
               currentUnit={organizationContext.data?.organizationId}
               loading={routingTargets.isLoading}
+              error={routingTargets.isError}
+              onRetry={() => void routingTargets.refetch()}
             />
           )}
           {tab === "resources" && (
@@ -192,6 +196,9 @@ export default function OperationsWorkspace() {
               units={unitWorkload}
               openCount={openRows.length}
               locationsCount={locations.length}
+              loading={routingTargets.isLoading}
+              error={routingTargets.isError}
+              onRetry={() => void routingTargets.refetch()}
             />
           )}
           {tab === "archive" && (
@@ -200,6 +207,8 @@ export default function OperationsWorkspace() {
               search={search}
               setSearch={setSearch}
               loading={archivedTelegrams.isLoading}
+              error={archivedTelegrams.isError}
+              onRetry={() => void archivedTelegrams.refetch()}
             />
           )}
         </div>
@@ -212,10 +221,14 @@ function LocationsPanel({
   locations,
   markers,
   loading,
+  error,
+  onRetry,
 }: {
   locations: Array<any>;
   markers: MapMarker[];
   loading: boolean;
+  error: boolean;
+  onRetry: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -248,6 +261,8 @@ function LocationsPanel({
             <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground sm:min-h-64">
               جارٍ تحميل مواقع البرقيات...
             </div>
+          ) : error ? (
+            <QueryError onRetry={onRetry} />
           ) : markers.length > 0 ? (
             <MapView markers={markers} className="h-72 sm:h-[420px]" />
           ) : (
@@ -275,7 +290,8 @@ function LocationsPanel({
                 جارٍ تحميل المواقع...
               </p>
             )}
-            {!loading && locations.length === 0 && (
+            {!loading && error && <QueryError onRetry={onRetry} />}
+            {!loading && !error && locations.length === 0 && (
               <p className="p-6 text-center text-sm text-muted-foreground">
                 لا توجد مواقع مسجلة.
               </p>
@@ -312,10 +328,14 @@ function UnitsPanel({
   units,
   currentUnit,
   loading,
+  error,
+  onRetry,
 }: {
   units: Array<any>;
   currentUnit?: string;
   loading: boolean;
+  error: boolean;
+  onRetry: () => void;
 }) {
   const currentUnitName = units.find(unit => unit.id === currentUnit)?.name;
   return (
@@ -336,7 +356,8 @@ function UnitsPanel({
         {loading && (
           <p className="text-sm text-muted-foreground">جارٍ تحميل الوحدات...</p>
         )}
-        {!loading && units.length === 0 && (
+        {!loading && error && <QueryError onRetry={onRetry} />}
+        {!loading && !error && units.length === 0 && (
           <div className="rounded-xl border bg-muted/20 p-5 text-sm leading-6">
             <p className="font-semibold">لا توجد جهات متاحة للإحالة بعد</p>
             <p className="mt-1 text-muted-foreground">
@@ -372,10 +393,16 @@ function ResourcesPanel({
   units,
   openCount,
   locationsCount,
+  loading,
+  error,
+  onRetry,
 }: {
   units: Array<any>;
   openCount: number;
   locationsCount: number;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
 }) {
   const busiest = [...units]
     .sort((a, b) => b.openCount - a.openCount)
@@ -430,7 +457,13 @@ function ResourcesPanel({
               </div>
             </div>
           ))}
-          {!units.length && (
+          {loading && (
+            <p className="p-8 text-center text-sm text-muted-foreground">
+              جارٍ تحميل توزيع الجهات...
+            </p>
+          )}
+          {!loading && error && <QueryError onRetry={onRetry} />}
+          {!loading && !error && !units.length && (
             <p className="p-8 text-center text-sm text-muted-foreground">
               ستظهر هنا الجهات وأعداد البرقيات بعد إضافتها إلى الهيكل التنظيمي.
             </p>
@@ -446,11 +479,15 @@ function ArchivePanel({
   search,
   setSearch,
   loading,
+  error,
+  onRetry,
 }: {
   rows: Array<any>;
   search: string;
   setSearch: (value: string) => void;
   loading: boolean;
+  error: boolean;
+  onRetry: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -486,7 +523,8 @@ function ArchivePanel({
               جارٍ تحميل الأرشيف...
             </p>
           )}
-          {!loading && rows.length === 0 && (
+          {!loading && error && <QueryError onRetry={onRetry} />}
+          {!loading && !error && rows.length === 0 && (
             <p className="p-8 text-center text-sm text-muted-foreground">
               لا توجد سجلات مطابقة.
             </p>
@@ -536,6 +574,20 @@ function ArchivePanel({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function QueryError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center gap-3 p-8 text-center"
+    >
+      <p className="text-sm text-destructive">تعذر تحميل البيانات.</p>
+      <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+        إعادة المحاولة
+      </Button>
     </div>
   );
 }

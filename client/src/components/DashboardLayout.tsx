@@ -361,7 +361,6 @@ function TemporaryPasswordDialog({
           </Button>
           <Button
             type="submit"
-            className="bg-[#10233f] text-white hover:bg-[#18375f]"
             disabled={
               changePassword.isPending ||
               skipPasswordChange.isPending ||
@@ -577,7 +576,14 @@ function DashboardLayoutContent({
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-10 w-10 rounded-xl border bg-background shadow-sm" />
+              <SidebarTrigger
+                className="h-10 w-10 rounded-xl border bg-background shadow-sm"
+                aria-label={
+                  state === "expanded"
+                    ? "إغلاق القائمة الجانبية"
+                    : "فتح القائمة الجانبية"
+                }
+              />
               <BrandMark size="sm" />
               <span className="text-sm font-bold">مركز البرقيات</span>
               <span className="sr-only">

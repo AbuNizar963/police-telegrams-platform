@@ -315,12 +315,14 @@ export function AIChatBox({
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label={placeholder}
           className="flex-1 max-h-32 resize-none min-h-9"
           rows={1}
         />
         <Button
           type="submit"
           size="icon"
+          aria-label={isLoading ? "جارٍ إرسال الرسالة" : "إرسال الرسالة"}
           disabled={!input.trim() || isLoading}
           className="shrink-0 h-[38px] w-[38px]"
         >

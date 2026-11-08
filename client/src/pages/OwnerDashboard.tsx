@@ -48,7 +48,13 @@ import {
 import { trpc } from "@/lib/trpc";
 
 const numberFormatter = new Intl.NumberFormat("ar-SY");
-const chartColors = ["#10233f", "#d8c38e", "#2c6c86", "#4f927f", "#9a6476"];
+const chartColors = [
+  "var(--primary)",
+  "#d8c38e",
+  "#2c6c86",
+  "#4f927f",
+  "#9a6476",
+];
 const categoryLabels: Record<string, string> = {
   telegram: "البرقيات",
   user: "الحسابات",
@@ -96,13 +102,13 @@ function MetricCard({
   tone: "blue" | "gold" | "green" | "rose";
 }) {
   const tones = {
-    blue: "bg-[#193247] text-[#6bc7ff]",
-    gold: "bg-[#44391f] text-[#e7c45d]",
-    green: "bg-[#173b31] text-[#69dfb0]",
-    rose: "bg-[#452936] text-[#ff91ad]",
+    blue: "bg-primary/10 text-primary",
+    gold: "bg-accent text-accent-foreground",
+    green: "bg-secondary text-secondary-foreground",
+    rose: "bg-destructive/10 text-destructive",
   };
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border-[#2a3444] bg-gradient-to-br from-[#192332] to-[#111722] shadow-[0_18px_48px_rgba(0,0,0,0.22)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d8c38e]/40 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <Card className="group relative overflow-hidden rounded-2xl border-border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#d8c38e] to-transparent opacity-70" />
       <CardContent className="flex min-h-[136px] items-start justify-between gap-3 p-5">
         <div className="min-w-0">
@@ -136,7 +142,7 @@ function SectionTitle({
   return (
     <div className="mb-5 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#202a39] text-foreground">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
           <Icon className="h-4 w-4" />
         </span>
         <div>
@@ -160,7 +166,7 @@ function Notice({
 }) {
   return (
     <section dir="rtl" className="mx-auto w-full max-w-[1600px]">
-      <Card className="mx-auto max-w-2xl border-[#2a3444]">
+      <Card className="mx-auto max-w-2xl border-border">
         <CardContent className="flex items-start gap-3 p-6 sm:p-8">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#9a7d31]" />
           <div className="space-y-2">
@@ -272,12 +278,12 @@ export default function OwnerDashboardPage() {
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge className="border-0 bg-[#10233f] px-3 py-1 text-white hover:bg-[#10233f]">
+            <Badge className="border-0 bg-primary px-3 py-1 text-primary-foreground hover:bg-primary">
               <ShieldCheck className="ml-1.5 h-3.5 w-3.5" />
               مالك المنصة
             </Badge>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#173b31] px-3 py-1 text-xs font-semibold text-[#69dfb0]">
-              <span className="h-2 w-2 rounded-full bg-[#35a56d]" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
+              <span className="h-2 w-2 rounded-full bg-primary" />
               النظام يعمل بشكل طبيعي
             </span>
           </div>
@@ -298,7 +304,7 @@ export default function OwnerDashboardPage() {
               onChange={event =>
                 setDays(Number(event.target.value) as 7 | 30 | 90)
               }
-              className="h-10 min-w-36 rounded-xl border border-[#2d3849] bg-[#151b26] px-3 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[#d8c38e]"
+              className="h-10 min-w-36 rounded-xl border border-input bg-background px-3 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value={7}>آخر 7 أيام</option>
               <option value={30}>آخر 30 يومًا</option>
@@ -310,7 +316,7 @@ export default function OwnerDashboardPage() {
             variant="outline"
             onClick={() => void summaryQuery.refetch()}
             disabled={summaryQuery.isFetching}
-            className="h-10 rounded-xl border-[#2d3849] bg-[#151b26]"
+            className="h-10 rounded-xl border-input bg-background"
           >
             <RefreshCw
               className={`ml-2 h-4 w-4 ${summaryQuery.isFetching ? "animate-spin" : ""}`}
@@ -320,7 +326,7 @@ export default function OwnerDashboardPage() {
           <Button
             type="button"
             onClick={() => setLocation("/audit-log")}
-            className="h-10 rounded-xl bg-[#d8c38e] text-[#111827] hover:bg-[#ead69a]"
+            className="h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <History className="ml-2 h-4 w-4" />
             سجل الإجراءات
@@ -385,14 +391,14 @@ export default function OwnerDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-8">
+        <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-8">
           <CardContent className="p-5">
             <SectionTitle
               icon={Activity}
               title="وتيرة العمليات اليومية"
               subtitle={`عدد سجلات التدقيق خلال ${periodLabel}`}
               action={
-                <span className="rounded-xl bg-[#193247] p-2 text-[#6bc7ff]">
+                <span className="rounded-xl bg-primary/10 p-2 text-primary">
                   <BellRing className="h-4 w-4" />
                 </span>
               }
@@ -414,12 +420,12 @@ export default function OwnerDashboardPage() {
                       >
                         <stop
                           offset="0%"
-                          stopColor="#24506a"
+                          stopColor="var(--primary)"
                           stopOpacity={0.3}
                         />
                         <stop
                           offset="95%"
-                          stopColor="#24506a"
+                          stopColor="var(--primary)"
                           stopOpacity={0.02}
                         />
                       </linearGradient>
@@ -427,14 +433,14 @@ export default function OwnerDashboardPage() {
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      className="stroke-[#e8edf1]"
+                      className="stroke-border"
                     />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatDayTick}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                       minTickGap={20}
                     />
                     <YAxis
@@ -443,7 +449,7 @@ export default function OwnerDashboardPage() {
                       tickFormatter={formatCount}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                       width={40}
                     />
                     <Tooltip
@@ -461,7 +467,7 @@ export default function OwnerDashboardPage() {
                       type="monotone"
                       dataKey="count"
                       name="العمليات"
-                      stroke="#24506a"
+                      stroke="var(--primary)"
                       strokeWidth={2.5}
                       fill="url(#owner-dashboard-activity)"
                       activeDot={{ r: 4, strokeWidth: 0 }}
@@ -474,7 +480,7 @@ export default function OwnerDashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-4">
+        <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-4">
           <CardContent className="p-5">
             <SectionTitle
               icon={History}
@@ -531,14 +537,14 @@ export default function OwnerDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-5">
+        <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-5">
           <CardContent className="p-5">
             <SectionTitle
               icon={Landmark}
               title="الجهات الأعلى نشاطًا"
               subtitle="بحسب عدد العمليات في الفترة المحددة"
               action={
-                <span className="rounded-xl bg-[#44391f] p-2 text-[#e7c45d]">
+                <span className="rounded-xl bg-accent p-2 text-accent-foreground">
                   <Building2 className="h-4 w-4" />
                 </span>
               }
@@ -554,7 +560,7 @@ export default function OwnerDashboardPage() {
                     <CartesianGrid
                       strokeDasharray="3 3"
                       horizontal={false}
-                      className="stroke-[#e8edf1]"
+                      className="stroke-border"
                     />
                     <XAxis
                       type="number"
@@ -562,7 +568,7 @@ export default function OwnerDashboardPage() {
                       tickFormatter={formatCount}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     />
                     <YAxis
                       type="category"
@@ -571,7 +577,7 @@ export default function OwnerDashboardPage() {
                       width={110}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     />
                     <Tooltip
                       formatter={value => [formatCount(value), "عملية"]}
@@ -586,7 +592,7 @@ export default function OwnerDashboardPage() {
                     <Bar
                       dataKey="count"
                       name="العمليات"
-                      fill="#d8c38e"
+                      fill="var(--primary)"
                       radius={[5, 5, 5, 5]}
                       maxBarSize={22}
                     />
@@ -598,7 +604,7 @@ export default function OwnerDashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-7">
+        <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-7">
           <CardContent className="p-5">
             <SectionTitle
               icon={Clock3}
@@ -610,7 +616,7 @@ export default function OwnerDashboardPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setLocation("/audit-log")}
-                  className="text-[#6bc7ff]"
+                  className="text-primary"
                 >
                   عرض الكل
                   <ChevronLeft className="mr-1 h-4 w-4" />
@@ -618,13 +624,13 @@ export default function OwnerDashboardPage() {
               }
             />
             {summary.recentOperations.length > 0 ? (
-              <ul className="divide-y divide-[#2a3444]">
+              <ul className="divide-y divide-border">
                 {summary.recentOperations.map(operation => (
                   <li
                     key={operation.id}
                     className="flex gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#202a39] text-foreground">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
                       <UserCog className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -668,7 +674,7 @@ export default function OwnerDashboardPage() {
       </div>
 
       <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted px-4 py-3 text-xs leading-5 text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#6bc7ff]" />
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         المؤشرات مبنية على سجلات الإجراءات الموثقة؛ لا تعرض هذه الصفحة نصوص
         البرقيات أو بيانات الشبكة أو تفاصيل المرفقات.
       </p>
@@ -694,15 +700,15 @@ function NotificationPanel({
 }) {
   const items = (data?.items ?? []).slice(0, 4);
   return (
-    <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-5">
+    <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-5">
       <CardContent className="p-5">
         <SectionTitle
           icon={AlarmClock}
           title="التنبيهات الفورية"
           subtitle="تتحدث تلقائيًا كل 15 ثانية"
           action={
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#452936] px-2.5 py-1 text-[11px] font-bold text-[#ff91ad]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d6516d]" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive" />
               {formatCount(data?.unreadCount ?? 0)} جديدة
             </span>
           }
@@ -720,7 +726,7 @@ function NotificationPanel({
                 key={item.id}
                 className="flex items-start gap-3 rounded-xl border border-border bg-card p-3"
               >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#44391f] text-[#e7c45d]">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                   <BellRing className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -735,7 +741,7 @@ function NotificationPanel({
                   type="button"
                   aria-label="تحديد التنبيه كمقروء"
                   onClick={() => onRead(item.id)}
-                  className="rounded-lg p-1 text-muted-foreground hover:bg-[#173b31] hover:text-[#69dfb0]"
+                  className="rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                 </button>
@@ -762,31 +768,31 @@ function PerformanceReport({ summary }: { summary: any }) {
       label: "معدل العمليات اليومي",
       value: average,
       detail: "متوسط الفترة المحددة",
-      tone: "#24506a",
+      tone: "var(--primary)",
     },
     {
       label: "مؤشر العمليات الحساسة",
       value: total ? Math.round((sensitive / total) * 100) : 0,
       detail: "نسبة من إجمالي النشاط",
-      tone: "#9a4458",
+      tone: "var(--destructive)",
       suffix: "%",
     },
     {
       label: "الجهة الأعلى نشاطًا",
       value: top[0]?.count ?? 0,
       detail: top[0]?.organizationName ?? "لا توجد بيانات",
-      tone: "#8b6d22",
+      tone: "var(--accent-foreground)",
     },
   ];
   return (
-    <Card className="overflow-hidden border-[#2a3444] bg-[#151b26] shadow-sm xl:col-span-7">
+    <Card className="overflow-hidden border-border bg-card shadow-sm xl:col-span-7">
       <CardContent className="p-5">
         <SectionTitle
           icon={FileBarChart2}
           title="تقرير الأداء التفصيلي"
           subtitle="قراءة تنفيذية سريعة لمؤشرات الكفاءة"
           action={
-            <span className="rounded-xl bg-[#193247] p-2 text-[#6bc7ff]">
+            <span className="rounded-xl bg-primary/10 p-2 text-primary">
               <TrendingUp className="h-4 w-4" />
             </span>
           }
@@ -797,7 +803,7 @@ function PerformanceReport({ summary }: { summary: any }) {
               key={row.label}
               className="rounded-2xl border border-border bg-card p-4"
             >
-              <div className="mb-4 h-1.5 rounded-full bg-[#e8edf1]">
+              <div className="mb-4 h-1.5 rounded-full bg-muted">
                 <div
                   className="h-1.5 rounded-full"
                   style={{
@@ -819,7 +825,7 @@ function PerformanceReport({ summary }: { summary: any }) {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#44391f]/70 px-3 py-2 text-[11px] font-semibold text-[#e7c45d]">
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-[11px] font-semibold text-accent-foreground">
           <FileBarChart2 className="h-4 w-4" />
           يتم احتساب التقرير من سجلات التدقيق والعمليات الموثقة فقط.
         </div>
@@ -830,8 +836,8 @@ function PerformanceReport({ summary }: { summary: any }) {
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#2d3849] bg-muted px-5 text-center sm:h-72">
-      <Activity className="h-7 w-7 text-[#9aa6b5]" />
+    <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted px-5 text-center sm:h-72">
+      <Activity className="h-7 w-7 text-muted-foreground" />
       <p className="text-sm font-semibold text-foreground">
         لا توجد بيانات كافية للرسم
       </p>

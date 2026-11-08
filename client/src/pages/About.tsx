@@ -76,9 +76,7 @@ export default function About() {
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div>
-          <p
-            className={sectionLabelClass}
-          >
+          <p className={sectionLabelClass}>
             إعدادات النظام
           </p>
           <h1 className="text-2xl font-bold tracking-tight">حول النظام</h1>

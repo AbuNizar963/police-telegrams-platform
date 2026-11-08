@@ -74,7 +74,9 @@ export default function About() {
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground">
+          <p
+            className="text-xs font-semibold tracking-wide text-muted-foreground"
+          >
             إعدادات النظام
           </p>
           <h1 className="text-2xl font-bold tracking-tight">حول النظام</h1>
@@ -102,7 +104,9 @@ export default function About() {
                 className="rounded-xl border border-border bg-background p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`${featureIconContainerClass} ${feature.tone}`}>
+                  <div
+                    className={`${featureIconContainerClass} ${feature.tone}`}
+                  >
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>

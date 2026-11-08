@@ -15,12 +15,11 @@ import { notifyMobileRelease } from "./features/notifications/notification";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
 import { createRateLimit } from "./_core/rateLimit";
 
-const verificationAttempts = new Map<
-  string,
-  { count: number; resetAt: number }
->();
-const VERIFY_WINDOW_MS = 60_000;
-const VERIFY_MAX_ATTEMPTS = 60;
+const verificationRateLimit = createRateLimit({
+  windowMs: 60_000,
+  maxRequests: 60,
+  message: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا",
+});
 
 function isSameOriginRequest(req: express.Request): boolean {
   const origin = req.get("origin");
@@ -39,18 +38,6 @@ function isSameOriginRequest(req: express.Request): boolean {
       return false;
     }
   }
-  return true;
-}
-
-function allowVerificationAttempt(ip: string): boolean {
-  const now = Date.now();
-  const current = verificationAttempts.get(ip);
-  if (!current || current.resetAt <= now) {
-    verificationAttempts.set(ip, { count: 1, resetAt: now + VERIFY_WINDOW_MS });
-    return true;
-  }
-  if (current.count >= VERIFY_MAX_ATTEMPTS) return false;
-  current.count += 1;
   return true;
 }
 
@@ -166,18 +153,12 @@ export function createApp(
   registerStorageRoutes(app);
   registerTelegramExportRoutes(app);
 
-  app.get("/api/verify/:token", async (req, res) => {
+  app.get("/api/verify/:token", verificationRateLimit, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
-    if (!allowVerificationAttempt(req.ip || "unknown")) {
-      return res.status(429).json({
-        valid: false,
-        error: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا",
-      });
-    }
-
-    const token = req.params.token;
+    const token =
+      typeof req.params.token === "string" ? req.params.token : "";
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         token

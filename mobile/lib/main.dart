@@ -2930,10 +2930,7 @@ class _DashboardPageState extends State<DashboardPage>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.cloud_off_outlined,
-                    color: context.appWarning,
-                  ),
+                  Icon(Icons.cloud_off_outlined, color: context.appWarning),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -3606,7 +3603,9 @@ class _DashboardPageState extends State<DashboardPage>
                 const SizedBox(width: 8),
                 _telegramChip(
                   incoming ? 'واردة' : 'صادرة',
-                  incoming ? context.appSuccessContainer : context.appInfoContainer,
+                  incoming
+                      ? context.appSuccessContainer
+                      : context.appInfoContainer,
                   incoming ? context.appSuccess : context.appInfo,
                   icon: incoming
                       ? Icons.south_west_rounded
@@ -3635,9 +3634,7 @@ class _DashboardPageState extends State<DashboardPage>
                     priority == 'عاجلة'
                         ? context.appDangerContainer
                         : context.appInfoContainer,
-                    priority == 'عاجلة'
-                        ? context.appDanger
-                        : context.appInfo,
+                    priority == 'عاجلة' ? context.appDanger : context.appInfo,
                     icon: priority == 'عاجلة'
                         ? Icons.priority_high_rounded
                         : Icons.shield_outlined,

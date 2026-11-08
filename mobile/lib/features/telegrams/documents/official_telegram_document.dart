@@ -1071,9 +1071,7 @@ class _OfficialTelegramDocumentPageState
         style: OutlinedButton.styleFrom(
           backgroundColor: background,
           foregroundColor: foreground,
-          side: BorderSide(
-            color: borderColor,
-          ),
+          side: BorderSide(color: borderColor),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -1119,7 +1117,7 @@ class _OfficialTelegramDocumentPageState
               mainAxisAlignment: MainAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'برقية رقم : ',
                   style: TextStyle(
                     fontFamily: 'Cairo',
@@ -1226,7 +1224,9 @@ class _OfficialTelegramDocumentPageState
                             'يتم تحميل شعار الجهة وإعداد الوثيقة الرسمية. سيظهر تنبيه إذا استغرق التجهيز وقتًا أطول من المتوقع.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontFamily: 'Cairo',
                               fontSize: 12,
                               height: 1.7,
@@ -1310,7 +1310,9 @@ class _OfficialTelegramDocumentPageState
                   ),
                 Expanded(
                   child: Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     alignment: Alignment.topCenter,
                     child: InteractiveViewer(
                       transformationController: _previewTransform,

@@ -262,7 +262,10 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   'تغيير الحالة يتم عبر إجراءات دورة الحياة، وليس من نموذج تعديل البيانات.',
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -286,7 +289,9 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               if (_saving) const LinearProgressIndicator(),

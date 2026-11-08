@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../api.dart';
 import '../notifications/toast.dart';
 
-const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
 
 class NativeOperationsPage extends StatefulWidget {
@@ -276,8 +275,13 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
               child: ListTile(
                 onTap: () => _openMap(lat, lng),
                 leading: CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                  child: Icon(Icons.location_on_outlined, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer,
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
                 ),
                 title: Text(
                   _value(row['subject'], 'برقية بدون موضوع'),
@@ -290,7 +294,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                 ),
                 isThreeLine: true,
                 trailing: row['priority'] == 'urgent'
-                    ? Icon(Icons.priority_high, color: Theme.of(context).colorScheme.error)
+                    ? Icon(
+                        Icons.priority_high,
+                        color: Theme.of(context).colorScheme.error,
+                      )
                     : null,
               ),
             );

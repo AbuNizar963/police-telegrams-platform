@@ -121,7 +121,11 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
         ],
       ),
       body: loading
-          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
           : entries.isEmpty
           ? _emptyState()
           : RefreshIndicator(
@@ -172,7 +176,10 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.pending_actions_outlined, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.pending_actions_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -200,13 +207,19 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
           const SizedBox(height: 7),
           Text(
             'حُفظت في ${_date(entry.createdAt)} · محاولات المزامنة: ${entry.attempts}',
-            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (entry.lastError != null && entry.lastError!.isNotEmpty) ...[
             const SizedBox(height: 5),
             Text(
               'آخر خطأ: ${entry.lastError}',
-              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.error),
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           ],
         ],
@@ -244,7 +257,10 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
     color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(12),
-      child: Text(text, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+      child: Text(
+        text,
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+      ),
     ),
   );
 }

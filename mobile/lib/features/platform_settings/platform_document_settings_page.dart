@@ -18,7 +18,10 @@ class _ErrorCard extends StatelessWidget {
     color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(14),
-      child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+      child: Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+      ),
     ),
   );
 }
@@ -219,7 +222,7 @@ class _PlatformDocumentSettingsPageState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'هوية الوثيقة الرسمية',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface,
@@ -230,7 +233,12 @@ class _PlatformDocumentSettingsPageState
                         const SizedBox(height: 8),
                         Text(
                           'تُطبّق هذه الإعدادات على وثائق جميع الجهات الجديدة، ويستطيع مالك النظام وحده تعديلها.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.6),
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                            height: 1.6,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         SwitchListTile.adaptive(
@@ -281,7 +289,12 @@ class _PlatformDocumentSettingsPageState
                         ),
                         Text(
                           'تُطبّق النسبة على عبارة الوزارة وشعار الجهة. الحد الأعلى 60% للحفاظ على وضوح النص.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: 18),
                         const Text(
@@ -312,7 +325,13 @@ class _PlatformDocumentSettingsPageState
                                     color: _parseColor(color),
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.outline,
+                                      color: selected
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .outline,
                                       width: selected ? 3 : 1,
                                     ),
                                     boxShadow: const [

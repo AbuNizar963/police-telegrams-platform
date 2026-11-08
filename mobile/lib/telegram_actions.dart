@@ -667,7 +667,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
                 Align(
@@ -772,7 +774,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                         ),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.tertiaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .tertiaryContainer,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Padding(
@@ -783,7 +787,9 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                             child: Text(
                               'قيد التنفيذ',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onTertiaryContainer,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onTertiaryContainer,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),

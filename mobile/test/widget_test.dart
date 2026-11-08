@@ -739,12 +739,19 @@ void main() {
         ),
         findsNWidgets(4),
       );
+      final lockScreenMaterial = find.descendant(
+        of: find
+            .ancestor(
+              of: find.text('قم بإدخال رمز PIN'),
+              matching: find.byType(Positioned),
+            )
+            .first,
+        matching: find.byType(Material),
+      );
+      expect(lockScreenMaterial, findsOneWidget);
       expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Material && widget.color == const Color(0xFF1C1D2B),
-        ),
-        findsOneWidget,
+        tester.widget<Material>(lockScreenMaterial).color,
+        ThemeData.dark().colorScheme.surface,
       );
     },
   );

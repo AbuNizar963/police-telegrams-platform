@@ -457,7 +457,9 @@ class _VerifyTelegramPageState extends State<VerifyTelegramPage> {
       children: [
         Text(
           '$label: ',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         Expanded(
           child: Text(
@@ -503,7 +505,9 @@ class _PublicScaffold extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           child,

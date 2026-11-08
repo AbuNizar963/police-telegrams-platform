@@ -114,7 +114,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: read ? Theme.of(context).colorScheme.surfaceContainerHighest : _gold,
+                            backgroundColor: read
+                                ? Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                : _gold,
                             child: Icon(
                               read
                                   ? Icons.notifications_none
@@ -766,7 +770,11 @@ class _AuditLogPageState extends State<AuditLogPage> {
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         children: [
-                          Icon(Icons.history, color: Theme.of(context).colorScheme.primary, size: 28),
+                          Icon(
+                            Icons.history,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 28,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -780,7 +788,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 Text(
                                   '$total نتيجة · قراءة فقط · يتحدث تلقائياً كل 5 ثوانٍ',
                                   style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -788,7 +798,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 Text(
                                   'تُعرض الإجراءات والتفاصيل بالعربية؛ أما بيانات الشبكة والمعرّفات الفنية فهي اختيارية للمختصين.',
                                   style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -945,8 +957,15 @@ class _AuditLogPageState extends State<AuditLogPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CircleAvatar(
-                                  backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                  child: Icon(Icons.history, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer,
+                                  child: Icon(
+                                    Icons.history,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer,
+                                  ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -965,7 +984,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                         'وقت تسجيل الإجراء: ${_formatDate(entry['createdAt'])}',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
                                         ),
                                       ),
                                     ],
@@ -975,7 +996,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                   deviceLabel,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -1233,7 +1256,13 @@ class _AuditDetail extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
       const SizedBox(height: 2),
       SelectableText(value, style: const TextStyle(fontSize: 12)),
     ],
@@ -1540,10 +1569,15 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                     ),
                     OutlinedButton.icon(
                       onPressed: saving ? null : widget.onLogout,
-                      icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+                      icon: Icon(
+                        Icons.logout,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       label: Text(
                         'تسجيل الخروج',
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                   ],
@@ -1613,7 +1647,10 @@ class _ErrorCard extends StatelessWidget {
     color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(14),
-      child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+      child: Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+      ),
     ),
   );
 }

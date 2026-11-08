@@ -4036,11 +4036,7 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Widget _telegramDetailLine(
-    String label,
-    String value, {
-    bool strong = true,
-  }) {
+  Widget _telegramDetailLine(String label, String value, {bool strong = true}) {
     final colors = Theme.of(context).colorScheme;
     return RichText(
       textAlign: TextAlign.right,

@@ -626,9 +626,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
-                children: const [
-                  Icon(Icons.file_copy_outlined, color: _gold, size: 34),
-                  SizedBox(height: 10),
+                children: [
+                  const Icon(Icons.file_copy_outlined, color: _gold, size: 34),
+                  const SizedBox(height: 10),
                   Text(
                     'أدوات سجل البرقيات بصيغة Excel',
                     textAlign: TextAlign.center,
@@ -638,8 +638,8 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     'تصدير السجل إلى ملف XLSX بورقتي صادر ووارد، أو استيراد ملف Excel مع معاينة وفحص قبل الاعتماد. تُطبق الصلاحيات والتحقق النهائي على الخادم.',
                     textAlign: TextAlign.center,
                   ),
@@ -774,7 +774,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: duplicate
-                              ? TextStyle(color: Theme.of(context).colorScheme.error)
+                              ? TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                )
                               : null,
                         ),
                         subtitle: Text(
@@ -814,7 +816,9 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   message!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onTertiaryContainer,
+                  ),
                 ),
               ),
             ),
@@ -825,7 +829,12 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
               color: Theme.of(context).colorScheme.errorContainer,
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+                child: Text(
+                  error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
               ),
             ),
           ],

@@ -97,7 +97,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'برقيات الشرطة',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -134,7 +134,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -147,7 +147,9 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
                           'رقم النسخة المثبتة على هذا الجهاز',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                         ),
                       ],

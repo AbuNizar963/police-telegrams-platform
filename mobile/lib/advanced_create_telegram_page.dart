@@ -803,11 +803,15 @@ class _AdvancedCreateTelegramSheetState
     },
   );
 
-  Widget _offlineStyleNotice() => const Padding(
-    padding: EdgeInsets.only(bottom: 12),
+  Widget _offlineStyleNotice() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
     child: Text(
       'تُحفظ البرقية مركزيًا بعد نجاح الإرسال، وتُطبق الصلاحيات والتحقق النهائي على الخادم.',
-      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, height: 1.5),
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontSize: 12,
+        height: 1.5,
+      ),
     ),
   );
 
@@ -815,7 +819,10 @@ class _AdvancedCreateTelegramSheetState
     color: Theme.of(context).colorScheme.errorContainer,
     child: Padding(
       padding: const EdgeInsets.all(12),
-      child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+      child: Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+      ),
     ),
   );
 }

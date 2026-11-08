@@ -13,6 +13,7 @@ import './features/notifications/toast.dart';
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
+
 class _MobileRelease {
   const _MobileRelease({
     required this.version,

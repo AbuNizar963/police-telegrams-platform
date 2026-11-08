@@ -384,13 +384,21 @@ class _NativeOrganizationManagementPageState
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: active
-                                    ? Theme.of(context).colorScheme.secondaryContainer
-                                    : Theme.of(context).colorScheme.errorContainer,
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .errorContainer,
                                 child: Icon(
                                   Icons.account_tree_outlined,
                                   color: active
-                                      ? Theme.of(context).colorScheme.onSecondaryContainer
-                                      : Theme.of(context).colorScheme.onErrorContainer,
+                                      ? Theme.of(context)
+                                            .colorScheme
+                                            .onSecondaryContainer
+                                      : Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer,
                                 ),
                               ),
                               title: Text(

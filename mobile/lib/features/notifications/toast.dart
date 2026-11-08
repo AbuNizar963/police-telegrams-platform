@@ -195,8 +195,10 @@ class _ToastCard extends StatelessWidget {
 
   Color _tint(BuildContext context) => switch (kind) {
     ToastKind.error => Theme.of(context).colorScheme.errorContainer,
-    ToastKind.success || ToastKind.warning || ToastKind.info || ToastKind.loading =>
-      Theme.of(context).colorScheme.surfaceContainerHigh,
+    ToastKind.success ||
+    ToastKind.warning ||
+    ToastKind.info ||
+    ToastKind.loading => Theme.of(context).colorScheme.surfaceContainerHigh,
   };
 
   String get _title => _toastTitle(kind);

@@ -486,7 +486,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -582,7 +584,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                                     : '',
                                 style: TextStyle(
                                   fontSize: 9,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -711,8 +715,12 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                        foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .secondaryContainer,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onSecondaryContainer,
                         child: Icon(Icons.account_balance_outlined, size: 17),
                       ),
                       title: Text(
@@ -761,8 +769,12 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimaryContainer,
                         child: Icon(Icons.manage_history_outlined, size: 17),
                       ),
                       title: Text(
@@ -795,7 +807,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
   Widget _errorCard() => Card(
     color: Theme.of(context).colorScheme.errorContainer,
     child: ListTile(
-      leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+      leading: Icon(
+        Icons.error_outline,
+        color: Theme.of(context).colorScheme.error,
+      ),
       title: const Text('تعذر تحميل بعض البيانات'),
       subtitle: Text(_error!),
       trailing: TextButton(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:police_telegrams/app_theme.dart';
 
 double _contrastRatio(Color first, Color second) {
   final firstLuminance = first.computeLuminance();
@@ -11,9 +13,6 @@ double _contrastRatio(Color first, Color second) {
       : firstLuminance;
   return (lighter + 0.05) / (darker + 0.05);
 }
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:police_telegrams/app_theme.dart';
 
 void main() {
   group('AppTheme', () {

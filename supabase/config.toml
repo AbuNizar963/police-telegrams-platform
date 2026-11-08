@@ -1,7 +1,8 @@
 project_id = "police-telegrams-platform"
 
 [db]
-major_version = 15
+# Keep local PostgreSQL aligned with the hosted Supabase project.
+major_version = 17
 
 [auth]
 # Keep self-service account creation disabled in local Supabase environments.

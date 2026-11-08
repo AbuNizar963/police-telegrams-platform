@@ -84,9 +84,7 @@ export default function About() {
         </div>
       </div>
 
-      <Card
-        className="overflow-hidden"
-      >
+      <Card className="overflow-hidden">
         <CardHeader className="border-b border-border bg-muted/40">
           <CardTitle className="text-card-foreground">
             ميزات النظام

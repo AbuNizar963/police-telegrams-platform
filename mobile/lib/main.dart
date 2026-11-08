@@ -85,14 +85,23 @@ class PoliceTelegramsApp extends StatelessWidget {
     }
   }
 
-  static Future<void> useSystemTheme() async {
-    _themeMode.value = ThemeMode.system;
+  static ThemeMode get themeMode => _themeMode.value;
+
+  static Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode.value = mode;
+    final storedValue = switch (mode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+      ThemeMode.system => 'system',
+    };
     try {
-      await _preferences.write(key: 'mobile_theme_mode', value: 'system');
+      await _preferences.write(key: 'mobile_theme_mode', value: storedValue);
     } catch (_) {
-      // The system appearance remains active for this session.
+      // Keep the selected appearance for this session if storage is unavailable.
     }
   }
+
+  static Future<void> useSystemTheme() => setThemeMode(ThemeMode.system);
 
   final PoliceApi? api;
 
@@ -2223,6 +2232,67 @@ class _DashboardPageState extends State<DashboardPage>
           ],
         ),
         actions: [
+          PopupMenuButton<ThemeMode>(
+            tooltip: 'إعدادات المظهر',
+            icon: const Icon(Icons.brightness_6_outlined),
+            onSelected: PoliceTelegramsApp.setThemeMode,
+            itemBuilder: (context) {
+              final selectedMode = PoliceTelegramsApp.themeMode;
+              Widget option({
+                required IconData icon,
+                required String title,
+                required ThemeMode mode,
+              }) {
+                return SizedBox(
+                  width: 216,
+                  child: Row(
+                    children: [
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(title)),
+                      if (selectedMode == mode)
+                        Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              return [
+                PopupMenuItem<ThemeMode>(
+                  value: ThemeMode.system,
+                  child: option(
+                    icon: Icons.brightness_auto_outlined,
+                    title: 'تلقائي حسب الجهاز',
+                    mode: ThemeMode.system,
+                  ),
+                ),
+                PopupMenuItem<ThemeMode>(
+                  value: ThemeMode.light,
+                  child: option(
+                    icon: Icons.light_mode_outlined,
+                    title: 'الوضع الفاتح',
+                    mode: ThemeMode.light,
+                  ),
+                ),
+                PopupMenuItem<ThemeMode>(
+                  value: ThemeMode.dark,
+                  child: option(
+                    icon: Icons.dark_mode_outlined,
+                    title: 'الوضع الداكن',
+                    mode: ThemeMode.dark,
+                  ),
+                ),
+              ];
+            },
+          ),
           IconButton(
             tooltip: 'الإشعارات',
             onPressed: _showNotificationsPreview,
@@ -2273,24 +2343,6 @@ class _DashboardPageState extends State<DashboardPage>
                 child: _AccountMenuItem(
                   icon: Icons.person_outline_rounded,
                   title: 'الملف الشخصي',
-                ),
-              ),
-              PopupMenuItem(
-                value: 'theme',
-                child: _AccountMenuItem(
-                  icon: Theme.of(context).brightness == Brightness.dark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                  title: Theme.of(context).brightness == Brightness.dark
-                      ? 'تفعيل الوضع الفاتح'
-                      : 'تفعيل الوضع الليلي',
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'system-theme',
-                child: _AccountMenuItem(
-                  icon: Icons.brightness_auto_outlined,
-                  title: 'اتباع مظهر الجهاز تلقائياً',
                 ),
               ),
               PopupMenuItem(

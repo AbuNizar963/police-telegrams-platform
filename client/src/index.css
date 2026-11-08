@@ -172,16 +172,8 @@
     min-height: 100%;
     font-family: "Cairo", sans-serif;
     background-image:
-      radial-gradient(
-        circle at 100% 0%,
-        var(--brand-wash),
-        transparent 30rem
-      ),
-      radial-gradient(
-        circle at 0% 100%,
-        var(--ambient-wash),
-        transparent 34rem
-      );
+      radial-gradient(circle at 100% 0%, var(--brand-wash), transparent 30rem),
+      radial-gradient(circle at 0% 100%, var(--ambient-wash), transparent 34rem);
     background-attachment: fixed;
   }
   button,

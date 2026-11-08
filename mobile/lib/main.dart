@@ -859,8 +859,8 @@ class _AnimatedWelcomeGreetingState extends State<_AnimatedWelcomeGreeting> {
           key: ValueKey(_showTimeGreeting),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: navy,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 17,
             fontWeight: FontWeight.w900,
           ),
@@ -2110,10 +2110,11 @@ class _DashboardPageState extends State<DashboardPage>
   }) => OutlinedButton(
     onPressed: onPressed,
     style: OutlinedButton.styleFrom(
+      foregroundColor: Theme.of(context).colorScheme.onSurface,
       minimumSize: const Size(0, 38),
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      side: const BorderSide(color: Color(0xFFE1E5EB)),
-      backgroundColor: const Color(0xFFFFFEFC),
+      side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     child: Row(
@@ -2164,13 +2165,13 @@ class _DashboardPageState extends State<DashboardPage>
               : Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   decoration: BoxDecoration(
-                    color: navy,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '$_activeFilterCount',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
                     ),
@@ -2298,6 +2299,7 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _outboxAlert() {
+    final colors = Theme.of(context).colorScheme;
     final Color accent = switch (_syncPhase) {
       'error' => const Color(0xFFB42332),
       'success' => const Color(0xFF16836B),
@@ -2334,9 +2336,9 @@ class _DashboardPageState extends State<DashboardPage>
       padding: const EdgeInsets.all(16),
       constraints: const BoxConstraints(minHeight: 150),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFC),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E5DF)),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0C10233F),
@@ -2378,12 +2380,12 @@ class _DashboardPageState extends State<DashboardPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'حالة صندوق الخروج',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: navy,
+                        color: colors.onSurface,
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
                       ),
@@ -2445,13 +2447,13 @@ class _DashboardPageState extends State<DashboardPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F7F2),
+              color: colors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: colors.outlineVariant),
             ),
             child: Row(
               children: [
-                const Icon(Icons.outbox_outlined, color: navy, size: 18),
+                Icon(Icons.outbox_outlined, color: colors.primary, size: 18),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Column(
@@ -2464,8 +2466,8 @@ class _DashboardPageState extends State<DashboardPage>
                             : 'آخر فحص ${_syncTime(_lastSyncAt!)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF7A8493),
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2475,8 +2477,8 @@ class _DashboardPageState extends State<DashboardPage>
                         detailMessage,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: navy,
+                        style: TextStyle(
+                          color: colors.onSurface,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2494,7 +2496,7 @@ class _DashboardPageState extends State<DashboardPage>
                     height: 34,
                   ),
                   icon: const Icon(Icons.list_alt_outlined, size: 19),
-                  color: navy,
+                  color: colors.primary,
                 ),
                 IconButton(
                   tooltip: 'مزامنة الآن',
@@ -2506,7 +2508,7 @@ class _DashboardPageState extends State<DashboardPage>
                     height: 34,
                   ),
                   icon: const Icon(Icons.sync_rounded, size: 19),
-                  color: navy,
+                  color: colors.primary,
                 ),
               ],
             ),
@@ -2532,8 +2534,6 @@ class _DashboardPageState extends State<DashboardPage>
     textDirection: TextDirection.rtl,
     child: Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F7F2),
-        foregroundColor: navy,
         automaticallyImplyLeading: false,
         titleSpacing: 0,
         leading: Builder(
@@ -3083,15 +3083,16 @@ class _DashboardPageState extends State<DashboardPage>
   );
 
   Widget _welcomePanel() {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       key: const ValueKey<String>('welcome-panel'),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
       constraints: const BoxConstraints(minHeight: 150),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFC),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E5DF)),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0C10233F),
@@ -3119,22 +3120,22 @@ class _DashboardPageState extends State<DashboardPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F7F2),
+              color: colors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: colors.outlineVariant),
             ),
             child: Row(
               children: [
-                const Icon(Icons.business_outlined, color: navy, size: 18),
+                Icon(Icons.business_outlined, color: colors.primary, size: 18),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'الجهة الحالية',
                         style: TextStyle(
-                          color: Color(0xFF7A8493),
+                          color: colors.onSurfaceVariant,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -3144,8 +3145,8 @@ class _DashboardPageState extends State<DashboardPage>
                         _currentOrganizationLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: navy,
+                        style: TextStyle(
+                          color: colors.onSurface,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
@@ -4153,83 +4154,88 @@ class _DashboardPageState extends State<DashboardPage>
     required Color accent,
     required VoidCallback onTap,
     bool active = false,
-  }) => Material(
-    color: Colors.transparent,
-    borderRadius: BorderRadius.circular(15),
-    child: InkWell(
-      onTap: onTap,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(15),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFFF4F6FA) : const Color(0xFFFFFEFC),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
             color: active
-                ? navy.withValues(alpha: 0.45)
-                : const Color(0xFFE1E5EB),
-            width: active ? 1.4 : 1,
+                ? colors.primary.withValues(alpha: 0.10)
+                : colors.surface,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: active
+                  ? colors.primary.withValues(alpha: 0.65)
+                  : colors.outlineVariant,
+              width: active ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$value',
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: colors.onSurface,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      detail,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 9,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: accent, size: 17),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF667085),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$value',
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: Color(0xFF182230),
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF7A8493),
-                      fontSize: 9,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, color: accent, size: 17),
-            ),
-          ],
-        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _AccountMenuItem extends StatelessWidget {

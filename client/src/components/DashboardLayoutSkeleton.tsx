@@ -24,7 +24,10 @@ export function DashboardLayoutSkeleton() {
           role="status"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 ring-1 ring-success/20">
-            <Loader2 className="h-7 w-7 animate-spin text-success" aria-hidden="true" />
+            <Loader2
+              className="h-7 w-7 animate-spin text-success"
+              aria-hidden="true"
+            />
           </span>
           <span>لحظات من فضلك</span>
         </div>

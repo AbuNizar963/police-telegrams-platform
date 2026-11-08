@@ -161,7 +161,10 @@ abstract final class AppTheme {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppPalette.brandBlue, width: 1.5),
+            borderSide: const BorderSide(
+              color: AppPalette.brandBlue,
+              width: 1.5,
+            ),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -437,7 +440,10 @@ abstract final class AppTheme {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: AppPalette.brandBlue, width: 1.6),
+            borderSide: const BorderSide(
+              color: AppPalette.brandBlue,
+              width: 1.6,
+            ),
           ),
           labelStyle: const TextStyle(color: Color(0xFFCBD4E1)),
           floatingLabelStyle: const TextStyle(color: AppPalette.brandBlue),

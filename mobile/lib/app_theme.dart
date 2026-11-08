@@ -94,7 +94,8 @@ abstract final class AppPalette {
 /// Keep component defaults here instead of scattering platform colors
 /// throughout individual screens. Use [ColorScheme] for contextual colors.
 abstract final class AppTheme {
-  static ThemeData get light => ThemeData(
+  static ThemeData get light =>
+      ThemeData(
         useMaterial3: true,
         fontFamily: 'Cairo',
         scaffoldBackgroundColor: AppPalette.canvas,
@@ -121,7 +122,10 @@ abstract final class AppTheme {
           toolbarHeight: 58,
           titleSpacing: 8,
           iconTheme: const IconThemeData(color: AppPalette.navy, size: 22),
-          actionsIconTheme: const IconThemeData(color: AppPalette.navy, size: 21),
+          actionsIconTheme: const IconThemeData(
+            color: AppPalette.navy,
+            size: 21,
+          ),
           shape: const Border(bottom: BorderSide(color: AppPalette.border)),
           titleTextStyle: const TextStyle(
             color: AppPalette.navy,
@@ -270,17 +274,18 @@ abstract final class AppTheme {
           thickness: 1,
         ),
       ).copyWith(
-    primaryColor: AppPalette.navy,
-    iconTheme: const IconThemeData(color: AppPalette.navy, size: 20),
-    primaryIconTheme: const IconThemeData(color: AppPalette.navy, size: 20),
-    textSelectionTheme: const TextSelectionThemeData(
-      cursorColor: AppPalette.navy,
-      selectionColor: Color(0x3310233F),
-      selectionHandleColor: AppPalette.navy,
-    ),
-  );
+        primaryColor: AppPalette.navy,
+        iconTheme: const IconThemeData(color: AppPalette.navy, size: 20),
+        primaryIconTheme: const IconThemeData(color: AppPalette.navy, size: 20),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: AppPalette.navy,
+          selectionColor: Color(0x3310233F),
+          selectionHandleColor: AppPalette.navy,
+        ),
+      );
 
-  static ThemeData get dark => ThemeData.dark(useMaterial3: true).copyWith(
+  static ThemeData get dark => ThemeData.dark(useMaterial3: true)
+      .copyWith(
         textTheme: ThemeData.dark().textTheme.apply(
           fontFamily: 'Cairo',
           bodyColor: AppPalette.darkInk,
@@ -309,7 +314,9 @@ abstract final class AppTheme {
             fontFamily: 'Cairo',
           ),
         ),
-        progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppPalette.gold),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: AppPalette.gold,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppPalette.darkCanvas,
           foregroundColor: AppPalette.darkInk,
@@ -448,24 +455,30 @@ abstract final class AppTheme {
             color: AppPalette.darkInk,
           ),
         ),
-        drawerTheme: const DrawerThemeData(backgroundColor: AppPalette.navy, width: 280),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: AppPalette.navy,
+          width: 280,
+        ),
         dividerTheme: const DividerThemeData(color: AppPalette.darkBorder),
-      ).copyWith(
-    primaryColor: AppPalette.gold,
-    iconTheme: const IconThemeData(color: AppPalette.darkInk, size: 20),
-    primaryIconTheme: const IconThemeData(color: AppPalette.darkInk, size: 20),
-    textSelectionTheme: TextSelectionThemeData(
-      cursorColor: AppPalette.gold,
-      selectionColor: AppPalette.gold.withValues(alpha: 0.28),
-      selectionHandleColor: AppPalette.gold,
-    ),
-  );
+      )
+      .copyWith(
+        primaryColor: AppPalette.gold,
+        iconTheme: const IconThemeData(color: AppPalette.darkInk, size: 20),
+        primaryIconTheme: const IconThemeData(
+          color: AppPalette.darkInk,
+          size: 20,
+        ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: AppPalette.gold,
+          selectionColor: AppPalette.gold.withValues(alpha: 0.28),
+          selectionHandleColor: AppPalette.gold,
+        ),
+      );
 }
 
 /// Context-aware semantic colors for status messages, badges, and surfaces.
 extension AppThemeContextTokens on BuildContext {
-  bool get _isDarkAppTheme =>
-      Theme.of(this).brightness == Brightness.dark;
+  bool get _isDarkAppTheme => Theme.of(this).brightness == Brightness.dark;
 
   Color get appSuccess =>
       _isDarkAppTheme ? AppPalette.darkSuccess : AppPalette.success;
@@ -479,21 +492,15 @@ extension AppThemeContextTokens on BuildContext {
       ? AppPalette.darkWarningContainer
       : AppPalette.warningContainer;
 
-  Color get appInfo =>
-      _isDarkAppTheme ? AppPalette.darkInfo : AppPalette.info;
+  Color get appInfo => _isDarkAppTheme ? AppPalette.darkInfo : AppPalette.info;
   Color get appInfoContainer =>
       _isDarkAppTheme ? AppPalette.darkInfoContainer : AppPalette.infoContainer;
 
   Color get appDanger => Theme.of(this).colorScheme.error;
-  Color get appDangerContainer =>
-      Theme.of(this).colorScheme.errorContainer;
-  Color get appDangerText =>
-      Theme.of(this).colorScheme.onErrorContainer;
+  Color get appDangerContainer => Theme.of(this).colorScheme.errorContainer;
+  Color get appDangerText => Theme.of(this).colorScheme.onErrorContainer;
 
-  Color get appMutedText =>
-      Theme.of(this).colorScheme.onSurfaceVariant;
-  Color get appMutedSurface =>
-      Theme.of(this).colorScheme.surfaceContainerHigh;
-  Color get appBorder =>
-      Theme.of(this).colorScheme.outlineVariant;
+  Color get appMutedText => Theme.of(this).colorScheme.onSurfaceVariant;
+  Color get appMutedSurface => Theme.of(this).colorScheme.surfaceContainerHigh;
+  Color get appBorder => Theme.of(this).colorScheme.outlineVariant;
 }

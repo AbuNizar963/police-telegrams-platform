@@ -1076,7 +1076,7 @@ export default function Home() {
               status !== "all" ||
               category !== "all" ||
               organizationScope !== "current") && (
-              <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10233f] px-1.5 text-[10px] text-white">
+              <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
                 {
                   [
                     severity !== "all",
@@ -1473,7 +1473,7 @@ export default function Home() {
         onClick={() => setComposerOpen(true)}
         aria-label="إنشاء برقية جديدة"
         title="إنشاء برقية جديدة"
-        className="group fixed bottom-5 left-5 z-40 h-14 w-14 rounded-full bg-[#10233f] p-0 text-white shadow-[0_14px_30px_rgba(16,35,63,0.28)] transition-all hover:-translate-y-1 hover:bg-[#18375f] hover:shadow-[0_18px_36px_rgba(16,35,63,0.36)] focus-visible:ring-2 focus-visible:ring-[#b4945a] focus-visible:ring-offset-2 sm:bottom-7 sm:left-7"
+        className="group fixed bottom-5 left-5 z-40 h-14 w-14 rounded-full bg-primary p-0 text-primary-foreground shadow-[0_14px_30px_rgba(16,35,63,0.28)] transition-all hover:-translate-y-1 hover:bg-primary/90 hover:shadow-[0_18px_36px_rgba(16,35,63,0.36)] focus-visible:ring-2 focus-visible:ring-[#b4945a] focus-visible:ring-offset-2 sm:bottom-7 sm:left-7"
       >
         <MessageSquarePlus className="h-6 w-6 transition-transform group-hover:scale-110" />
         <span className="sr-only">برقية جديدة</span>
@@ -2013,7 +2013,7 @@ function ExcelImportPreviewModal({
             type="button"
             onClick={confirm}
             disabled={pending || selectedRows.size === 0}
-            className="bg-[#10233f] text-white hover:bg-[#18375f]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {pending
               ? "جارٍ استيراد السجلات..."
@@ -2101,7 +2101,7 @@ function DisplayCustomizationModal({
           <Button
             type="button"
             onClick={close}
-            className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
+            className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
           >
             تم
           </Button>
@@ -2294,7 +2294,7 @@ function TelegramReportModal({
             type="button"
             onClick={downloadCsv}
             disabled={rows.length === 0}
-            className="bg-[#10233f] text-white hover:bg-[#18375f]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             تصدير CSV آمن
           </Button>
@@ -2322,7 +2322,7 @@ function TelegramViewButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${active ? "border-[#10233f] bg-[#10233f] text-white shadow-sm" : "bg-background text-muted-foreground hover:border-[#b4945a] hover:text-foreground"}`}
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${active ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:border-[#b4945a] hover:text-foreground"}`}
     >
       <Icon className="h-4 w-4" />
       <span>{label}</span>
@@ -2738,7 +2738,7 @@ function TelegramComposer({
         <Button
           onClick={save}
           disabled={pending || !online}
-          className="h-11 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
+          className="h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {pending ? "جارٍ الإرسال..." : "إرسال البرقية"}
         </Button>
@@ -5070,7 +5070,7 @@ function TelegramDetail({
             disabled={!!exporting || documentSettingsUnavailable}
             title="طباعة البرقية"
             aria-label="طباعة البرقية"
-            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-[#10233f] px-1.5 text-[11px] whitespace-nowrap text-white hover:bg-[#18375f]"
+            className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg bg-primary px-1.5 text-[11px] whitespace-nowrap text-primary-foreground hover:bg-primary/90"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span>طباعة</span>
@@ -5374,7 +5374,7 @@ function TelegramDetail({
                     note: routeNote.trim() || null,
                   })
                 }
-                className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
+                className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {routeTelegram.isPending
                   ? "جارٍ إرسال طلب الموافقة..."
@@ -6217,7 +6217,7 @@ function DepartmentSettingsModal({
               logoUrl: logoUrl?.trim() || null,
             })
           }
-          className="h-10 rounded-lg bg-[#10233f] text-white hover:bg-[#18375f]"
+          className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Save className="ml-2 h-4 w-4" />
           {isWorkplaceTransitioning

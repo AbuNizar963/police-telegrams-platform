@@ -150,13 +150,13 @@ export default function OperationsWorkspace() {
               type="button"
               onClick={() => setTab(item)}
               aria-current={tab === item ? "page" : undefined}
-              className={`flex min-h-12 flex-col items-start justify-center gap-0.5 rounded-lg px-3 py-2 text-right transition sm:min-h-0 sm:flex-row sm:items-center sm:gap-2 sm:whitespace-nowrap sm:text-sm ${tab === item ? "bg-[#10233f] text-white" : "text-foreground hover:bg-background"}`}
+              className={`flex min-h-12 flex-col items-start justify-center gap-0.5 rounded-lg px-3 py-2 text-right transition sm:min-h-0 sm:flex-row sm:items-center sm:gap-2 sm:whitespace-nowrap sm:text-sm ${tab === item ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-background"}`}
             >
               <span className="text-xs font-bold sm:text-sm">
                 {tabLabels[item]}
               </span>
               <span
-                className={`text-[10px] leading-4 sm:hidden ${tab === item ? "text-white/75" : "text-muted-foreground"}`}
+                className={`text-[10px] leading-4 sm:hidden ${tab === item ? "text-primary-foreground/75" : "text-muted-foreground"}`}
               >
                 {item === "locations"
                   ? "الخريطة والسجل"
@@ -340,12 +340,12 @@ function UnitsPanel({
   const currentUnitName = units.find(unit => unit.id === currentUnit)?.name;
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border bg-[#10233f] p-5 text-white">
-        <div className="flex items-center gap-2 text-[#d8c38e]">
+      <div className="rounded-2xl border bg-primary p-5 text-primary-foreground">
+        <div className="flex items-center gap-2 text-primary-foreground/80">
           <Shield className="h-5 w-5" />
           <span className="text-sm font-bold">لوحة الوحدات الميدانية</span>
         </div>
-        <p className="mt-2 text-sm text-slate-200">
+        <p className="mt-2 text-sm text-primary-foreground/75">
           {currentUnitName
             ? `جهتك الحالية: ${currentUnitName}. `
             : "تعرض هذه الصفحة الجهات المتاحة للإحالة. "}
@@ -440,7 +440,7 @@ function ResourcesPanel({
         <div className="divide-y">
           {busiest.map(unit => (
             <div key={unit.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Building2 className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">

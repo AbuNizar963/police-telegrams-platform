@@ -231,7 +231,7 @@ export default function PlatformDocumentSettings() {
                     showVerificationQr,
                   })
                 }
-                className="bg-[#10233f] text-white hover:bg-[#18375f]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {update.isPending ? "جارٍ الحفظ…" : "حفظ الإعدادات"}
               </Button>

@@ -369,7 +369,7 @@ export default function OwnerUserManagement() {
           <div className="flex items-center gap-2">
             <Button
               type="button"
-              className="gap-2 bg-[#10233f] text-white hover:bg-[#18375f]"
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => openCreateForm()}
               aria-expanded={showCreateForm}
             >
@@ -596,7 +596,7 @@ export default function OwnerUserManagement() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                className="min-w-48 bg-[#10233f] text-white hover:bg-[#18375f]"
+                className="min-w-48 bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={
                   createUser.isPending ||
                   !selectedOrganizationId ||
@@ -874,7 +874,7 @@ export default function OwnerUserManagement() {
                                           type="button"
                                           variant="outline"
                                           size="sm"
-                                          className="h-8 gap-1 border-blue-200 px-2 text-xs text-blue-700 hover:bg-blue-500/10"
+                                          className="h-8 gap-1 border-primary/40 px-2 text-xs text-primary hover:bg-primary/10"
                                           title="فتح نموذج إعادة تفعيل الحساب"
                                           aria-expanded={
                                             enablePasswordOpen[user.id] === true
@@ -911,7 +911,7 @@ export default function OwnerUserManagement() {
                                             <Button
                                               type="button"
                                               size="sm"
-                                              className="h-8 bg-blue-700 px-2 text-xs text-white hover:bg-blue-800"
+                                              className="h-8 bg-primary px-2 text-xs text-primary-foreground hover:bg-primary/90"
                                               disabled={
                                                 (enablePassword[user.id] ?? "")
                                                   .length < 12 ||

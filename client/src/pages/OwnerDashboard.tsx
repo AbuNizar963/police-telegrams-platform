@@ -335,25 +335,25 @@ export default function OwnerDashboardPage() {
         </div>
       </header>
 
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#10233f] p-5 text-white shadow-[0_18px_50px_rgba(16,35,63,0.16)] sm:p-7">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-primary p-5 text-primary-foreground shadow-[0_18px_50px_rgba(16,35,63,0.16)] sm:p-7">
         <div className="pointer-events-none absolute -left-12 -top-24 h-72 w-72 rounded-full border border-[#d8c38e]/20" />
-        <div className="pointer-events-none absolute -left-4 -top-12 h-48 w-48 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -left-4 -top-12 h-48 w-48 rounded-full border border-primary-foreground/10" />
         <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[#d8c38e]">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary-foreground/80">
               <Zap className="h-4 w-4" />
               نظرة المنصة · {periodLabel}
             </div>
             <p className="text-xl font-bold sm:text-2xl">
               كل الجهات ضمن صورة تشغيلية واحدة
             </p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c5cfdd]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-primary-foreground/75">
               تجمع اللوحة النشاط الموثق، وتفصل بين حجم العمل والحالة الحالية
               للجهات والحسابات، دون عرض محتوى البرقيات الحساسة.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#e1e8f2]">
-            <Database className="h-4 w-4 text-[#d8c38e]" />
+          <div className="flex items-center gap-2 rounded-xl border border-primary-foreground/10 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/80">
+            <Database className="h-4 w-4 text-primary-foreground/80" />
             آخر مزامنة: {formatDate(summary.generatedAt, true)}
           </div>
         </div>

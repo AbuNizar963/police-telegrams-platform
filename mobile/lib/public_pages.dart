@@ -7,7 +7,6 @@ import 'api.dart';
 import 'app_theme.dart';
 
 const _publicNavy = Color(0xFF10233F);
-const _publicGold = Color(0xFFC9A45C);
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});

@@ -74,7 +74,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.dark,
           home: Builder(
             builder: (context) {
               darkSuccess = context.appSuccess;

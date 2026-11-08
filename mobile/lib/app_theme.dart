@@ -10,11 +10,11 @@ abstract final class AppPalette {
   static const surface = Color(0xFFFFFEFC);
   static const ink = Color(0xFF202B3A);
   static const muted = Color(0xFFF1F2F4);
-  static const mutedInk = Color(0xFF687385);
+  static const mutedInk = Color(0xFF5F6B7A);
   static const border = Color(0xFFE1E5EB);
   static const danger = Color(0xFFB42332);
-  static const success = Color(0xFF16836B);
-  static const warning = Color(0xFFB7791F);
+  static const success = Color(0xFF14745D);
+  static const warning = Color(0xFFA05C0C);
   static const info = Color(0xFF356AC3);
   static const sidebarAccent = Color(0xFF263A55);
 
@@ -26,6 +26,9 @@ abstract final class AppPalette {
   static const darkBorder = Color(0xFF2A384B);
   static const darkOutline = Color(0xFF34445B);
   static const darkSidebarAccent = Color(0xFF263A55);
+  static const darkSuccess = Color(0xFF4ADE80);
+  static const darkWarning = Color(0xFFFBBF24);
+  static const darkInfo = Color(0xFF60A5FA);
 
   static const lightScheme = ColorScheme.light(
     primary: navy,

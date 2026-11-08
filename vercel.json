@@ -3,6 +3,11 @@
   "framework": "vite",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
+  "git": {
+    "deploymentEnabled": {
+      "flutter-mobile-app": false
+    }
+  },
   "functions": {
     "api/[...].ts": {
       "maxDuration": 60

@@ -14,12 +14,7 @@ import { getContentSecurityPolicy } from "./_core/csp";
 import { notifyMobileRelease } from "./features/notifications/notification";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
 import { createRateLimit } from "./_core/rateLimit";
-
-const verificationRateLimit = createRateLimit({
-  windowMs: 60_000,
-  maxRequests: 60,
-  message: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا",
-});
+import { verificationRateLimit } from "./_core/verificationRateLimit";
 
 function isSameOriginRequest(req: express.Request): boolean {
   const origin = req.get("origin");

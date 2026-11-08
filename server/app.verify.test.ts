@@ -1,11 +1,21 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocked = vi.hoisted(() => ({
   getSupabaseAdmin: vi.fn(),
+  from: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("./_core/supabase", () => ({
   getSupabaseAdmin: mocked.getSupabaseAdmin,
+}));
+vi.mock("./_core/env", () => ({
+  ENV: {
+    authSessionSecret: "test-auth-session-secret-0123456789abcdef",
+    isProduction: false,
+    releaseNotificationSecret: "",
+  },
+  assertProductionEnvironment: vi.fn(),
 }));
 vi.mock("./features/storage/storageRoutes", () => ({
   registerStorageRoutes: vi.fn(),
@@ -66,10 +76,12 @@ function mockVerificationRows(input: {
     error: null,
   });
 
+  mocked.from.mockImplementation((table: string) =>
+    table === "telegrams" ? telegramQuery : organizationQuery
+  );
   mocked.getSupabaseAdmin.mockReturnValue({
-    from: vi.fn((table: string) =>
-      table === "telegrams" ? telegramQuery : organizationQuery
-    ),
+    from: mocked.from,
+    rpc: mocked.rpc,
   });
 }
 
@@ -94,6 +106,8 @@ async function requestVerification(token = verificationToken) {
       status: response.status,
       cacheControl: response.headers.get("cache-control"),
       poweredBy: response.headers.get("x-powered-by"),
+      rateLimit: response.headers.get("ratelimit-limit"),
+      retryAfter: response.headers.get("retry-after"),
       contentTypeOptions: response.headers.get("x-content-type-options"),
       frameOptions: response.headers.get("x-frame-options"),
       referrerPolicy: response.headers.get("referrer-policy"),
@@ -105,6 +119,18 @@ async function requestVerification(token = verificationToken) {
     });
   }
 }
+
+beforeEach(() => {
+  mocked.rpc.mockResolvedValue({
+    data: [{ allowed: true, retry_after_seconds: 0 }],
+    error: null,
+  });
+  mocked.from.mockReset();
+  mocked.getSupabaseAdmin.mockReturnValue({
+    from: mocked.from,
+    rpc: mocked.rpc,
+  });
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -174,11 +200,53 @@ describe("GET /api/verify/:token", () => {
     );
   });
 
-  it("rejects malformed verification tokens without querying the database", async () => {
+  it("rejects malformed tokens without querying telegram records", async () => {
     const response = await requestVerification("not-a-uuid");
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ valid: false });
-    expect(mocked.getSupabaseAdmin).not.toHaveBeenCalled();
+    expect(mocked.rpc).toHaveBeenCalledWith(
+      "consume_auth_login_rate_limit",
+      expect.objectContaining({
+        p_max_attempts: 60,
+        p_window_seconds: 60,
+        p_block_seconds: 60,
+        p_key_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      })
+    );
+    expect(mocked.from).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when the shared limiter blocks the client", async () => {
+    mocked.rpc.mockResolvedValueOnce({
+      data: [{ allowed: false, retry_after_seconds: 37 }],
+      error: null,
+    });
+
+    const response = await requestVerification();
+
+    expect(response.status).toBe(429);
+    expect(response.rateLimit).toBe("60");
+    expect(response.retryAfter).toBe("37");
+    expect(response.body).toEqual({
+      valid: false,
+      error: "محاولات تحقق كثيرة؛ أعد المحاولة لاحقًا",
+    });
+    expect(mocked.from).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when shared rate-limit storage is unavailable", async () => {
+    mocked.rpc.mockResolvedValueOnce({
+      data: null,
+      error: new Error("private test database error"),
+    });
+
+    const response = await requestVerification();
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      error: "تعذر التحقق من حد الطلبات حاليًا",
+    });
+    expect(mocked.from).not.toHaveBeenCalled();
   });
 });

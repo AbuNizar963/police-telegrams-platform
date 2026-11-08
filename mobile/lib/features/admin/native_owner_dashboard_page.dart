@@ -338,11 +338,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                 trailing: IconButton(
                   tooltip: 'تحديد كمقروء',
                   onPressed: () => _markNotificationRead(item),
-                  icon: Icon(
-                    Icons.done,
-                    color: context.appSuccess,
-                    size: 18,
-                  ),
+                  icon: Icon(Icons.done, color: context.appSuccess, size: 18),
                 ),
               ),
             ),

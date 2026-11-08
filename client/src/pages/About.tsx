@@ -106,8 +106,12 @@ export default function About() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{feature.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{feature.label}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {feature.title}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {feature.label}
+                    </p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">

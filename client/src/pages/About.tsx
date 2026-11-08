@@ -102,9 +102,7 @@ export default function About() {
                 className="rounded-xl border border-border bg-background p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`${featureIconContainerClass} ${feature.tone}`}
-                  >
+                  <div className={`${featureIconContainerClass} ${feature.tone}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
+import 'app_theme.dart';
 import './features/reports/audit_log_presentation.dart';
 import './features/reports/telegram_report_date_formatter.dart';
 import './features/reports/telegram_report_labels.dart';
@@ -2150,9 +2151,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFD0D5DD),
-                                ),
+                                border: Border.all(color: context.appBorder),
                               ),
                               child: _pendingLogoPreviewBytes != null
                                   ? ClipRRect(
@@ -2162,9 +2161,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const Icon(
+                                        errorBuilder: (_, _, _) => Icon(
                                           Icons.broken_image_outlined,
-                                          color: Colors.blueGrey,
+                                          color: context.appMutedText,
                                           size: 30,
                                         ),
                                       ),
@@ -2177,16 +2176,16 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (_, _, _) => const Icon(
+                                        errorBuilder: (_, _, _) => Icon(
                                           Icons.broken_image_outlined,
-                                          color: Colors.blueGrey,
+                                          color: context.appMutedText,
                                           size: 30,
                                         ),
                                       ),
                                     )
-                                  : const Icon(
+                                  : Icon(
                                       Icons.image_not_supported_outlined,
-                                      color: Colors.blueGrey,
+                                      color: context.appMutedText,
                                       size: 30,
                                     ),
                             ),

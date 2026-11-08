@@ -201,18 +201,18 @@ class TermsPage extends StatelessWidget {
     child: Column(
       children: [
         Card(
-          color: const Color(0xFFFFF8E8),
-          child: const Padding(
-            padding: EdgeInsets.all(15),
+          color: context.appWarningContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(15),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.gavel_outlined, color: Color(0xFF7A5C1E)),
-                SizedBox(width: 10),
+                Icon(Icons.gavel_outlined, color: context.appWarning),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'هذه الشروط تجمع متطلبات الاستخدام المهني وحماية السجل. يجب اعتمادها ومراجعتها قانونيًا من الجهة المالكة قبل اعتبارها وثيقة ملزمة خارج النظام.',
-                    style: TextStyle(color: Color(0xFF624B19), height: 1.6),
+                    style: TextStyle(color: context.appWarning, height: 1.6),
                   ),
                 ),
               ],

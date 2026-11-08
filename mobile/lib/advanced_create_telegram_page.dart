@@ -288,10 +288,9 @@ class _AdvancedCreateTelegramSheetState
                                   ),
                                 ),
                                 tileColor: selected
-                                    ? (Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? const Color(0xFF3C301A)
-                                          : const Color(0xFFFFF8E8))
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer
                                     : null,
                                 leading: const Icon(
                                   Icons.account_tree_outlined,
@@ -513,10 +512,9 @@ class _AdvancedCreateTelegramSheetState
                               Card(
                                 margin: EdgeInsets.zero,
                                 color: _broadcast
-                                    ? (Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? const Color(0xFF3C301A)
-                                          : const Color(0xFFFFF8E8))
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer
                                     : null,
                                 child: CheckboxListTile(
                                   value: _broadcast,
@@ -669,7 +667,9 @@ class _AdvancedCreateTelegramSheetState
                                           dimension: 18,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: Colors.white,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
                                           ),
                                         )
                                       : const Icon(Icons.send_outlined),
@@ -679,8 +679,12 @@ class _AdvancedCreateTelegramSheetState
                                         : 'إرسال البرقية',
                                   ),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: _composerNavy,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                    foregroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary,
                                     minimumSize: const Size.fromHeight(46),
                                   ),
                                 );
@@ -775,14 +779,10 @@ class _AdvancedCreateTelegramSheetState
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     backgroundColor: entry.key == selected
-                        ? (Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF3C301A)
-                              : const Color(0xFFFFF8E8))
+                        ? Theme.of(context).colorScheme.secondaryContainer
                         : null,
                     foregroundColor: entry.key == selected
-                        ? (Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFFE7CC8C)
-                              : const Color(0xFF7A5C1E))
+                        ? Theme.of(context).colorScheme.onSecondaryContainer
                         : Theme.of(context).colorScheme.onSurface,
                     side: BorderSide(
                       color: entry.key == selected

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../api.dart';
+import '../../app_theme.dart';
 
 const _navy = Color(0xFF10233F);
 const _gold = Color(0xFFD8C38E);
@@ -314,10 +315,10 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             ..._notifications.map(
               (item) => ListTile(
                 contentPadding: const EdgeInsets.symmetric(vertical: 2),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF7F1DF),
-                  foregroundColor: Color(0xFF8B6D22),
-                  child: Icon(Icons.priority_high, size: 17),
+                leading: CircleAvatar(
+                  backgroundColor: context.appWarningContainer,
+                  foregroundColor: context.appWarning,
+                  child: const Icon(Icons.priority_high, size: 17),
                 ),
                 title: Text(
                   _text(item['title'], 'تنبيه إداري'),
@@ -337,9 +338,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                 trailing: IconButton(
                   tooltip: 'تحديد كمقروء',
                   onPressed: () => _markNotificationRead(item),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.done,
-                    color: Color(0xFF2B765C),
+                    color: context.appSuccess,
                     size: 18,
                   ),
                 ),
@@ -362,29 +363,29 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
         'إجمالي العمليات',
         _number('totalOperations'),
         Icons.bolt_outlined,
-        const Color(0xFFE9F2F7),
-        const Color(0xFF24506A),
+        context.appInfoContainer,
+        context.appInfo,
       ),
       _metric(
         'العمليات الحساسة',
         _number('sensitiveOperations'),
         Icons.shield_outlined,
-        const Color(0xFFFAECEF),
-        const Color(0xFF9A4458),
+        context.appDangerContainer,
+        context.appDanger,
       ),
       _metric(
         'الجهات النشطة',
         _number('activeOrganizations'),
         Icons.account_tree_outlined,
-        const Color(0xFFF7F1DF),
-        const Color(0xFF8B6D22),
+        context.appWarningContainer,
+        context.appWarning,
       ),
       _metric(
         'الحسابات النشطة',
         _number('activeUsers'),
         Icons.people_outline,
-        const Color(0xFFE9F5F0),
-        const Color(0xFF2B765C),
+        context.appSuccessContainer,
+        context.appSuccess,
       ),
     ],
   );

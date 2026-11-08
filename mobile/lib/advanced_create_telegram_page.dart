@@ -663,7 +663,7 @@ class _AdvancedCreateTelegramSheetState
                                 final send = FilledButton.icon(
                                   onPressed: _saving ? null : _submit,
                                   icon: _saving
-                                      ? const SizedBox.square(
+                                      ? SizedBox.square(
                                           dimension: 18,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,

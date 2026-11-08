@@ -4292,6 +4292,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   String? _versionsError;
   List<Map<String, dynamic>> _versions = const [];
   int? _selectedVersionNumber;
+  Timer? _refreshTimer;
 
   bool get _isAdmin => widget.account['role'] == 'admin';
   bool get _canOperate =>
@@ -4354,6 +4355,13 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     loading = widget.initialTelegram == null;
     load();
     _loadVersions();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) {
+        load();
+        _loadVersions();
+      },
+    );
   }
 
   Future<void> _loadVersions() async {
@@ -4384,6 +4392,12 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         _versionsError = exception.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> load() async {

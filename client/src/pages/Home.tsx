@@ -4684,11 +4684,11 @@ function TelegramDetail({
         <div
           role="status"
           aria-live="polite"
-          className="mb-3 flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-2xl border border-transparent bg-transparent px-3 py-4 text-center text-sm text-black dark:border-transparent dark:bg-transparent dark:text-black"
+          className="mb-3 flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-2xl border border-transparent bg-transparent px-3 py-4 text-center text-sm text-foreground"
         >
           <div className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-transparent">
             <LoaderCircle
-              className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-600"
+              className="h-7 w-7 animate-spin text-emerald-600 dark:text-emerald-400"
               aria-hidden="true"
             />
           </div>

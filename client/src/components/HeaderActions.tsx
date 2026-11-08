@@ -12,12 +12,14 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, type ThemePreference } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -295,39 +297,37 @@ export default function HeaderActions() {
           <DropdownMenuLabel className="text-right text-xs font-bold text-muted-foreground">
             مظهر الواجهة
           </DropdownMenuLabel>
-          <DropdownMenuItem
-            onSelect={() => setThemePreference("system")}
-            className="cursor-pointer justify-end gap-2"
-            aria-label="اتباع مظهر الجهاز"
+          <DropdownMenuRadioGroup
+            value={preference}
+            onValueChange={value =>
+              setThemePreference(value as ThemePreference)
+            }
           >
-            <Monitor className="h-4 w-4" />
-            <span>
-              تلقائي حسب الجهاز
-              {preference === "system" ? " · مفعّل" : ""}
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => setThemePreference("light")}
-            className="cursor-pointer justify-end gap-2"
-            aria-label="تفعيل الوضع الفاتح"
-          >
-            <Sun className="h-4 w-4" />
-            <span>
-              الوضع الفاتح
-              {preference === "light" ? " · مفعّل" : ""}
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => setThemePreference("dark")}
-            className="cursor-pointer justify-end gap-2"
-            aria-label="تفعيل الوضع الداكن"
-          >
-            <Moon className="h-4 w-4" />
-            <span>
-              الوضع الداكن
-              {preference === "dark" ? " · مفعّل" : ""}
-            </span>
-          </DropdownMenuItem>
+            <DropdownMenuRadioItem
+              value="system"
+              className="cursor-pointer justify-end gap-2"
+              aria-label="اتباع مظهر الجهاز"
+            >
+              <Monitor className="h-4 w-4" />
+              <span>تلقائي حسب الجهاز</span>
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem
+              value="light"
+              className="cursor-pointer justify-end gap-2"
+              aria-label="تفعيل الوضع الفاتح"
+            >
+              <Sun className="h-4 w-4" />
+              <span>الوضع الفاتح</span>
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem
+              value="dark"
+              className="cursor-pointer justify-end gap-2"
+              aria-label="تفعيل الوضع الداكن"
+            >
+              <Moon className="h-4 w-4" />
+              <span>الوضع الداكن</span>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
           <DropdownMenuItem
             onSelect={() => void togglePushNotifications()}
             disabled={subscribe.isPending || unsubscribe.isPending}

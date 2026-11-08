@@ -36,6 +36,8 @@ class _OrganizationLogoCacheEntry {
 class PoliceApi {
   static const _offlineCacheKeyRegistry = 'offline_cache_key_registry_v1';
   static const _maxOfflineCacheKeys = 128;
+  static const _telegramOutboxKey = 'telegram_outbox_v1';
+  static const _telegramOutboxEpochKey = 'telegram_outbox_epoch_v1';
 
   PoliceApi({
     String? baseUrl,
@@ -307,6 +309,13 @@ class PoliceApi {
   }
 
   Future<void> _clearOfflineCache() async {
+    // Invalidate any in-flight outbox sync before deleting its local data.
+    // The sync worker checks this epoch before persisting a retry snapshot.
+    await _storage.write(
+      key: _telegramOutboxEpochKey,
+      value: DateTime.now().microsecondsSinceEpoch.toString(),
+    );
+    await _storage.delete(key: _telegramOutboxKey);
     List<String> keysToDelete;
     try {
       final storedValues = await _storage.readAll();

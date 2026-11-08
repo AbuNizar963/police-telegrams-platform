@@ -82,13 +82,14 @@ class TelegramOutbox {
   TelegramOutbox({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage();
 
-  static const _storageKey = 'telegram_outbox_v1';
+  static const storageKey = 'telegram_outbox_v1';
+  static const epochKey = 'telegram_outbox_epoch_v1';
   static const maxOfflineAttachmentBytes = 2 * 1024 * 1024;
   static const _uuid = Uuid();
   final FlutterSecureStorage _storage;
 
   Future<List<TelegramOutboxEntry>> list() async {
-    final raw = await _storage.read(key: _storageKey);
+    final raw = await _storage.read(key: storageKey);
     if (raw == null || raw.trim().isEmpty) return <TelegramOutboxEntry>[];
     try {
       final decoded = jsonDecode(raw);
@@ -149,6 +150,7 @@ class TelegramOutbox {
   }
 
   Future<TelegramOutboxSyncResult> sync(PoliceApi api) async {
+    final syncEpoch = await _readEpoch();
     final entries = await list();
     var synced = 0;
     var failed = 0;
@@ -208,6 +210,17 @@ class TelegramOutbox {
         break;
       }
     }
+    // Logout advances the epoch and deletes the local queue. Do not let a
+    // request that was already in flight recreate that queue afterwards.
+    if (syncEpoch != await _readEpoch()) {
+      return TelegramOutboxSyncResult(
+        synced: synced,
+        remaining: 0,
+        failed: failed,
+        permanentFailures: permanentFailures,
+        permanentErrorMessages: List.unmodifiable(permanentErrorMessages),
+      );
+    }
     await _save(remaining);
     return TelegramOutboxSyncResult(
       synced: synced,
@@ -223,15 +236,26 @@ class TelegramOutbox {
     await _save(entries.where((entry) => entry.id != id).toList());
   }
 
-  Future<void> clear() => _storage.delete(key: _storageKey);
+  Future<void> clear() async {
+    await _advanceEpoch();
+    await _storage.delete(key: storageKey);
+  }
+
+  Future<String> _readEpoch() async =>
+      await _storage.read(key: epochKey) ?? '0';
+
+  Future<void> _advanceEpoch() => _storage.write(
+    key: epochKey,
+    value: DateTime.now().microsecondsSinceEpoch.toString(),
+  );
 
   Future<void> _save(List<TelegramOutboxEntry> entries) async {
     if (entries.isEmpty) {
-      await _storage.delete(key: _storageKey);
+      await _storage.delete(key: storageKey);
       return;
     }
     await _storage.write(
-      key: _storageKey,
+      key: storageKey,
       value: jsonEncode(entries.map((entry) => entry.toJson()).toList()),
     );
   }

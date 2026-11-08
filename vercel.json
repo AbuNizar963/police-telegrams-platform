@@ -5,6 +5,9 @@
   "outputDirectory": "dist/public",
   "git": {
     "deploymentEnabled": {
+      "*": false,
+      "main": true,
+      "preview-*": true,
       "flutter-mobile-app": false
     }
   },

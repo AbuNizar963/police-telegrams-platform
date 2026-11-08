@@ -248,10 +248,10 @@ class PoliceTelegramsApp extends StatelessWidget {
         listTileTheme: ListTileThemeData(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           minTileHeight: 48,
-          iconColor: const Color(0xFFCBD4E1),
-          textColor: const Color(0xFFF5F6F8),
-          selectedColor: gold,
-          selectedTileColor: const Color(0xFF263A55),
+          iconColor: AppPalette.mutedInk,
+          textColor: AppPalette.ink,
+          selectedColor: AppPalette.navy,
+          selectedTileColor: const Color(0xFFE9EEF5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -259,17 +259,23 @@ class PoliceTelegramsApp extends StatelessWidget {
             fontFamily: 'Cairo',
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFFF5F6F8),
+            color: AppPalette.ink,
           ),
         ),
         navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFFFFFEFC),
-          indicatorColor: Color(0xFFF1E8D5),
+          backgroundColor: AppPalette.surface,
+          indicatorColor: Color(0xFFE9EEF5),
+          iconTheme: WidgetStateProperty<IconThemeData>.fromMap({
+            WidgetState.selected: IconThemeData(color: AppPalette.navy),
+            WidgetState.any: IconThemeData(color: AppPalette.mutedInk),
+          }),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           labelTextStyle: WidgetStatePropertyAll(
             TextStyle(
               fontFamily: 'Cairo',
               fontSize: 11,
               fontWeight: FontWeight.w700,
+              color: AppPalette.mutedInk,
             ),
           ),
         ),
@@ -325,6 +331,23 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
           shape: Border(bottom: BorderSide(color: AppPalette.darkBorder)),
         ),
+        listTileTheme: ListTileThemeData(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          minTileHeight: 48,
+          iconColor: AppPalette.darkMutedInk,
+          textColor: AppPalette.darkInk,
+          selectedColor: AppPalette.gold,
+          selectedTileColor: AppPalette.darkSidebarAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          titleTextStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppPalette.darkInk,
+          ),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: gold,
@@ -369,10 +392,20 @@ class PoliceTelegramsApp extends StatelessWidget {
           ),
         ),
         navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFF182538),
-          indicatorColor: Color(0xFF34445B),
+          backgroundColor: AppPalette.darkSurface,
+          indicatorColor: AppPalette.darkOutline,
+          iconTheme: WidgetStateProperty<IconThemeData>.fromMap({
+            WidgetState.selected: IconThemeData(color: AppPalette.darkInk),
+            WidgetState.any: IconThemeData(color: AppPalette.darkMutedInk),
+          }),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppPalette.darkMutedInk,
+            ),
           ),
         ),
         cardTheme: CardThemeData(
@@ -406,9 +439,18 @@ class PoliceTelegramsApp extends StatelessWidget {
           labelStyle: const TextStyle(color: Color(0xFFCBD4E1)),
           floatingLabelStyle: const TextStyle(color: gold),
         ),
-        popupMenuTheme: const PopupMenuThemeData(
-          color: Color(0xFF182538),
-          textStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+        popupMenuTheme: PopupMenuThemeData(
+          color: AppPalette.darkSurface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppPalette.darkBorder),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            color: AppPalette.darkInk,
+          ),
         ),
         drawerTheme: const DrawerThemeData(backgroundColor: navy, width: 280),
         dividerTheme: const DividerThemeData(color: AppPalette.darkBorder),

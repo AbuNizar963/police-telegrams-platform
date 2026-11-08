@@ -8,7 +8,7 @@
 - [افتح هذه التعليمات مباشرة](https://github.com/AbuNizar963/police-telegrams-platform/blob/handoff/security-ui-audit-2026-11-08/docs/HANDOFF_SECURITY_UI_AUDIT_AR.md).
 - اقرأ بعدها [خطة Drift لعزل صندوق الصادر](https://github.com/AbuNizar963/police-telegrams-platform/blob/handoff/security-ui-audit-2026-11-08/docs/DRIFT_OUTBOX_IMPLEMENTATION_AR.md). **الخطة مقترح غير مطبق؛ لا تعتبر الثغرة مغلقة.**
 
-ابدأ بالتحقق من فحص البناء الجاري على `flutter-mobile-app`، ثم واصل الأسطح الـ26 المتبقية في قائمة «ما بقي» أدناه، مع إعادة تدقيق صفحة الملف الشخصي من مسارها الحالي. النتائج المكتملة موجودة هنا؛ لا تعد تدقيق الأسطح الستة الصالحة من الصفر.
+تأكدت في 2026-11-08 من نجاح فحوص الالتزام `2448410` كلها، بما فيها بناء Flutter. ابدأ الآن بمواصلة الأسطح الـ26 المتبقية في قائمة «ما بقي» أدناه، مع إعادة تدقيق صفحة الملف الشخصي من مسارها الحالي. النتائج المكتملة موجودة هنا؛ لا تعد تدقيق الأسطح الستة الصالحة من الصفر.
 
 ## قاعدة العمل الملزمة للفرعين
 
@@ -26,7 +26,7 @@
 - `main` عند الالتزام [`c2de5e2`](https://github.com/AbuNizar963/police-telegrams-platform/commit/c2de5e25e033045380396017ddd853404800aabc) (`Audit and fix dark theme across web interfaces`). النشر المرتبط به في Vercel `READY`: [افتح النظام](https://police-telegrams-platform.vercel.app/). انتهى CI وCodeQL وSecret Scanning لهذا الالتزام بنجاح.
 - `flutter-mobile-app` عند الالتزام [`2448410`](https://github.com/AbuNizar963/police-telegrams-platform/commit/2448410bea0958e6660f93e9e58b8fd366281f8d) (`fix(flutter): restore dark theme checks`). أصلح أخطاء `const` التي كانت تفشل البناء، أزال لوناً غير مستخدم، نسّق ملفات Dart بالـSDK المثبت، وحدّث اختبار PIN الداكن ليقارن سطح Material بلون `ColorScheme` داخل شاشة القفل.
 - باستخدام Flutter `3.47.9` وDart `3.13.7` نجح `dart format --output=none --set-exit-if-changed lib test`، ونجح `flutter analyze` بلا ملاحظات، ونجحت اختبارات Flutter الـ135. لا يوجد Android SDK في بيئة الفحص المحلية، لذلك لم يُبنَ APK محلياً.
-- بعد دفع `2448410`، كانت CI وCodeQL وSecret Scanning وExcel verification ناجحة؛ بقي سير عمل بناء Flutter جارياً عند آخر مراجعة. تحقق من الحالة الحية هنا: [CI](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131456)، [Flutter build](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131473)، [CodeQL](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131475)، [Secret Scanning](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131444)، [Excel verification](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131457).
+- بعد دفع `2448410`، اكتملت الفحوص الخمسة بنجاح: CI وFlutter build وCodeQL وSecret Scanning وExcel verification. أُعيد التحقق من حالات GitHub Actions في 2026-11-08؛ جميعها `success`. الروابط المباشرة: [CI](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131456)، [Flutter build](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131473)، [CodeQL](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131475)، [Secret Scanning](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131444)، [Excel verification](https://github.com/AbuNizar963/police-telegrams-platform/actions/runs/42474131457).
 - نجحت فحوص الويب: `pnpm lint`, `pnpm check`, `pnpm test` (58 ملفاً و373 اختباراً)، `pnpm build` و`pnpm check:responsive-shell`. على Chromium وFirefox نجح اختبار تفضيل الثيم وحفظه عبر سبعة مسارات بعرض 390px بلا overflow أفقي أو أخطاء JavaScript. تعذر تشغيل WebKit لنقص مكتبات نظام، لذلك لا تدّعِ تغطيته.
 - طوبق مصدر القائمة الجانبية مباشرة: العناصر وترتيبها وتسمياتها متطابقة في الويب وFlutter (لوحة التحكم، لوحة قيادة المالك، سجل الإجراءات، إنشاء برقية، استيراد/تصدير السجل، إدارة المستخدمين، إدارة الجهات، خريطة البلاغات، الوحدات، الموارد، الأرشيف). خلفية القائمة `#10233F` وخط Cairo مستخدمان في الواجهتين.
 
@@ -74,4 +74,4 @@
 
 في نسخة Flutter: ثبّت الإصدار المحدد في `.fvmrc` (`3.47.9`)، ثم شغّل `fvm flutter pub get` و`fvm dart format --output=none --set-exit-if-changed lib test` و`fvm flutter analyze` و`fvm flutter test`. نفّذ بناء APK على runner مجهز بـAndroid SDK.
 
-هذا الملف وخطة Drift موجودان على فرع `handoff/security-ui-audit-2026-11-08`، والالتزام الحالي للوثائق هو `202afd9` قبل تحديث هذا الملف.
+هذا الملف وخطة Drift موجودان على فرع `handoff/security-ui-audit-2026-11-08`، وآخر التزام موثق عند إعداد هذه النسخة كان `4e26757`؛ تحقق من تاريخ الفرع عند بدء العمل لأن تحديثات الوثائق قد تغيّره.

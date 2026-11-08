@@ -51,6 +51,7 @@
   --border: #e1e5eb;
   --input: #e1e5eb;
   --ring: #8a6b36;
+  --brand-accent: #7a5c1e;
   --success: #14745d;
   --success-foreground: #ffffff;
   --success-tint: #eef8f3;
@@ -95,6 +96,7 @@
   --border: #2a384b;
   --input: #34445b;
   --ring: #e6cf91;
+  --brand-accent: #e7cc8c;
   --success: #4ade80;
   --success-foreground: #102b23;
   --success-tint: #102b23;
@@ -136,6 +138,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand-accent: var(--brand-accent);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);

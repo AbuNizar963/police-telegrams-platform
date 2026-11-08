@@ -185,7 +185,7 @@ export function OrganizationTreePicker({
                   ? "hover:border-[#b4945a] hover:bg-[#fff8e8] dark:hover:bg-[#3c301a]"
                   : "cursor-default border-transparent text-muted-foreground opacity-75",
                 selected &&
-                  "border-[#b4945a] bg-[#fff8e8] text-[#6f5117] dark:bg-[#3c301a] dark:text-[#f2d694]"
+                  "border-[#b4945a] bg-[#fff8e8] text-brand-accent dark:bg-[#3c301a]"
               )}
               title={
                 selectable
@@ -193,7 +193,7 @@ export function OrganizationTreePicker({
                   : "استخدم السهم لعرض الجهات التابعة المتاحة"
               }
             >
-              <Building2 className="h-4 w-4 shrink-0 text-[#9b7c3d]" />
+              <Building2 className="h-4 w-4 shrink-0 text-brand-accent" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-bold">
                   {option.name}

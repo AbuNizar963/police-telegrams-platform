@@ -255,7 +255,7 @@ function LocationsPanel({
                 تعرض المواقع المضافة إلى البرقيات فقط.
               </p>
             </div>
-            <MapPinned className="h-5 w-5 text-[#9b7c3d]" />
+            <MapPinned className="h-5 w-5 text-brand-accent" />
           </div>
           {loading ? (
             <div className="flex min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground sm:min-h-64">
@@ -267,7 +267,7 @@ function LocationsPanel({
             <MapView markers={markers} className="h-72 sm:h-[420px]" />
           ) : (
             <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-6 text-center sm:min-h-64">
-              <MapPinned className="h-8 w-8 text-[#9b7c3d]" />
+              <MapPinned className="h-8 w-8 text-brand-accent" />
               <p className="font-semibold">لا توجد مواقع مسجلة بعد</p>
               <p className="max-w-md text-sm leading-6 text-muted-foreground">
                 لا توجد إحداثيات مرتبطة بالبرقيات المعروضة حاليًا. عند توفر موقع
@@ -494,7 +494,7 @@ function ArchivePanel({
       <div className="flex flex-col gap-3 rounded-2xl border bg-muted/20 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Archive className="h-5 w-5 text-[#9b7c3d]" />
+            <Archive className="h-5 w-5 text-brand-accent" />
             <h3 className="font-bold">البرقيات المغلقة</h3>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -609,7 +609,7 @@ function SummaryCard({
         <span className="text-xs font-semibold text-muted-foreground">
           {label}
         </span>
-        <Icon className="h-4 w-4 text-[#9b7c3d]" />
+        <Icon className="h-4 w-4 text-brand-accent" />
       </div>
       <p className="mt-2 text-2xl font-bold">{value}</p>
       <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>

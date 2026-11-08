@@ -1798,7 +1798,7 @@ function ExcelToolsModal({
                 onClick={openImport}
                 className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-[#b4945a]/30 bg-[#b4945a]/[0.06] p-5 text-center transition-colors hover:border-[#b4945a] hover:bg-[#b4945a]/[0.12]"
               >
-                <Upload className="h-8 w-8 text-[#9b7c3d]" />
+                <Upload className="h-8 w-8 text-brand-accent" />
                 <span className="font-bold">استيراد سجل البرقيات</span>
                 <span className="text-xs text-muted-foreground">
                   معاينة وفحص قبل الاعتماد
@@ -2588,7 +2588,7 @@ function TelegramComposer({
                   onClick={() => setClassification(item)}
                   className={`min-w-0 rounded-lg border p-2.5 text-xs ${
                     classification === item
-                      ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
+                      ? "border-[#b4945a] bg-[#fff8e8] text-brand-accent dark:bg-[#3c301a]"
                       : "hover:bg-muted"
                   }`}
                 >
@@ -2609,7 +2609,7 @@ function TelegramComposer({
                 onClick={() => setPriority(item)}
                 className={`min-w-0 rounded-lg border p-2.5 text-xs ${
                   priority === item
-                    ? "border-[#b4945a] bg-[#fff8e8] text-[#7a5c1e] dark:bg-[#3c301a] dark:text-[#e7cc8c]"
+                    ? "border-[#b4945a] bg-[#fff8e8] text-brand-accent dark:bg-[#3c301a]"
                     : "hover:bg-muted"
                 }`}
               >
@@ -2691,7 +2691,7 @@ function TelegramComposer({
                     attachmentImageInputRef.current?.click();
                   }}
                 >
-                  <ImagePlus className="h-4 w-4 text-[#9b7c3d]" />
+                  <ImagePlus className="h-4 w-4 text-brand-accent" />
                   المعرض أو الاستديو
                 </button>
                 <button
@@ -2702,7 +2702,7 @@ function TelegramComposer({
                     attachmentFileInputRef.current?.click();
                   }}
                 >
-                  <FileText className="h-4 w-4 text-[#9b7c3d]" />
+                  <FileText className="h-4 w-4 text-brand-accent" />
                   ملف PDF أو صوت
                 </button>
               </div>
@@ -2713,14 +2713,14 @@ function TelegramComposer({
               title="اختيار مرفق من المعرض أو الملفات"
               onClick={() => setAttachmentPickerOpen(current => !current)}
               disabled={pending}
-              className="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-[#7a5c1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-brand-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b4945a] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="sr-only">إرفاق ملف</span>
             </button>
           </div>
           {attachment && (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-[#b4945a]/35 bg-[#fffaf0] px-3 py-2 text-[11px] font-normal text-[#7a5c1e] dark:bg-[#2d281b] dark:text-[#e7cc8c]">
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[#b4945a]/35 bg-[#fffaf0] px-3 py-2 text-[11px] font-normal text-brand-accent dark:bg-[#2d281b]">
               <span className="min-w-0 truncate">مرفق: {attachment.name}</span>
               <button
                 type="button"
@@ -5350,7 +5350,7 @@ function TelegramDetail({
       {routeableTargets.length > 0 &&
         ["approved", "in_progress", "forwarded"].includes(telegram.status) && (
           <div className="mt-4 rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 dark:bg-[#2d281b] print:hidden">
-            <p className="text-xs font-bold text-[#7a5c1e]">
+            <p className="text-xs font-bold text-brand-accent">
               طلب إحالة عبر السلطة الأعلى
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -5890,7 +5890,7 @@ function DepartmentSettingsModal({
             >
               <span className="flex items-center gap-2">
                 <Activity
-                  className="h-4 w-4 text-[#9b7c3d]"
+                  className="h-4 w-4 text-brand-accent"
                   aria-hidden="true"
                 />
                 لوحة قيادة المنصة · جميع الجهات
@@ -5904,7 +5904,7 @@ function DepartmentSettingsModal({
           </div>
         )}
         <div className="rounded-xl border border-[#b49a55]/40 bg-[#fffaf0] p-3 text-xs dark:bg-[#2d281b]">
-          <p className="font-bold text-[#7a5c1e]">نطاق هذه الإعدادات</p>
+          <p className="font-bold text-brand-accent">نطاق هذه الإعدادات</p>
           <p className="mt-1 text-muted-foreground">
             سيتم تطبيق الشعار واسم الجهة ورئيسها والترقيم والتوقيت على حسابات
             <strong className="mx-1 text-foreground">

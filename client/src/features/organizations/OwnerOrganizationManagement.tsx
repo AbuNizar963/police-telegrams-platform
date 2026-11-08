@@ -809,9 +809,9 @@ export default function OwnerOrganizationManagement() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   {editingId ? (
-                    <Pencil className="h-4 w-4 text-[#9b7c3d]" />
+                    <Pencil className="h-4 w-4 text-brand-accent" />
                   ) : (
-                    <Plus className="h-4 w-4 text-[#9b7c3d]" />
+                    <Plus className="h-4 w-4 text-brand-accent" />
                   )}
                   <h3 className="font-bold">
                     {editingId ? "تعديل الجهة" : "إضافة جهة شرطية"}
@@ -1472,7 +1472,7 @@ export default function OwnerOrganizationManagement() {
           </div>
           <section className="min-w-0 rounded-xl border p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Building2 className="h-4 w-4 text-[#9b7c3d]" />
+              <Building2 className="h-4 w-4 text-brand-accent" />
               <h3 className="font-bold">الهيكل التنظيمي</h3>
               <Button
                 type="button"

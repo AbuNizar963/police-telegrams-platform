@@ -425,7 +425,7 @@ export default function OwnerUserManagement() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="flex items-center gap-2 font-bold">
-                  <UserPlus className="h-4 w-4 text-[#9b7c3d]" />
+                  <UserPlus className="h-4 w-4 text-brand-accent" />
                   إنشاء حساب ضمن جهة محددة
                 </h3>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -724,7 +724,7 @@ export default function OwnerUserManagement() {
                   >
                     <header className="flex items-start justify-between gap-3 border-b bg-muted/25 p-4">
                       <div className="flex min-w-0 items-start gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#10233f]/10 text-[#9b7c3d]">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
                           <Building2 className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
@@ -778,7 +778,7 @@ export default function OwnerUserManagement() {
                             <Button
                               type="button"
                               variant="link"
-                              className="mt-2 h-auto p-0 text-[#7a5c1e]"
+                              className="mt-2 h-auto p-0 text-brand-accent"
                               onClick={() => openCreateForm(organization.id)}
                             >
                               أنشئ أول حساب لهذه الجهة

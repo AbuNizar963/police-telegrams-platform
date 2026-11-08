@@ -168,7 +168,7 @@ function Notice({
     <section dir="rtl" className="mx-auto w-full max-w-[1600px]">
       <Card className="mx-auto max-w-2xl border-border">
         <CardContent className="flex items-start gap-3 p-6 sm:p-8">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#9a7d31]" />
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-accent" />
           <div className="space-y-2">
             <h1 className="font-bold">{title}</h1>
             <p className="text-sm leading-6 text-muted-foreground">{message}</p>

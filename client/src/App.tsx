@@ -1,6 +1,6 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
@@ -9,13 +9,15 @@ import OwnerOrganizationManagement from "./features/organizations/OwnerOrganizat
 import PlatformDocumentSettings from "./features/platform-settings/PlatformDocumentSettings";
 import OperationsWorkspace from "./features/admin/OperationsWorkspace";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-import AuditLogPage from "./features/reports/AuditLog";
-import VerifyTelegram from "./pages/VerifyTelegram";
-import Profile from "./features/users/Profile";
-import About from "./pages/About";
-import Terms from "./pages/Terms";
-import OwnerDashboardPage from "./pages/OwnerDashboard";
+
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const Home = lazy(() => import("./pages/Home"));
+const VerifyTelegram = lazy(() => import("./pages/VerifyTelegram"));
+const AuditLogPage = lazy(() => import("./features/reports/AuditLog"));
+const Profile = lazy(() => import("./features/users/Profile"));
+const About = lazy(() => import("./pages/About"));
+const Terms = lazy(() => import("./pages/Terms"));
+const OwnerDashboardPage = lazy(() => import("./pages/OwnerDashboard"));
 
 function DashboardPage({ children }: { children: React.ReactNode }) {
   return (
@@ -31,49 +33,61 @@ function DashboardPage({ children }: { children: React.ReactNode }) {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/verify/:token" component={VerifyTelegram} />
-      <Route path="/owner-dashboard">
-        <DashboardPage>
-          <OwnerDashboardPage />
-        </DashboardPage>
-      </Route>
-      <Route path="/audit-log">
-        <DashboardPage>
-          <AuditLogPage />
-        </DashboardPage>
-      </Route>
-      <Route path="/profile">
-        <DashboardPage>
-          <Profile />
-        </DashboardPage>
-      </Route>
-      <Route path="/about">
-        <DashboardPage>
-          <About />
-        </DashboardPage>
-      </Route>
-      <Route path="/terms">
-        <DashboardPage>
-          <Terms />
-        </DashboardPage>
-      </Route>
-      <Route path="/">
-        <DashboardPage>
-          <Home />
-        </DashboardPage>
-      </Route>
-      <Route path="/404">
-        <DashboardPage>
-          <NotFound />
-        </DashboardPage>
-      </Route>
-      <Route>
-        <DashboardPage>
-          <NotFound />
-        </DashboardPage>
-      </Route>
-    </Switch>
+    <Suspense
+      fallback={
+        <div
+          className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          جارٍ تحميل الصفحة...
+        </div>
+      }
+    >
+      <Switch>
+        <Route path="/verify/:token" component={VerifyTelegram} />
+        <Route path="/owner-dashboard">
+          <DashboardPage>
+            <OwnerDashboardPage />
+          </DashboardPage>
+        </Route>
+        <Route path="/audit-log">
+          <DashboardPage>
+            <AuditLogPage />
+          </DashboardPage>
+        </Route>
+        <Route path="/profile">
+          <DashboardPage>
+            <Profile />
+          </DashboardPage>
+        </Route>
+        <Route path="/about">
+          <DashboardPage>
+            <About />
+          </DashboardPage>
+        </Route>
+        <Route path="/terms">
+          <DashboardPage>
+            <Terms />
+          </DashboardPage>
+        </Route>
+        <Route path="/">
+          <DashboardPage>
+            <Home />
+          </DashboardPage>
+        </Route>
+        <Route path="/404">
+          <DashboardPage>
+            <NotFound />
+          </DashboardPage>
+        </Route>
+        <Route>
+          <DashboardPage>
+            <NotFound />
+          </DashboardPage>
+        </Route>
+      </Switch>
+    </Suspense>
   );
 }
 

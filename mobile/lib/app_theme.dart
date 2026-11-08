@@ -88,7 +88,7 @@ abstract final class AppTheme {
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         fontFamily: 'Cairo',
-        scaffoldBackgroundColor: AppPalette.AppPalette.canvas,
+        scaffoldBackgroundColor: AppPalette.canvas,
         colorScheme: AppPalette.lightScheme,
         textTheme:
             const TextTheme(
@@ -103,7 +103,7 @@ abstract final class AppTheme {
               displayColor: AppPalette.ink,
             ),
         appBarTheme: AppBarTheme(
-          backgroundColor: AppPalette.AppPalette.canvas,
+          backgroundColor: AppPalette.canvas,
           foregroundColor: AppPalette.navy,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -227,7 +227,7 @@ abstract final class AppTheme {
           minTileHeight: 48,
           iconColor: AppPalette.mutedInk,
           textColor: AppPalette.ink,
-          selectedColor: AppPalette.AppPalette.navy,
+          selectedColor: AppPalette.navy,
           selectedTileColor: const Color(0xFFE9EEF5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -243,7 +243,7 @@ abstract final class AppTheme {
           backgroundColor: AppPalette.surface,
           indicatorColor: Color(0xFFE9EEF5),
           iconTheme: WidgetStateProperty<IconThemeData>.fromMap({
-            WidgetState.selected: IconThemeData(color: AppPalette.AppPalette.navy),
+            WidgetState.selected: IconThemeData(color: AppPalette.navy),
             WidgetState.any: IconThemeData(color: AppPalette.mutedInk),
           }),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -323,7 +323,7 @@ abstract final class AppTheme {
           minTileHeight: 48,
           iconColor: AppPalette.darkMutedInk,
           textColor: AppPalette.darkInk,
-          selectedColor: AppPalette.AppPalette.gold,
+          selectedColor: AppPalette.gold,
           selectedTileColor: AppPalette.darkSidebarAccent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

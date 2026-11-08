@@ -7,7 +7,19 @@ import App from "./App";
 import { initializeAnalytics } from "./analytics";
 import "./index.css";
 
-const queryClient = new QueryClient();
+// Keep every visible screen fresh without replacing the document or resetting
+// local UI state. Individual screens may still opt into a shorter interval.
+const LIVE_QUERY_REFRESH_INTERVAL_MS = 15_000;
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchInterval: LIVE_QUERY_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 const trpcClient = trpc.createClient({
   links: [

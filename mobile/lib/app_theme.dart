@@ -29,6 +29,12 @@ abstract final class AppPalette {
   static const darkSuccess = Color(0xFF4ADE80);
   static const darkWarning = Color(0xFFFBBF24);
   static const darkInfo = Color(0xFF60A5FA);
+  static const successContainer = Color(0xFFEEF8F3);
+  static const darkSuccessContainer = Color(0xFF102B23);
+  static const warningContainer = Color(0xFFFFF8E9);
+  static const darkWarningContainer = Color(0xFF332B17);
+  static const infoContainer = Color(0xFFEEF5FF);
+  static const darkInfoContainer = Color(0xFF172B45);
 
   static const lightScheme = ColorScheme.light(
     primary: navy,
@@ -454,4 +460,40 @@ abstract final class AppTheme {
       selectionHandleColor: AppPalette.gold,
     ),
   );
+}
+
+/// Context-aware semantic colors for status messages, badges, and surfaces.
+extension AppThemeContextTokens on BuildContext {
+  bool get _isDarkAppTheme =>
+      Theme.of(this).brightness == Brightness.dark;
+
+  Color get appSuccess =>
+      _isDarkAppTheme ? AppPalette.darkSuccess : AppPalette.success;
+  Color get appSuccessContainer => _isDarkAppTheme
+      ? AppPalette.darkSuccessContainer
+      : AppPalette.successContainer;
+
+  Color get appWarning =>
+      _isDarkAppTheme ? AppPalette.darkWarning : AppPalette.warning;
+  Color get appWarningContainer => _isDarkAppTheme
+      ? AppPalette.darkWarningContainer
+      : AppPalette.warningContainer;
+
+  Color get appInfo =>
+      _isDarkAppTheme ? AppPalette.darkInfo : AppPalette.info;
+  Color get appInfoContainer =>
+      _isDarkAppTheme ? AppPalette.darkInfoContainer : AppPalette.infoContainer;
+
+  Color get appDanger => Theme.of(this).colorScheme.error;
+  Color get appDangerContainer =>
+      Theme.of(this).colorScheme.errorContainer;
+  Color get appDangerText =>
+      Theme.of(this).colorScheme.onErrorContainer;
+
+  Color get appMutedText =>
+      Theme.of(this).colorScheme.onSurfaceVariant;
+  Color get appMutedSurface =>
+      Theme.of(this).colorScheme.surfaceContainerHigh;
+  Color get appBorder =>
+      Theme.of(this).colorScheme.outlineVariant;
 }

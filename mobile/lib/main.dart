@@ -656,9 +656,9 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Color get _serverStatusColor {
-    if (_serverReachable == true) return const Color(0xFF16836B);
-    if (_serverReachable == false) return const Color(0xFFB7791F);
-    return const Color(0xFF667085);
+    if (_serverReachable == true) return context.appSuccess;
+    if (_serverReachable == false) return context.appWarning;
+    return context.appMutedText;
   }
 
   void _recordServerCheck(bool reachable) {
@@ -1912,9 +1912,9 @@ class _DashboardPageState extends State<DashboardPage>
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F1),
+        color: context.appDangerContainer,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFF1C5C8)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         children: [
@@ -1922,17 +1922,20 @@ class _DashboardPageState extends State<DashboardPage>
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFB42332),
+              color: context.appDanger,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.siren, color: Colors.white),
+            child: Icon(
+              LucideIcons.siren,
+              color: Theme.of(context).colorScheme.onError,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'تنبيه أمني: توجد $numericCount برقية عاجلة موجّهة إلى الجهة الحالية بانتظار الاستلام.',
-              style: const TextStyle(
-                color: Color(0xFF8A1C28),
+              style: TextStyle(
+                color: context.appDangerText,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 height: 1.4,
@@ -1958,16 +1961,11 @@ class _DashboardPageState extends State<DashboardPage>
   Widget _outboxAlert() {
     final colors = Theme.of(context).colorScheme;
     final Color accent = switch (_syncPhase) {
-      'error' => const Color(0xFFB42332),
-      'success' => const Color(0xFF16836B),
-      'idle' =>
-        _serverReachable == true
-            ? const Color(0xFF16836B)
-            : _serverReachable == false
-            ? const Color(0xFFB7791F)
-            : const Color(0xFF667085),
-      'syncing' => const Color(0xFF356AC3),
-      _ => const Color(0xFFB7791F),
+      'error' => context.appDanger,
+      'success' => context.appSuccess,
+      'idle' => _serverStatusColor,
+      'syncing' => context.appInfo,
+      _ => context.appWarning,
     };
     final IconData icon = switch (_syncPhase) {
       'error' => Icons.sync_problem_outlined,
@@ -2829,18 +2827,18 @@ class _DashboardPageState extends State<DashboardPage>
     final Color accent;
     final String title;
     if (loading) {
-      accent = const Color(0xFF356AC3);
+      accent = context.appInfo;
       title = 'جارٍ التحديث';
     } else if (_usingCachedData) {
-      accent = const Color(0xFFB7791F);
+      accent = context.appWarning;
       title = 'النظام غير متصل';
     } else if (error != null) {
-      accent = const Color(0xFFB42332);
+      accent = context.appDanger;
       // The detailed error card already contains the connection-error text.
       // Keep this compact indicator distinct to avoid duplicate announcements.
       title = 'النظام غير متصل';
     } else {
-      accent = const Color(0xFF16836B);
+      accent = context.appSuccess;
       title = 'النظام متصل';
     }
     return Row(
@@ -2883,42 +2881,42 @@ class _DashboardPageState extends State<DashboardPage>
         'total',
         'الرصيد التشغيلي',
         LucideIcons.fileText,
-        const Color(0xFF687385),
+        context.appMutedText,
       ),
       (
         'الصادرة اليوم',
         'today',
         'من بداية اليوم',
         LucideIcons.activity,
-        const Color(0xFF356AC3),
+        context.appInfo,
       ),
       (
         'أولوية عاجلة اليوم',
         'todayUrgent',
         'من بداية اليوم',
         LucideIcons.siren,
-        const Color(0xFFB54736),
+        context.appDanger,
       ),
       (
         'الواردة اليوم',
         'todayIncoming',
         'إلى جهتك منذ بداية اليوم',
         LucideIcons.inbox,
-        const Color(0xFF16836B),
+        context.appSuccess,
       ),
       (
         'قيد الإجراء',
         'inProgress',
         'قيد المعالجة',
         LucideIcons.radio,
-        const Color(0xFF17899A),
+        context.appInfo,
       ),
       (
         'مكتملة نهائيًا',
         'resolved',
         'تم إغلاقها',
         LucideIcons.circleCheck,
-        const Color(0xFF16836B),
+        context.appSuccess,
       ),
     ];
     return ListView(
@@ -2926,15 +2924,15 @@ class _DashboardPageState extends State<DashboardPage>
       children: [
         if (error != null)
           Card(
-            color: const Color(0xFFFFF4E5),
+            color: context.appWarningContainer,
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.cloud_off_outlined,
-                    color: Color(0xFF8A5A00),
+                    color: context.appWarning,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -2943,7 +2941,7 @@ class _DashboardPageState extends State<DashboardPage>
                       children: [
                         Text(
                           error!,
-                          style: const TextStyle(color: Color(0xFF704800)),
+                          style: TextStyle(color: context.appWarning),
                         ),
                         const SizedBox(height: 8),
                         Align(
@@ -3260,16 +3258,20 @@ class _DashboardPageState extends State<DashboardPage>
         categoryFilter != 'all';
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8F9FB),
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E5EB))),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        border: Border(bottom: BorderSide(color: context.appBorder)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.listFilter, color: navy, size: 20),
+              Icon(
+                LucideIcons.listFilter,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
@@ -3453,7 +3455,7 @@ class _DashboardPageState extends State<DashboardPage>
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 34),
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.description_outlined,
               size: 36,
               color: Color(0xFFB8C0CA),
@@ -3469,7 +3471,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ? 'غيّر عبارة البحث أو الفلاتر.'
                   : 'غيّر الفلاتر أو أنشئ برقية جديدة.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF7A8493)),
+              style: TextStyle(fontSize: 11, color: context.appMutedText),
             ),
           ],
         ),
@@ -3593,9 +3595,9 @@ class _DashboardPageState extends State<DashboardPage>
                   child: Text(
                     'برقية رقم: $serial',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: Color(0xFF182230),
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -3604,8 +3606,8 @@ class _DashboardPageState extends State<DashboardPage>
                 const SizedBox(width: 8),
                 _telegramChip(
                   incoming ? 'واردة' : 'صادرة',
-                  incoming ? const Color(0xFFEAF8F4) : const Color(0xFFEAF0FF),
-                  incoming ? const Color(0xFF16836B) : const Color(0xFF2458C6),
+                  incoming ? context.appSuccessContainer : context.appInfoContainer,
+                  incoming ? context.appSuccess : context.appInfo,
                   icon: incoming
                       ? Icons.south_west_rounded
                       : Icons.north_east_rounded,
@@ -3631,11 +3633,11 @@ class _DashboardPageState extends State<DashboardPage>
                   _telegramChip(
                     priority,
                     priority == 'عاجلة'
-                        ? const Color(0xFFFFE9E9)
-                        : const Color(0xFFEAF0FF),
+                        ? context.appDangerContainer
+                        : context.appInfoContainer,
                     priority == 'عاجلة'
-                        ? const Color(0xFFB42332)
-                        : const Color(0xFF356AC3),
+                        ? context.appDanger
+                        : context.appInfo,
                     icon: priority == 'عاجلة'
                         ? Icons.priority_high_rounded
                         : Icons.shield_outlined,
@@ -3643,8 +3645,8 @@ class _DashboardPageState extends State<DashboardPage>
                 if (_showCategory && category != null && category.isNotEmpty)
                   _telegramChip(
                     category,
-                    const Color(0xFFF0F1F4),
-                    const Color(0xFF4B5565),
+                    context.appMutedSurface,
+                    context.appMutedText,
                     icon: Icons.description_outlined,
                   ),
                 if (_showPriority &&
@@ -3652,14 +3654,14 @@ class _DashboardPageState extends State<DashboardPage>
                     confidentiality.isNotEmpty)
                   _telegramChip(
                     confidentiality,
-                    const Color(0xFFEAF8F4),
-                    const Color(0xFF16836B),
+                    context.appSuccessContainer,
+                    context.appSuccess,
                     icon: Icons.verified_outlined,
                   ),
                 _telegramChip(
                   status,
-                  const Color(0xFFEAF8F4),
-                  const Color(0xFF16836B),
+                  context.appSuccessContainer,
+                  context.appSuccess,
                   icon: Icons.check_circle_outline_rounded,
                 ),
               ],
@@ -3668,10 +3670,10 @@ class _DashboardPageState extends State<DashboardPage>
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.person_outline,
                     size: 13,
-                    color: Color(0xFF87909D),
+                    color: context.appMutedText,
                   ),
                   const SizedBox(width: 4),
                   Expanded(
@@ -3679,8 +3681,8 @@ class _DashboardPageState extends State<DashboardPage>
                       '$creator',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF7A8493),
+                      style: TextStyle(
+                        color: context.appMutedText,
                         fontSize: 10,
                       ),
                     ),
@@ -4250,8 +4252,8 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFFF8F7F2),
-          foregroundColor: navy,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           title: const Text(
             'تفاصيل البرقية',
             style: TextStyle(fontWeight: FontWeight.w900),

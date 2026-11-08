@@ -42,5 +42,53 @@ void main() {
       expect(theme.cardTheme.color, AppPalette.darkSurface);
       expect(_contrastRatio(AppPalette.darkMutedInk, AppPalette.darkMuted), greaterThanOrEqualTo(4.5));
     });
+
+    testWidgets('semantic status colors follow the active theme', (
+      tester,
+    ) async {
+      late Color lightSuccess;
+      late Color lightWarning;
+      late Color lightInfo;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) {
+              lightSuccess = context.appSuccess;
+              lightWarning = context.appWarning;
+              lightInfo = context.appInfo;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(lightSuccess, AppPalette.success);
+      expect(lightWarning, AppPalette.warning);
+      expect(lightInfo, AppPalette.info);
+
+      late Color darkSuccess;
+      late Color darkWarning;
+      late Color darkInfo;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Builder(
+            builder: (context) {
+              darkSuccess = context.appSuccess;
+              darkWarning = context.appWarning;
+              darkInfo = context.appInfo;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(darkSuccess, AppPalette.darkSuccess);
+      expect(darkWarning, AppPalette.darkWarning);
+      expect(darkInfo, AppPalette.darkInfo);
+    });
   });
 }

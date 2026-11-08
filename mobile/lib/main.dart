@@ -4355,13 +4355,10 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     loading = widget.initialTelegram == null;
     load();
     _loadVersions();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) {
-        load();
-        _loadVersions();
-      },
-    );
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      load();
+      _loadVersions();
+    });
   }
 
   Future<void> _loadVersions() async {
@@ -4390,10 +4387,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       // A corrupt cache must never block the authoritative request.
     }
     try {
-      final result = await widget.api.call(
-        'telegrams.versions',
-        input: input,
-      );
+      final result = await widget.api.call('telegrams.versions', input: input);
       if (!mounted) return;
       setState(() {
         _versions = result is List

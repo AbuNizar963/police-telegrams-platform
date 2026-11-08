@@ -85,9 +85,11 @@ void main() {
       late Color darkInfo;
 
       await tester.pumpWidget(
-        Theme(
-          data: AppTheme.dark,
-          child: Builder(
+        MaterialApp(
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.dark,
+          home: Builder(
             builder: (context) {
               darkSuccess = context.appSuccess;
               darkWarning = context.appWarning;

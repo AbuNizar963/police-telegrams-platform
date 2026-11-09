@@ -56,7 +56,6 @@ final Map<String, Future<String?>> _officialLogoRequests =
     <String, Future<String?>>{};
 Future<Map<int, String>>? _officialFontDataUrlsFuture;
 
-@visibleForTesting
 Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
   const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
   const jpegSignature = <int>[255, 216, 255];
@@ -78,6 +77,7 @@ Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
   return 'data:image/png;base64,' + base64Encode(normalized);
 }
 
+@visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
   // Decode at the source resolution. The previous forced 600x600 decode
   // distorted non-square logos and discarded detail from larger originals.

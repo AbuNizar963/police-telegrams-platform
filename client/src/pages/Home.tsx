@@ -3519,7 +3519,36 @@ function TelegramDetail({
   const resolveTelegramPreviewLogoUrl = (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
-  }): Promise<string | null> => resolveTelegramLogoDataUrl(exportSettings);
+  }): Promise<string | null> => {
+    const fallbackLogoUrl = selectedVersion
+      ? selectedVersion.logoUrl?.trim() ||
+        exportSettings.logoUrl?.trim() ||
+        settings?.logoUrl?.trim() ||
+        null
+      : resolveTelegramExportLogo({
+          exportOrganizationId: resolveTelegramExportOrganizationId({
+            accountOrganizationId: exportSettings.organizationId,
+            currentOrganizationId: telegram.currentOrganizationId,
+            ownerOrganizationId: telegram.organizationId,
+          }),
+          settingsOrganizationId: exportSettings.organizationId,
+          settingsLogoUrl: exportSettings.logoUrl,
+        });
+
+    return resolveTelegramLogoDataUrl(exportSettings).catch(error => {
+      // Export keeps the strict, validated data-URL path. Preview can use the
+      // same organization-scoped source directly when a storage proxy serves
+      // a valid browser image but rejects client-side normalization.
+      if (fallbackLogoUrl) {
+        console.warn(
+          "تعذر تطبيع شعار المعاينة؛ سيُستخدم المصدر الموثق مباشرة",
+          { error: error instanceof Error ? error.message : String(error) }
+        );
+        return fallbackLogoUrl;
+      }
+      throw error;
+    });
+  };
   const documentTelegram = selectedVersion
     ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
     : telegram;

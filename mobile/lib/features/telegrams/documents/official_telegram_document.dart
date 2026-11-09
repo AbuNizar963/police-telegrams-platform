@@ -657,7 +657,11 @@ class _OfficialTelegramDocumentPageState
     final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';
     final cached = _officialLogoDataUrlCache[cacheKey];
     if (cached != null) return cached;
-    final pending = _officialLogoRequests[cacheKey];
+    // Coalesce requests only within the same API session. Reusing an
+    // in-flight Future from a previous authenticated session can leave a
+    // newly opened document waiting on an obsolete request.
+    final requestKey = '${identityHashCode(widget.api)}\n$cacheKey';
+    final pending = _officialLogoRequests[requestKey];
     if (pending != null) return pending;
     final request = () async {
       try {
@@ -674,10 +678,10 @@ class _OfficialTelegramDocumentPageState
         // substitute a default seal or watermark.
         return null;
       } finally {
-        _officialLogoRequests.remove(cacheKey);
+        _officialLogoRequests.remove(requestKey);
       }
     }();
-    _officialLogoRequests[cacheKey] = request;
+    _officialLogoRequests[requestKey] = request;
     return request;
   }
 

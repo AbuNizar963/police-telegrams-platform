@@ -679,6 +679,12 @@ export default function Home() {
       gcTime: 10 * 60_000,
     }
   );
+  // Keep the preview mounted while the authoritative detail request is
+  // refreshing or temporarily unavailable. The list row is already an
+  // authorized, renderable snapshot and is also used as query placeholder
+  // data, so dropping the entire detail view here only leaves its actions
+  // visible after a transient request failure.
+  const selectedTelegram = detail.data ?? selectedRow;
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
   const prefetchTelegram = (id: number) => {
@@ -1521,18 +1527,18 @@ export default function Home() {
           }}
         />
       )}
-      {selectedId !== null && detail.data && (
+      {selectedId !== null && selectedTelegram && (
         <TelegramDetail
-          telegram={detail.data}
+          telegram={selectedTelegram}
           settings={settings.data}
-          isOutgoing={isOutgoingTelegram(detail.data)}
+          isOutgoing={isOutgoingTelegram(selectedTelegram)}
           isAdmin={me.data?.role === "admin"}
           canManageContent={Boolean(me.data)}
           managementExpired={
             Boolean(me.data) &&
             me.data?.isPlatformOwner !== true &&
             organizationContext.data?.isOwner !== true &&
-            !isTelegramManagementWindowOpen(detail.data.createdAt)
+            !isTelegramManagementWindowOpen(selectedTelegram.createdAt)
           }
           canOperate={
             me.data?.role === "admin" ||
@@ -4175,8 +4181,11 @@ function TelegramDetail({
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);
-          host.replaceChildren();
-          host.style.height = "";
+          // Never clear a successfully rendered document because an
+          // enhancement step (logo/history/resize) timed out. Clearing the
+          // host is what caused the paper to disappear while the action
+          // toolbar remained visible. Keep the last valid pages mounted and
+          // let the user retry without losing the preview.
           setDocumentPreparing(false);
           toast.error(
             error instanceof Error

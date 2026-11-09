@@ -54,6 +54,7 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
 final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
 final Map<String, Future<String?>> _officialLogoRequests =
     <String, Future<String?>>{};
+Future<Map<int, String>>? _officialFontDataUrlsFuture;
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
@@ -565,7 +566,10 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
-  Future<Map<int, String>> _loadFontDataUrls() async {
+  Future<Map<int, String>> _loadFontDataUrls() =>
+      _officialFontDataUrlsFuture ??= _readFontDataUrls();
+
+  Future<Map<int, String>> _readFontDataUrls() async {
     const fontWeights = [400, 500, 600, 700];
     final entries = await Future.wait(
       fontWeights.map((weight) async {

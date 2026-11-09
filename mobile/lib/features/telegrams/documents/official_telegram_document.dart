@@ -272,6 +272,26 @@ class _OfficialTelegramDocumentPageState
         ),
       ]);
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
+      final importNotes = _value(telegramData['importNotes']).trim();
+      final referenceLinksFuture = () async {
+        if (importNotes.isEmpty) return <Map<String, dynamic>>[];
+        try {
+          final resolved = await widget.api.call(
+            'telegrams.resolveImportReferences',
+            input: {'notes': importNotes},
+          );
+          if (resolved is List) {
+            return resolved
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+          }
+        } catch (_) {
+          // Older deployments still show the original note text without links.
+        }
+        return <Map<String, dynamic>>[];
+      }();
+      final fontDataUrlsFuture = _loadFontDataUrls();
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
@@ -282,37 +302,50 @@ class _OfficialTelegramDocumentPageState
       final platformDocumentSettings = Map<String, dynamic>.from(
         results[3] as Map,
       );
+      // These reads are independent once the telegram payload is available.
+      // Run them together so opening a document does not pay for two extra
+      // sequential network round trips.
+      final optionalResults = await Future.wait<MapEntry<bool, dynamic>>([
+        (() async {
+          try {
+            return MapEntry<bool, dynamic>(
+              true,
+              await widget.api.call('organizations.context'),
+            );
+          } catch (_) {
+            return const MapEntry<bool, dynamic>(false, null);
+          }
+        })(),
+        (() async {
+          try {
+            return MapEntry<bool, dynamic>(
+              true,
+              await widget.api.call(
+                'telegrams.versions',
+                input: {'telegramId': widget.telegramId},
+                allowOfflineCache: true,
+              ),
+            );
+          } catch (_) {
+            return const MapEntry<bool, dynamic>(false, null);
+          }
+        })(),
+      ]);
+
       Map<String, dynamic> accountOrganizationContext = <String, dynamic>{};
-      try {
-        final contextResult = await widget.api.call('organizations.context');
-        if (contextResult is Map) {
-          accountOrganizationContext = Map<String, dynamic>.from(contextResult);
-        }
-      } catch (_) {
-        // Telegram loading must remain available if the optional context call
-        // is unavailable on an older server deployment.
+      final contextResult = optionalResults[0].value;
+      if (optionalResults[0].key && contextResult is Map) {
+        accountOrganizationContext = Map<String, dynamic>.from(contextResult);
       }
 
       List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
-      var versionHistoryAvailable = false;
-      try {
-        final versionResult = await widget.api.call(
-          'telegrams.versions',
-          input: {'telegramId': widget.telegramId},
-          allowOfflineCache: true,
-        );
-        versionHistoryAvailable = true;
-        if (versionResult is List) {
-          versionsData = versionResult
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList();
-        }
-      } catch (_) {
-        // The current telegram remains usable when an older deployment or a
-        // transient connection issue prevents loading its optional history.
-        // Do not replace the document with a full-screen error in that case.
-        versionsData = <Map<String, dynamic>>[];
+      final versionResult = optionalResults[1].value;
+      final versionHistoryAvailable = optionalResults[1].key;
+      if (versionResult is List) {
+        versionsData = versionResult
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
       }
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
       if (requestedVersionNumber != null &&
@@ -420,7 +453,7 @@ class _OfficialTelegramDocumentPageState
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
       final resources = await Future.wait<Object?>([
-        _loadFontDataUrls(),
+        fontDataUrlsFuture,
         hasSelectedVersion
             ? _loadHistoricalLogoDataUrl(
                 activeVersion,
@@ -435,24 +468,7 @@ class _OfficialTelegramDocumentPageState
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')
           .toString();
-      var referenceLinks = <Map<String, dynamic>>[];
-      final importNotes = _value(telegramData['importNotes']).trim();
-      if (importNotes.isNotEmpty) {
-        try {
-          final resolved = await widget.api.call(
-            'telegrams.resolveImportReferences',
-            input: {'notes': importNotes},
-          );
-          if (resolved is List) {
-            referenceLinks = resolved
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-          }
-        } catch (_) {
-          // Older deployments still show the original note text without links.
-        }
-      }
+      final referenceLinks = await referenceLinksFuture;
       final html = buildOfficialTelegramHtml(
         telegram: telegramData,
         settings: settingsData,

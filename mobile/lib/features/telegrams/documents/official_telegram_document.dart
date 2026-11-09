@@ -59,14 +59,16 @@ Future<Map<int, String>>? _officialFontDataUrlsFuture;
 Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
   const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
   const jpegSignature = <int>[255, 216, 255];
-  final isPng = bytes.length >= pngSignature.length &&
+  final isPng =
+      bytes.length >= pngSignature.length &&
       pngSignature.asMap().entries.every(
         (entry) => bytes[entry.key] == entry.value,
       );
   if (isPng) {
     return 'data:image/png;base64,${base64Encode(bytes)}';
   }
-  final isJpeg = bytes.length >= jpegSignature.length &&
+  final isJpeg =
+      bytes.length >= jpegSignature.length &&
       jpegSignature.asMap().entries.every(
         (entry) => bytes[entry.key] == entry.value,
       );
@@ -437,55 +439,23 @@ class _OfficialTelegramDocumentPageState
                 savedSettingsLogo.isNotEmpty
             ? savedSettingsLogo
             : null;
-
-        if (logoOrganizationId.isNotEmpty) {
-          try {
-            final organizationSettings = await widget.api.call(
-              'organizations.logo',
-              input: {'organizationId': logoOrganizationId},
-            );
-            if (organizationSettings is Map &&
-                resolveOrganizationLogoId(
-                      accountOrganizationId:
-                          organizationSettings['organizationId'],
-                    ) ==
-                    logoOrganizationId) {
-              final scopedLogo = organizationSettings['logoUrl']
-                  ?.toString()
-                  .trim();
-              if (scopedLogo != null && scopedLogo.isNotEmpty) {
-                settingsData['logoUrl'] = scopedLogo;
-              }
-            }
-          } catch (_) {
-            // Keep the verified account-settings fallback when available.
-          }
-        }
       }
-      if (hasSelectedVersion && logoOrganizationId.isNotEmpty) {
+
+      // Resolve the authenticated organization logo URL in parallel with the
+      // direct logo-byte request. The byte endpoint already supports an
+      // authenticated fallback when settings do not expose a public URL.
+      // Only wait for the URL lookup if that direct request has no logo.
+      final organizationLogoSettingsFuture = () async {
+        if (logoOrganizationId.isEmpty) return null;
         try {
-          final organizationSettings = await widget.api.call(
+          return await widget.api.call(
             'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
-          if (organizationSettings is Map &&
-              resolveOrganizationLogoId(
-                    accountOrganizationId:
-                        organizationSettings['organizationId'],
-                  ) ==
-                  logoOrganizationId) {
-            final currentLogo = organizationSettings['logoUrl']
-                ?.toString()
-                .trim();
-            if (currentLogo != null && currentLogo.isNotEmpty) {
-              settingsData['logoUrl'] = currentLogo;
-            }
-          }
         } catch (_) {
-          // The account settings logo remains the fallback when available.
+          return null;
         }
-      }
-
+      }();
       final routingDirectory = results[2] is List
           ? (results[2] as List)
                 .whereType<Map>()
@@ -505,9 +475,37 @@ class _OfficialTelegramDocumentPageState
               )
             : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
-      logPreparationStage('fonts and organization logo');
       final fontDataUrls = resources[0] as Map<int, String>;
-      final logoDataUrl = resources[1] as String?;
+      var logoDataUrl = resources[1] as String?;
+
+      if (logoDataUrl == null && logoOrganizationId.isNotEmpty) {
+        final organizationSettings = await organizationLogoSettingsFuture
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => null,
+            );
+        if (organizationSettings is Map &&
+            resolveOrganizationLogoId(
+                  accountOrganizationId:
+                      organizationSettings['organizationId'],
+                ) ==
+                logoOrganizationId) {
+          final currentLogo = organizationSettings['logoUrl']
+              ?.toString()
+              .trim();
+          if (currentLogo != null && currentLogo.isNotEmpty) {
+            settingsData['logoUrl'] = currentLogo;
+            logoDataUrl = await _loadLogoDataUrl(
+              currentLogo,
+              logoOrganizationId,
+            ).timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => null,
+            );
+          }
+        }
+      }
+      logPreparationStage('fonts and organization logo');
       final token = _value(telegramData['verificationToken']);
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')
@@ -528,7 +526,7 @@ class _OfficialTelegramDocumentPageState
       final pdfBytes = await _renderer
           .renderPdf(html)
           .timeout(
-            const Duration(seconds: 25),
+            const Duration(seconds: 20),
             onTimeout: () => throw Exception(
               'تعذر تحويل الوثيقة إلى PDF في الوقت المحدد. أعد المحاولة.',
             ),

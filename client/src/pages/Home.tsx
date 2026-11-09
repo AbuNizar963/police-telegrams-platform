@@ -4075,6 +4075,13 @@ function TelegramDetail({
         sheet.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
         sheet.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
         sheet.style.overflow = "hidden";
+        // Let mobile and desktop browsers skip off-screen page painting while
+        // preserving the exact A4 sheet geometry in the continuous preview.
+        sheet.style.setProperty("content-visibility", "auto");
+        sheet.style.setProperty(
+          "contain-intrinsic-size",
+          `${PRINT_PAGE_WIDTH_PX}px ${PRINT_PAGE_HEIGHT_PX}px`
+        );
         sheet.style.background = "#fff";
         sheet.style.boxShadow = "0 2px 12px rgba(15, 23, 42, 0.16)";
 

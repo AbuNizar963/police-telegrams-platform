@@ -252,7 +252,9 @@ class _OfficialTelegramDocumentPageState
       setState(() {
         loading = true;
         error = null;
-        previewPages = <Uint8List>[];
+        // Keep the last successfully rendered pages visible while a refresh
+        // (for example, switching document versions) is in progress. A
+        // transient error must not leave only the action buttons on screen.
       });
     }
     try {
@@ -1248,7 +1250,7 @@ class _OfficialTelegramDocumentPageState
                 ),
               ),
             )
-          : error != null
+          : error != null && previewPages.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -1274,6 +1276,30 @@ class _OfficialTelegramDocumentPageState
             )
           : Column(
               children: [
+                if (loading || error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                    child: MaterialBanner(
+                      content: Text(
+                        loading
+                            ? 'جارٍ تحديث المعاينة الحالية...'
+                            : error!,
+                      ),
+                      leading: Icon(
+                        loading
+                            ? Icons.sync_rounded
+                            : Icons.error_outline_rounded,
+                      ),
+                      actions: [
+                        if (!loading)
+                          TextButton.icon(
+                            onPressed: load,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('إعادة المحاولة'),
+                          ),
+                      ],
+                    ),
+                  ),
                 if (versions.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),

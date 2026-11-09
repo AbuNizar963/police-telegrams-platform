@@ -57,6 +57,27 @@ final Map<String, Future<String?>> _officialLogoRequests =
 Future<Map<int, String>>? _officialFontDataUrlsFuture;
 
 @visibleForTesting
+Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
+  const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
+  const jpegSignature = <int>[255, 216, 255];
+  final isPng = bytes.length >= pngSignature.length &&
+      pngSignature.asMap().entries.every(
+        (entry) => bytes[entry.key] == entry.value,
+      );
+  if (isPng) {
+    return 'data:image/png;base64,' + base64Encode(bytes);
+  }
+  final isJpeg = bytes.length >= jpegSignature.length &&
+      jpegSignature.asMap().entries.every(
+        (entry) => bytes[entry.key] == entry.value,
+      );
+  if (isJpeg) {
+    return 'data:image/jpeg;base64,' + base64Encode(bytes);
+  }
+  final normalized = await normalizeOfficialDocumentLogo(bytes);
+  return 'data:image/png;base64,' + base64Encode(normalized);
+}
+
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
   // Decode at the source resolution. The previous forced 600x600 decode
   // distorted non-square logos and discarded detail from larger originals.
@@ -79,7 +100,10 @@ Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes);
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  });
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes);
 }
 
@@ -100,11 +124,17 @@ class NativeOfficialTelegramDocumentRenderer
       _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
 
   @override
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) =>
-      Printing.raster(
-        pdfBytes,
-        dpi: _documentPreviewDpi,
-      ).asyncMap((page) => page.toPng()).toList();
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  }) {
+    final pages = Printing.raster(
+      pdfBytes,
+      dpi: _documentPreviewDpi,
+    );
+    final pagesToRender = skipFirstPage ? pages.skip(1) : pages;
+    return pagesToRender.asyncMap((page) => page.toPng()).toList();
+  }
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes) =>
@@ -531,26 +561,26 @@ class _OfficialTelegramDocumentPageState
             : null;
         documentHtml = html;
         previewPages = <Uint8List>[firstPage];
+        loading = false;
       });
 
-      // Continue preparing all pages after the first page is already visible.
-      // Keep the same order and validation for long and historical documents.
+      // Render only pages after the first; it is already visible above.
+      // This avoids rasterizing and allocating the first page twice.
       final images = await _renderer
-          .renderPreviewPages(pdfBytes)
+          .renderPreviewPages(pdfBytes, skipFirstPage: true)
           .timeout(
             const Duration(seconds: 25),
             onTimeout: () => throw Exception(
               'استغرق تجهيز بقية صفحات المعاينة وقتًا طويلًا. أعد المحاولة.',
             ),
           );
-      if (images.isEmpty || images.any((image) => image.isEmpty)) {
+      if (images.any((image) => image.isEmpty)) {
         throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
       }
       logPreparationStage('all preview pages rasterized');
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
-        previewPages = images;
-        loading = false;
+        previewPages = <Uint8List>[firstPage, ...images];
       });
     } catch (exception) {
       if (!mounted || generation != _loadGeneration) return;
@@ -608,8 +638,7 @@ class _OfficialTelegramDocumentPageState
     try {
       final bytes = await widget.api.fetchImageAsset(url);
       if (bytes == null || bytes.isEmpty) throw StateError('empty logo');
-      final normalized = await normalizeOfficialDocumentLogo(bytes);
-      final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+      final dataUrl = await _officialDocumentLogoDataUrl(bytes);
       _officialLogoDataUrlCache[cacheKey] = dataUrl;
       return dataUrl;
     } catch (_) {
@@ -639,8 +668,7 @@ class _OfficialTelegramDocumentPageState
           source: url,
         );
         if (bytes == null || bytes.isEmpty) return null;
-        final normalized = await normalizeOfficialDocumentLogo(bytes);
-        final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+        final dataUrl = await _officialDocumentLogoDataUrl(bytes);
         _officialLogoDataUrlCache[cacheKey] = dataUrl;
         return dataUrl;
       } catch (_) {

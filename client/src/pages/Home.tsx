@@ -673,10 +673,9 @@ export default function Home() {
     { id: selectedId ?? 0 },
     {
       enabled: selectedId !== null,
-      // A detail view is a new user session every time it is opened. Always
-      // revalidate it on mount so closing and reopening the same telegram
-      // cannot reuse a query observer that is still stuck in a loading state.
-      refetchOnMount: "always",
+      // The list prefetches this query on pointer hover and keyboard focus.
+      // Reuse a fresh prefetched result instead of forcing a second request on
+      // every open; stale data still revalidates through the default policy.
       // Render the complete row immediately, then replace it with the
       // authoritative detail response without blocking the modal opening.
       placeholderData: selectedRow,

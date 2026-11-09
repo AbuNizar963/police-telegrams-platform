@@ -23,7 +23,7 @@ export function serveStatic(app: Express): void {
 
   // Fall through to index.html if the requested asset does not exist.
   app.use(
-    "*",
+    "/{*splat}",
     rateLimit({
       windowMs: 60_000,
       limit: 240,

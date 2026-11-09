@@ -27,7 +27,7 @@ export async function setupVite(app: Express, server: Server) {
 
   app.use(vite.middlewares);
   app.use(
-    "*",
+    "/{*splat}",
     rateLimit({
       windowMs: 60_000,
       limit: 240,

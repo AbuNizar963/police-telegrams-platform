@@ -492,16 +492,18 @@ class _OfficialTelegramDocumentPageState
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final images = await _renderer
-          .renderPreviewPages(pdfBytes)
+      // Render and publish the first page before rasterizing the complete
+      // document. The PDF remains the single source for preview and exports.
+      final firstPage = await _renderer
+          .renderPreview(pdfBytes)
           .timeout(
             const Duration(seconds: 25),
             onTimeout: () => throw Exception(
-              'استغرق تجهيز صورة المعاينة وقتًا طويلًا. أعد المحاولة.',
+              'استغرق تجهيز الصفحة الأولى وقتًا طويلًا. أعد المحاولة.',
             ),
           );
-      if (images.isEmpty || images.any((image) => image.isEmpty)) {
-        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      if (firstPage.isEmpty) {
+        throw Exception('تعذر تجهيز الصفحة الأولى من الوثيقة.');
       }
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
@@ -512,6 +514,24 @@ class _OfficialTelegramDocumentPageState
             ? activeVersion['versionNumber'] as int?
             : null;
         documentHtml = html;
+        previewPages = <Uint8List>[firstPage];
+      });
+
+      // Continue preparing all pages after the first page is already visible.
+      // Keep the same order and validation for long and historical documents.
+      final images = await _renderer
+          .renderPreviewPages(pdfBytes)
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () => throw Exception(
+              'استغرق تجهيز بقية صفحات المعاينة وقتًا طويلًا. أعد المحاولة.',
+            ),
+          );
+      if (images.isEmpty || images.any((image) => image.isEmpty)) {
+        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      }
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
         previewPages = images;
         loading = false;
       });

@@ -37,7 +37,7 @@ export function buildTelegramWatermarkHtml(
     ? `<div class="watermark-text-pattern">${rows}</div>`
     : "";
   const logo = logoUrl?.trim()
-    ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" />`
+    ? `<img class="watermark-logo" src="${escapeAttribute(logoUrl.trim())}" alt="" decoding="async" />`
     : "";
 
   return `<div class="page-watermark" aria-hidden="true">${watermarkText}${logo}</div>`;

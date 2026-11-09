@@ -3516,11 +3516,11 @@ function TelegramDetail({
   // Preview and export share the same authenticated, deduplicated in-memory
   // logo loader. Passing its data URL into the preview avoids a second image
   // request and decode after the export preparation path has already loaded it.
-  const resolveTelegramPreviewLogoUrl = (exportSettings: {
+  const getTelegramPreviewLogoSource = (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
-  }): Promise<string | null> => {
-    const fallbackLogoUrl = selectedVersion
+  }): string | null =>
+    selectedVersion
       ? selectedVersion.logoUrl?.trim() ||
         exportSettings.logoUrl?.trim() ||
         settings?.logoUrl?.trim() ||
@@ -3534,6 +3534,11 @@ function TelegramDetail({
           settingsOrganizationId: exportSettings.organizationId,
           settingsLogoUrl: exportSettings.logoUrl,
         });
+  const resolveTelegramPreviewLogoUrl = (exportSettings: {
+    organizationId?: string | null;
+    logoUrl?: string | null;
+  }): Promise<string | null> => {
+    const fallbackLogoUrl = getTelegramPreviewLogoSource(exportSettings);
 
     return resolveTelegramLogoDataUrl(exportSettings).catch(error => {
       // Export keeps the strict, validated data-URL path. Preview can use the
@@ -3688,7 +3693,7 @@ function TelegramDetail({
     // the server-side renderer blocks external network resources.
     const resolvedLogoUrl = logoUrl?.trim() || null;
     const logo = resolvedLogoUrl
-      ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" />`
+      ? `<img class="official-logo" src="${escapeHtml(resolvedLogoUrl)}" alt="الشعار الرسمي" decoding="async" fetchpriority="high" />`
       : "";
     const verificationUrl = new URL(
       `/verify/${encodeURIComponent(documentTelegram.verificationToken)}`,
@@ -4165,40 +4170,44 @@ function TelegramDetail({
           "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
         );
         if (cancelled) return;
-        renderPreview(documentSettings, null);
-        const paper = host.querySelector<HTMLElement>(".telegram-export-page");
-        if (!paper) {
-          throw new Error("تعذر إنشاء معاينة الوثيقة الرسمية.");
-        }
-        // The first render has no remote logo yet. Do not wait for its image
-        // pipeline; resolve and decode the authenticated logo once below, then
-        // wait for the final document preview before hiding the preparation UI.
-        // Keep the preparation screen visible until the authenticated,
-        // organization-scoped logo has loaded and decoded in the final preview.
         const exportSettings = await withPreparationTimeout(
           utils.settings.get.fetch(undefined, { staleTime: 0 }),
           OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
           "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
         );
-        const logoUrl = await withPreparationTimeout(
+        const immediateLogoUrl = getTelegramPreviewLogoSource(exportSettings);
+        // Paint the document with the organization-scoped source immediately.
+        // The browser can display it while the stricter data-URL normalization
+        // continues in the background for printing and export.
+        renderPreview(documentSettings, immediateLogoUrl);
+        if (!cancelled) setDocumentPreparing(false);
+
+        void withPreparationTimeout(
           resolveTelegramPreviewLogoUrl(exportSettings),
           OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
           "استغرق تحميل رابط شعار الجهة وقتًا أطول من المتوقع."
-        );
-        if (!cancelled && logoUrl) {
-          renderPreview(documentSettings, logoUrl);
-          const logoPaper = host.querySelector<HTMLElement>(
-            ".telegram-export-page"
-          );
-          if (logoPaper) {
-            await withPreparationTimeout(
-              waitForOfficialDocumentImages(logoPaper),
-              OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-              "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
+        )
+          .then(async logoUrl => {
+            if (cancelled || !logoUrl || logoUrl === immediateLogoUrl) return;
+            renderPreview(documentSettings, logoUrl);
+            const logoPaper = host.querySelector<HTMLElement>(
+              ".telegram-export-page"
             );
-          }
-        }
-        if (!cancelled) setDocumentPreparing(false);
+            if (logoPaper) {
+              await withPreparationTimeout(
+                waitForOfficialDocumentImages(logoPaper),
+                OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+                "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
+              );
+            }
+          })
+          .catch(error => {
+            // The immediate organization-scoped source remains visible. A
+            // normalization failure should not delay or remove the preview.
+            console.warn("تعذر تحسين شعار المعاينة في الخلفية", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);

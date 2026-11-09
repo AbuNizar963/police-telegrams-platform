@@ -130,10 +130,7 @@ class NativeOfficialTelegramDocumentRenderer
     Uint8List pdfBytes, {
     bool skipFirstPage = false,
   }) {
-    final pages = Printing.raster(
-      pdfBytes,
-      dpi: _documentPreviewDpi,
-    );
+    final pages = Printing.raster(pdfBytes, dpi: _documentPreviewDpi);
     final pagesToRender = skipFirstPage ? pages.skip(1) : pages;
     return pagesToRender.asyncMap((page) => page.toPng()).toList();
   }
@@ -480,14 +477,10 @@ class _OfficialTelegramDocumentPageState
 
       if (logoDataUrl == null && logoOrganizationId.isNotEmpty) {
         final organizationSettings = await organizationLogoSettingsFuture
-            .timeout(
-              const Duration(seconds: 3),
-              onTimeout: () => null,
-            );
+            .timeout(const Duration(seconds: 3), onTimeout: () => null);
         if (organizationSettings is Map &&
             resolveOrganizationLogoId(
-                  accountOrganizationId:
-                      organizationSettings['organizationId'],
+                  accountOrganizationId: organizationSettings['organizationId'],
                 ) ==
                 logoOrganizationId) {
           final currentLogo = organizationSettings['logoUrl']
@@ -498,10 +491,7 @@ class _OfficialTelegramDocumentPageState
             logoDataUrl = await _loadLogoDataUrl(
               currentLogo,
               logoOrganizationId,
-            ).timeout(
-              const Duration(seconds: 3),
-              onTimeout: () => null,
-            );
+            ).timeout(const Duration(seconds: 3), onTimeout: () => null);
           }
         }
       }

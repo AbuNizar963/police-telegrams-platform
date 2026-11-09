@@ -64,17 +64,17 @@ Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
         (entry) => bytes[entry.key] == entry.value,
       );
   if (isPng) {
-    return 'data:image/png;base64,' + base64Encode(bytes);
+    return 'data:image/png;base64,${base64Encode(bytes)}';
   }
   final isJpeg = bytes.length >= jpegSignature.length &&
       jpegSignature.asMap().entries.every(
         (entry) => bytes[entry.key] == entry.value,
       );
   if (isJpeg) {
-    return 'data:image/jpeg;base64,' + base64Encode(bytes);
+    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
   }
   final normalized = await normalizeOfficialDocumentLogo(bytes);
-  return 'data:image/png;base64,' + base64Encode(normalized);
+  return 'data:image/png;base64,${base64Encode(normalized)}';
 }
 
 @visibleForTesting

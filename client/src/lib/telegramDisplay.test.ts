@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getTelegramDisplayNumber,
   getTelegramDisplaySerial,
+  getTelegramEditableSerial,
   getTelegramExportFileBaseName,
 } from "./telegramDisplay";
 
@@ -12,6 +13,28 @@ describe("getTelegramDisplayNumber", () => {
 
   it("keeps a plain numeric serial readable", () => {
     expect(getTelegramDisplayNumber("690")).toBe("690");
+  });
+
+  it("uses the organization number instead of the full code in the edit field", () => {
+    expect(
+      getTelegramEditableSerial({
+        organizationSerialNumber: 825,
+        organizationSerialCode: "1-2026-11-09-00825",
+        serialCode: "1-2026-11-09-00806",
+      })
+    ).toBe("825");
+  });
+
+  it("shortens legacy generated serials while preserving imported labels", () => {
+    expect(
+      getTelegramEditableSerial({
+        originalSerial: "1-2026-11-09-00825",
+        serialCode: "1-2026-11-09-00806",
+      })
+    ).toBe("825");
+    expect(getTelegramEditableSerial({ originalSerial: "ب و ٠٠٦-A" })).toBe(
+      "ب و ٠٠٦-A"
+    );
   });
 
   it("preserves imported serials exactly", () => {

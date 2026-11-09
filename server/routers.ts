@@ -207,6 +207,17 @@ function normalizeImportedSerial(value: string | number): string {
   return localizeDigits(value, "latin").trim().toLowerCase();
 }
 
+function normalizeEditableTelegramSerial(value: string): string {
+  const trimmed = value.trim();
+  const normalized = localizeDigits(trimmed, "latin").trim();
+  if (!trimmed) return "";
+  if (/^\d+$/.test(normalized)) return String(Number(normalized));
+  const generatedSerialMatch = normalized.match(/^.+-\d{4}-\d{2}-\d{2}-(\d+)$/);
+  return generatedSerialMatch
+    ? String(Number(generatedSerialMatch[1]))
+    : trimmed;
+}
+
 function makeImportSerialKey(
   direction: TelegramImportDirection,
   value: string | number
@@ -233,12 +244,28 @@ function getExistingTelegramSerialKeys(
       }
       return [
         ...(telegram.originalSerial
-          ? [makeImportSerialKey(direction, telegram.originalSerial)]
+          ? [
+              makeImportSerialKey(direction, telegram.originalSerial),
+              makeImportSerialKey(
+                direction,
+                normalizeEditableTelegramSerial(telegram.originalSerial)
+              ),
+            ]
           : []),
         ...(telegram.organizationSerialCode
-          ? [makeImportSerialKey(direction, telegram.organizationSerialCode)]
+          ? [
+              makeImportSerialKey(direction, telegram.organizationSerialCode),
+              makeImportSerialKey(
+                direction,
+                normalizeEditableTelegramSerial(telegram.organizationSerialCode)
+              ),
+            ]
           : []),
         makeImportSerialKey(direction, telegram.serialCode),
+        makeImportSerialKey(
+          direction,
+          normalizeEditableTelegramSerial(telegram.serialCode)
+        ),
       ];
     })
   );
@@ -2374,7 +2401,7 @@ export const appRouter = router({
         );
         const hasOriginalSerial = input.originalSerial !== undefined;
         const originalSerial = hasOriginalSerial
-          ? input.originalSerial?.trim() || null
+          ? normalizeEditableTelegramSerial(input.originalSerial ?? "") || null
           : existing.originalSerial?.trim() || null;
         if (
           hasOriginalSerial &&
@@ -2392,7 +2419,10 @@ export const appRouter = router({
                 : existing.organizationId === existing.currentOrganizationId
                   ? "outgoing"
                   : "incoming";
-            const serialKey = makeImportSerialKey(direction, originalSerial);
+            const serialKey = makeImportSerialKey(
+              direction,
+              normalizeEditableTelegramSerial(originalSerial)
+            );
             const duplicate = existingTelegrams.some(
               telegram =>
                 telegram.id !== existing.id &&

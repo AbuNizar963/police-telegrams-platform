@@ -1,6 +1,8 @@
 export interface TelegramSerialSource {
   originalSerial?: string | null;
+  organizationSerialNumber?: number | null;
   organizationSerialCode?: string | null;
+  serialNumber?: number | null;
   serialCode?: string | null;
 }
 

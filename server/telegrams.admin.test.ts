@@ -110,6 +110,8 @@ const telegram = {
   id: 7,
   serialNumber: 1001,
   serialCode: "POL-2026-09-29-01001",
+  organizationSerialNumber: 825,
+  organizationSerialCode: "1-2026-11-09-00825",
   createdByUserId: 42,
   creatorName: "موظف",
   creatorEmail: "officer@example.com",
@@ -227,6 +229,23 @@ describe("telegram administration permissions", () => {
       expect.objectContaining({
         beforeState: expect.stringContaining('"serialNumber":1001'),
         afterState: expect.stringContaining('"originalSerial":"ب و ٠٠٦-A"'),
+      })
+    );
+  });
+
+  it("stores the short number when a generated code is submitted", async () => {
+    mocked.listTelegrams.mockResolvedValue([]);
+    const caller = appRouter.createCaller(contextFor("admin"));
+
+    await caller.telegrams.update({
+      ...updateInput,
+      originalSerial: "1-2026-11-09-00825",
+    });
+
+    expect(mocked.updateTelegram).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        originalSerial: "825",
       })
     );
   });

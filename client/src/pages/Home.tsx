@@ -64,6 +64,7 @@ import { showLocalTelegramNotification } from "@/features/notifications/notifica
 import {
   getTelegramDisplayNumber,
   getTelegramDisplaySerial,
+  getTelegramEditableSerial,
   getTelegramExportFileBaseName,
 } from "@/lib/telegramDisplay";
 import { renderTelegramBodyHtml } from "@/features/telegrams/documents/telegramBodyHtml";
@@ -2997,9 +2998,11 @@ function TelegramDetail({
     id: number;
     serialCode: string;
     originalSerial?: string | null;
+    organizationSerialNumber?: number | null;
     importNotes?: string | null;
     telegramDate?: Date | null;
     organizationSerialCode?: string | null;
+    serialNumber?: number | null;
     senderOrganizationName?: string | null;
     organizationId?: string | null;
     currentOrganizationId?: string | null;
@@ -5418,7 +5421,9 @@ function TelegramEditModal({
 }: {
   telegram: {
     originalSerial?: string | null;
+    organizationSerialNumber?: number | null;
     organizationSerialCode?: string | null;
+    serialNumber?: number | null;
     serialCode?: string | null;
     subject: string;
     recipient: string;
@@ -5441,11 +5446,8 @@ function TelegramEditModal({
     status: Status;
   }) => void;
 }) {
-  const [originalSerial, setOriginalSerial] = useState<string>(
-    telegram.originalSerial ??
-      telegram.organizationSerialCode ??
-      telegram.serialCode ??
-      ""
+  const [originalSerial, setOriginalSerial] = useState<string>(() =>
+    getTelegramEditableSerial(telegram)
   );
   const [subject, setSubject] = useState(telegram.subject);
   const [recipient, setRecipient] = useState(telegram.recipient);

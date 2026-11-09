@@ -264,7 +264,11 @@ class _OfficialTelegramDocumentPageState
         widget.api.call('organizations.routingDirectory'),
         widget.api.call(
           'platformDocumentSettings.get',
-          allowOfflineCache: false,
+          // Reopening a document must be able to render from the last
+          // verified settings snapshot while the server request revalidates.
+          // A transient network state must never strand the document on the
+          // loading screen until the whole application is restarted.
+          allowOfflineCache: true,
         ),
       ]);
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
@@ -295,7 +299,7 @@ class _OfficialTelegramDocumentPageState
         final versionResult = await widget.api.call(
           'telegrams.versions',
           input: {'telegramId': widget.telegramId},
-          allowOfflineCache: false,
+          allowOfflineCache: true,
         );
         versionHistoryAvailable = true;
         if (versionResult is List) {
@@ -1164,7 +1168,7 @@ class _OfficialTelegramDocumentPageState
           const SizedBox(width: 8),
         ],
       ),
-      body: loading
+      body: loading && previewPages.isEmpty
           ? ColoredBox(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
               child: Center(

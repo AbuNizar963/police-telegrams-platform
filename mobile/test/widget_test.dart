@@ -1228,6 +1228,25 @@ void main() {
       'Cairo',
     );
     expect(api.calls['telegrams.get'], {'id': 7});
+
+    // Closing and reopening the same telegram must create a fresh document
+    // session without leaving the preview behind a permanent loader.
+    await tester.tap(find.byTooltip('إغلاق تفاصيل البرقية'));
+    await _pumpDashboardFrames(tester, frameCount: 8);
+    expect(find.byTooltip('إغلاق تفاصيل البرقية'), findsNothing);
+
+    await _scrollIntoView(tester, serial);
+    await tester.tap(serial);
+    await _pumpDashboardFrames(tester, frameCount: 12);
+    expect(find.byTooltip('إغلاق تفاصيل البرقية'), findsOneWidget);
+    expect(find.text(_telegramSubject), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image && widget.semanticLabel == 'معاينة الصفحة 1 من 1',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses the web Lucide icon set on the home screen and drawer', (

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import './features/reports/telegram_report_labels.dart';
+import 'telegram_display.dart';
 
 const _categories = <MapEntry<String, String>>[
   MapEntry('administrative', 'إداري'),
@@ -65,13 +66,8 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
     _subjectController = TextEditingController(
       text: _text(widget.telegram['subject']),
     );
-    final originalSerial = _text(widget.telegram['originalSerial']);
     _serialController = TextEditingController(
-      text: originalSerial.isNotEmpty
-          ? originalSerial
-          : _text(widget.telegram['organizationSerialCode'] ??
-              widget.telegram['serialCode'] ??
-              widget.telegram['serialNumber']),
+      text: getTelegramEditableSerial(widget.telegram),
     );
     _recipientController = TextEditingController(
       text: _text(widget.telegram['recipient']),

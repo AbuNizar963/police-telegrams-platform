@@ -36,6 +36,24 @@ void main() {
       expect(getTelegramDisplayNumber('UNIT-00072'), '72');
     });
 
+    test('uses only the organization number for editing', () {
+      expect(
+        getTelegramEditableSerial({
+          'organizationSerialNumber': 825,
+          'organizationSerialCode': '1-2026-11-09-00825',
+          'serialCode': '1-2026-11-09-00806',
+        }),
+        '825',
+      );
+      expect(
+        getTelegramEditableSerial({
+          'originalSerial': '1-2026-11-09-00825',
+          'serialCode': '1-2026-11-09-00806',
+        }),
+        '825',
+      );
+    });
+
     test(
       'preserves imported serials exactly in every configured number system',
       () {

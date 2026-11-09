@@ -31,6 +31,34 @@ String getTelegramDisplayNumber(Object? serialCode, {Object? originalSerial}) {
   return int.tryParse(parsedSerial)?.toString() ?? parsedSerial;
 }
 
+/// Returns only the editable organization number, never the generated code.
+String getTelegramEditableSerial(Map<String, dynamic> telegram) {
+  final originalSerial = telegram['originalSerial']?.toString().trim() ?? '';
+  if (originalSerial.isNotEmpty) {
+    return _isGeneratedSerialCode(originalSerial)
+        ? getTelegramDisplayNumber(originalSerial)
+        : originalSerial;
+  }
+
+  final organizationSerialNumber = telegram['organizationSerialNumber'];
+  final parsedOrganizationNumber = organizationSerialNumber is num
+      ? organizationSerialNumber.toInt()
+      : int.tryParse('$organizationSerialNumber');
+  if (parsedOrganizationNumber != null && parsedOrganizationNumber > 0) {
+    return '$parsedOrganizationNumber';
+  }
+
+  return getTelegramDisplayNumber(
+    telegram['organizationSerialCode'] ??
+        telegram['serialCode'] ??
+        telegram['serialNumber'],
+  );
+}
+
+bool _isGeneratedSerialCode(String value) {
+  return RegExp(r'^.+-\d{4}-\d{2}-\d{2}-\d+$').hasMatch(value);
+}
+
 /// Displays imported official serials exactly; generated serials retain compact localized display.
 String getTelegramDisplaySerial(
   Map<String, dynamic> telegram,

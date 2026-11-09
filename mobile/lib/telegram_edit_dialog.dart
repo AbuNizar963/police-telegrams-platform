@@ -50,6 +50,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
   late final TextEditingController _subjectController;
   late final TextEditingController _recipientController;
   late final TextEditingController _bodyController;
+  late final TextEditingController _serialController;
 
   late String _classification;
   late String _priority;
@@ -63,6 +64,14 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
     super.initState();
     _subjectController = TextEditingController(
       text: _text(widget.telegram['subject']),
+    );
+    final originalSerial = _text(widget.telegram['originalSerial']);
+    _serialController = TextEditingController(
+      text: originalSerial.isNotEmpty
+          ? originalSerial
+          : _text(widget.telegram['organizationSerialCode'] ??
+              widget.telegram['serialCode'] ??
+              widget.telegram['serialNumber']),
     );
     _recipientController = TextEditingController(
       text: _text(widget.telegram['recipient']),
@@ -88,6 +97,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
     _subjectController.dispose();
     _recipientController.dispose();
     _bodyController.dispose();
+    _serialController.dispose();
     super.dispose();
   }
 
@@ -108,12 +118,18 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
   }
 
   Future<void> _save() async {
+    final serial = _serialController.text.trim();
     final subject = _subjectController.text.trim();
     final recipient = _recipientController.text.trim();
     final body = _bodyController.text.trim();
 
-    if (subject.length < 2 || recipient.length < 2 || body.length < 3) {
-      setState(() => _error = 'أكمل الموضوع والجهة ونص البرقية بشكل صحيح.');
+    if (serial.isEmpty ||
+        subject.length < 2 ||
+        recipient.length < 2 ||
+        body.length < 3) {
+      setState(
+        () => _error = 'أكمل رقم البرقية والموضوع والجهة والنص بشكل صحيح.',
+      );
       return;
     }
 
@@ -129,6 +145,7 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
         mutation: true,
         input: {
           'id': widget.telegramId,
+          'originalSerial': serial,
           'subject': subject,
           'recipient': recipient,
           'body': body,
@@ -166,6 +183,20 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              TextField(
+                controller: _serialController,
+                enabled: !_saving,
+                maxLength: 120,
+                spellCheckConfiguration:
+                    const SpellCheckConfiguration.disabled(),
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: 'رقم البرقية الظاهر',
+                  helperText: 'الرقم الداخلي الرسمي لا يتغير.',
+                ),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _subjectController,
                 enabled: !_saving,

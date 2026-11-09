@@ -1301,9 +1301,7 @@ class _OfficialTelegramDocumentPageState
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                     child: MaterialBanner(
                       content: Text(
-                        loading
-                            ? 'جارٍ تحديث المعاينة الحالية...'
-                            : error!,
+                        loading ? 'جارٍ تحديث المعاينة الحالية...' : error!,
                       ),
                       leading: Icon(
                         loading

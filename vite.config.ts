@@ -15,6 +15,16 @@ export default defineConfig({
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  optimizeDeps: {
+    include: [
+      "@tanstack/react-query",
+      "@trpc/client",
+      "@trpc/react-query",
+      "lucide-react",
+      "react",
+      "react-dom",
+    ],
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
@@ -43,6 +53,9 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: ["localhost", "127.0.0.1"],
+    warmup: {
+      clientFiles: ["./src/main.tsx", "./src/pages/Home.tsx"],
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

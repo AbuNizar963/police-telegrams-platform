@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
@@ -246,6 +247,7 @@ class _OfficialTelegramDocumentPageState
         );
       }
     }
+
     _loadingWatchdog?.cancel();
     _loadingWatchdog = Timer(_preparationTimeout, () {
       if (!mounted || generation != _loadGeneration || !loading) return;

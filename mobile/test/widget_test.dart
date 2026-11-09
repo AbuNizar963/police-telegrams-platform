@@ -319,9 +319,10 @@ class _TestOfficialTelegramDocumentRenderer
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
 
   @override
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) async => [
-    _testPng,
-  ];
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  }) async => skipFirstPage ? [] : [_testPng];
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(

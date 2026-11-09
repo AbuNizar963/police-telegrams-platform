@@ -1387,6 +1387,7 @@ export default function Home() {
                   setSelectedId(row.id);
                 }}
                 onPointerEnter={() => prefetchTelegram(row.id)}
+                onTouchStart={() => prefetchTelegram(row.id)}
                 onFocus={() => prefetchTelegram(row.id)}
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >

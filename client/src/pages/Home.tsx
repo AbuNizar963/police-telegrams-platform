@@ -3959,25 +3959,14 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
-    if (versions.isLoading) {
-      const historyTimeout = window.setTimeout(() => {
-        setDocumentPreparing(false);
-        toast.error(
-          "استغرق تحميل سجل إصدارات البرقية وقتًا طويلًا. تحقق من الاتصال ثم أعد المحاولة."
-        );
-      }, 20_000);
-      return () => window.clearTimeout(historyTimeout);
-    }
     if (versions.isError) {
       const historyErrorKey = `${telegram.id}:history-error`;
       if (preparedTelegramIdRef.current !== historyErrorKey) {
         preparedTelegramIdRef.current = historyErrorKey;
-        setDocumentPreparing(false);
         toast.error(
-          "تعذر تحميل سجل إصدارات البرقية؛ لا يمكن تأكيد الشعار التاريخي الآن."
+          "تعذر تحميل سجل إصدارات البرقية؛ ستُعرض النسخة الحالية ويمكن إعادة المحاولة لاحقًا."
         );
       }
-      return;
     }
 
     // React Query can expose equivalent telegram/settings objects with new
@@ -4181,6 +4170,7 @@ function TelegramDetail({
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);
+          preparedTelegramIdRef.current = null;
           // Never clear a successfully rendered document because an
           // enhancement step (logo/history/resize) timed out. Clearing the
           // host is what caused the paper to disappear while the action
@@ -4201,8 +4191,9 @@ function TelegramDetail({
     return () => {
       cancelled = true;
       activeObserver?.disconnect();
-      host.replaceChildren();
-      host.style.height = "";
+      // Keep the last successfully rendered paper mounted while React Query
+      // refreshes versions or settings. Clearing the host here caused the
+      // toolbar to remain visible with an empty preview during that refresh.
     };
   }, [
     telegram.id,
@@ -5401,7 +5392,7 @@ function TelegramDetail({
             </p>
           </div>
         )}
-      {isAdmin && editOpen && (
+      {editOpen && (
         <TelegramEditModal
           telegram={telegram}
           pending={updateTelegram.isPending}
@@ -5426,6 +5417,9 @@ function TelegramEditModal({
   submit,
 }: {
   telegram: {
+    originalSerial?: string | null;
+    organizationSerialCode?: string | null;
+    serialCode?: string | null;
     subject: string;
     recipient: string;
     body: string;
@@ -5437,6 +5431,7 @@ function TelegramEditModal({
   pending: boolean;
   close: () => void;
   submit: (values: {
+    originalSerial: string | null;
     subject: string;
     recipient: string;
     body: string;
@@ -5446,6 +5441,12 @@ function TelegramEditModal({
     status: Status;
   }) => void;
 }) {
+  const [originalSerial, setOriginalSerial] = useState<string>(
+    telegram.originalSerial ??
+      telegram.organizationSerialCode ??
+      telegram.serialCode ??
+      ""
+  );
   const [subject, setSubject] = useState(telegram.subject);
   const [recipient, setRecipient] = useState(telegram.recipient);
   const [body, setBody] = useState(telegram.body);
@@ -5462,6 +5463,7 @@ function TelegramEditModal({
         onSubmit={event => {
           event.preventDefault();
           submit({
+            originalSerial: originalSerial.trim() || null,
             subject: subject.trim(),
             recipient: recipient.trim(),
             body: body.trim(),
@@ -5472,6 +5474,23 @@ function TelegramEditModal({
           });
         }}
       >
+        <label className="grid gap-1.5 text-sm font-semibold">
+          رقم البرقية الظاهر
+          <Input
+            required
+            minLength={1}
+            maxLength={120}
+            value={originalSerial}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            onChange={event => setOriginalSerial(event.target.value)}
+          />
+          <span className="text-[11px] font-normal text-muted-foreground">
+            الرقم الداخلي الرسمي لا يتغير؛ هذا هو الرقم الذي يظهر في الوثيقة
+            والقوائم.
+          </span>
+        </label>
         <label className="grid gap-1.5 text-sm font-semibold">
           موضوع البرقية
           <Input

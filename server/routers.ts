@@ -2326,6 +2326,7 @@ export const appRouter = router({
           priority: prioritySchema,
           category: categorySchema,
           status: statusSchema,
+          originalSerial: z.string().trim().max(120).nullable().optional(),
           attachmentManifest: z.string().max(10000).nullable().optional(),
           gpsLatitude: z.string().max(40).nullable().optional(),
           gpsLongitude: z.string().max(40).nullable().optional(),
@@ -2371,8 +2372,43 @@ export const appRouter = router({
         const numberSystem = normalizeNumberSystem(
           organizationSettings?.numberSystem
         );
+        const hasOriginalSerial = input.originalSerial !== undefined;
+        const originalSerial = hasOriginalSerial
+          ? input.originalSerial?.trim() || null
+          : existing.originalSerial?.trim() || null;
+        if (
+          hasOriginalSerial &&
+          originalSerial !== (existing.originalSerial?.trim() || null)
+        ) {
+          if (originalSerial) {
+            const existingTelegrams = await listAllTelegramsForImport(
+              ctx.user.id,
+              existing.organizationId
+            );
+            const direction =
+              existing.importDirection === "incoming" ||
+              existing.importDirection === "outgoing"
+                ? existing.importDirection
+                : existing.organizationId === existing.currentOrganizationId
+                  ? "outgoing"
+                  : "incoming";
+            const serialKey = makeImportSerialKey(direction, originalSerial);
+            const duplicate = existingTelegrams.some(
+              telegram =>
+                telegram.id !== existing.id &&
+                getExistingTelegramSerialKeys([telegram]).has(serialKey)
+            );
+            if (duplicate) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message: "رقم البرقية مستخدم مسبقًا ضمن نفس جهة العمل.",
+              });
+            }
+          }
+        }
         const updated = await updateTelegram(id, {
           ...values,
+          originalSerial,
           subject: localizeDigits(values.subject, numberSystem),
           recipient: localizeDigits(values.recipient, numberSystem),
           body: localizeDigits(values.body, numberSystem),
@@ -2417,7 +2453,11 @@ export const appRouter = router({
         await recordTelegramVersion({
           telegramId: updated.id,
           changedByUserId: ctx.user.id,
-          changeReason: "تعديل محتوى البرقية",
+          changeReason:
+            hasOriginalSerial &&
+            originalSerial !== (existing.originalSerial?.trim() || null)
+              ? "تعديل بيانات البرقية ورقمها"
+              : "تعديل محتوى البرقية",
           snapshot: versionSnapshot,
         });
 

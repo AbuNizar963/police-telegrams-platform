@@ -211,6 +211,26 @@ describe("telegram administration permissions", () => {
     );
   });
 
+  it("updates the visible telegram number while preserving the internal serial", async () => {
+    mocked.listTelegrams.mockResolvedValue([]);
+    const caller = appRouter.createCaller(contextFor("admin"));
+    await caller.telegrams.update({
+      ...updateInput,
+      originalSerial: "ب و ٠٠٦-A",
+    });
+
+    expect(mocked.updateTelegram).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ originalSerial: "ب و ٠٠٦-A" })
+    );
+    expect(mocked.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        beforeState: expect.stringContaining('"serialNumber":1001'),
+        afterState: expect.stringContaining('"originalSerial":"ب و ٠٠٦-A"'),
+      })
+    );
+  });
+
   it("records a permitted official-document print command", async () => {
     organizationMocks.getUserOrganizationMembership.mockResolvedValue({
       organizationId: telegram.organizationId,

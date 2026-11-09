@@ -1314,6 +1314,7 @@ export async function updateTelegram(
       | "subject"
       | "recipient"
       | "body"
+      | "originalSerial"
       | "classification"
       | "priority"
       | "category"

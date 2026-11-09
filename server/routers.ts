@@ -208,7 +208,9 @@ function normalizeEditableTelegramSerial(value: string): string {
   const normalized = localizeDigits(trimmed, "latin").trim();
   if (!trimmed) return "";
   if (/^\d+$/.test(normalized)) return String(Number(normalized));
-  const generatedSerialMatch = normalized.match(/^.+-\d{4}-\d{2}-\d{2}-(\d+)$/);
+  const generatedSerialMatch = normalized.match(
+    /^.+-\d{4}-\d{2}-\d{2}-(\d+)$/
+  );
   return generatedSerialMatch
     ? String(Number(generatedSerialMatch[1]))
     : trimmed;

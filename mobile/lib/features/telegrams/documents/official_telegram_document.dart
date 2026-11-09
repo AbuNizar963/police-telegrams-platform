@@ -238,6 +238,14 @@ class _OfficialTelegramDocumentPageState
 
   Future<void> load({int? versionNumber}) async {
     final generation = ++_loadGeneration;
+    final preparationClock = Stopwatch()..start();
+    void logPreparationStage(String stage) {
+      if (kDebugMode) {
+        debugPrint(
+          '[telegram-preview] $stage: ${preparationClock.elapsedMilliseconds}ms',
+        );
+      }
+    }
     _loadingWatchdog?.cancel();
     _loadingWatchdog = Timer(_preparationTimeout, () {
       if (!mounted || generation != _loadGeneration || !loading) return;
@@ -271,6 +279,7 @@ class _OfficialTelegramDocumentPageState
           allowOfflineCache: true,
         ),
       ]);
+      logPreparationStage('initial data');
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
       final importNotes = _value(telegramData['importNotes']).trim();
       final referenceLinksFuture = () async {
@@ -332,6 +341,7 @@ class _OfficialTelegramDocumentPageState
         })(),
       ]);
 
+      logPreparationStage('organization context and version history');
       Map<String, dynamic> accountOrganizationContext = <String, dynamic>{};
       final contextResult = optionalResults[0].value;
       if (optionalResults[0].key && contextResult is Map) {
@@ -462,6 +472,7 @@ class _OfficialTelegramDocumentPageState
               )
             : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
       ]);
+      logPreparationStage('fonts and organization logo');
       final fontDataUrls = resources[0] as Map<int, String>;
       final logoDataUrl = resources[1] as String?;
       final token = _value(telegramData['verificationToken']);
@@ -492,6 +503,7 @@ class _OfficialTelegramDocumentPageState
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
+      logPreparationStage('PDF generated');
       // Render and publish the first page before rasterizing the complete
       // document. The PDF remains the single source for preview and exports.
       final firstPage = await _renderer
@@ -505,6 +517,7 @@ class _OfficialTelegramDocumentPageState
       if (firstPage.isEmpty) {
         throw Exception('تعذر تجهيز الصفحة الأولى من الوثيقة.');
       }
+      logPreparationStage('first page rasterized');
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         telegram = telegramData;
@@ -530,6 +543,7 @@ class _OfficialTelegramDocumentPageState
       if (images.isEmpty || images.any((image) => image.isEmpty)) {
         throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
       }
+      logPreparationStage('all preview pages rasterized');
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         previewPages = images;

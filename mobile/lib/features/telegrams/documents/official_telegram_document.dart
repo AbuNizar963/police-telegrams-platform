@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
@@ -53,6 +54,31 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
 final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
 final Map<String, Future<String?>> _officialLogoRequests =
     <String, Future<String?>>{};
+Map<int, String>? _officialFontDataUrlsCache;
+Future<Map<int, String>>? _officialFontDataUrlsFuture;
+
+Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
+  const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
+  const jpegSignature = <int>[255, 216, 255];
+  final isPng =
+      bytes.length >= pngSignature.length &&
+      pngSignature.asMap().entries.every(
+        (entry) => bytes[entry.key] == entry.value,
+      );
+  if (isPng) {
+    return 'data:image/png;base64,${base64Encode(bytes)}';
+  }
+  final isJpeg =
+      bytes.length >= jpegSignature.length &&
+      jpegSignature.asMap().entries.every(
+        (entry) => bytes[entry.key] == entry.value,
+      );
+  if (isJpeg) {
+    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
+  }
+  final normalized = await normalizeOfficialDocumentLogo(bytes);
+  return 'data:image/png;base64,${base64Encode(normalized)}';
+}
 
 @visibleForTesting
 Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
@@ -77,7 +103,10 @@ Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes);
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  });
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes);
 }
 
@@ -98,11 +127,14 @@ class NativeOfficialTelegramDocumentRenderer
       _renderFirstPage(pdfBytes, dpi: _documentPreviewDpi);
 
   @override
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) =>
-      Printing.raster(
-        pdfBytes,
-        dpi: _documentPreviewDpi,
-      ).asyncMap((page) => page.toPng()).toList();
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  }) {
+    final pages = Printing.raster(pdfBytes, dpi: _documentPreviewDpi);
+    final pagesToRender = skipFirstPage ? pages.skip(1) : pages;
+    return pagesToRender.asyncMap((page) => page.toPng()).toList();
+  }
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(Uint8List pdfBytes) =>
@@ -238,6 +270,15 @@ class _OfficialTelegramDocumentPageState
 
   Future<void> load({int? versionNumber}) async {
     final generation = ++_loadGeneration;
+    final preparationClock = Stopwatch()..start();
+    void logPreparationStage(String stage) {
+      if (kDebugMode) {
+        debugPrint(
+          '[telegram-preview] $stage: ${preparationClock.elapsedMilliseconds}ms',
+        );
+      }
+    }
+
     _loadingWatchdog?.cancel();
     _loadingWatchdog = Timer(_preparationTimeout, () {
       if (!mounted || generation != _loadGeneration || !loading) return;
@@ -271,7 +312,31 @@ class _OfficialTelegramDocumentPageState
           allowOfflineCache: true,
         ),
       ]);
+      logPreparationStage('initial data');
       final telegramData = Map<String, dynamic>.from(results[0] as Map);
+      final importNotes = _value(telegramData['importNotes']).trim();
+      final referenceLinksFuture = () async {
+        if (importNotes.isEmpty) return <Map<String, dynamic>>[];
+        try {
+          final resolved = await widget.api.call(
+            'telegrams.resolveImportReferences',
+            input: {'notes': importNotes},
+          );
+          if (resolved is List) {
+            return resolved
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+          }
+        } catch (_) {
+          // Older deployments still show the original note text without links.
+        }
+        return <Map<String, dynamic>>[];
+      }();
+      final fontDataUrlsFuture = _loadFontDataUrls().then((fontDataUrls) {
+        logPreparationStage('font assets ready');
+        return fontDataUrls;
+      });
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
@@ -282,37 +347,51 @@ class _OfficialTelegramDocumentPageState
       final platformDocumentSettings = Map<String, dynamic>.from(
         results[3] as Map,
       );
+      // These reads are independent once the telegram payload is available.
+      // Run them together so opening a document does not pay for two extra
+      // sequential network round trips.
+      final optionalResults = await Future.wait<MapEntry<bool, dynamic>>([
+        (() async {
+          try {
+            return MapEntry<bool, dynamic>(
+              true,
+              await widget.api.call('organizations.context'),
+            );
+          } catch (_) {
+            return const MapEntry<bool, dynamic>(false, null);
+          }
+        })(),
+        (() async {
+          try {
+            return MapEntry<bool, dynamic>(
+              true,
+              await widget.api.call(
+                'telegrams.versions',
+                input: {'telegramId': widget.telegramId},
+                allowOfflineCache: true,
+              ),
+            );
+          } catch (_) {
+            return const MapEntry<bool, dynamic>(false, null);
+          }
+        })(),
+      ]);
+
+      logPreparationStage('organization context and version history');
       Map<String, dynamic> accountOrganizationContext = <String, dynamic>{};
-      try {
-        final contextResult = await widget.api.call('organizations.context');
-        if (contextResult is Map) {
-          accountOrganizationContext = Map<String, dynamic>.from(contextResult);
-        }
-      } catch (_) {
-        // Telegram loading must remain available if the optional context call
-        // is unavailable on an older server deployment.
+      final contextResult = optionalResults[0].value;
+      if (optionalResults[0].key && contextResult is Map) {
+        accountOrganizationContext = Map<String, dynamic>.from(contextResult);
       }
 
       List<Map<String, dynamic>> versionsData = <Map<String, dynamic>>[];
-      var versionHistoryAvailable = false;
-      try {
-        final versionResult = await widget.api.call(
-          'telegrams.versions',
-          input: {'telegramId': widget.telegramId},
-          allowOfflineCache: true,
-        );
-        versionHistoryAvailable = true;
-        if (versionResult is List) {
-          versionsData = versionResult
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList();
-        }
-      } catch (_) {
-        // The current telegram remains usable when an older deployment or a
-        // transient connection issue prevents loading its optional history.
-        // Do not replace the document with a full-screen error in that case.
-        versionsData = <Map<String, dynamic>>[];
+      final versionResult = optionalResults[1].value;
+      final versionHistoryAvailable = optionalResults[1].key;
+      if (versionResult is List) {
+        versionsData = versionResult
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
       }
       final requestedVersionNumber = versionNumber ?? selectedVersionNumber;
       if (requestedVersionNumber != null &&
@@ -361,55 +440,23 @@ class _OfficialTelegramDocumentPageState
                 savedSettingsLogo.isNotEmpty
             ? savedSettingsLogo
             : null;
-
-        if (logoOrganizationId.isNotEmpty) {
-          try {
-            final organizationSettings = await widget.api.call(
-              'organizations.logo',
-              input: {'organizationId': logoOrganizationId},
-            );
-            if (organizationSettings is Map &&
-                resolveOrganizationLogoId(
-                      accountOrganizationId:
-                          organizationSettings['organizationId'],
-                    ) ==
-                    logoOrganizationId) {
-              final scopedLogo = organizationSettings['logoUrl']
-                  ?.toString()
-                  .trim();
-              if (scopedLogo != null && scopedLogo.isNotEmpty) {
-                settingsData['logoUrl'] = scopedLogo;
-              }
-            }
-          } catch (_) {
-            // Keep the verified account-settings fallback when available.
-          }
-        }
       }
-      if (hasSelectedVersion && logoOrganizationId.isNotEmpty) {
+
+      // Resolve the authenticated organization logo URL in parallel with the
+      // direct logo-byte request. The byte endpoint already supports an
+      // authenticated fallback when settings do not expose a public URL.
+      // Only wait for the URL lookup if that direct request has no logo.
+      final organizationLogoSettingsFuture = () async {
+        if (logoOrganizationId.isEmpty) return null;
         try {
-          final organizationSettings = await widget.api.call(
+          return await widget.api.call(
             'organizations.logo',
             input: {'organizationId': logoOrganizationId},
           );
-          if (organizationSettings is Map &&
-              resolveOrganizationLogoId(
-                    accountOrganizationId:
-                        organizationSettings['organizationId'],
-                  ) ==
-                  logoOrganizationId) {
-            final currentLogo = organizationSettings['logoUrl']
-                ?.toString()
-                .trim();
-            if (currentLogo != null && currentLogo.isNotEmpty) {
-              settingsData['logoUrl'] = currentLogo;
-            }
-          }
         } catch (_) {
-          // The account settings logo remains the fallback when available.
+          return null;
         }
-      }
-
+      }();
       final routingDirectory = results[2] is List
           ? (results[2] as List)
                 .whereType<Map>()
@@ -419,40 +466,58 @@ class _OfficialTelegramDocumentPageState
 
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
+      final logoDataUrlFuture =
+          (hasSelectedVersion
+                  ? _loadHistoricalLogoDataUrl(
+                      activeVersion,
+                      logoOrganizationId,
+                      fallbackUrl: _value(settingsData['logoUrl']),
+                    )
+                  : _loadLogoDataUrl(
+                      settingsData['logoUrl'],
+                      logoOrganizationId,
+                    ))
+              .then((logoDataUrl) {
+                logPreparationStage(
+                  logoDataUrl == null
+                      ? 'organization logo unavailable'
+                      : 'organization logo ready',
+                );
+                return logoDataUrl;
+              });
       final resources = await Future.wait<Object?>([
-        _loadFontDataUrls(),
-        hasSelectedVersion
-            ? _loadHistoricalLogoDataUrl(
-                activeVersion,
-                logoOrganizationId,
-                fallbackUrl: _value(settingsData['logoUrl']),
-              )
-            : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
+        fontDataUrlsFuture,
+        logoDataUrlFuture,
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
-      final logoDataUrl = resources[1] as String?;
+      var logoDataUrl = resources[1] as String?;
+
+      if (logoDataUrl == null && logoOrganizationId.isNotEmpty) {
+        final organizationSettings = await organizationLogoSettingsFuture
+            .timeout(const Duration(seconds: 3), onTimeout: () => null);
+        if (organizationSettings is Map &&
+            resolveOrganizationLogoId(
+                  accountOrganizationId: organizationSettings['organizationId'],
+                ) ==
+                logoOrganizationId) {
+          final currentLogo = organizationSettings['logoUrl']
+              ?.toString()
+              .trim();
+          if (currentLogo != null && currentLogo.isNotEmpty) {
+            settingsData['logoUrl'] = currentLogo;
+            logoDataUrl = await _loadLogoDataUrl(
+              currentLogo,
+              logoOrganizationId,
+            ).timeout(const Duration(seconds: 3), onTimeout: () => null);
+          }
+        }
+      }
+      logPreparationStage('fonts and organization logo');
       final token = _value(telegramData['verificationToken']);
       final verificationUrl = Uri.parse(widget.api.baseUrl)
           .resolve('/verify/${Uri.encodeComponent(token)}')
           .toString();
-      var referenceLinks = <Map<String, dynamic>>[];
-      final importNotes = _value(telegramData['importNotes']).trim();
-      if (importNotes.isNotEmpty) {
-        try {
-          final resolved = await widget.api.call(
-            'telegrams.resolveImportReferences',
-            input: {'notes': importNotes},
-          );
-          if (resolved is List) {
-            referenceLinks = resolved
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-          }
-        } catch (_) {
-          // Older deployments still show the original note text without links.
-        }
-      }
+      final referenceLinks = await referenceLinksFuture;
       final html = buildOfficialTelegramHtml(
         telegram: telegramData,
         settings: settingsData,
@@ -468,7 +533,7 @@ class _OfficialTelegramDocumentPageState
       final pdfBytes = await _renderer
           .renderPdf(html)
           .timeout(
-            const Duration(seconds: 25),
+            const Duration(seconds: 20),
             onTimeout: () => throw Exception(
               'تعذر تحويل الوثيقة إلى PDF في الوقت المحدد. أعد المحاولة.',
             ),
@@ -476,17 +541,21 @@ class _OfficialTelegramDocumentPageState
       if (pdfBytes.isEmpty) {
         throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
       }
-      final images = await _renderer
-          .renderPreviewPages(pdfBytes)
+      logPreparationStage('PDF generated');
+      // Render and publish the first page before rasterizing the complete
+      // document. The PDF remains the single source for preview and exports.
+      final firstPage = await _renderer
+          .renderPreview(pdfBytes)
           .timeout(
             const Duration(seconds: 25),
             onTimeout: () => throw Exception(
-              'استغرق تجهيز صورة المعاينة وقتًا طويلًا. أعد المحاولة.',
+              'استغرق تجهيز الصفحة الأولى وقتًا طويلًا. أعد المحاولة.',
             ),
           );
-      if (images.isEmpty || images.any((image) => image.isEmpty)) {
-        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      if (firstPage.isEmpty) {
+        throw Exception('تعذر تجهيز الصفحة الأولى من الوثيقة.');
       }
+      logPreparationStage('first page rasterized');
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         telegram = telegramData;
@@ -496,8 +565,27 @@ class _OfficialTelegramDocumentPageState
             ? activeVersion['versionNumber'] as int?
             : null;
         documentHtml = html;
-        previewPages = images;
+        previewPages = <Uint8List>[firstPage];
         loading = false;
+      });
+
+      // Render only pages after the first; it is already visible above.
+      // This avoids rasterizing and allocating the first page twice.
+      final images = await _renderer
+          .renderPreviewPages(pdfBytes, skipFirstPage: true)
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () => throw Exception(
+              'استغرق تجهيز بقية صفحات المعاينة وقتًا طويلًا. أعد المحاولة.',
+            ),
+          );
+      if (images.any((image) => image.isEmpty)) {
+        throw Exception('تعذر تجهيز معاينة الوثيقة على الجهاز.');
+      }
+      logPreparationStage('all preview pages rasterized');
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        previewPages = <Uint8List>[firstPage, ...images];
       });
     } catch (exception) {
       if (!mounted || generation != _loadGeneration) return;
@@ -513,7 +601,24 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
-  Future<Map<int, String>> _loadFontDataUrls() async {
+  Future<Map<int, String>> _loadFontDataUrls() {
+    final cached = _officialFontDataUrlsCache;
+    if (cached != null) return Future<Map<int, String>>.value(cached);
+
+    final pending = _officialFontDataUrlsFuture;
+    if (pending != null) return pending;
+
+    final request = _readFontDataUrls();
+    _officialFontDataUrlsFuture = request;
+    return request.catchError((Object exception, StackTrace stackTrace) {
+      if (identical(_officialFontDataUrlsFuture, request)) {
+        _officialFontDataUrlsFuture = null;
+      }
+      Error.throwWithStackTrace(exception, stackTrace);
+    });
+  }
+
+  Future<Map<int, String>> _readFontDataUrls() async {
     const fontWeights = [400, 500, 600, 700];
     final entries = await Future.wait(
       fontWeights.map((weight) async {
@@ -532,8 +637,10 @@ class _OfficialTelegramDocumentPageState
       ruqaaData.offsetInBytes,
       ruqaaData.lengthInBytes,
     );
-    return Map<int, String>.fromEntries(entries)
+    final fontDataUrls = Map<int, String>.fromEntries(entries)
       ..[900] = 'data:font/ttf;base64,${base64Encode(ruqaaBytes)}';
+    _officialFontDataUrlsCache = fontDataUrls;
+    return fontDataUrls;
   }
 
   Future<String?> _loadHistoricalLogoDataUrl(
@@ -552,8 +659,7 @@ class _OfficialTelegramDocumentPageState
     try {
       final bytes = await widget.api.fetchImageAsset(url);
       if (bytes == null || bytes.isEmpty) throw StateError('empty logo');
-      final normalized = await normalizeOfficialDocumentLogo(bytes);
-      final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+      final dataUrl = await _officialDocumentLogoDataUrl(bytes);
       _officialLogoDataUrlCache[cacheKey] = dataUrl;
       return dataUrl;
     } catch (_) {
@@ -574,7 +680,11 @@ class _OfficialTelegramDocumentPageState
     final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';
     final cached = _officialLogoDataUrlCache[cacheKey];
     if (cached != null) return cached;
-    final pending = _officialLogoRequests[cacheKey];
+    // Coalesce requests only within the same API session. Reusing an
+    // in-flight Future from a previous authenticated session can leave a
+    // newly opened document waiting on an obsolete request.
+    final requestKey = '${identityHashCode(widget.api)}\n$cacheKey';
+    final pending = _officialLogoRequests[requestKey];
     if (pending != null) return pending;
     final request = () async {
       try {
@@ -583,8 +693,7 @@ class _OfficialTelegramDocumentPageState
           source: url,
         );
         if (bytes == null || bytes.isEmpty) return null;
-        final normalized = await normalizeOfficialDocumentLogo(bytes);
-        final dataUrl = 'data:image/png;base64,${base64Encode(normalized)}';
+        final dataUrl = await _officialDocumentLogoDataUrl(bytes);
         _officialLogoDataUrlCache[cacheKey] = dataUrl;
         return dataUrl;
       } catch (_) {
@@ -592,10 +701,10 @@ class _OfficialTelegramDocumentPageState
         // substitute a default seal or watermark.
         return null;
       } finally {
-        _officialLogoRequests.remove(cacheKey);
+        _officialLogoRequests.remove(requestKey);
       }
     }();
-    _officialLogoRequests[cacheKey] = request;
+    _officialLogoRequests[requestKey] = request;
     return request;
   }
 
@@ -1285,9 +1394,7 @@ class _OfficialTelegramDocumentPageState
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                     child: MaterialBanner(
                       content: Text(
-                        loading
-                            ? 'جارٍ تحديث المعاينة الحالية...'
-                            : error!,
+                        loading ? 'جارٍ تحديث المعاينة الحالية...' : error!,
                       ),
                       leading: Icon(
                         loading

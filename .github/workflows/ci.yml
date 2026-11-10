@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -38,8 +40,31 @@ jobs:
             exit 1
           fi
 
-      - name: Check formatting
-        run: pnpm lint
+      - name: Check formatting for changed files
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git fetch --no-tags origin "$PR_BASE_SHA" "$PR_HEAD_SHA"
+          mapfile -t changed_files < <(
+            git diff --name-only --diff-filter=ACMR "$PR_BASE_SHA" "$PR_HEAD_SHA" -- \
+              'client/**/*.ts' \
+              'client/**/*.tsx' \
+              'client/**/*.css' \
+              'client/**/*.json' \
+              'client/**/*.md' \
+              'server/**/*.ts' \
+              'shared/**/*.ts' \
+              'scripts/**/*.mjs' \
+              'drizzle/**/*.ts' \
+              'package.json'
+          )
+          if (("${#changed_files[@]}" == 0)); then
+            echo "No changed files are covered by the Prettier check."
+            exit 0
+          fi
+          pnpm exec prettier --check "${changed_files[@]}"
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

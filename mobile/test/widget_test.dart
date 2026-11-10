@@ -319,9 +319,10 @@ class _TestOfficialTelegramDocumentRenderer
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
 
   @override
-  Future<List<Uint8List>> renderPreviewPages(Uint8List pdfBytes) async => [
-    _testPng,
-  ];
+  Future<List<Uint8List>> renderPreviewPages(
+    Uint8List pdfBytes, {
+    bool skipFirstPage = false,
+  }) async => skipFirstPage ? [] : [_testPng];
 
   @override
   Future<List<Uint8List>> renderHighResolutionImages(
@@ -478,7 +479,7 @@ void main() {
     );
     await _pumpDashboardFrames(tester, frameCount: 12);
     await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
     );
     await tester.pump();
 
@@ -522,7 +523,7 @@ void main() {
       );
       await _pumpDashboardFrames(tester, frameCount: 12);
       await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
       );
       await tester.pump();
 
@@ -573,6 +574,12 @@ void main() {
         ),
       );
       await _pumpDashboardFrames(tester, frameCount: 12);
+      // AssetBundle font reads use real asynchronous work; allow them to
+      // complete before advancing the fake clock to the renderer timeout.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
       await tester.pump(const Duration(seconds: 25));
       await tester.pump();
 
@@ -1183,6 +1190,10 @@ void main() {
     await _scrollIntoView(tester, serial);
     await tester.tap(serial);
     await _pumpDashboardFrames(tester, frameCount: 12);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pump();
 
     expect(find.byTooltip('إغلاق تفاصيل البرقية'), findsOneWidget);
     expect(find.text('72'), findsOneWidget);

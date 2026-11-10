@@ -54,6 +54,7 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
 final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
 final Map<String, Future<String?>> _officialLogoRequests =
     <String, Future<String?>>{};
+Map<int, String>? _officialFontDataUrlsCache;
 Future<Map<int, String>>? _officialFontDataUrlsFuture;
 
 Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
@@ -465,21 +466,25 @@ class _OfficialTelegramDocumentPageState
 
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
-      final logoDataUrlFuture = (hasSelectedVersion
-              ? _loadHistoricalLogoDataUrl(
-                  activeVersion,
-                  logoOrganizationId,
-                  fallbackUrl: _value(settingsData['logoUrl']),
-                )
-              : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId))
-          .then((logoDataUrl) {
-            logPreparationStage(
-              logoDataUrl == null
-                  ? 'organization logo unavailable'
-                  : 'organization logo ready',
-            );
-            return logoDataUrl;
-          });
+      final logoDataUrlFuture =
+          (hasSelectedVersion
+                  ? _loadHistoricalLogoDataUrl(
+                      activeVersion,
+                      logoOrganizationId,
+                      fallbackUrl: _value(settingsData['logoUrl']),
+                    )
+                  : _loadLogoDataUrl(
+                      settingsData['logoUrl'],
+                      logoOrganizationId,
+                    ))
+              .then((logoDataUrl) {
+                logPreparationStage(
+                  logoDataUrl == null
+                      ? 'organization logo unavailable'
+                      : 'organization logo ready',
+                );
+                return logoDataUrl;
+              });
       final resources = await Future.wait<Object?>([
         fontDataUrlsFuture,
         logoDataUrlFuture,
@@ -596,8 +601,22 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
-  Future<Map<int, String>> _loadFontDataUrls() =>
-      _officialFontDataUrlsFuture ??= _readFontDataUrls();
+  Future<Map<int, String>> _loadFontDataUrls() {
+    final cached = _officialFontDataUrlsCache;
+    if (cached != null) return SynchronousFuture<Map<int, String>>(cached);
+
+    final pending = _officialFontDataUrlsFuture;
+    if (pending != null) return pending;
+
+    final request = _readFontDataUrls();
+    _officialFontDataUrlsFuture = request;
+    return request.catchError((Object exception, StackTrace stackTrace) {
+      if (identical(_officialFontDataUrlsFuture, request)) {
+        _officialFontDataUrlsFuture = null;
+      }
+      Error.throwWithStackTrace(exception, stackTrace);
+    });
+  }
 
   Future<Map<int, String>> _readFontDataUrls() async {
     const fontWeights = [400, 500, 600, 700];
@@ -618,8 +637,10 @@ class _OfficialTelegramDocumentPageState
       ruqaaData.offsetInBytes,
       ruqaaData.lengthInBytes,
     );
-    return Map<int, String>.fromEntries(entries)
+    final fontDataUrls = Map<int, String>.fromEntries(entries)
       ..[900] = 'data:font/ttf;base64,${base64Encode(ruqaaBytes)}';
+    _officialFontDataUrlsCache = fontDataUrls;
+    return fontDataUrls;
   }
 
   Future<String?> _loadHistoricalLogoDataUrl(

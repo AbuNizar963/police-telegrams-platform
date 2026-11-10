@@ -673,10 +673,9 @@ export default function Home() {
     { id: selectedId ?? 0 },
     {
       enabled: selectedId !== null,
-      // A detail view is a new user session every time it is opened. Always
-      // revalidate it on mount so closing and reopening the same telegram
-      // cannot reuse a query observer that is still stuck in a loading state.
-      refetchOnMount: "always",
+      // The list prefetches this query on pointer hover and keyboard focus.
+      // Reuse a fresh prefetched result instead of forcing a second request on
+      // every open; stale data still revalidates through the default policy.
       // Render the complete row immediately, then replace it with the
       // authoritative detail response without blocking the modal opening.
       placeholderData: selectedRow,
@@ -1388,6 +1387,7 @@ export default function Home() {
                   setSelectedId(row.id);
                 }}
                 onPointerEnter={() => prefetchTelegram(row.id)}
+                onTouchStart={() => prefetchTelegram(row.id)}
                 onFocus={() => prefetchTelegram(row.id)}
                 className="group relative flex w-full flex-col items-stretch gap-3 px-4 py-4 text-right transition-colors hover:bg-muted/40 sm:px-5"
               >
@@ -4075,6 +4075,13 @@ function TelegramDetail({
         sheet.style.width = `${PRINT_PAGE_WIDTH_PX}px`;
         sheet.style.height = `${PRINT_PAGE_HEIGHT_PX}px`;
         sheet.style.overflow = "hidden";
+        // Let mobile and desktop browsers skip off-screen page painting while
+        // preserving the exact A4 sheet geometry in the continuous preview.
+        sheet.style.setProperty("content-visibility", "auto");
+        sheet.style.setProperty(
+          "contain-intrinsic-size",
+          `${PRINT_PAGE_WIDTH_PX}px ${PRINT_PAGE_HEIGHT_PX}px`
+        );
         sheet.style.background = "#fff";
         sheet.style.boxShadow = "0 2px 12px rgba(15, 23, 42, 0.16)";
 

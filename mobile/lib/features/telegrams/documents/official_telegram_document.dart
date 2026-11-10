@@ -332,7 +332,10 @@ class _OfficialTelegramDocumentPageState
         }
         return <Map<String, dynamic>>[];
       }();
-      final fontDataUrlsFuture = _loadFontDataUrls();
+      final fontDataUrlsFuture = _loadFontDataUrls().then((fontDataUrls) {
+        logPreparationStage('font assets ready');
+        return fontDataUrls;
+      });
       final settingsData = results[1] is Map
           ? Map<String, dynamic>.from(results[1] as Map)
           : <String, dynamic>{};
@@ -462,15 +465,24 @@ class _OfficialTelegramDocumentPageState
 
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
+      final logoDataUrlFuture = (hasSelectedVersion
+              ? _loadHistoricalLogoDataUrl(
+                  activeVersion,
+                  logoOrganizationId,
+                  fallbackUrl: _value(settingsData['logoUrl']),
+                )
+              : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId))
+          .then((logoDataUrl) {
+            logPreparationStage(
+              logoDataUrl == null
+                  ? 'organization logo unavailable'
+                  : 'organization logo ready',
+            );
+            return logoDataUrl;
+          });
       final resources = await Future.wait<Object?>([
         fontDataUrlsFuture,
-        hasSelectedVersion
-            ? _loadHistoricalLogoDataUrl(
-                activeVersion,
-                logoOrganizationId,
-                fallbackUrl: _value(settingsData['logoUrl']),
-              )
-            : _loadLogoDataUrl(settingsData['logoUrl'], logoOrganizationId),
+        logoDataUrlFuture,
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
       var logoDataUrl = resources[1] as String?;

@@ -603,7 +603,7 @@ class _OfficialTelegramDocumentPageState
 
   Future<Map<int, String>> _loadFontDataUrls() {
     final cached = _officialFontDataUrlsCache;
-    if (cached != null) return SynchronousFuture<Map<int, String>>(cached);
+    if (cached != null) return Future<Map<int, String>>.value(cached);
 
     final pending = _officialFontDataUrlsFuture;
     if (pending != null) return pending;

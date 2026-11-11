@@ -4725,8 +4725,8 @@ function TelegramDetail({
       }
       const shareOrganization =
         documentTelegram.senderOrganizationName?.trim() ||
-        shareOrganizationById.get(shareSourceOrganizationId)?.name?.trim() ||
         shareHierarchyNames[shareHierarchyNames.length - 1] ||
+        shareOrganizationById.get(shareSourceOrganizationId)?.name?.trim() ||
         settings?.departmentName?.trim() ||
         settings?.unitName?.trim() ||
         "الجهة المرسلة";

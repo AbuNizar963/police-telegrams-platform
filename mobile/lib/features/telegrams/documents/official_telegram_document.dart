@@ -780,8 +780,14 @@ class _OfficialTelegramDocumentPageState
     return 'telegram-$safe';
   }
 
-  String get _displaySerial =>
-      getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
+  String get _displaySerial {
+    final data = telegram ?? const <String, dynamic>{};
+    final importedSerial = data['originalSerial']?.toString().trim() ?? '';
+    if (importedSerial.isNotEmpty && importedSerial != 'null') {
+      return importedSerial;
+    }
+    return getTelegramDisplaySerial(data, settings?['numberSystem']);
+  }
 
   String get _shareDescription {
     final data = telegram ?? const <String, dynamic>{};

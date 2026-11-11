@@ -4671,7 +4671,9 @@ function TelegramDetail({
       const isPngArchive = pngBlob.type === "application/zip";
       const pngFile = new File(
         [pngBlob],
-        `${getTelegramExportFileBaseName(telegram)}.${isPngArchive ? "zip" : "png"}`,
+        `${getTelegramExportFileBaseName(telegram)}.${
+          isPngArchive ? "zip" : "png"
+        }`,
         { type: isPngArchive ? "application/zip" : "image/png" }
       );
       const shareNumber = getTelegramDisplaySerial(

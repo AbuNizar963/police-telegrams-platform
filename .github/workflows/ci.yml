@@ -39,10 +39,7 @@ jobs:
           fi
 
       - name: Check formatting
-        run: |
-          pnpm exec prettier client/src/pages/Home.tsx > /tmp/Home.formatted.tsx
-          diff -u client/src/pages/Home.tsx /tmp/Home.formatted.tsx || true
-          pnpm lint
+        run: pnpm lint
 
       - name: Verify responsive application shell
         run: pnpm check:responsive-shell

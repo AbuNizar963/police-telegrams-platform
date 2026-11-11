@@ -2100,7 +2100,7 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          operation: z.enum(["print", "download"]),
+          operation: z.enum(["print", "download", "share"]),
           format: z.enum(["pdf", "png"]),
         })
       )

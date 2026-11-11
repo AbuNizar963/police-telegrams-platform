@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -44,10 +45,19 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
   List<dynamic> attachments = const [];
   List<dynamic> actions = const [];
   List<Map<String, dynamic>> routingDirectory = const [];
+  StreamSubscription<ApiMutationEvent>? _mutationSubscription;
 
   @override
   void initState() {
     super.initState();
+    _mutationSubscription = widget.api.mutationEvents.listen((event) {
+      if (mounted &&
+          event.isTelegramMutation &&
+          event.affectsTelegram(widget.telegramId) &&
+          event.procedure != 'telegrams.delete') {
+        unawaited(load());
+      }
+    });
     load();
   }
 
@@ -544,6 +554,10 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
 
   @override
   void dispose() {
+    final mutationSubscription = _mutationSubscription;
+    if (mutationSubscription != null) {
+      unawaited(mutationSubscription.cancel());
+    }
     super.dispose();
   }
 

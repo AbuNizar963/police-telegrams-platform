@@ -26,6 +26,36 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+class ApiMutationEvent {
+  const ApiMutationEvent({
+    required this.procedure,
+    required this.input,
+    required this.result,
+  });
+
+  final String procedure;
+  final Map<String, dynamic>? input;
+  final dynamic result;
+
+  bool get isTelegramMutation => procedure.startsWith('telegrams.');
+
+  int? get telegramId {
+    final values = <dynamic>[
+      input?['id'],
+      input?['telegramId'],
+      result is Map ? result['id'] : null,
+      result is Map ? result['telegramId'] : null,
+    ];
+    for (final value in values) {
+      final parsed = int.tryParse('$value');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return null;
+  }
+
+  bool affectsTelegram(int id) => telegramId == id;
+}
+
 class _OrganizationLogoCacheEntry {
   const _OrganizationLogoCacheEntry(this.bytes, this.cachedAt);
 
@@ -59,11 +89,15 @@ class PoliceApi {
   final http.Client _httpClient;
   final Directory? imageCacheDirectory;
   final _storage = const FlutterSecureStorage();
+  final StreamController<ApiMutationEvent> _mutationEvents =
+      StreamController<ApiMutationEvent>.broadcast(sync: true);
   final Map<String, Future<Uint8List?>> _organizationLogoRequests = {};
   final Map<String, Future<void>> _organizationLogoRefreshes = {};
   final Map<String, _OrganizationLogoCacheEntry> _organizationLogoMemory = {};
   Future<Directory>? _logoCacheDirectoryFuture;
   int _logoCacheGeneration = 0;
+
+  Stream<ApiMutationEvent> get mutationEvents => _mutationEvents.stream;
 
   Future<dynamic> call(
     String procedure, {
@@ -131,10 +165,92 @@ class PoliceApi {
     final value = data is Map && data.containsKey('json') ? data['json'] : data;
     if (!mutation) {
       await _writeOfflineResponse(procedure, input, value);
-    } else if (procedure == 'platformDocumentSettings.update') {
-      await _writeOfflineResponse('platformDocumentSettings.get', null, value);
+    } else {
+      await _syncOfflineCacheAfterMutation(procedure, input, value);
+      _mutationEvents.add(
+        ApiMutationEvent(procedure: procedure, input: input, result: value),
+      );
     }
     return value;
+  }
+
+  Future<void> _syncOfflineCacheAfterMutation(
+    String procedure,
+    Map<String, dynamic>? input,
+    dynamic value,
+  ) async {
+    if (procedure == 'platformDocumentSettings.update') {
+      await _writeOfflineResponse('platformDocumentSettings.get', null, value);
+      return;
+    }
+    if (procedure == 'settings.update') {
+      await _writeOfflineResponse('settings.get', null, value);
+    }
+    if (!procedure.startsWith('telegrams.')) return;
+
+    final event = ApiMutationEvent(
+      procedure: procedure,
+      input: input,
+      result: value,
+    );
+    final id = event.telegramId;
+    final keys = await _readKnownOfflineCacheKeys();
+    final invalidated = keys.where((key) {
+      if (key == 'cached_dashboard' || key == 'offline_dashboard_stats') {
+        return true;
+      }
+      if (key == 'offline_notifications_inbox') return true;
+      if (key.startsWith('offline_telegrams_list_') ||
+          key.startsWith('offline_telegram_report_')) {
+        return true;
+      }
+      if (id == null) return false;
+      if (key == 'offline_telegram_$id') return true;
+      return key.startsWith('offline_telegram_versions_') ||
+          key.startsWith('offline_telegram_routes_') ||
+          key.startsWith('offline_telegram_attachments_') ||
+          key.startsWith('offline_telegram_actions_');
+    });
+    for (final key in invalidated) {
+      try {
+        await _storage.delete(key: key);
+      } catch (_) {
+        // Cache invalidation is best-effort and must never fail a saved change.
+      }
+    }
+
+    // Update/detail screens can reopen immediately with the canonical server
+    // response for mutations that return a full telegram object.
+    if (id != null && value is Map &&
+        (procedure == 'telegrams.create' ||
+            procedure == 'telegrams.update' ||
+            procedure == 'telegrams.transition')) {
+      await _writeOfflineResponse('telegrams.get', {'id': id}, value);
+    }
+  }
+
+  Future<Set<String>> _readKnownOfflineCacheKeys() async {
+    try {
+      final values = await _storage.readAll();
+      return values.keys
+          .where((key) => key.startsWith('offline_') || key == 'cached_dashboard')
+          .toSet();
+    } catch (_) {
+      final keys = await _readOfflineCacheKeyRegistry();
+      keys.addAll(const [
+        'offline_settings',
+        'offline_platform_document_settings',
+        'offline_routing_directory',
+        'offline_organization_descendants',
+        'offline_organizations_all',
+        'offline_organization_context',
+        'offline_dashboard_stats',
+        'offline_notifications_inbox',
+        'offline_profile',
+        'cached_dashboard',
+      ]);
+      return keys.toSet();
+    }
   }
 
   // Cache only read-only data needed to reopen previously viewed screens.
@@ -151,6 +267,10 @@ class PoliceApi {
         return _offlineInputResponseKey('offline_telegram_versions', input);
       case 'telegrams.incomingRoutes':
         return _offlineInputResponseKey('offline_telegram_routes', input);
+      case 'telegrams.attachments':
+        return _offlineInputResponseKey('offline_telegram_attachments', input);
+      case 'telegrams.actions':
+        return _offlineInputResponseKey('offline_telegram_actions', input);
       case 'reports.telegrams':
         return _offlineInputResponseKey('offline_telegram_report', input);
       case 'notifications.inbox':

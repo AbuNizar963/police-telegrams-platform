@@ -668,6 +668,7 @@ class _DashboardPageState extends State<DashboardPage>
   Timer? _syncMessageTimer;
   Timer? _refreshTimer;
   Timer? _searchDebounce;
+  StreamSubscription<ApiMutationEvent>? _mutationSubscription;
   bool _refreshInProgress = false;
   bool _refreshQueued = false;
   bool _updateCheckInProgress = false;
@@ -717,6 +718,7 @@ class _DashboardPageState extends State<DashboardPage>
     super.initState();
     _account = Map<String, dynamic>.from(widget.account);
     _outbox = widget.outbox ?? TelegramOutbox();
+    _mutationSubscription = widget.api.mutationEvents.listen(_handleMutation);
     WidgetsBinding.instance.addObserver(this);
     refresh();
     unawaited(_syncOutbox());
@@ -745,6 +747,18 @@ class _DashboardPageState extends State<DashboardPage>
             }
           }
         });
+  }
+
+  void _handleMutation(ApiMutationEvent event) {
+    if (!mounted) return;
+    if (event.isTelegramMutation ||
+        event.procedure == 'settings.update' ||
+        event.procedure == 'organizations.selectWorkplace') {
+      unawaited(refresh(showLoading: false));
+    }
+    if (event.procedure.startsWith('notifications.')) {
+      unawaited(_loadUnreadNotificationCount());
+    }
   }
 
   Future<void> _loadOrganizationLogo(
@@ -1466,6 +1480,10 @@ class _DashboardPageState extends State<DashboardPage>
     _refreshTimer?.cancel();
     _searchDebounce?.cancel();
     _syncMessageTimer?.cancel();
+    final mutationSubscription = _mutationSubscription;
+    if (mutationSubscription != null) {
+      unawaited(mutationSubscription.cancel());
+    }
     searchController.dispose();
     push.dispose();
     super.dispose();
@@ -4047,6 +4065,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   List<Map<String, dynamic>> _versions = const [];
   int? _selectedVersionNumber;
   Timer? _refreshTimer;
+  StreamSubscription<ApiMutationEvent>? _mutationSubscription;
 
   bool get _isAdmin => widget.account['role'] == 'admin';
   bool get _canOperate =>
@@ -4107,12 +4126,26 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     super.initState();
     telegram = widget.initialTelegram;
     loading = widget.initialTelegram == null;
+    _mutationSubscription = widget.api.mutationEvents.listen(_handleMutation);
     load();
     _loadVersions();
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       load();
       _loadVersions();
     });
+  }
+
+  void _handleMutation(ApiMutationEvent event) {
+    if (!mounted || !event.isTelegramMutation) return;
+    if (event.procedure == 'telegrams.delete' ||
+        !event.affectsTelegram(widget.telegramId)) {
+      return;
+    }
+    unawaited(load());
+    if (event.procedure == 'telegrams.update' ||
+        event.procedure == 'telegrams.reissue') {
+      unawaited(_loadVersions());
+    }
   }
 
   Future<void> _loadVersions() async {
@@ -4166,6 +4199,10 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    final mutationSubscription = _mutationSubscription;
+    if (mutationSubscription != null) {
+      unawaited(mutationSubscription.cancel());
+    }
     super.dispose();
   }
 

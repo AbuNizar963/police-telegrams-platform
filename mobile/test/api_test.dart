@@ -106,6 +106,85 @@ void main() {
     },
   );
 
+  test('mutations invalidate telegram caches and emit live change events', () async {
+    final client = MockClient((request) async {
+      final procedure = request.url.pathSegments.last;
+      final value = switch (procedure) {
+        'telegrams.get' => <String, dynamic>{
+            'id': 7,
+            'subject': 'موضوع قديم',
+          },
+        'telegrams.list' => <String, dynamic>{
+            'items': [<String, dynamic>{'id': 7, 'subject': 'موضوع قديم'}],
+          },
+        'telegrams.versions' => <dynamic>[
+            <String, dynamic>{'versionNumber': 1},
+          ],
+        'telegrams.incomingRoutes' => <dynamic>[
+            <String, dynamic>{'id': 4},
+          ],
+        'settings.get' => <String, dynamic>{'departmentName': 'قديم'},
+        'telegrams.update' => <String, dynamic>{
+            'id': 7,
+            'subject': 'موضوع جديد',
+          },
+        'settings.update' => <String, dynamic>{'departmentName': 'جديد'},
+        _ => <String, dynamic>{},
+      };
+      return http.Response(
+        jsonEncode({
+          'result': {
+            'data': {'json': value},
+          },
+        }),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+    final events = <ApiMutationEvent>[];
+    final subscription = api.mutationEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+
+    await api.call('telegrams.get', input: {'id': 7});
+    await api.call('telegrams.list', input: {'page': 1});
+    await api.call('telegrams.versions', input: {'telegramId': 7});
+    await api.call('telegrams.incomingRoutes', input: {'telegramId': 7});
+    await api.call('settings.get');
+    expect(_secureStorageForTest.keys, contains('offline_telegram_7'));
+
+    await api.call(
+      'telegrams.update',
+      mutation: true,
+      input: {'id': 7},
+    );
+    expect(
+      jsonDecode(_secureStorageForTest['offline_telegram_7']!)['subject'],
+      'موضوع جديد',
+    );
+    expect(
+      _secureStorageForTest.keys.any(
+        (key) =>
+            key.startsWith('offline_telegrams_list_') ||
+            key.startsWith('offline_telegram_versions_') ||
+            key.startsWith('offline_telegram_routes_'),
+      ),
+      isFalse,
+    );
+    expect(events.single.procedure, 'telegrams.update');
+    expect(events.single.telegramId, 7);
+
+    await api.call('settings.update', mutation: true, input: {});
+    expect(
+      jsonDecode(_secureStorageForTest['offline_settings']!)['departmentName'],
+      'جديد',
+    );
+    expect(events.map((event) => event.procedure), contains('settings.update'));
+  });
+
   test(
     'read-only lists, reports, notifications, and profile work offline',
     () async {

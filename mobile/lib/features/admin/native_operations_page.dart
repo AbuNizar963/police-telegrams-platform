@@ -34,6 +34,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   List<Map<String, dynamic>> _units = [];
   String? _currentOrganizationId;
   Timer? _refreshTimer;
+  StreamSubscription<ApiMutationEvent>? _mutationSubscription;
   DateTime? _lastUpdated;
   bool _loadInFlight = false;
 
@@ -46,6 +47,11 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         ? 3
         : widget.initialTab;
     _tabs = TabController(length: 4, vsync: this, initialIndex: initialTab);
+    _mutationSubscription = widget.api.mutationEvents.listen((event) {
+      if (mounted && event.isTelegramMutation) {
+        unawaited(load(showProgress: false));
+      }
+    });
     load();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 15),
@@ -57,6 +63,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   void dispose() {
     _tabs.dispose();
     _refreshTimer?.cancel();
+    final mutationSubscription = _mutationSubscription;
+    if (mutationSubscription != null) {
+      unawaited(mutationSubscription.cancel());
+    }
     _archiveSearchController.dispose();
     super.dispose();
   }

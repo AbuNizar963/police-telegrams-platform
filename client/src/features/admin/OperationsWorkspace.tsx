@@ -119,15 +119,21 @@ export default function OperationsWorkspace() {
       >
         <header className="flex items-start justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-7 sm:py-4">
           <div className="min-w-0">
-            <h2
-              id="operations-workspace-title"
-              className="text-lg font-bold sm:text-xl"
-            >
-              متابعة العمل الميداني
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2
+                id="operations-workspace-title"
+                className="text-lg font-bold sm:text-xl"
+              >
+                متابعة العمل الميداني
+              </h2>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                تحديث مباشر
+              </span>
+            </div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
               اختر قسمًا أدناه. هذه شاشة متابعة للبرقيات والمواقع المسجلة، وليست
-              لتتبع الأشخاص.
+              لتتبع الأشخاص. يتم تحديث البيانات تلقائياً كل 15 ثانية.
             </p>
           </div>
           <Button

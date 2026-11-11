@@ -3065,7 +3065,7 @@ function TelegramDetail({
   const recordDocumentOutput =
     trpc.telegrams.recordDocumentOutput.useMutation();
   const auditDocumentOutput = async (
-    operation: "print" | "download",
+    operation: "print" | "download" | "share",
     format: "pdf" | "png"
   ) => {
     const result = await recordDocumentOutput.mutateAsync({
@@ -4576,7 +4576,7 @@ function TelegramDetail({
     setExporting("image");
 
     try {
-      const outputTimestamp = await auditDocumentOutput("download", "png");
+      const outputTimestamp = await auditDocumentOutput("share", "png");
       const blob = await imageBlob(outputTimestamp);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -4658,7 +4658,7 @@ function TelegramDetail({
       // Prepare both formats while the share menu is open. The next tap is
       // only the user's format choice, so navigator.share runs inside that
       // fresh gesture instead of after an asynchronous render.
-      const pdfTimestamp = await auditDocumentOutput("download", "pdf");
+      const pdfTimestamp = await auditDocumentOutput("share", "pdf");
       const pdfBlob = await renderOfficialDocument("pdf", pdfTimestamp);
       const pngTimestamp = await auditDocumentOutput("download", "png");
       const pngBlob = await renderOfficialDocument("png", pngTimestamp);

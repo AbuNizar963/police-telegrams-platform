@@ -4176,17 +4176,15 @@ function TelegramDetail({
     // from opening the telegram or leave the detail view behind a spinner.
     const preparePreview = async () => {
       try {
-        const documentSettings = await withPreparationTimeout(
-          loadExportSettings(),
+        const [documentSettings, exportSettings] = await withPreparationTimeout(
+          Promise.all([
+            loadExportSettings(),
+            utils.settings.get.fetch(undefined, { staleTime: 0 }),
+          ]),
           OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
           "استغرق تحميل إعدادات البرقية وقتًا أطول من المتوقع. أعد المحاولة."
         );
         if (cancelled) return;
-        const exportSettings = await withPreparationTimeout(
-          utils.settings.get.fetch(undefined, { staleTime: 0 }),
-          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-          "استغرق تحميل إعدادات شعار الجهة وقتًا أطول من المتوقع."
-        );
         const immediateLogoUrl = getTelegramPreviewLogoSource(exportSettings);
         // Paint the document with the organization-scoped source immediately.
         // The browser can display it while the stricter data-URL normalization

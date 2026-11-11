@@ -514,14 +514,16 @@ class _OfficialTelegramDocumentPageState
       final resolvedSenderOrganizationName = _value(
         telegramData['senderOrganizationName'],
         fallback: _value(
-          hierarchyById[sourceOrganizationId]?['name'],
-          fallback: hierarchyNames.isNotEmpty
+          hierarchyNames.isNotEmpty
               ? hierarchyNames.last
               : _value(
-                  settingsData['departmentName'],
+                  hierarchyById[sourceOrganizationId]?['name'],
                   fallback: _value(
-                    settingsData['unitName'],
-                    fallback: 'الجهة المرسلة',
+                    settingsData['departmentName'],
+                    fallback: _value(
+                      settingsData['unitName'],
+                      fallback: 'الجهة المرسلة',
+                    ),
                   ),
                 ),
         ),

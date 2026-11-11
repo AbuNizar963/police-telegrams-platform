@@ -4684,13 +4684,47 @@ function TelegramDetail({
       );
       const shareLetterhead = (
         documentTelegram as typeof telegram & {
-          letterhead?: { organizationName?: string | null };
+          letterhead?: { organizationId?: string | null; organizationName?: string | null };
         }
       ).letterhead;
+      const shareOrganizationById = new Map(
+        routingDirectory.map(organization => [organization.id, organization])
+      );
+      const shareSourceOrganizationId =
+        documentTelegram.organizationId?.trim() ||
+        documentTelegram.currentOrganizationId?.trim() ||
+        "";
+      const shareHierarchyNames: string[] = [];
+      let shareHierarchyId =
+        shareLetterhead?.organizationId?.trim() ||
+        shareSourceOrganizationId;
+      const shareVisitedOrganizations = new Set<string>();
+      while (
+        shareHierarchyId &&
+        !shareVisitedOrganizations.has(shareHierarchyId)
+      ) {
+        const organization = shareOrganizationById.get(shareHierarchyId);
+        if (!organization) break;
+        shareHierarchyNames.unshift(organization.name);
+        shareVisitedOrganizations.add(shareHierarchyId);
+        shareHierarchyId = organization.parentOrganizationId;
+      }
+      const historicalShareOrganizationName =
+        shareLetterhead?.organizationName?.trim();
+      if (historicalShareOrganizationName) {
+        if (shareHierarchyNames.length > 0) {
+          shareHierarchyNames[shareHierarchyNames.length - 1] =
+            historicalShareOrganizationName;
+        } else {
+          shareHierarchyNames.push(historicalShareOrganizationName);
+        }
+      }
       const shareOrganization =
         documentTelegram.senderOrganizationName?.trim() ||
-        shareLetterhead?.organizationName?.trim() ||
+        shareOrganizationById.get(shareSourceOrganizationId)?.name?.trim() ||
+        shareHierarchyNames[shareHierarchyNames.length - 1] ||
         settings?.departmentName?.trim() ||
+        settings?.unitName?.trim() ||
         "الجهة المرسلة";
       const shareText = [
         `برقية رقم : ${shareNumber}`,

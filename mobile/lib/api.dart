@@ -221,7 +221,8 @@ class PoliceApi {
 
     // Update/detail screens can reopen immediately with the canonical server
     // response for mutations that return a full telegram object.
-    if (id != null && value is Map &&
+    if (id != null &&
+        value is Map &&
         (procedure == 'telegrams.create' ||
             procedure == 'telegrams.update' ||
             procedure == 'telegrams.transition')) {
@@ -233,7 +234,9 @@ class PoliceApi {
     try {
       final values = await _storage.readAll();
       return values.keys
-          .where((key) => key.startsWith('offline_') || key == 'cached_dashboard')
+          .where(
+            (key) => key.startsWith('offline_') || key == 'cached_dashboard',
+          )
           .toSet();
     } catch (_) {
       final keys = await _readOfflineCacheKeyRegistry();

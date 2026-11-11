@@ -2507,7 +2507,18 @@ class _DashboardPageState extends State<DashboardPage>
               iconColor: Color(0xFFB8C5D6),
               selectedColor: Colors.white,
               selectedTileColor: Color(0xFF12385D),
-              subtitleTextStyle: TextStyle(color: Color(0xFFB8C5D6)),
+              titleTextStyle: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Cairo',
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              subtitleTextStyle: TextStyle(
+                color: Color(0xFFB8C5D6),
+                fontFamily: 'Cairo',
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
               visualDensity: VisualDensity(vertical: -1),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -3725,7 +3736,7 @@ class _DashboardPageState extends State<DashboardPage>
                         : context.appInfoContainer,
                     priority == 'عاجلة' ? context.appDanger : context.appInfo,
                     icon: priority == 'عاجلة'
-                        ? Icons.priority_high_rounded
+                        ? LucideIcons.siren
                         : Icons.shield_outlined,
                   ),
                 if (_showCategory && category != null && category.isNotEmpty)

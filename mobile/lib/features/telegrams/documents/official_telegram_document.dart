@@ -1866,7 +1866,10 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+  final displaySerial = _localizeDigits(
+    getTelegramDisplaySerial(telegram, numberSystem),
+    numberSystem,
+  );
   final importNotes = _value(telegram['importNotes']).trim();
   final referenceByKey = <String, Map<String, dynamic>>{};
   for (final reference in referenceLinks) {

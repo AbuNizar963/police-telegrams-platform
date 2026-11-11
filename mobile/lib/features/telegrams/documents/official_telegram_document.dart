@@ -1966,7 +1966,10 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = getTelegramDisplaySerial(telegram, numberSystem);
+  final importedSerial = telegram['originalSerial']?.toString().trim() ?? '';
+  final displaySerial = importedSerial.isNotEmpty && importedSerial != 'null'
+      ? importedSerial
+      : getTelegramDisplaySerial(telegram, numberSystem);
   final importNotes = _value(telegram['importNotes']).trim();
   final referenceByKey = <String, Map<String, dynamic>>{};
   for (final reference in referenceLinks) {

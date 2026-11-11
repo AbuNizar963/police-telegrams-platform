@@ -4711,7 +4711,7 @@ function TelegramDetail({
         if (!organization) break;
         shareHierarchyNames.unshift(organization.name);
         shareVisitedOrganizations.add(shareHierarchyId);
-        shareHierarchyId = organization.parentOrganizationId;
+        shareHierarchyId = organization.parentOrganizationId || "";
       }
       const historicalShareOrganizationName =
         shareLetterhead?.organizationName?.trim();

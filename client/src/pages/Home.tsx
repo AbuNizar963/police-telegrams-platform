@@ -808,8 +808,12 @@ export default function Home() {
         }
       }
       setComposerOpen(false);
-      utils.telegrams.list.invalidate();
-      utils.dashboard.stats.invalidate();
+      await Promise.all([
+        utils.telegrams.get.invalidate({ id: telegram.id }),
+        utils.telegrams.attachments.invalidate({ telegramId: telegram.id }),
+        utils.telegrams.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
     },
     onError: error => {
       composerAttachmentRef.current = null;
@@ -3080,7 +3084,28 @@ function TelegramDetail({
       utils.platformDocumentSettings.get.fetch(undefined, { staleTime: 0 })
     );
   const updateTelegram = trpc.telegrams.update.useMutation({
-    onSuccess: async () => {
+    onSuccess: async updated => {
+      queryClient.setQueryData<unknown>(
+        getQueryKey(trpc.telegrams.get, { id: telegram.id }),
+        (current: unknown) =>
+          current && typeof current === "object"
+            ? { ...current, ...updated }
+            : updated
+      );
+      queryClient.setQueriesData(
+        { queryKey: getQueryKey(trpc.telegrams.list) },
+        (current: unknown) => {
+          if (!Array.isArray(current)) return current;
+          return current.map(item =>
+            item &&
+            typeof item === "object" &&
+            "id" in item &&
+            (item as { id?: unknown }).id === telegram.id
+              ? { ...item, ...updated }
+              : item
+          );
+        }
+      );
       toast.success("تم حفظ تعديلات البرقية");
       setEditOpen(false);
       await Promise.all([
@@ -3196,7 +3221,30 @@ function TelegramDetail({
     reissueTelegram.mutate({ id: telegram.id, reason });
   };
   const transition = trpc.telegrams.transition.useMutation({
-    onSuccess: async () => {
+    onSuccess: async updated => {
+      if (updated && typeof updated === "object") {
+        queryClient.setQueryData<unknown>(
+          getQueryKey(trpc.telegrams.get, { id: telegram.id }),
+          (current: unknown) =>
+            current && typeof current === "object"
+              ? { ...current, ...updated }
+              : updated
+        );
+        queryClient.setQueriesData(
+          { queryKey: getQueryKey(trpc.telegrams.list) },
+          (current: unknown) => {
+            if (!Array.isArray(current)) return current;
+            return current.map(item =>
+              item &&
+              typeof item === "object" &&
+              "id" in item &&
+              (item as { id?: unknown }).id === telegram.id
+                ? { ...item, ...updated }
+                : item
+            );
+          }
+        );
+      }
       toast.success("تم تسجيل انتقال البرقية وتحديث سجل التدقيق");
       await Promise.all([
         utils.telegrams.get.invalidate({ id: telegram.id }),

@@ -4576,7 +4576,7 @@ function TelegramDetail({
     setExporting("image");
 
     try {
-      const outputTimestamp = await auditDocumentOutput("share", "png");
+      const outputTimestamp = await auditDocumentOutput("download", "png");
       const blob = await imageBlob(outputTimestamp);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -4660,7 +4660,7 @@ function TelegramDetail({
       // fresh gesture instead of after an asynchronous render.
       const pdfTimestamp = await auditDocumentOutput("share", "pdf");
       const pdfBlob = await renderOfficialDocument("pdf", pdfTimestamp);
-      const pngTimestamp = await auditDocumentOutput("download", "png");
+      const pngTimestamp = await auditDocumentOutput("share", "png");
       const pngBlob = await renderOfficialDocument("png", pngTimestamp);
 
       const pdfFile = new File(

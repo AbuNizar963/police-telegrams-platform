@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,6 +33,9 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
   List<Map<String, dynamic>> _archived = [];
   List<Map<String, dynamic>> _units = [];
   String? _currentOrganizationId;
+  Timer? _refreshTimer;
+  DateTime? _lastUpdated;
+  bool _loadInFlight = false;
 
   @override
   void initState() {
@@ -42,11 +47,16 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         : widget.initialTab;
     _tabs = TabController(length: 4, vsync: this, initialIndex: initialTab);
     load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => load(showProgress: false),
+    );
   }
 
   @override
   void dispose() {
     _tabs.dispose();
+    _refreshTimer?.cancel();
     _archiveSearchController.dispose();
     super.dispose();
   }
@@ -63,8 +73,10 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         .toList();
   }
 
-  Future<void> load() async {
-    if (mounted) {
+  Future<void> load({bool showProgress = true}) async {
+    if (_loadInFlight) return;
+    _loadInFlight = true;
+    if (mounted && showProgress) {
       setState(() {
         _loading = true;
         _error = null;
@@ -89,6 +101,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         _currentOrganizationId = context is Map
             ? context['organizationId']?.toString()
             : null;
+        _lastUpdated = DateTime.now();
       });
     } catch (exception) {
       if (mounted) {
@@ -97,7 +110,8 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         });
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && showProgress) setState(() => _loading = false);
+      _loadInFlight = false;
     }
   }
 
@@ -172,6 +186,32 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.20)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text(
+                  'مباشر',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             tooltip: 'تحديث البيانات',
             onPressed: _loading ? null : load,
@@ -213,6 +253,21 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
                         child: const Text('إعادة المحاولة'),
                       ),
                     ],
+                  ),
+                if (_lastUpdated != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'آخر تحديث: ${_lastUpdated!.hour.toString().padLeft(2, '0')}:${_lastUpdated!.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 Expanded(
                   child: RefreshIndicator(

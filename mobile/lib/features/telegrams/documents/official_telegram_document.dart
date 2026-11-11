@@ -490,8 +490,7 @@ class _OfficialTelegramDocumentPageState
           : currentOrganizationId;
       final visitedOrganizations = <String>{};
       final hierarchyNames = <String>[];
-      while (hierarchyId.isNotEmpty &&
-          visitedOrganizations.add(hierarchyId)) {
+      while (hierarchyId.isNotEmpty && visitedOrganizations.add(hierarchyId)) {
         final organization = hierarchyById[hierarchyId];
         if (organization == null) break;
         hierarchyNames.insert(0, _value(organization['name']));

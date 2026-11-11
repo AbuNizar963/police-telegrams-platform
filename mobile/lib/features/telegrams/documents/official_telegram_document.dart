@@ -717,6 +717,37 @@ class _OfficialTelegramDocumentPageState
   String get _displaySerial =>
       getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
 
+  String get _shareDescription {
+    final data = telegram ?? const <String, dynamic>{};
+    final letterhead = data['letterhead'] is Map
+        ? Map<String, dynamic>.from(data['letterhead'] as Map)
+        : const <String, dynamic>{};
+    final dateValue = data['telegramDate'] ?? data['createdAt'];
+    final dateText = dateValue == null
+        ? '—'
+        : _formatConfiguredHeaderDateTime(
+            dateValue,
+            settings ?? const <String, dynamic>{},
+          );
+    final organizationName = _value(
+      data['senderOrganizationName'],
+      fallback: _value(
+        letterhead['organizationName'],
+        fallback: _value(
+          settings?['departmentName'],
+          fallback: 'الجهة المرسلة',
+        ),
+      ),
+    ).trim();
+
+    return [
+      'برقية رقم : $_displaySerial',
+      'تاريخ : $dateText',
+      'موضوعها : ${_value(data['subject'], fallback: '—')}',
+      'الجهة : ${organizationName.isEmpty ? 'الجهة المرسلة' : organizationName}',
+    ].join('\\n');
+  }
+
   void _updateProgress(double value, String message) {
     if (!mounted) return;
     setState(() {
@@ -1039,8 +1070,8 @@ class _OfficialTelegramDocumentPageState
             mimeType: 'image/png',
           ),
         ),
-        title: 'برقية ${_value(telegram?['subject'], fallback: '')}',
-        text: _value(telegram?['subject'], fallback: ''),
+        title: 'برقية رقم $_displaySerial',
+        text: _shareDescription,
       ),
     );
   }, title: 'مشاركة صور الوثيقة');

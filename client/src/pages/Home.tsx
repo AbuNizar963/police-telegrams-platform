@@ -4684,7 +4684,10 @@ function TelegramDetail({
       );
       const shareLetterhead = (
         documentTelegram as typeof telegram & {
-          letterhead?: { organizationId?: string | null; organizationName?: string | null };
+          letterhead?: {
+            organizationId?: string | null;
+            organizationName?: string | null;
+          };
         }
       ).letterhead;
       const shareOrganizationById = new Map(

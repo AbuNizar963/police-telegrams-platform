@@ -3689,8 +3689,8 @@ function TelegramDetail({
         <path d="M16 3v4M8 3v4M3.5 10h17" />
       </svg>`,
     };
-    const displaySerial = getTelegramDisplaySerial(
-      documentTelegram,
+    const displaySerial = localizeDigits(
+      getTelegramDisplaySerial(documentTelegram, numberSystem),
       numberSystem
     );
     // The supplied URL is already resolved for this document. Do not

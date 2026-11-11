@@ -745,7 +745,7 @@ class _OfficialTelegramDocumentPageState
       'تاريخ : $dateText',
       'موضوعها : ${_value(data['subject'], fallback: '—')}',
       'الجهة : ${organizationName.isEmpty ? 'الجهة المرسلة' : organizationName}',
-    ].join('\\n');
+    ].join('\n');
   }
 
   void _updateProgress(double value, String message) {

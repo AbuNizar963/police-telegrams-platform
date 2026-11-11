@@ -4701,8 +4701,7 @@ function TelegramDetail({
         "";
       const shareHierarchyNames: string[] = [];
       let shareHierarchyId =
-        shareLetterhead?.organizationId?.trim() ||
-        shareSourceOrganizationId;
+        shareLetterhead?.organizationId?.trim() || shareSourceOrganizationId;
       const shareVisitedOrganizations = new Set<string>();
       while (
         shareHierarchyId &&

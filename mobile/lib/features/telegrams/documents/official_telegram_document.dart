@@ -245,6 +245,7 @@ class _OfficialTelegramDocumentPageState
   List<Uint8List> previewPages = <Uint8List>[];
   Map<String, dynamic>? telegram;
   Map<String, dynamic>? settings;
+  String? _senderOrganizationName;
   List<Map<String, dynamic>> versions = <Map<String, dynamic>>[];
   int? selectedVersionNumber;
   String? documentHtml;
@@ -463,6 +464,70 @@ class _OfficialTelegramDocumentPageState
                 .map((item) => Map<String, dynamic>.from(item))
                 .toList()
           : <Map<String, dynamic>>[];
+      final hierarchyById = <String, Map<String, dynamic>>{
+        for (final organization in routingDirectory)
+          _value(organization['id'], fallback: ''): organization,
+      };
+      final letterhead = telegramData['letterhead'] is Map
+          ? Map<String, dynamic>.from(telegramData['letterhead'] as Map)
+          : const <String, dynamic>{};
+      final historicalOrganizationId = _value(
+        letterhead['organizationId'],
+        fallback: '',
+      );
+      final sourceOrganizationId = _value(
+        telegramData['organizationId'],
+        fallback: '',
+      );
+      final currentOrganizationId = _value(
+        telegramData['currentOrganizationId'],
+        fallback: '',
+      );
+      var hierarchyId = historicalOrganizationId.isNotEmpty
+          ? historicalOrganizationId
+          : sourceOrganizationId.isNotEmpty
+          ? sourceOrganizationId
+          : currentOrganizationId;
+      final visitedOrganizations = <String>{};
+      final hierarchyNames = <String>[];
+      while (hierarchyId.isNotEmpty && visitedOrganizations.add(hierarchyId)) {
+        final organization = hierarchyById[hierarchyId];
+        if (organization == null) break;
+        hierarchyNames.insert(0, _value(organization['name']));
+        hierarchyId = _value(
+          organization['parentOrganizationId'],
+          fallback: '',
+        );
+      }
+      final historicalOrganizationName = _value(
+        letterhead['organizationName'],
+        fallback: '',
+      ).trim();
+      if (historicalOrganizationName.isNotEmpty) {
+        if (hierarchyNames.isNotEmpty) {
+          hierarchyNames[hierarchyNames.length - 1] =
+              historicalOrganizationName;
+        } else {
+          hierarchyNames.add(historicalOrganizationName);
+        }
+      }
+      final resolvedSenderOrganizationName = _value(
+        telegramData['senderOrganizationName'],
+        fallback: _value(
+          hierarchyNames.isNotEmpty
+              ? hierarchyNames.last
+              : _value(
+                  hierarchyById[sourceOrganizationId]?['name'],
+                  fallback: _value(
+                    settingsData['departmentName'],
+                    fallback: _value(
+                      settingsData['unitName'],
+                      fallback: 'الجهة المرسلة',
+                    ),
+                  ),
+                ),
+        ),
+      );
 
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
@@ -560,6 +625,7 @@ class _OfficialTelegramDocumentPageState
       setState(() {
         telegram = telegramData;
         settings = settingsData;
+        _senderOrganizationName = resolvedSenderOrganizationName;
         versions = versionsData;
         selectedVersionNumber = hasSelectedVersion
             ? activeVersion['versionNumber'] as int?
@@ -714,8 +780,48 @@ class _OfficialTelegramDocumentPageState
     return 'telegram-$safe';
   }
 
-  String get _displaySerial =>
-      getTelegramDisplaySerial(telegram ?? const {}, settings?['numberSystem']);
+  String get _displaySerial {
+    final data = telegram ?? const <String, dynamic>{};
+    final importedSerial = data['originalSerial']?.toString().trim() ?? '';
+    if (importedSerial.isNotEmpty && importedSerial != 'null') {
+      return importedSerial;
+    }
+    return getTelegramDisplaySerial(data, settings?['numberSystem']);
+  }
+
+  String get _shareDescription {
+    final data = telegram ?? const <String, dynamic>{};
+    final letterhead = data['letterhead'] is Map
+        ? Map<String, dynamic>.from(data['letterhead'] as Map)
+        : const <String, dynamic>{};
+    final dateValue = data['telegramDate'] ?? data['createdAt'];
+    final dateText = dateValue == null
+        ? '—'
+        : _formatConfiguredHeaderDateTime(
+            dateValue,
+            settings ?? const <String, dynamic>{},
+          );
+    final organizationName = _value(
+      _senderOrganizationName,
+      fallback: _value(
+        data['senderOrganizationName'],
+        fallback: _value(
+          letterhead['organizationName'],
+          fallback: _value(
+            settings?['departmentName'],
+            fallback: 'الجهة المرسلة',
+          ),
+        ),
+      ),
+    ).trim();
+
+    return [
+      'برقية رقم : $_displaySerial',
+      'تاريخ : $dateText',
+      'موضوعها : ${_value(data['subject'], fallback: '—')}',
+      'الجهة : ${organizationName.isEmpty ? 'الجهة المرسلة' : organizationName}',
+    ].join('\n');
+  }
 
   void _updateProgress(double value, String message) {
     if (!mounted) return;
@@ -1039,8 +1145,8 @@ class _OfficialTelegramDocumentPageState
             mimeType: 'image/png',
           ),
         ),
-        title: 'برقية ${_value(telegram?['subject'], fallback: '')}',
-        text: _value(telegram?['subject'], fallback: ''),
+        title: 'برقية رقم $_displaySerial',
+        text: _shareDescription,
       ),
     );
   }, title: 'مشاركة صور الوثيقة');
@@ -1866,10 +1972,13 @@ String buildOfficialTelegramHtml({
         : 'غير محدد',
     numberSystem,
   );
-  final displaySerial = _localizeDigits(
-    getTelegramDisplaySerial(telegram, numberSystem),
-    numberSystem,
-  );
+  final importedSerial = telegram['originalSerial']?.toString().trim() ?? '';
+  final displaySerial = importedSerial.isNotEmpty && importedSerial != 'null'
+      ? importedSerial
+      : _localizeDigits(
+          getTelegramDisplaySerial(telegram, numberSystem),
+          numberSystem,
+        );
   final importNotes = _value(telegram['importNotes']).trim();
   final referenceByKey = <String, Map<String, dynamic>>{};
   for (final reference in referenceLinks) {

@@ -297,7 +297,9 @@ export async function renderTelegramDocument(
         try {
           const pageLocators = await page.locator(".telegram-export-page").all();
           if (pageLocators.length < 2) {
-            throw new Error("Multi-page telegram layout has fewer than two pages");
+            throw new Error(
+              "Multi-page telegram layout has fewer than two pages"
+            );
           }
 
           const files: Record<string, Uint8Array> = {};
@@ -306,8 +308,12 @@ export async function renderTelegramDocument(
               type: "png",
               animations: "disabled",
             });
-            files[`telegram-page-${String(index + 1).padStart(2, "0")}.png`] =
-              withPngDpiMetadata(Buffer.from(renderedPng), deviceScaleFactor * 96);
+            files[
+              `telegram-page-${String(index + 1).padStart(2, "0")}.png`
+            ] = withPngDpiMetadata(
+              Buffer.from(renderedPng),
+              deviceScaleFactor * 96
+            );
           }
 
           const body = Buffer.from(zipSync(files, { level: 0 }));
@@ -319,7 +325,9 @@ export async function renderTelegramDocument(
             };
           }
           lastRenderError = new Error(
-            `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`
+            `PNG archive exceeded the safe response budget at ${
+              deviceScaleFactor * 96
+            } DPI`
           );
         } catch (error) {
           lastRenderError = error;

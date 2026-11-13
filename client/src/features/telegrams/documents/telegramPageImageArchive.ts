@@ -50,7 +50,5 @@ export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
   if (Object.keys(files).length < 2) {
     throw new Error("لم ينتج التصدير أكثر من صفحة واحدة.");
   }
-  return new Blob([zipSync(files, { level: 0 })], {
-    type: "application/zip",
-  });
+  return new Blob([zipSync(files, { level: 0 })], { type: "application/zip" });
 }

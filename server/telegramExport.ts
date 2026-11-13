@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
+import { zipSync } from "fflate";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
 const MAX_HTML_BYTES = 3_900_000;
@@ -289,20 +290,48 @@ export async function renderTelegramDocument(
     }
 
     if (isMultiPagePng) {
-      const page = await createReadyPage(1, true);
-      try {
-        return {
-          body: await page.pdf({
-            printBackground: true,
-            preferCSSPageSize: true,
-            tagged: true,
-          }),
-          contentType: "application/pdf",
-          fileName: "telegram-pages.pdf",
-        };
-      } finally {
-        await page.close();
+      let lastRenderError: unknown;
+      for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
+        const page = await createReadyPage(deviceScaleFactor, false);
+        try {
+          const pageLocators = await page.locator(".telegram-export-page").all();
+          if (pageLocators.length < 2) {
+            throw new Error("Multi-page telegram layout has fewer than two pages");
+          }
+
+          const files: Record<string, Uint8Array> = {};
+          for (let index = 0; index < pageLocators.length; index += 1) {
+            const renderedPng = await pageLocators[index].screenshot({
+              type: "png",
+              animations: "disabled",
+            });
+            files[`telegram-page-${String(index + 1).padStart(2, "0")}.png`] =
+              withPngDpiMetadata(Buffer.from(renderedPng), deviceScaleFactor * 96);
+          }
+
+          const body = Buffer.from(zipSync(files, { level: 0 }));
+          if (body.length <= MAX_TELEGRAM_PNG_BYTES) {
+            return {
+              body,
+              contentType: "application/zip",
+              fileName: "telegram-pages.zip",
+            };
+          }
+          lastRenderError = new Error(
+            `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`
+          );
+        } catch (error) {
+          lastRenderError = error;
+        } finally {
+          await page.close();
+        }
       }
+
+      throw new Error(
+        lastRenderError instanceof Error
+          ? lastRenderError.message
+          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`
+      );
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {

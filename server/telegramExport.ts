@@ -156,7 +156,8 @@ export function getTelegramRenderLayoutCss(printLayout: boolean): string {
           }
         `
         : `
-          .telegram-export-page {
+          .telegram-export-page,
+          .telegram-export-page.telegram-multipage {
             box-sizing: border-box !important;
             width: 210mm !important;
             height: 297mm !important;

@@ -11,6 +11,6 @@ describe("multi-page telegram PNG export", () => {
     const height = Math.ceil((297 / 25.4) * TELEGRAM_PAGE_IMAGE_DPI);
 
     expect(width).toBe(3175);
-    expect(height).toBe(4490);
+    expect(height).toBe(4491);
   });
 });

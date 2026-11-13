@@ -31,6 +31,10 @@ void main() {
     'createdAt': '2026-10-15T00:00:00.000Z',
   };
 
+  test('uses the same 384 DPI high-resolution image export target as web', () {
+    expect(officialTelegramDocumentImageExportDpi, 384.0);
+  });
+
   test('keeps A4 with one 10mm inset and no outer page margin', () {
     final html = buildOfficialTelegramHtml(
       telegram: telegram(),

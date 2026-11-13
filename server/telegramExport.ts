@@ -106,10 +106,11 @@ export function isAllowedExportResourceUrl(url: string): boolean {
   );
 }
 
+const MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN =
+  /<article\b[^>]*class=["'][^"']*\btelegram-export-page\b[^"']*\btelegram-multipage\b[^"']*["']/i;
+
 export function hasMultiPageTelegramLayout(html: string): boolean {
-  return /<article\b[^>]*class=["'][^"']*\btelegram-export-page\b[^"']*\btelegram-multipage\b[^"']*["']/i.test(
-    html
-  );
+  return MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN.test(html);
 }
 
 /** Keep the A4 page box full-size; the document's sole 10mm inset is its padding. */
@@ -155,7 +156,8 @@ export function getTelegramRenderLayoutCss(printLayout: boolean): string {
           }
         `
         : `
-          .telegram-export-page {
+          .telegram-export-page,
+          .telegram-export-page.telegram-multipage {
             box-sizing: border-box !important;
             width: 210mm !important;
             height: 297mm !important;
@@ -271,7 +273,10 @@ export async function renderTelegramDocument(
       }
     };
 
-    if (format === "pdf") {
+    // Multi-page documents must retain Chromium's paginated print layout.
+    // The client rasterizes this PDF into individual PNG pages at 384 DPI;
+    // clipping the long flowing article as a single screenshot would crop text.
+    if (format === "pdf" || isMultiPagePng) {
       const page = await createReadyPage(1, true);
       try {
         return {
@@ -281,24 +286,8 @@ export async function renderTelegramDocument(
             tagged: true,
           }),
           contentType: "application/pdf",
-          fileName: "telegram.pdf",
-        };
-      } finally {
-        await page.close();
-      }
-    }
-
-    if (isMultiPagePng) {
-      const page = await createReadyPage(1, true);
-      try {
-        return {
-          body: await page.pdf({
-            printBackground: true,
-            preferCSSPageSize: true,
-            tagged: true,
-          }),
-          contentType: "application/pdf",
-          fileName: "telegram-pages.pdf",
+          fileName:
+            format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
         };
       } finally {
         await page.close();
@@ -330,9 +319,12 @@ export async function renderTelegramDocument(
         await page.close();
       }
     }
-    throw new Error(
-      `PNG export exceeded the safe Vercel response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`
-    );
+    const errorMessage = [
+      "PNG export exceeded the safe Vercel response budget of",
+      MAX_TELEGRAM_PNG_BYTES,
+      "bytes",
+    ].join(" ");
+    throw new Error(errorMessage);
   } finally {
     await browser.close();
   }

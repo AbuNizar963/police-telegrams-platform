@@ -4626,9 +4626,10 @@ function TelegramDetail({
       const blob = await imageBlob(outputTimestamp);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+      const extension = blob.type === "application/zip" ? "zip" : "png";
 
       anchor.href = url;
-      anchor.download = `${getTelegramExportFileBaseName(telegram)}.png`;
+      anchor.download = `${getTelegramExportFileBaseName(telegram)}.${extension}`;
       anchor.click();
 
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);

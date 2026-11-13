@@ -1,7 +1,7 @@
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
-/** Match the native Flutter export rasterization density (300 DPI). */
-export const TELEGRAM_PAGE_IMAGE_DPI = 300;
+/** Match the primary Chromium PNG download pass (4x at 96 CSS DPI). */
+export const TELEGRAM_PAGE_IMAGE_DPI = 384;
 
 export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
   const [{ GlobalWorkerOptions, getDocument }, { zipSync }] = await Promise.all(

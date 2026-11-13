@@ -107,10 +107,11 @@ export function isAllowedExportResourceUrl(url: string): boolean {
   );
 }
 
+const MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN =
+  /<article\b[^>]*class=["'][^"']*\btelegram-export-page\b[^"']*\btelegram-multipage\b[^"']*["']/i;
+
 export function hasMultiPageTelegramLayout(html: string): boolean {
-  return /<article\b[^>]*class=["'][^"']*\btelegram-export-page\b[^"']*\btelegram-multipage\b[^"']*["']/i.test(
-    html
-  );
+  return MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN.test(html);
 }
 
 /** Keep the A4 page box full-size; the document's sole 10mm inset is its padding. */
@@ -295,9 +296,8 @@ export async function renderTelegramDocument(
       for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
         const page = await createReadyPage(deviceScaleFactor, false);
         try {
-          const pageLocators = await page
-            .locator(".telegram-export-page")
-            .all();
+          const pageContainer = page.locator(".telegram-export-page");
+          const pageLocators = await pageContainer.all();
           if (pageLocators.length < 2) {
             throw new Error(
               "Multi-page telegram layout has fewer than two pages"
@@ -323,11 +323,8 @@ export async function renderTelegramDocument(
             // This bounds retained PNG memory before trying the next scale.
             if (totalPngBytes > MAX_TELEGRAM_PNG_BYTES) {
               exceededBudget = true;
-              lastRenderError = new Error(
-                `PNG archive exceeded the safe response budget at ${
-                  deviceScaleFactor * 96
-                } DPI`
-              );
+              const message = `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`;
+              lastRenderError = new Error(message);
               break;
             }
 
@@ -345,11 +342,8 @@ export async function renderTelegramDocument(
                 fileName: "telegram-pages.zip",
               };
             }
-            lastRenderError = new Error(
-              `PNG archive exceeded the safe response budget at ${
-                deviceScaleFactor * 96
-              } DPI`
-            );
+            const message = `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`;
+            lastRenderError = new Error(message);
           }
         } catch (error) {
           lastRenderError = error;
@@ -358,13 +352,11 @@ export async function renderTelegramDocument(
         }
       }
 
-      throw new Error(
+      const errorMessage =
         lastRenderError instanceof Error
           ? lastRenderError.message
-          : `PNG export exceeded the safe response budget of ${
-              MAX_TELEGRAM_PNG_BYTES
-            } bytes`
-      );
+          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`;
+      throw new Error(errorMessage);
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
@@ -392,11 +384,8 @@ export async function renderTelegramDocument(
         await page.close();
       }
     }
-    throw new Error(
-      `PNG export exceeded the safe Vercel response budget of ${
-        MAX_TELEGRAM_PNG_BYTES
-      } bytes`
-    );
+    const errorMessage = `PNG export exceeded the safe Vercel response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`;
+    throw new Error(errorMessage);
   } finally {
     await browser.close();
   }

@@ -34,7 +34,7 @@ export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
             value
               ? resolve(value)
               : reject(new Error("تعذر تصدير صورة إحدى صفحات البرقية.")),
-          "image/png",
+          "image/png"
         );
       });
       files[`telegram-page-${String(pageNumber).padStart(2, "0")}.png`] =

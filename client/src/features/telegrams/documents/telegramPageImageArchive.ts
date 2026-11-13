@@ -18,7 +18,9 @@ export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
   try {
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: TELEGRAM_PAGE_IMAGE_DPI / 72 });
+      const viewport = page.getViewport({
+        scale: TELEGRAM_PAGE_IMAGE_DPI / 72,
+      });
       const canvas = window.document.createElement("canvas");
       const context = canvas.getContext("2d", { alpha: false });
       if (!context) throw new Error("تعذر تجهيز مساحة تحويل صورة الصفحة.");

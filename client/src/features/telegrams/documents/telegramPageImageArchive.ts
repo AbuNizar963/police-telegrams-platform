@@ -4,11 +4,12 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 export const TELEGRAM_PAGE_IMAGE_DPI = 384;
 
 export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
-  const [{ GlobalWorkerOptions, getDocument }, { zipSync }] =
-    await Promise.all([
-      import("pdfjs-dist"),
-      import("fflate"),
-    ]);
+  const [pdfjs, fflate] = await Promise.all([
+    import("pdfjs-dist"),
+    import("fflate"),
+  ]);
+  const { GlobalWorkerOptions, getDocument } = pdfjs;
+  const { zipSync } = fflate;
   GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const loadingTask = getDocument({
     data: new Uint8Array(await pdf.arrayBuffer()),
@@ -51,5 +52,6 @@ export async function pdfPagesToPngArchive(pdf: Blob): Promise<Blob> {
   if (Object.keys(files).length < 2) {
     throw new Error("لم ينتج التصدير أكثر من صفحة واحدة.");
   }
-  return new Blob([zipSync(files, { level: 0 })], { type: "application/zip" });
+  const archive = zipSync(files, { level: 0 });
+  return new Blob([archive], { type: "application/zip" });
 }

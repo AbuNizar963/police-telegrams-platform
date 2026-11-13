@@ -346,7 +346,7 @@ export async function renderTelegramDocument(
             lastRenderError = new Error(
               `PNG archive exceeded the safe response budget at ${
                 deviceScaleFactor * 96
-              } DPI`,
+              } DPI`
             );
           }
         } catch (error) {

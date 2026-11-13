@@ -203,7 +203,7 @@ export async function renderTelegramDocument(
     const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
     const createReadyPage = async (
       deviceScaleFactor: number,
-      printLayout: boolean
+      printLayout: boolean,
     ) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },

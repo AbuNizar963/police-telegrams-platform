@@ -298,7 +298,7 @@ export async function renderTelegramDocument(
           const pageLocators = await page.locator(".telegram-export-page").all();
           if (pageLocators.length < 2) {
             throw new Error(
-              "Multi-page telegram layout has fewer than two pages",
+              "Multi-page telegram layout has fewer than two pages"
             );
           }
 

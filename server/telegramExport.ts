@@ -203,7 +203,7 @@ export async function renderTelegramDocument(
     const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
     const createReadyPage = async (
       deviceScaleFactor: number,
-      printLayout: boolean,
+      printLayout: boolean
     ) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },
@@ -313,7 +313,7 @@ export async function renderTelegramDocument(
             });
             const pagePng = withPngDpiMetadata(
               Buffer.from(renderedPng),
-              deviceScaleFactor * 96,
+              deviceScaleFactor * 96
             );
             totalPngBytes += pagePng.length;
 
@@ -324,7 +324,7 @@ export async function renderTelegramDocument(
               lastRenderError = new Error(
                 `PNG archive exceeded the safe response budget at ${
                   deviceScaleFactor * 96
-                } DPI`,
+                } DPI`
               );
               break;
             }
@@ -359,7 +359,7 @@ export async function renderTelegramDocument(
       throw new Error(
         lastRenderError instanceof Error
           ? lastRenderError.message
-          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`,
+          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`
       );
     }
 

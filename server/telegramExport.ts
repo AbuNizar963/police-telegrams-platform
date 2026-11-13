@@ -1,7 +1,6 @@
 import type { Express, Request, Response } from "express";
 import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
-import { zipSync } from "fflate";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 
 const MAX_HTML_BYTES = 3_900_000;
@@ -274,7 +273,10 @@ export async function renderTelegramDocument(
       }
     };
 
-    if (format === "pdf") {
+    // Multi-page documents must retain Chromium's paginated print layout.
+    // The client rasterizes this PDF into individual PNG pages at 384 DPI;
+    // clipping the long flowing article as a single screenshot would crop text.
+    if (format === "pdf" || isMultiPagePng) {
       const page = await createReadyPage(1, true);
       try {
         return {
@@ -284,16 +286,14 @@ export async function renderTelegramDocument(
             tagged: true,
           }),
           contentType: "application/pdf",
-          fileName: "telegram.pdf",
+          fileName: format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
         };
       } finally {
         await page.close();
       }
     }
 
-    if (isMultiPagePng) {
-      let lastRenderError: unknown;
-      for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
+    for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
         const page = await createReadyPage(deviceScaleFactor, false);
         try {
           const pageContainer = page.locator(".telegram-export-page");

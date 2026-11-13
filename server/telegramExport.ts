@@ -303,32 +303,52 @@ export async function renderTelegramDocument(
           }
 
           const files: Record<string, Uint8Array> = {};
+          let totalPngBytes = 0;
+          let exceededBudget = false;
+
           for (let index = 0; index < pageLocators.length; index += 1) {
             const renderedPng = await pageLocators[index].screenshot({
               type: "png",
               animations: "disabled",
             });
-            files[
-              `telegram-page-${String(index + 1).padStart(2, "0")}.png`
-            ] = withPngDpiMetadata(
+            const pagePng = withPngDpiMetadata(
               Buffer.from(renderedPng),
               deviceScaleFactor * 96,
             );
+            totalPngBytes += pagePng.length;
+
+            // Stop collecting this resolution as soon as it cannot fit.
+            // This bounds retained PNG memory before trying the next scale.
+            if (totalPngBytes > MAX_TELEGRAM_PNG_BYTES) {
+              exceededBudget = true;
+              lastRenderError = new Error(
+                `PNG archive exceeded the safe response budget at ${
+                  deviceScaleFactor * 96
+                } DPI`,
+              );
+              break;
+            }
+
+            files[
+              `telegram-page-${String(index + 1).padStart(2, "0")}.png`
+            ] = pagePng;
           }
 
-          const body = Buffer.from(zipSync(files, { level: 0 }));
-          if (body.length <= MAX_TELEGRAM_PNG_BYTES) {
-            return {
-              body,
-              contentType: "application/zip",
-              fileName: "telegram-pages.zip",
-            };
+          if (!exceededBudget) {
+            const body = Buffer.from(zipSync(files, { level: 0 }));
+            if (body.length <= MAX_TELEGRAM_PNG_BYTES) {
+              return {
+                body,
+                contentType: "application/zip",
+                fileName: "telegram-pages.zip",
+              };
+            }
+            lastRenderError = new Error(
+              `PNG archive exceeded the safe response budget at ${
+                deviceScaleFactor * 96
+              } DPI`,
+            );
           }
-          lastRenderError = new Error(
-            `PNG archive exceeded the safe response budget at ${
-              deviceScaleFactor * 96
-            } DPI`,
-          );
         } catch (error) {
           lastRenderError = error;
         } finally {

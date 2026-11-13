@@ -28,7 +28,9 @@ const _documentMarginMm = 10;
 const _documentMultiPageAreaHeightMm =
     _documentPageHeightMm - _documentMarginMm;
 const _documentPreviewDpi = 150.0;
-const _documentImageExportDpi = 300.0;
+@visibleForTesting
+const officialTelegramDocumentImageExportDpi = 384.0;
+const _documentImageExportDpi = officialTelegramDocumentImageExportDpi;
 const _documentPreviewPageGap = 18.0;
 // A4 watermark mosaic; calibrated against the web PDF for visible 3mm margins.
 const _ministryWatermarkColumns = 13;

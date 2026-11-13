@@ -323,7 +323,12 @@ export async function renderTelegramDocument(
             // This bounds retained PNG memory before trying the next scale.
             if (totalPngBytes > MAX_TELEGRAM_PNG_BYTES) {
               exceededBudget = true;
-              const message = `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`;
+              const dpi = deviceScaleFactor * 96;
+              const message = [
+                "PNG archive exceeded the safe response budget at",
+                dpi,
+                "DPI",
+              ].join(" ");
               lastRenderError = new Error(message);
               break;
             }
@@ -342,7 +347,12 @@ export async function renderTelegramDocument(
                 fileName: "telegram-pages.zip",
               };
             }
-            const message = `PNG archive exceeded the safe response budget at ${deviceScaleFactor * 96} DPI`;
+            const dpi = deviceScaleFactor * 96;
+            const message = [
+              "PNG archive exceeded the safe response budget at",
+              dpi,
+              "DPI",
+            ].join(" ");
             lastRenderError = new Error(message);
           }
         } catch (error) {
@@ -355,7 +365,11 @@ export async function renderTelegramDocument(
       const errorMessage =
         lastRenderError instanceof Error
           ? lastRenderError.message
-          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`;
+          : [
+              "PNG export exceeded the safe response budget of",
+              MAX_TELEGRAM_PNG_BYTES,
+              "bytes",
+            ].join(" ");
       throw new Error(errorMessage);
     }
 
@@ -384,7 +398,11 @@ export async function renderTelegramDocument(
         await page.close();
       }
     }
-    const errorMessage = `PNG export exceeded the safe Vercel response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`;
+    const errorMessage = [
+      "PNG export exceeded the safe Vercel response budget of",
+      MAX_TELEGRAM_PNG_BYTES,
+      "bytes",
+    ].join(" ");
     throw new Error(errorMessage);
   } finally {
     await browser.close();

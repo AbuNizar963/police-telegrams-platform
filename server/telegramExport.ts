@@ -286,7 +286,8 @@ export async function renderTelegramDocument(
             tagged: true,
           }),
           contentType: "application/pdf",
-          fileName: format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
+          fileName:
+            format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
         };
       } finally {
         await page.close();

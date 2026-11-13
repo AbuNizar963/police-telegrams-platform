@@ -295,7 +295,9 @@ export async function renderTelegramDocument(
       for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
         const page = await createReadyPage(deviceScaleFactor, false);
         try {
-          const pageLocators = await page.locator(".telegram-export-page").all();
+          const pageLocators = await page
+            .locator(".telegram-export-page")
+            .all();
           if (pageLocators.length < 2) {
             throw new Error(
               "Multi-page telegram layout has fewer than two pages"
@@ -359,7 +361,9 @@ export async function renderTelegramDocument(
       throw new Error(
         lastRenderError instanceof Error
           ? lastRenderError.message
-          : `PNG export exceeded the safe response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`
+          : `PNG export exceeded the safe response budget of ${
+              MAX_TELEGRAM_PNG_BYTES
+            } bytes`
       );
     }
 
@@ -389,7 +393,9 @@ export async function renderTelegramDocument(
       }
     }
     throw new Error(
-      `PNG export exceeded the safe Vercel response budget of ${MAX_TELEGRAM_PNG_BYTES} bytes`
+      `PNG export exceeded the safe Vercel response budget of ${
+        MAX_TELEGRAM_PNG_BYTES
+      } bytes`
     );
   } finally {
     await browser.close();

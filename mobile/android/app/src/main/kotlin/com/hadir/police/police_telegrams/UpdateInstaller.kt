@@ -319,7 +319,7 @@ class UpdateInstaller(private val context: Context) {
                 val rangeStart = match.groupValues[1].toLong()
                 val rangeEnd = match.groupValues[2].toLong()
                 val rangeTotal = match.groupValues[3].toLong()
-                if (rangeStart != offset || rangeEnd < rangeStart || rangeTotal != expectedSize) {
+                if (rangeStart != offset || rangeEnd != expectedSize - 1L || rangeTotal != expectedSize) {
                     error("نطاق استكمال التنزيل لا يطابق ملف التحديث المنشور.")
                 }
             } else if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -495,7 +495,7 @@ class UpdateInstaller(private val context: Context) {
         expectedVersionCode: Long
     ): String {
         val apk = File(path).canonicalFile
-        val updateDirectory = File(context.cacheDir, UPDATE_DIRECTORY).canonicalFile
+        val updateDirectory = File(context.filesDir, UPDATE_DIRECTORY).canonicalFile
         require(apk.parentFile == updateDirectory && apk.name.endsWith(".apk", true)) {
             "مسار ملف التحديث غير صالح."
         }

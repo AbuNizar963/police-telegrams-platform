@@ -944,14 +944,8 @@ export const appRouter = router({
         return {
           organizationId: input.organizationId,
           logoUrl: `/api/storage/${encodedStoragePath}`,
-          // Small logos can travel in the authenticated tRPC response as a
-          // mobile fallback when a separate image request is blocked or
-          // mishandles cookies. Cap the source bytes to stay below Vercel's
-          // response-size limit after Base64 expansion.
-          logoDataUrl:
-            asset.body.length <= 2_500_000
-              ? `data:${mimeType};base64,${asset.body.toString("base64")}`
-              : null,
+          // Return only the authenticated same-origin binary endpoint.
+          // Never expand image bytes into Base64 inside the tRPC JSON response.
         };
       }),
 

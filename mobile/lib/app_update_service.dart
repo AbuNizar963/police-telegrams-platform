@@ -13,7 +13,9 @@ import './features/notifications/toast.dart';
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
-const _updateProgressEvents = EventChannel('com.police_telegrams/apk_installer/events');
+const _updateProgressEvents = EventChannel(
+  'com.police_telegrams/apk_installer/events',
+);
 
 class _MobileRelease {
   const _MobileRelease({
@@ -372,7 +374,9 @@ Future<void> _downloadAndInstall(
         'requestUpdateNotificationPermission',
       );
     } on PlatformException catch (error) {
-      debugPrint('Update notification permission unavailable: ${error.message}');
+      debugPrint(
+        'Update notification permission unavailable: ${error.message}',
+      );
     }
 
     subscription = _updateProgressEvents.receiveBroadcastStream().listen(
@@ -492,6 +496,7 @@ Future<void> _downloadAndInstall(
     if (progressDialogOpen) {
       await Navigator.of(context, rootNavigator: true).maybePop();
     }
+    if (!context.mounted) return;
     await _installInternalUpdate(context, release, path);
   } catch (error) {
     if (progressDialogOpen && context.mounted) {
@@ -541,7 +546,10 @@ Future<void> _installInternalUpdate(
   } on PlatformException catch (error) {
     if (context.mounted) {
       if (error.code == 'INSTALL_FAILED') {
-        _showUpdateMessage(context, error.message ?? 'تعذر تجهيز تثبيت التحديث.');
+        _showUpdateMessage(
+          context,
+          error.message ?? 'تعذر تجهيز تثبيت التحديث.',
+        );
       } else {
         _showUpdateMessage(context, error.message ?? 'تعذر بدء تثبيت التحديث.');
       }
@@ -768,9 +776,7 @@ Future<bool> _resumeInternalDownload(
 
   final status = raw['status'];
   if (status == 'starting' || status == 'downloading') {
-    await _installerChannel.invokeMethod<bool>(
-      'ensureInternalDownloadRunning',
-    );
+    await _installerChannel.invokeMethod<bool>('ensureInternalDownloadRunning');
     if (context.mounted) {
       _showUpdateMessage(
         context,
@@ -786,7 +792,10 @@ Future<bool> _resumeInternalDownload(
   if (status != 'completed') {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
-      _showUpdateMessage(context, 'لم يكتمل تنزيل التحديث السابق. يمكنك إعادة المحاولة من فحص التحديثات.');
+      _showUpdateMessage(
+        context,
+        'لم يكتمل تنزيل التحديث السابق. يمكنك إعادة المحاولة من فحص التحديثات.',
+      );
     }
     return false;
   }
@@ -797,12 +806,15 @@ Future<bool> _resumeInternalDownload(
   final url = raw['url'] as String?;
   final size = (raw['size'] as num?)?.toInt();
   final sha256 = raw['sha256'] as String?;
-  final validSha256 = sha256 != null &&
+  final validSha256 =
+      sha256 != null &&
       sha256.length == 64 &&
-      sha256.codeUnits.every((value) =>
-          (value >= 48 && value <= 57) ||
-          (value >= 65 && value <= 70) ||
-          (value >= 97 && value <= 102));
+      sha256.codeUnits.every(
+        (value) =>
+            (value >= 48 && value <= 57) ||
+            (value >= 65 && value <= 70) ||
+            (value >= 97 && value <= 102),
+      );
   if (version == null ||
       buildNumber == null ||
       path == null ||
@@ -813,7 +825,10 @@ Future<bool> _resumeInternalDownload(
       !validSha256) {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
-      _showUpdateMessage(context, 'بيانات التحديث المحفوظ غير مكتملة؛ أعد فحص التحديثات.');
+      _showUpdateMessage(
+        context,
+        'بيانات التحديث المحفوظ غير مكتملة؛ أعد فحص التحديثات.',
+      );
     }
     return false;
   }
@@ -829,7 +844,10 @@ Future<bool> _resumeInternalDownload(
   if (!await File(path).exists()) {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
-      _showUpdateMessage(context, 'ملف التحديث المكتمل غير موجود؛ أعد تنزيل التحديث.');
+      _showUpdateMessage(
+        context,
+        'ملف التحديث المكتمل غير موجود؛ أعد تنزيل التحديث.',
+      );
     }
     return false;
   }
@@ -841,7 +859,10 @@ Future<bool> _resumeInternalDownload(
       !parsedUrl.path.contains('/releases/download/')) {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
-      _showUpdateMessage(context, 'رابط التحديث المحفوظ غير صالح؛ أعد فحص التحديثات.');
+      _showUpdateMessage(
+        context,
+        'رابط التحديث المحفوظ غير صالح؛ أعد فحص التحديثات.',
+      );
     }
     return false;
   }
@@ -864,7 +885,7 @@ Future<bool> _resumeInternalDownload(
       child: AlertDialog(
         title: const Text('اكتمل تنزيل التحديث في الخلفية'),
         content: Text(
-          'التحديث ' + release.version + '+' + release.buildNumber.toString() + ' جاهز. تم حفظ الملف والتحقق منه بينما كان التطبيق مغلقًا.',
+          'التحديث ${release.version}+${release.buildNumber} جاهز. تم حفظ الملف والتحقق منه بينما كان التطبيق مغلقًا.',
         ),
         actions: [
           TextButton(

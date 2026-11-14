@@ -4,6 +4,7 @@ import {
   getTelegramRenderLayoutCss,
   isAllowedExportResourceUrl,
   isSafeExportHtml,
+  replaceOfficialLogoPlaceholder,
   withPngDpiMetadata,
   MAX_TELEGRAM_PNG_BYTES,
   PNG_RENDER_SCALE_FACTORS,
@@ -135,6 +136,35 @@ describe("telegram export HTML validation", () => {
   it("rejects an export document above the serverless payload budget", () => {
     const oversizedDocument = `${safeDocument}${"x".repeat(3_900_001)}`;
     expect(isSafeExportHtml(oversizedDocument)).toBe(false);
+  });
+});
+
+describe("official organization logo binary handoff", () => {
+  it("replaces the server-only marker with a validated image data URL", () => {
+    const logo = "data:image/png;base64,iVBORw0KGgo=";
+    const html =
+      '<img src="telegram-logo://official" alt="شعار" />' +
+      '<img src="telegram-logo://official" alt="علامة مائية" />';
+
+    expect(replaceOfficialLogoPlaceholder(html, logo)).toBe(
+      '<img src="data:image/png;base64,iVBORw0KGgo=" alt="شعار" />' +
+        '<img src="data:image/png;base64,iVBORw0KGgo=" alt="علامة مائية" />'
+    );
+  });
+
+  it("rejects missing markers and unsupported image data", () => {
+    expect(() =>
+      replaceOfficialLogoPlaceholder(
+        "<img src='/logo.png' />",
+        "data:text/html;base64,AA=="
+      )
+    ).toThrow();
+    expect(() =>
+      replaceOfficialLogoPlaceholder(
+        "<img src='/logo.png' />",
+        "data:image/png;base64,AA=="
+      )
+    ).toThrow(/placeholder is missing/);
   });
 });
 

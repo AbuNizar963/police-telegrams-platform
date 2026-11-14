@@ -17,7 +17,6 @@ import {
   getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
-import { canAccessTelegramScope } from "../../telegramAccess";
 import { isPlatformOwner } from "../../ownerAccess";
 import { validateUploadedFile } from "../../fileSecurity";
 import { getUserOrganizationMembership } from "../organizations/organization";

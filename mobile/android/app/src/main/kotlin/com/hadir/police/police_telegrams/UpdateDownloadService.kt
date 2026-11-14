@@ -2,6 +2,7 @@ package com.police_telegrams
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -19,6 +20,7 @@ import androidx.core.app.NotificationCompat
 class UpdateDownloadService : Service() {
     companion object {
         const val ACTION_START = "com.police_telegrams.action.START_UPDATE_DOWNLOAD"
+        const val ACTION_CANCEL = "com.police_telegrams.action.CANCEL_UPDATE_DOWNLOAD"
         const val EXTRA_URL = "update_url"
         const val EXTRA_SIZE = "update_size"
         const val EXTRA_SHA256 = "update_sha256"
@@ -38,8 +40,14 @@ class UpdateDownloadService : Service() {
     @Volatile
     private var downloadStarted = false
     private var downloadWakeLock: PowerManager.WakeLock? = null
+    @Volatile
+    private var updateInstaller: UpdateInstaller? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_CANCEL) {
+            cancelDownload(startId)
+            return START_NOT_STICKY
+        }
         if (downloadStarted && intent?.action == ACTION_START) {
             startForegroundCompat()
             return START_STICKY
@@ -82,24 +90,31 @@ class UpdateDownloadService : Service() {
         preferences.edit().putString(KEY_STATUS, "downloading").apply()
         try {
             acquireDownloadWakeLock()
-            UpdateInstaller(applicationContext).startDownload(
+            val installer = UpdateInstaller(applicationContext)
+            updateInstaller = installer
+            installer.startDownload(
                 downloadUrl = url,
                 expectedSize = size,
                 expectedSha256 = sha256,
                 expectedVersionName = version,
                 expectedVersionCode = build
             ) { success, apkPath ->
-                preferences.edit()
-                    .putString(KEY_STATUS, if (success) "completed" else "failed")
-                    .putString("apk_path", apkPath)
-                    .apply()
+                if (preferences.getString(KEY_STATUS, null) != "cancelled") {
+                    preferences.edit()
+                        .putString(KEY_STATUS, if (success) "completed" else "failed")
+                        .putString("apk_path", apkPath)
+                        .apply()
+                }
                 downloadStarted = false
+                updateInstaller = null
                 releaseDownloadWakeLock()
                 stopForeground(false)
                 stopSelf()
             }
         } catch (failure: Exception) {
-            preferences.edit().putString(KEY_STATUS, "failed").apply()
+            if (preferences.getString(KEY_STATUS, null) != "cancelled") {
+                preferences.edit().putString(KEY_STATUS, "failed").apply()
+            }
             showFailureNotification(
                 failure.message ?: "تعذر بدء تنزيل التحديث. افتح التطبيق وحاول مجددًا."
             )
@@ -109,6 +124,19 @@ class UpdateDownloadService : Service() {
             stopSelf()
         }
         return START_STICKY
+    }
+
+    private fun cancelDownload(startId: Int) {
+        val preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        preferences.edit().putString(KEY_STATUS, "cancelled").apply()
+        updateInstaller?.cancelDownload()
+        downloadStarted = false
+        updateInstaller = null
+        releaseDownloadWakeLock()
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(UpdateInstaller.NOTIFICATION_ID)
+        stopForeground(true)
+        stopSelf(startId)
     }
 
     private fun acquireDownloadWakeLock() {
@@ -171,6 +199,15 @@ class UpdateDownloadService : Service() {
             )
         }
 
+        val cancelIntent = Intent(this, UpdateDownloadService::class.java).apply {
+            action = ACTION_CANCEL
+        }
+        val cancelPendingIntent = PendingIntent.getService(
+            this,
+            UpdateInstaller.NOTIFICATION_ID + 1,
+            cancelIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = NotificationCompat.Builder(
             this,
             UpdateInstaller.NOTIFICATION_CHANNEL_ID
@@ -182,6 +219,11 @@ class UpdateDownloadService : Service() {
             .setOnlyAlertOnce(true)
             .setProgress(100, 0, false)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "إلغاء",
+                cancelPendingIntent
+            )
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

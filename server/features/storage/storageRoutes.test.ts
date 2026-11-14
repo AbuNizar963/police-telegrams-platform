@@ -38,6 +38,7 @@ vi.mock("../organizations/organization", async importOriginal => {
     await importOriginal<typeof import("../organizations/organization")>();
   return {
     ...actual,
+    getOrganizationByIdIncludingInactive,
     getUserOrganizationMembership,
   };
 });
@@ -56,7 +57,6 @@ vi.mock("../../db", async importOriginal => {
   const actual = await importOriginal<typeof import("../../db")>();
   return {
     ...actual,
-    getOrganizationByIdIncludingInactive,
     getOrganizationSettings,
     isDepartmentLogoExclusiveToOrganization,
     getTelegramAttachmentByStorageKey,

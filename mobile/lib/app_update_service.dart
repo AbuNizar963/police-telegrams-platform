@@ -691,10 +691,7 @@ Future<bool> _resumeInternalDownload(
   if (status != 'completed') {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
-      _showUpdateMessage(
-        context,
-        'لم يكتمل تنزيل التحديث السابق. يمكنك إعادة المحاولة من فحص التحديثات.',
-      );
+      _showUpdateMessage(context, 'لم يكتمل تنزيل التحديث السابق. يمكنك إعادة المحاولة من فحص التحديثات.');
     }
     return false;
   }
@@ -705,126 +702,19 @@ Future<bool> _resumeInternalDownload(
   final url = raw['url'] as String?;
   final size = (raw['size'] as num?)?.toInt();
   final sha256 = raw['sha256'] as String?;
+  final validSha256 = sha256 != null &&
+      sha256.length == 64 &&
+      sha256.codeUnits.every((value) =>
+          (value >= 48 && value <= 57) ||
+          (value >= 65 && value <= 70) ||
+          (value >= 97 && value <= 102));
   if (version == null ||
       buildNumber == null ||
       path == null ||
       url == null ||
       size == null ||
-      sha256 == null ||
       size <= 0 ||
-      !RegExp(r'^[a-fA-F0-9]{64}  BuildContext context,
-  PackageInfo packageInfo,
-) async {
-  final raw = await _installerChannel.invokeMapMethod<String, dynamic>(
-    'getPendingUpdate',
-  );
-  if (raw == null) return false;
-
-  late final _PendingMobileUpdate pending;
-  try {
-    pending = _PendingMobileUpdate.fromMap(raw);
-  } on FormatException catch (error) {
-    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
-    if (context.mounted) {
-      _showUpdateMessage(context, error.message);
-    }
-    return false;
-  }
-
-  final installedVersion = _compareVersion(
-    packageInfo.version,
-    pending.version,
-  );
-  final installedBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
-  if (installedVersion > 0 ||
-      (installedVersion == 0 && installedBuild >= pending.buildNumber)) {
-    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
-    return false;
-  }
-
-  final status = await _installerChannel.invokeMapMethod<String, dynamic>(
-    'queryBackgroundDownload',
-    {'id': pending.id},
-  );
-  final state = status?['status'];
-  if (state == null || state == 'not_found' || state == 'failed') {
-    await _installerChannel.invokeMethod<void>('clearPendingUpdate');
-    if (context.mounted) {
-      _showUpdateMessage(
-        context,
-        'تعذر استعادة تنزيل التحديث السابق. يمكنك التحقق من التحديثات والمحاولة مجددًا.',
-      );
-    }
-    return false;
-  }
-
-  if (!context.mounted) return true;
-  final downloaded = state == 'successful';
-  final shouldResume = await showDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    builder: (dialogContext) => Directionality(
-      textDirection: TextDirection.rtl,
-      child: AlertDialog(
-        title: Text(downloaded ? 'التحديث جاهز للتثبيت' : 'تنزيل تحديث محفوظ'),
-        content: Text(
-          downloaded
-              ? 'عُثر على ملف التحديث ${pending.version}+${pending.buildNumber} الذي اكتمل تنزيله سابقًا. سيُتحقق من حجمه وبصمته قبل فتح مُثبّت Android.'
-              : 'عُثر على تنزيل التحديث ${pending.version}+${pending.buildNumber} (${_downloadStateLabel(state)}). يمكنك متابعة التنزيل أو تركه يعمل في الخلفية والعودة لاحقًا.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('لاحقًا'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: Icon(downloaded ? Icons.system_update_alt : Icons.download),
-            label: Text(downloaded ? 'التحقق والتثبيت' : 'متابعة التنزيل'),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  if (shouldResume == true && context.mounted) {
-    await _watchBackgroundDownload(
-      context,
-      downloadId: pending.id,
-      expectedSize: pending.expectedSize,
-      expectedSha256: pending.expectedSha256,
-    );
-  }
-  return true;
-}
-
-String _downloadStateLabel(dynamic state) {
-  switch (state) {
-    case 'running':
-      return 'قيد التنزيل';
-    case 'pending':
-      return 'بانتظار بدء التنزيل';
-    case 'paused':
-      return 'متوقف مؤقتًا بانتظار الشبكة';
-    default:
-      return 'قيد المعالجة';
-  }
-}
-
-int _compareVersion(String latest, String current) {
-  List<int> parse(String value) =>
-      value.split('.').map((part) => int.tryParse(part) ?? 0).toList();
-  final a = parse(latest);
-  final b = parse(current);
-  final componentCount = a.length > b.length ? a.length : b.length;
-  for (var index = 0; index < componentCount; index++) {
-    final left = index < a.length ? a[index] : 0;
-    final right = index < b.length ? b[index] : 0;
-    if (left != right) return left.compareTo(right);
-  }
-  return 0;
-}
-).hasMatch(sha256)) {
+      !validSha256) {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {
       _showUpdateMessage(context, 'بيانات التحديث المحفوظ غير مكتملة؛ أعد فحص التحديثات.');
@@ -878,7 +768,7 @@ int _compareVersion(String latest, String current) {
       child: AlertDialog(
         title: const Text('اكتمل تنزيل التحديث في الخلفية'),
         content: Text(
-          'التحديث ${release.version}+${release.buildNumber} جاهز. تم حفظ الملف والتحقق منه بينما كان التطبيق مغلقًا.',
+          'التحديث ' + release.version + '+' + release.buildNumber.toString() + ' جاهز. تم حفظ الملف والتحقق منه بينما كان التطبيق مغلقًا.',
         ),
         actions: [
           TextButton(
@@ -900,6 +790,7 @@ int _compareVersion(String latest, String current) {
   }
   return true;
 }
+
 Future<bool> _resumePendingUpdate(
   BuildContext context,
   PackageInfo packageInfo,

@@ -376,21 +376,7 @@ Future<void> _downloadAndInstall(
         if (event is! Map) return;
         final data = Map<String, dynamic>.from(event);
         final state = data['status'];
-        if (state == 'downloading') {
-          final percent = (data['percent'] as num?)?.toInt() ?? 0;
-          final received = (data['downloadedBytes'] as num?)?.toInt() ?? 0;
-          final total = (data['totalBytes'] as num?)?.toInt() ?? release.apkSize;
-          unawaited(
-            _installerChannel.invokeMethod<void>('updateDownloadNotification', {
-              'progress': percent.clamp(0, 100).toInt(),
-              'received': received,
-              'total': total,
-            }),
-          );
-        } else if (state == 'completed' && !completed.isCompleted) {
-          unawaited(
-            _installerChannel.invokeMethod<void>('completeUpdateNotification'),
-          );
+        if (state == 'completed' && !completed.isCompleted) {
           completed.complete(data);
         }
       },
@@ -429,7 +415,6 @@ Future<void> _downloadAndInstall(
     if (!context.mounted) return;
     await _installInternalUpdate(context, release, path);
   } catch (error) {
-    unawaited(_installerChannel.invokeMethod<void>('failUpdateNotification'));
     if (context.mounted) {
       Toast.dismiss();
       _showUpdateMessage(context, _updateErrorMessage(error));

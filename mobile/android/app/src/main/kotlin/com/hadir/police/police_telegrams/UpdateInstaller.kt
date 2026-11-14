@@ -31,7 +31,6 @@ class UpdateInstaller(private val context: Context) {
         const val INSTALL_PERMISSION_REQUIRED = "INSTALL_PERMISSION_REQUIRED"
         private const val INSTALL_REQUEST_CODE = 7412
         private const val UPDATE_DIRECTORY = "updates"
-        private const val NOTIFICATION_CHANNEL_ID = "app_update_progress"
         const val NOTIFICATION_CHANNEL_ID = "app_update_progress"
         const val NOTIFICATION_ID = 4107
         @Volatile private var sharedEventSink: EventChannel.EventSink? = null

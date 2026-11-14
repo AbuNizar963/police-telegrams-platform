@@ -156,4 +156,38 @@ void main() {
       'هناك برقية واردة برقم: 00072.',
     );
   });
+
+  test('reports whether the device token was registered successfully', () async {
+    final registration = OrganizationPushTokenRegistration();
+
+    final registered = await registration.ensureRegistered(
+      organizationId: 'organization-a',
+      notificationsEnabled: () async => true,
+      currentToken: () async => 'device-token',
+      registerToken: (token) async => token == 'device-token',
+    );
+
+    expect(registered, isTrue);
+    expect(registration.registeredOrganizationId, 'organization-a');
+  });
+
+  test('does not report success when notification permission is disabled', () async {
+    final registration = OrganizationPushTokenRegistration();
+    var tokenRequested = false;
+
+    final registered = await registration.ensureRegistered(
+      organizationId: 'organization-a',
+      notificationsEnabled: () async => false,
+      currentToken: () async {
+        tokenRequested = true;
+        return 'device-token';
+      },
+      registerToken: (_) async => true,
+    );
+
+    expect(registered, isFalse);
+    expect(tokenRequested, isFalse);
+    expect(registration.registeredOrganizationId, isNull);
+  });
+
 }

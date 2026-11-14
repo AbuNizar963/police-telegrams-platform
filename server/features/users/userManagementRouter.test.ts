@@ -4,19 +4,26 @@ import type { TrpcContext } from "../../_core/context";
 const mocks = vi.hoisted(() => ({
   usersInsert: vi.fn(),
   userDuplicateLookup: vi.fn(),
+  userLookup: vi.fn(),
+  usersUpdate: vi.fn(),
   organizationLookup: vi.fn(),
   addOrganizationMembership: vi.fn(),
   hashPassword: vi.fn(),
+  verifyPassword: vi.fn(),
+  getUserById: vi.fn(),
+  purgeInactiveUserSafely: vi.fn(),
   writeAuditLog: vi.fn(),
 }));
 
 vi.mock("../../_core/auth", () => ({
   hashPassword: mocks.hashPassword,
+  verifyPassword: mocks.verifyPassword,
 }));
 vi.mock("../organizations/organization", () => ({
   addOrganizationMembership: mocks.addOrganizationMembership,
 }));
 vi.mock("../../db", () => ({
+  getUserById: mocks.getUserById,
   writeAuditLog: mocks.writeAuditLog,
 }));
 vi.mock("../../_core/supabase", () => ({
@@ -32,8 +39,10 @@ vi.mock("../../_core/supabase", () => ({
       return {
         select: () => ({
           ilike: () => ({ maybeSingle: mocks.userDuplicateLookup }),
+          eq: () => ({ maybeSingle: mocks.userLookup }),
         }),
         insert: mocks.usersInsert,
+        update: () => ({ eq: mocks.usersUpdate }),
       };
     },
   }),
@@ -68,6 +77,14 @@ describe("user management organization assignment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.userDuplicateLookup.mockResolvedValue({ data: null, error: null });
+    mocks.userLookup.mockResolvedValue({ data: null, error: null });
+    mocks.usersUpdate.mockResolvedValue({ error: null });
+    mocks.verifyPassword.mockResolvedValue(true);
+    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.purgeInactiveUserSafely.mockResolvedValue({
+      data: { deleted: true, userId: 25 },
+      error: null,
+    });
     mocks.organizationLookup.mockResolvedValue({
       data: { id: organizationId, name: "قسم الاختبار", isActive: true },
       error: null,
@@ -188,5 +205,69 @@ describe("user management organization assignment", () => {
         role: "reviewer",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("user activation lifecycle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.verifyPassword.mockResolvedValue(true);
+    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.usersUpdate.mockResolvedValue({ error: null });
+  });
+
+  it("marks a disabled account inactive and revokes its login credentials", async () => {
+    mocks.userLookup.mockResolvedValue({
+      data: {
+        id: 25,
+        role: "user",
+        username: "officer25",
+        organizationId: null,
+      },
+      error: null,
+    });
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.disable({ id: 25, confirmPassword: "owner-password" })
+    ).resolves.toMatchObject({ success: true });
+
+    expect(mocks.usersUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loginMethod: "disabled",
+        isActive: false,
+        password_hash: null,
+      })
+    );
+  });
+
+  it("reactivates a disabled account by restoring the active flag", async () => {
+    mocks.userLookup.mockResolvedValue({
+      data: {
+        id: 25,
+        role: "user",
+        username: "officer25",
+        loginMethod: "disabled",
+        organizationId: null,
+      },
+      error: null,
+    });
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.enable({
+        id: 25,
+        password: "A-new-secure-password-123",
+        confirmPassword: "owner-password",
+      })
+    ).resolves.toMatchObject({ success: true });
+
+    expect(mocks.usersUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loginMethod: "password",
+        isActive: true,
+        mustChangePassword: true,
+      })
+    );
   });
 });

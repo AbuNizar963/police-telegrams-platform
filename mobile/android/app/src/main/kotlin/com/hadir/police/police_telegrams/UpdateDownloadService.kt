@@ -47,7 +47,13 @@ class UpdateDownloadService : Service() {
                 .putString(KEY_VERSION, intent.getStringExtra(EXTRA_VERSION))
                 .putLong(KEY_BUILD, intent.getLongExtra(EXTRA_BUILD, 0L))
                 .putString(KEY_STATUS, "starting")
-                .apply()
+                .commit()
+        }
+
+        val savedStatus = preferences.getString(KEY_STATUS, null)
+        if (intent == null && (savedStatus == "completed" || savedStatus == "failed")) {
+            stopSelf(startId)
+            return START_NOT_STICKY
         }
 
         val url = preferences.getString(KEY_URL, null)

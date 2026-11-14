@@ -549,9 +549,14 @@ class _AdvancedCreateTelegramSheetState
                             ],
                             const SizedBox(height: 14),
                             _fieldLabel('درجة السرية'),
-                            _choiceGrid(telegramClassificationOptions, _classification, (v) {
-                              setState(() => _classification = v);
-                            }, columns: 2),
+                            _choiceGrid(
+                              telegramClassificationOptions,
+                              _classification,
+                              (v) {
+                                setState(() => _classification = v);
+                              },
+                              columns: 2,
+                            ),
                             const SizedBox(height: 14),
                             _fieldLabel('درجة الأسبقية'),
                             _choiceGrid(_priorities, _priority, (v) {

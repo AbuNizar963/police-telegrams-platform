@@ -206,7 +206,12 @@ class UpdateDownloadService : Service() {
             this,
             UpdateInstaller.NOTIFICATION_ID + 1,
             cancelIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    0
+                }
         )
         val notification = NotificationCompat.Builder(
             this,

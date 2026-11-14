@@ -4418,14 +4418,20 @@ function TelegramDetail({
     );
     reportExportProgress(25, "اكتملت قراءة إعدادات الجهة والوثيقة");
 
-    const logoDataUrl = await withPreparationTimeout(
-      resolveTelegramLogoDataUrl(exportSettings),
+    const logoSource = getTelegramPreviewLogoSource(exportSettings);
+    const usesProtectedStorageLogo = Boolean(
+      logoSource?.startsWith("/api/storage/")
+    );
+    const logoForDocument = await withPreparationTimeout(
+      usesProtectedStorageLogo
+        ? loadOfficialDocumentLogoObjectUrl(logoSource)
+        : resolveTelegramLogoDataUrl(exportSettings),
       OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
       "استغرق تجهيز شعار الجهة وقتًا أطول من المتوقع. تحقق من الاتصال ثم أعد المحاولة."
     );
     reportExportProgress(40, "تم تحميل شعار الجهة المعتمد");
 
-    if (!logoDataUrl) {
+    if (!logoForDocument) {
       throw new Error(
         "لا يمكن تصدير صورة البرقية دون شعار الجهة المعتمد. تحقق من إعدادات الشعار ثم أعد المحاولة."
       );
@@ -4433,7 +4439,7 @@ function TelegramDetail({
 
     const wrapper = createExportPaper(
       documentSettings,
-      logoDataUrl,
+      logoForDocument,
       outputTimestamp
     );
     const paper = wrapper.querySelector<HTMLElement>(".telegram-export-page");
@@ -4524,15 +4530,33 @@ function TelegramDetail({
     }
     reportExportProgress(82, "اكتمل تضمين الخطوط العربية");
 
+    const exportWrapper = wrapper.cloneNode(true) as HTMLDivElement;
+    if (usesProtectedStorageLogo) {
+      let replacedLogoImages = 0;
+      for (const image of exportWrapper.querySelectorAll<HTMLImageElement>(
+        "img"
+      )) {
+        if (image.getAttribute("src") === logoForDocument) {
+          image.setAttribute("src", "telegram-logo://official");
+          replacedLogoImages += 1;
+        }
+      }
+      if (replacedLogoImages === 0) {
+        throw new Error("تعذر تجهيز صورة الشعار الثنائية لمحرك التصدير");
+      }
+    }
+
     const html = `<!doctype html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <base href="${window.location.origin}/" />
   </head>
-  <body>${wrapper.innerHTML}</body>
+  <body>${exportWrapper.innerHTML}</body>
 </html>`;
-    const requestBody = JSON.stringify({ format, html });
+    const organizationId =
+      resolveTelegramExportOrganizationId(exportSettings);
+    const requestBody = JSON.stringify({ format, html, organizationId });
     const requestBytes = new TextEncoder().encode(requestBody).byteLength;
     if (requestBytes > 3_900_000) {
       throw new Error(

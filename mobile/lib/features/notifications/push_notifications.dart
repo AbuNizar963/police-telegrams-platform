@@ -214,7 +214,7 @@ class PushNotificationService {
 
     final data = message.data;
     final urgent = _isUrgentTelegram(data);
-    final title = message.notification?.title ?? _fallbackTitle(data, urgent);
+    final title = message.notification?.title ?? _fallbackTitle(data);
     final body = message.notification?.body ?? _fallbackBody(data);
 
     try {
@@ -240,7 +240,7 @@ class PushNotificationService {
     return priority == 'urgent' || category == 'emergency';
   }
 
-  String _fallbackTitle(Map<String, dynamic> data, bool urgent) =>
+  String _fallbackTitle(Map<String, dynamic> data) =>
       telegramPushNotificationTitle(data);
 
   String _fallbackBody(Map<String, dynamic> data) =>

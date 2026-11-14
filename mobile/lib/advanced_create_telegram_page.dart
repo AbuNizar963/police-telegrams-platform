@@ -44,8 +44,8 @@ class _AdvancedCreateTelegramSheetState
   PlatformFile? _attachment;
 
   static const _classifications = <String, String>{
-    'normal': 'عادية',
     'secret': 'سري',
+    'normal': 'عادية',
   };
   static const _priorities = <String, String>{
     'urgent': 'عاجلة',

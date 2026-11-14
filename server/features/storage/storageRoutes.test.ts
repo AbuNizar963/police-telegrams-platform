@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getAuthenticatedUserFromRequest,
+  getOrganizationByIdIncludingInactive,
+  storagePutDepartmentLogo,
   storageDownload,
   storageGetSignedUrl,
   getUserOrganizationMembership,
@@ -15,6 +17,8 @@ const {
   canAccessTelegramScope,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
+  getOrganizationByIdIncludingInactive: vi.fn(),
+  storagePutDepartmentLogo: vi.fn(),
   storageDownload: vi.fn(),
   storageGetSignedUrl: vi.fn(),
   getUserOrganizationMembership: vi.fn(),
@@ -45,12 +49,14 @@ vi.mock("./storage", async () => {
     storageDownload,
     storageGetSignedUrl,
     storageCreateSignedUrl,
+    storagePutDepartmentLogo,
   };
 });
 vi.mock("../../db", async importOriginal => {
   const actual = await importOriginal<typeof import("../../db")>();
   return {
     ...actual,
+    getOrganizationByIdIncludingInactive,
     getOrganizationSettings,
     isDepartmentLogoExclusiveToOrganization,
     getTelegramAttachmentByStorageKey,
@@ -67,7 +73,9 @@ type FakeResponse = {
   status: ReturnType<typeof vi.fn>;
   send: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
   redirect: ReturnType<typeof vi.fn>;
+  locals: Record<string, unknown>;
 };
 
 type StorageRouteHandler = (req: any, res: FakeResponse) => Promise<void>;
@@ -78,6 +86,7 @@ function createRouteHarness() {
     get: vi.fn((path: string, routeHandler: StorageRouteHandler) => {
       handlers.set(path, routeHandler);
     }),
+    put: vi.fn(),
   };
   registerStorageRoutes(app as any);
   const handler = handlers.get("/api/storage/*key");
@@ -92,12 +101,114 @@ function createRouteHarness() {
     status: vi.fn().mockReturnThis(),
     send: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
     redirect: vi.fn().mockReturnThis(),
+    locals: {},
   };
 
   return { handler, historicalLogoHandler, res };
 }
 
+function createDepartmentLogoUploadHarness() {
+  const routes: Array<(...args: any[]) => any> = [];
+  const app = {
+    get: vi.fn(),
+    put: vi.fn((path: string, ...handlers: Array<(...args: any[]) => any>) => {
+      if (path === "/api/storage/department-logo") routes.push(...handlers);
+    }),
+  };
+  registerStorageRoutes(app as any);
+  if (routes.length !== 3) throw new Error("Department logo upload route was not registered");
+  const res: FakeResponse = {
+    status: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    redirect: vi.fn().mockReturnThis(),
+    locals: {},
+  };
+  return { authorize: routes[0], upload: routes[2], res };
+}
+
+const testOrganizationId = "550e8400-e29b-41d4-a716-446655440000";
+const validPngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+describe("binary department logo upload", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAuthenticatedUserFromRequest.mockResolvedValue({ id: 7, role: "user", authUserId: "user-7" });
+    getOrganizationByIdIncludingInactive.mockResolvedValue({ id: testOrganizationId });
+    getUserOrganizationMembership.mockResolvedValue({ organizationId: testOrganizationId, isActive: true, role: "organization_admin" });
+    isPlatformOwner.mockReturnValue(false);
+    storagePutDepartmentLogo.mockResolvedValue({
+      key: "department/logos/" + testOrganizationId + "/logo.png",
+      url: "/api/storage/department/logos/" + testOrganizationId + "/logo.png",
+    });
+  });
+
+  function requestHeaders(organizationId = testOrganizationId) {
+    const headers: Record<string, string> = {
+      "x-organization-id": organizationId,
+      "x-file-name": encodeURIComponent("badge.png"),
+      "content-type": "image/png",
+    };
+    return { get: (name: string) => headers[name.toLowerCase()] ?? undefined, body: validPngBytes };
+  }
+
+  it("authorizes and stores validated image bytes without Base64 transport", async () => {
+    const { authorize, upload, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
+    await authorize(requestHeaders(), res, next);
+    expect(next).toHaveBeenCalledOnce();
+    await upload(requestHeaders(), res);
+    expect(storagePutDepartmentLogo).toHaveBeenCalledWith(testOrganizationId, "badge.png", validPngBytes, "image/png");
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      key: "department/logos/" + testOrganizationId + "/logo.png",
+      url: "/api/storage/department/logos/" + testOrganizationId + "/logo.png",
+    });
+  });
+
+  it("rejects unauthenticated requests before reading the binary body", async () => {
+    getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
+    const { authorize, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
+    await authorize(requestHeaders(), res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
+
+  it("rejects uploads targeting another organization", async () => {
+    const { authorize, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
+    await authorize(requestHeaders("00000000-0000-4000-8000-000000000099"), res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body whose bytes do not match its declared image type", async () => {
+    const { authorize, upload, res } = createDepartmentLogoUploadHarness();
+    await authorize(requestHeaders(), res, vi.fn());
+    await upload({ body: Buffer.from("not a PNG") }, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported image types before parsing the body", async () => {
+    const { authorize, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
+    const request = { get: (name: string) => ({
+      "x-organization-id": testOrganizationId,
+      "x-file-name": encodeURIComponent("badge.webp"),
+      "content-type": "image/webp",
+    })[name.toLowerCase()] };
+    await authorize(request, res, next);
+    expect(res.status).toHaveBeenCalledWith(415);
+    expect(next).not.toHaveBeenCalled();
+  });
+});
 describe("storage key authorization", () => {
   it("allows an officer to access only their own attachment prefix", () => {
     const user = { id: 7, role: "user" as const };

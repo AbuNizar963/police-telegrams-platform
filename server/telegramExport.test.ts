@@ -133,8 +133,8 @@ describe("telegram export HTML validation", () => {
     expect(isSafeExportHtml("")).toBe(false);
   });
 
-  it("rejects an export document above the serverless payload budget", () => {
-    const oversizedDocument = `${safeDocument}${"x".repeat(3_900_001)}`;
+  it("rejects an internally expanded export document above the renderer budget", () => {
+    const oversizedDocument = `${safeDocument}${"x".repeat(7_500_001)}`;
     expect(isSafeExportHtml(oversizedDocument)).toBe(false);
   });
 });

@@ -157,7 +157,9 @@ void main() {
     );
   });
 
-  test('reports whether the device token was registered successfully', () async {
+  test(
+    'reports whether the device token was registered successfully',
+    () async {
     final registration = OrganizationPushTokenRegistration();
 
     final registered = await registration.ensureRegistered(
@@ -171,7 +173,9 @@ void main() {
     expect(registration.registeredOrganizationId, 'organization-a');
   });
 
-  test('does not report success when notification permission is disabled', () async {
+  test(
+    'does not report success when notification permission is disabled',
+    () async {
     final registration = OrganizationPushTokenRegistration();
     var tokenRequested = false;
 
@@ -189,5 +193,4 @@ void main() {
     expect(tokenRequested, isFalse);
     expect(registration.registeredOrganizationId, isNull);
   });
-
 }

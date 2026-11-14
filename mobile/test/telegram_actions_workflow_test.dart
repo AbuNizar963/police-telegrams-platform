@@ -57,10 +57,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: OfficialTelegramDocumentPage(
-          api: _WorkflowApi(),
-          telegramId: 17,
-        ),
+        home: OfficialTelegramDocumentPage(api: _WorkflowApi(), telegramId: 17),
       ),
     );
     await tester.pump();

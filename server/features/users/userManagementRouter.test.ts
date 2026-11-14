@@ -42,7 +42,10 @@ vi.mock("../../_core/supabase", () => ({
           eq: () => ({ maybeSingle: mocks.userLookup }),
         }),
         insert: mocks.usersInsert,
-        update: () => ({ eq: mocks.usersUpdate }),
+        update: (values: Record<string, unknown>) => {
+          mocks.usersUpdate(values);
+          return { eq: () => Promise.resolve({ error: null }) };
+        },
       };
     },
   }),
@@ -217,6 +220,7 @@ describe("user activation lifecycle", () => {
     mocks.getUserById.mockResolvedValue({
       passwordHash: "hashed-owner-password",
     });
+    mocks.hashPassword.mockResolvedValue("hashed-new-password");
     mocks.usersUpdate.mockResolvedValue({ error: null });
   });
 

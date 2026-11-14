@@ -28,38 +28,46 @@ class OrganizationPushTokenRegistration {
     _pendingOrganizationId = null;
   }
 
-  Future<void> ensureRegistered({
+  Future<bool> ensureRegistered({
     required String? organizationId,
     required Future<bool> Function() notificationsEnabled,
     required Future<String?> Function() currentToken,
     required Future<bool> Function(String token) registerToken,
   }) async {
     final requested = organizationId?.trim();
-    if (requested == null || requested.isEmpty) return;
+    if (requested == null || requested.isEmpty) return false;
     if (_syncInProgress) {
       _pendingOrganizationId = requested;
-      return;
+      return false;
     }
-    if (requested == _registeredOrganizationId) return;
+    if (requested == _registeredOrganizationId) return true;
 
     _syncInProgress = true;
     String? target = requested;
+    var requestedOrganizationRegistered = false;
     try {
       while (target != null && target.isNotEmpty) {
         if (target == _registeredOrganizationId) {
+          if (target == requested) {
+            requestedOrganizationRegistered = true;
+          }
           target = _pendingOrganizationId;
           _pendingOrganizationId = null;
           continue;
         }
-        if (!await notificationsEnabled()) return;
+        if (!await notificationsEnabled()) return false;
         final token = await currentToken();
-        if (token == null || token.trim().isEmpty) return;
-        if (!await registerToken(token)) return;
+        if (token == null || token.trim().isEmpty) return false;
+        if (!await registerToken(token)) return false;
 
         _registeredOrganizationId = target;
+        if (target == requested) {
+          requestedOrganizationRegistered = true;
+        }
         target = _pendingOrganizationId;
         _pendingOrganizationId = null;
       }
+      return requestedOrganizationRegistered;
     } finally {
       _syncInProgress = false;
       _pendingOrganizationId = null;

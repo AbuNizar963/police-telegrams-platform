@@ -32,6 +32,17 @@ function getShortTelegramNumber(serialCode: string): string {
   return lastNumericPart || serialCode;
 }
 
+export function getTelegramNotificationBody(
+  serialCode: string,
+  direction: TelegramNotificationDirection
+): string {
+  const shortNumber = getShortTelegramNumber(serialCode.trim());
+  const directionLabel = direction === "incoming" ? "واردة" : "صادرة";
+  return shortNumber
+    ? `هناك برقية ${directionLabel} برقم: ${shortNumber}.`
+    : `هناك برقية ${directionLabel} جديدة.`;
+}
+
 export function getTelegramNotificationPresentation(input: {
   priority?: string | null;
   category?: string | null;
@@ -46,10 +57,12 @@ export function getTelegramNotificationPresentation(input: {
       ? "برقية طارئة عاجلة"
       : "برقية طارئة"
     : priority === "urgent"
-      ? "برقية عاجلة"
+      ? input.direction === "incoming"
+        ? "برقية واردة عاجلة"
+        : "برقية صادرة عاجلة"
       : input.direction === "incoming"
         ? "برقية واردة جديدة"
-        : "برقية جديدة";
+        : "برقية صادرة جديدة";
 
   return {
     title,
@@ -176,7 +189,7 @@ async function notifyFirebaseOrganization(
           title: presentation.title,
           // Telegram subjects may contain sensitive operational details. Keep
           // lock-screen notifications useful without exposing the document.
-          body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
+          body: getTelegramNotificationBody(input.serialCode, input.direction),
         },
         data: {
           type:
@@ -289,7 +302,7 @@ export async function notifyOrganizationTelegramCreated(input: {
   const payload = JSON.stringify({
     type: "telegram.created",
     title: presentation.title,
-    body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
+    body: getTelegramNotificationBody(input.serialCode, input.direction),
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {

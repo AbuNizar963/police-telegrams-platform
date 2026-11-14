@@ -677,6 +677,7 @@ export default function OwnerOrganizationManagement() {
                   <span className="block text-[11px] text-muted-foreground">
                     {typeLabels[item.type as OrganizationType] ?? item.type} ·{" "}
                     {item.code}
+                    {item.deletedAt ? " · محذوفة" : ""}
                   </span>
                   <span className="block text-[10px] text-emerald-700 dark:text-emerald-300">
                     {allAccounts.isLoading

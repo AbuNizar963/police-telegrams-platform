@@ -80,8 +80,8 @@ class UpdateDownloadService : Service() {
 
         downloadStarted = true
         preferences.edit().putString(KEY_STATUS, "downloading").apply()
-        acquireDownloadWakeLock()
         try {
+            acquireDownloadWakeLock()
             UpdateInstaller(applicationContext).startDownload(
                 downloadUrl = url,
                 expectedSize = size,

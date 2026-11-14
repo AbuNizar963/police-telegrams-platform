@@ -44,8 +44,14 @@ Future<Uint8List> prepareOrganizationLogoBytes(Uint8List source) async {
             ? sourceWidth
             : sourceHeight))
         .clamp(0.0, 1.0);
-    final targetWidth = (sourceWidth * scale).round().clamp(1, sourceWidth).toInt();
-    final targetHeight = (sourceHeight * scale).round().clamp(1, sourceHeight).toInt();
+    final targetWidth = (sourceWidth * scale)
+        .round()
+        .clamp(1, sourceWidth)
+        .toInt();
+    final targetHeight = (sourceHeight * scale)
+        .round()
+        .clamp(1, sourceHeight)
+        .toInt();
     final codec = await ui.instantiateImageCodec(
       source,
       targetWidth: targetWidth,

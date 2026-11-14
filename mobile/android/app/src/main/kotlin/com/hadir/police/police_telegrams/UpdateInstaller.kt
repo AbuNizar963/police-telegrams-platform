@@ -93,21 +93,35 @@ class UpdateInstaller(private val context: Context) {
         cancellationRequested = false
         showNotification("جارٍ تنزيل تحديث برقيات الشرطة", "يبدأ تنزيل ملف التحديث...", 0, true)
         Thread({
-            val directory = File(context.cacheDir, UPDATE_DIRECTORY)
+            // Keep the partial APK in private app storage so process death or a
+            // temporary network failure does not discard bytes already received.
+            val directory = File(context.filesDir, UPDATE_DIRECTORY)
             val apk = File(directory, "police-telegrams-update-$expectedVersionCode.apk")
+            val partialApk = File(directory, "${apk.name}.part")
             try {
                 if (!directory.exists() && !directory.mkdirs()) {
                     error("تعذر تجهيز مساحة تنزيل التحديث.")
                 }
-                apk.delete()
-                download(downloadUrl, apk, expectedSize)
-                validateApk(
-                    apk,
-                    expectedSize,
-                    expectedSha256,
-                    expectedVersionName,
-                    expectedVersionCode
-                )
+                download(downloadUrl, partialApk, expectedSize)
+                try {
+                    validateApk(
+                        partialApk,
+                        expectedSize,
+                        expectedSha256,
+                        expectedVersionName,
+                        expectedVersionCode
+                    )
+                } catch (validationFailure: Throwable) {
+                    // Never resume from bytes that failed the release integrity checks.
+                    partialApk.delete()
+                    throw validationFailure
+                }
+                if (apk.exists() && !apk.delete()) {
+                    error("تعذر استبدال ملف التحديث السابق.")
+                }
+                if (!partialApk.renameTo(apk)) {
+                    error("تعذر حفظ ملف التحديث بعد اكتمال التحقق منه.")
+                }
                 showNotification("اكتمل تنزيل التحديث", "تم تنزيل الملف والتحقق من سلامته. افتح التطبيق لمتابعة التثبيت.", 100, false, completed = true)
                 onFinished(true, apk.absolutePath)
                 emit(
@@ -120,11 +134,13 @@ class UpdateInstaller(private val context: Context) {
                     )
                 )
             } catch (failure: Throwable) {
-                apk.delete()
                 if (cancellationRequested) {
+                    partialApk.delete()
                     onFinished(false, null)
                     emit(mapOf("status" to "cancelled"))
                 } else {
+                    // Preserve a valid partial file on transient errors. The next
+                    // attempt resumes it with an HTTP Range request.
                     showNotification("تعذر تنزيل التحديث", failure.message ?: "فشل تنزيل التحديث. افتح التطبيق وحاول مجددًا.", 0, false, failed = true)
                     onFinished(false, null)
                     emitError(failure)
@@ -215,6 +231,14 @@ class UpdateInstaller(private val context: Context) {
     }
 
     private fun download(url: String, destination: File, expectedSize: Long) {
+        var offset = destination.length()
+        if (offset > expectedSize) {
+            // A partial file larger than the published asset is never reusable.
+            if (!destination.delete()) error("تعذر تنظيف ملف التنزيل غير الصالح.")
+            offset = 0L
+        }
+        if (offset == expectedSize && destination.isFile) return
+
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 20_000
@@ -222,21 +246,49 @@ class UpdateInstaller(private val context: Context) {
             instanceFollowRedirects = true
             setRequestProperty("User-Agent", "Police-Telegrams-Android-Updater")
             setRequestProperty("Cache-Control", "no-cache")
+            if (offset > 0L) setRequestProperty("Range", "bytes=$offset-")
         }
         activeConnection = connection
         try {
             check(!cancellationRequested) { "أُلغي تنزيل التحديث." }
             val responseCode = connection.responseCode
-            if (responseCode !in 200..299) {
+            if (responseCode == HttpURLConnection.HTTP_REQUESTED_RANGE_NOT_SATISFIABLE) {
+                if (destination.length() == expectedSize) return
+                if (!destination.delete()) error("تعذر إعادة تهيئة ملف التنزيل غير المكتمل.")
+                error("رفض خادم التحديث استكمال التنزيل؛ أُعيد ضبط الجزء غير المكتمل. حاول مجددًا.")
+            }
+
+            val resumed = offset > 0L && responseCode == HttpURLConnection.HTTP_PARTIAL
+            if (resumed) {
+                val contentRange = connection.getHeaderField("Content-Range")
+                    ?: error("لم يؤكد خادم التحديث موضع استكمال التنزيل.")
+                val match = Regex("^bytes (\\d+)-(\\d+)/(\\d+)$").matchEntire(contentRange.trim())
+                    ?: error("صيغة نطاق استكمال التنزيل غير صالحة.")
+                val rangeStart = match.groupValues[1].toLong()
+                val rangeEnd = match.groupValues[2].toLong()
+                val rangeTotal = match.groupValues[3].toLong()
+                if (rangeStart != offset || rangeEnd < rangeStart || rangeTotal != expectedSize) {
+                    error("نطاق استكمال التنزيل لا يطابق ملف التحديث المنشور.")
+                }
+            } else if (responseCode == HttpURLConnection.HTTP_OK) {
+                // The server ignored Range. Start cleanly with this full response;
+                // never append a full APK to an existing partial file.
+                if (offset > 0L) {
+                    if (!destination.delete()) error("تعذر إعادة بدء تنزيل التحديث.")
+                    offset = 0L
+                }
+            } else {
                 error("فشل تنزيل ملف التحديث (HTTP $responseCode).")
             }
+
             val contentLength = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
-            if (contentLength > 0L && contentLength != expectedSize) {
-                error("حجم ملف التحديث المعلن لا يطابق بيانات الإصدار.")
+            val expectedResponseLength = expectedSize - offset
+            if (contentLength > 0L && contentLength != expectedResponseLength) {
+                error("حجم الجزء الذي أرسله خادم التحديث لا يطابق الحجم المتوقع.")
             }
 
             val startedAt = System.currentTimeMillis()
-            var downloaded = 0L
+            var receivedThisSession = 0L
             var lastEmission = 0L
             connection.inputStream.use { input ->
                 destination.outputStream().buffered().use { output ->
@@ -246,7 +298,8 @@ class UpdateInstaller(private val context: Context) {
                         val count = input.read(buffer)
                         if (count < 0) break
                         output.write(buffer, 0, count)
-                        downloaded += count
+                        receivedThisSession += count
+                        val downloaded = offset + receivedThisSession
                         if (downloaded > expectedSize) {
                             error("تجاوز ملف التحديث الحجم المتوقع؛ أُوقف التنزيل.")
                         }
@@ -255,7 +308,7 @@ class UpdateInstaller(private val context: Context) {
                             val percent = ((downloaded * 100L) / expectedSize)
                                 .coerceIn(0L, 99L).toInt()
                             val elapsedSeconds = ((now - startedAt) / 1000L).coerceAtLeast(1L)
-                            val bytesPerSecond = downloaded / elapsedSeconds
+                            val bytesPerSecond = receivedThisSession / elapsedSeconds
                             val remaining = (expectedSize - downloaded).coerceAtLeast(0L)
                             showNotification("جارٍ تنزيل تحديث برقيات الشرطة", "اكتمل $percent% • ${formatBytes(downloaded)} من ${formatBytes(expectedSize)}", percent, true)
                             emit(
@@ -273,7 +326,7 @@ class UpdateInstaller(private val context: Context) {
                     output.flush()
                 }
             }
-            if (downloaded != expectedSize || !destination.isFile) {
+            if (destination.length() != expectedSize || !destination.isFile) {
                 error("لم يكتمل تنزيل ملف التحديث بالحجم الصحيح.")
             }
         } finally {

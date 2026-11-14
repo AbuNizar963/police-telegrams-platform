@@ -316,7 +316,7 @@ Future<void> checkAndPromptForAppUpdate(
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'سيتم تنزيل التحديث داخل التطبيق، ثم سيطلب Android تأكيد التثبيت.',
+                  'سيستمر تنزيل التحديث في الخلفية حتى عند إغلاق واجهة التطبيق، ثم سيطلب Android تأكيد التثبيت.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12),
                 ),
@@ -714,6 +714,7 @@ Future<bool> _resumeInternalDownload(
       url == null ||
       size == null ||
       size <= 0 ||
+      sha256 == null ||
       !validSha256) {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     if (context.mounted) {

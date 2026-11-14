@@ -114,14 +114,18 @@ export function registerStorageRoutes(app: Express): void {
 
       const contentType = req.get("content-type")?.split(";")[0]?.trim();
       if (contentType !== "image/png" && contentType !== "image/jpeg") {
-        res.status(415).json({ error: "صيغة الشعار يجب أن تكون PNG أو JPG" });
+        res
+          .status(415)
+          .json({ error: "صيغة الشعار يجب أن تكون PNG أو JPG" });
         return;
       }
 
       const expectedExtension =
         contentType === "image/png" ? /\.png$/i : /\.(?:jpe?g)$/i;
       if (!expectedExtension.test(fileName)) {
-        res.status(400).json({ error: "امتداد الملف لا يطابق صيغة الصورة" });
+        res
+          .status(400)
+          .json({ error: "امتداد الملف لا يطابق صيغة الصورة" });
         return;
       }
 
@@ -138,10 +142,14 @@ export function registerStorageRoutes(app: Express): void {
         if (
           !membership ||
           !membership.isActive ||
-          !["system_admin", "organization_admin"].includes(membership.role) ||
+          !["system_admin", "organization_admin"].includes(
+            membership.role
+          ) ||
           membership.organizationId !== organization.id
         ) {
-          res.status(403).json({ error: "لا تملك صلاحية رفع شعار هذه الجهة" });
+          res
+            .status(403)
+            .json({ error: "لا تملك صلاحية رفع شعار هذه الجهة" });
           return;
         }
       }
@@ -166,7 +174,9 @@ export function registerStorageRoutes(app: Express): void {
           }
         | undefined;
       if (!upload || !Buffer.isBuffer(req.body)) {
-        res.status(400).json({ error: "لم يتم استلام بيانات صورة الشعار" });
+        res
+          .status(400)
+          .json({ error: "لم يتم استلام بيانات صورة الشعار" });
         return;
       }
 
@@ -187,7 +197,9 @@ export function registerStorageRoutes(app: Express): void {
         res.status(201).json(result);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "تعذر التحقق من ملف الشعار";
+          error instanceof Error
+            ? error.message
+            : "تعذر التحقق من ملف الشعار";
         if (
           message === "حجم الملف غير صالح" ||
           message === "اسم الملف غير صالح" ||
@@ -198,7 +210,9 @@ export function registerStorageRoutes(app: Express): void {
           return;
         }
         console.error("[Storage] Department logo upload failed", error);
-        res.status(502).json({ error: "تعذر رفع الشعار إلى مساحة التخزين" });
+        res
+          .status(502)
+          .json({ error: "تعذر رفع الشعار إلى مساحة التخزين" });
       }
     }
   );

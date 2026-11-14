@@ -181,44 +181,44 @@ describe("binary department logo upload", () => {
   }
 
   it("uploads binary logos after authorization", async () => {
-      const { authorize, upload, res } = createDepartmentLogoUploadHarness();
-      const next = vi.fn();
+    const { authorize, upload, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
 
-      await authorize(requestHeaders(), res, next);
-      expect(next).toHaveBeenCalledOnce();
-      await upload(requestHeaders(), res);
+    await authorize(requestHeaders(), res, next);
+    expect(next).toHaveBeenCalledOnce();
+    await upload(requestHeaders(), res);
 
-      expect(storagePutDepartmentLogo).toHaveBeenCalledWith(
-        testOrganizationId,
-        "badge.png",
-        validPngBytes,
-        "image/png"
-      );
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(
-        Object.fromEntries([
-          [
-            ["k", "ey"].join(""),
-            "department/logos/" + testOrganizationId + "/logo.png",
-          ],
-          [
-            "url",
-            "/api/storage/department/logos/" + testOrganizationId + "/logo.png",
-          ],
-        ])
-      );
+    expect(storagePutDepartmentLogo).toHaveBeenCalledWith(
+      testOrganizationId,
+      "badge.png",
+      validPngBytes,
+      "image/png"
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      Object.fromEntries([
+        [
+          ["k", "ey"].join(""),
+          "department/logos/" + testOrganizationId + "/logo.png",
+        ],
+        [
+          "url",
+          "/api/storage/department/logos/" + testOrganizationId + "/logo.png",
+        ],
+      ])
+    );
   });
 
   it("rejects unauthenticated binary uploads", async () => {
-      getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
-      const { authorize, res } = createDepartmentLogoUploadHarness();
-      const next = vi.fn();
+    getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
+    const { authorize, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
 
-      await authorize(requestHeaders(), res, next);
+    await authorize(requestHeaders(), res, next);
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(next).not.toHaveBeenCalled();
-      expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
   });
 
   it("rejects uploads targeting another organization", async () => {
@@ -237,13 +237,13 @@ describe("binary department logo upload", () => {
   });
 
   it("rejects mismatched image signatures", async () => {
-      const { authorize, upload, res } = createDepartmentLogoUploadHarness();
-      await authorize(requestHeaders(), res, vi.fn());
+    const { authorize, upload, res } = createDepartmentLogoUploadHarness();
+    await authorize(requestHeaders(), res, vi.fn());
 
-      await upload({ body: Buffer.from("not a PNG") }, res);
+    await upload({ body: Buffer.from("not a PNG") }, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
   });
 
   it("rejects unsupported image types before parsing the body", async () => {

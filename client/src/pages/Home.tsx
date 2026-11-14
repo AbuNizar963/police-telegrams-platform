@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { prepareOrganizationLogoUpload } from "@/features/organizations/organizationLogoUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getQueryKey } from "@trpc/react-query";
 import OwnerUserManagement from "@/features/users/OwnerUserManagement";
@@ -6012,21 +6013,18 @@ function DepartmentSettingsModal({
 
   const handleLogo = async (file?: File) => {
     if (!file) return;
-    if (file.type !== "image/png" && file.type !== "image/jpeg")
-      return toast.error("صيغة الشعار يجب أن تكون PNG أو JPG");
-    if (file.size > 5 * 1024 * 1024)
-      return toast.error("حجم الشعار يجب ألا يتجاوز 5 ميغابايت");
+    if (!selectedWorkplaceId) {
+      toast.error("اختر الجهة قبل رفع شعارها.");
+      return;
+    }
     setUploading(true);
     try {
-      const base64 = await readFileAsBase64(file);
-      if (!selectedWorkplaceId) {
-        throw new Error("اختر الجهة قبل رفع شعارها.");
-      }
+      const normalizedLogo = await prepareOrganizationLogoUpload(file);
       const result = await upload.mutateAsync({
         organizationId: selectedWorkplaceId,
         fileName: file.name,
-        contentType: file.type === "image/jpeg" ? "image/jpeg" : "image/png",
-        base64,
+        contentType: normalizedLogo.contentType,
+        base64: normalizedLogo.base64,
       });
       // Keep the server-provided stable storage path relative. The settings
       // validator intentionally accepts /api/storage/* paths, not arbitrary

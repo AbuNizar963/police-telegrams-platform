@@ -32,23 +32,24 @@ class UpdateInstaller(private val context: Context) {
         private const val INSTALL_REQUEST_CODE = 7412
         private const val UPDATE_DIRECTORY = "updates"
         private const val NOTIFICATION_CHANNEL_ID = "app_update_progress"
-        private const val NOTIFICATION_ID = 4107
+        const val NOTIFICATION_CHANNEL_ID = "app_update_progress"
+        const val NOTIFICATION_ID = 4107
+        @Volatile private var sharedEventSink: EventChannel.EventSink? = null
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    @Volatile private var eventSink: EventChannel.EventSink? = null
 
     fun setEventSink(sink: EventChannel.EventSink?) {
-        eventSink = sink
+        sharedEventSink = sink
     }
 
     private fun emit(event: Map<String, Any?>) {
-        val sink = eventSink ?: return
+        val sink = sharedEventSink ?: return
         mainHandler.post { runCatching { sink.success(event) } }
     }
 
     private fun emitError(error: Throwable) {
-        val sink = eventSink ?: return
+        val sink = sharedEventSink ?: return
         mainHandler.post {
             sink.error("UPDATE_DOWNLOAD_FAILED", error.message ?: "تعذر تنزيل التحديث.", null)
         }
@@ -59,7 +60,8 @@ class UpdateInstaller(private val context: Context) {
         expectedSize: Long,
         expectedSha256: String,
         expectedVersionName: String,
-        expectedVersionCode: Long
+        expectedVersionCode: Long,
+        onFinished: (Boolean, String?) -> Unit = { _, _ -> }
     ) {
         require(isTrustedReleaseUrl(downloadUrl)) { "رابط ملف التحديث غير موثوق." }
         require(expectedSize > 0L) { "حجم ملف التحديث غير صالح." }
@@ -94,6 +96,7 @@ class UpdateInstaller(private val context: Context) {
                     expectedVersionCode
                 )
                 showNotification("اكتمل تنزيل التحديث", "تم تنزيل الملف والتحقق من سلامته. افتح التطبيق لمتابعة التثبيت.", 100, false, completed = true)
+                onFinished(true, apk.absolutePath)
                 emit(
                     mapOf(
                         "status" to "completed",
@@ -106,6 +109,7 @@ class UpdateInstaller(private val context: Context) {
             } catch (failure: Throwable) {
                 apk.delete()
                 showNotification("تعذر تنزيل التحديث", failure.message ?: "فشل تنزيل التحديث. افتح التطبيق وحاول مجددًا.", 0, false, failed = true)
+                onFinished(false, null)
                 emitError(failure)
             }
         }, "police-telegrams-updater").apply { isDaemon = true }.start()

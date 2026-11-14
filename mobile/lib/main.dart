@@ -1990,7 +1990,7 @@ class _DashboardPageState extends State<DashboardPage>
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              Icons.priority_high_rounded,
+              LucideIcons.siren,
               color: Theme.of(context).colorScheme.onError,
             ),
           ),
@@ -3012,7 +3012,7 @@ class _DashboardPageState extends State<DashboardPage>
         'أولوية عاجلة اليوم',
         'todayUrgent',
         'من بداية اليوم',
-        Icons.priority_high_rounded,
+        LucideIcons.siren,
         context.appDanger,
       ),
       (

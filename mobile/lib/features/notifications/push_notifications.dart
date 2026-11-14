@@ -83,9 +83,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 String telegramPushNotificationTitle(Map<String, dynamic> data) {
   final category = '${data['category'] ?? ''}'.toLowerCase();
   final priority = '${data['priority'] ?? ''}'.toLowerCase();
-  final priorityIsUrgent = const {'urgent', 'critical', 'high'}.contains(
-    priority,
-  );
+  final priorityIsUrgent = const {
+    'urgent',
+    'critical',
+    'high',
+  }.contains(priority);
   final incoming = data['type'] == 'telegram.incoming';
 
   if (category == 'emergency') {

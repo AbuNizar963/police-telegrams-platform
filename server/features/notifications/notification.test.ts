@@ -119,7 +119,7 @@ describe("route event FCM message", () => {
     expect(message.apns.headers["apns-priority"]).toBe("5");
   });
 });
- 
+
 describe("directional telegram notification body", () => {
   it("identifies an outgoing telegram by its real serial number", () => {
     expect(getTelegramNotificationBody("POL-2026-00123", "outgoing")).toBe(

@@ -21,6 +21,7 @@ import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -30,12 +31,26 @@ class MainActivity : FlutterFragmentActivity() {
         "com.police_telegrams/apk_installer"
     private val updateNotificationChannel = "app_update_progress"
     private val updateNotificationId = 4107
+    private lateinit var updateInstaller: UpdateInstaller
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
     private var telegramNotificationMethodChannel: MethodChannel? = null
     private var telegramNotificationHandlerReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        updateInstaller = UpdateInstaller(applicationContext)
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.police_telegrams/apk_installer/events"
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                updateInstaller.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                updateInstaller.setEventSink(null)
+            }
+        })
         createUpdateNotificationChannel()
         createTelegramNotificationChannels()
         telegramNotificationMethodChannel = MethodChannel(
@@ -59,6 +74,77 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installerChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "startInternalDownload" -> {
+                        try {
+                            val url = call.argument<String>("url")
+                            val expectedSize = call.argument<Number>("expectedSize")?.toLong()
+                            val expectedSha256 = call.argument<String>("expectedSha256")
+                            val version = call.argument<String>("version")
+                            val buildNumber = call.argument<Number>("buildNumber")?.toLong()
+                            if (url == null || expectedSize == null || expectedSha256 == null ||
+                                version == null || buildNumber == null
+                            ) {
+                                result.error("INVALID_UPDATE_METADATA", "بيانات التحديث غير مكتملة.", null)
+                            } else {
+                                updateInstaller.startDownload(
+                                    url,
+                                    expectedSize,
+                                    expectedSha256,
+                                    version,
+                                    buildNumber
+                                )
+                                result.success(true)
+                            }
+                        } catch (error: Exception) {
+                            result.error(
+                                "UPDATE_START_FAILED",
+                                error.message ?: "تعذر بدء تنزيل التحديث.",
+                                null
+                            )
+                        }
+                    }
+                    "installDownloadedApk" -> {
+                        try {
+                            val path = call.argument<String>("path")
+                            val expectedSize = call.argument<Number>("expectedSize")?.toLong()
+                            val expectedSha256 = call.argument<String>("expectedSha256")
+                            val version = call.argument<String>("version")
+                            val buildNumber = call.argument<Number>("buildNumber")?.toLong()
+                            if (path == null || expectedSize == null || expectedSha256 == null ||
+                                version == null || buildNumber == null
+                            ) {
+                                result.error("INVALID_UPDATE_METADATA", "بيانات التثبيت غير مكتملة.", null)
+                            } else {
+                                result.success(
+                                    updateInstaller.install(
+                                        path,
+                                        expectedSize,
+                                        expectedSha256,
+                                        version,
+                                        buildNumber
+                                    )
+                                )
+                            }
+                        } catch (error: Exception) {
+                            result.error(
+                                "INSTALL_FAILED",
+                                error.message ?: "تعذر تجهيز تثبيت التحديث.",
+                                null
+                            )
+                        }
+                    }
+                    "openInstallPermissionSettings" -> {
+                        try {
+                            updateInstaller.openInstallPermissionSettings()
+                            result.success(true)
+                        } catch (error: Exception) {
+                            result.error(
+                                "SETTINGS_FAILED",
+                                error.message ?: "تعذر فتح إعدادات التثبيت.",
+                                null
+                            )
+                        }
+                    }
                     "requestUpdateNotificationPermission" -> {
                         requestUpdateNotificationPermission(result)
                     }

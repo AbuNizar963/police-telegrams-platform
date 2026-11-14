@@ -364,6 +364,8 @@ Future<void> _downloadAndInstall(
 ) async {
   StreamSubscription<dynamic>? subscription;
   final completed = Completer<Map<String, dynamic>>();
+  final progressEvents = StreamController<Map<String, dynamic>>.broadcast();
+  var progressDialogOpen = false;
   try {
     try {
       await _installerChannel.invokeMethod<bool>(
@@ -377,13 +379,15 @@ Future<void> _downloadAndInstall(
       (dynamic event) {
         if (event is! Map) return;
         final data = Map<String, dynamic>.from(event);
-        final state = data['status'];
-        if (state == 'completed' && !completed.isCompleted) {
+        progressEvents.add(data);
+        if (data['status'] == 'completed' && !completed.isCompleted) {
           completed.complete(data);
         }
       },
       onError: (Object error, StackTrace stackTrace) {
-        if (!completed.isCompleted) completed.completeError(error, stackTrace);
+        if (!completed.isCompleted) {
+          completed.completeError(error, stackTrace);
+        }
       },
       onDone: () {
         if (!completed.isCompleted) {
@@ -394,6 +398,76 @@ Future<void> _downloadAndInstall(
       },
     );
 
+    if (context.mounted) {
+      progressDialogOpen = true;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: true,
+          builder: (dialogContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: StreamBuilder<Map<String, dynamic>>(
+              stream: progressEvents.stream,
+              initialData: <String, dynamic>{
+                'status': 'downloading',
+                'percent': 0,
+                'downloadedBytes': 0,
+                'totalBytes': release.apkSize,
+              },
+              builder: (context, snapshot) {
+                final data = snapshot.data ?? const <String, dynamic>{};
+                final percent = ((data['percent'] as num?)?.toDouble() ?? 0)
+                    .clamp(0.0, 100.0);
+                final downloaded =
+                    (data['downloadedBytes'] as num?)?.toInt() ?? 0;
+                final total =
+                    (data['totalBytes'] as num?)?.toInt() ?? release.apkSize;
+                final isComplete = data['status'] == 'completed';
+                return AlertDialog(
+                  title: const Text('تنزيل تحديث برقيات الشرطة'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LinearProgressIndicator(
+                        value: isComplete ? 1 : percent / 100,
+                        minHeight: 7,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        isComplete
+                            ? 'اكتمل التنزيل والتحقق من ملف التحديث.'
+                            : 'جارٍ التنزيل: ${percent.toStringAsFixed(0)}%',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${_formatUpdateBytes(downloaded)} من ${_formatUpdateBytes(total)}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(dialogContext).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'يمكنك إخفاء هذه النافذة أو إغلاق التطبيق؛ سيستمر التنزيل في الخلفية.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(dialogContext).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('إخفاء'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ).whenComplete(() => progressDialogOpen = false),
+      );
+    }
+
     await _installerChannel.invokeMethod<bool>('startInternalDownload', {
       'url': release.apkUrl.toString(),
       'expectedSize': release.apkSize,
@@ -401,13 +475,6 @@ Future<void> _downloadAndInstall(
       'version': release.version,
       'buildNumber': release.buildNumber,
     });
-    if (context.mounted) {
-      Toast.info(
-        context,
-        'بدأ تنزيل التحديث في الخلفية. يمكنك إغلاق واجهة التطبيق؛ سيستمر التنزيل ويظهر تقدمه في إشعارات Android.',
-        duration: const Duration(seconds: 8),
-      );
-    }
 
     final result = await completed.future;
     final path = result['path'] as String?;
@@ -415,15 +482,29 @@ Future<void> _downloadAndInstall(
       throw const FormatException('اكتمل التنزيل دون إرجاع مسار ملف التحديث.');
     }
     if (!context.mounted) return;
+    if (progressDialogOpen) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+    }
     await _installInternalUpdate(context, release, path);
   } catch (error) {
+    if (progressDialogOpen && context.mounted) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+    }
     if (context.mounted) {
       Toast.dismiss();
       _showUpdateMessage(context, _updateErrorMessage(error));
     }
   } finally {
     await subscription?.cancel();
+    await progressEvents.close();
   }
+}
+
+String _formatUpdateBytes(int bytes) {
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
 Future<void> _installInternalUpdate(

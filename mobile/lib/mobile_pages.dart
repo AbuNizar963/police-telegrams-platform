@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
+import 'features/organizations/organization_logo_upload.dart';
 import 'app_theme.dart';
 import './features/reports/audit_log_presentation.dart';
 import './features/reports/telegram_report_date_formatter.dart';
@@ -2028,14 +2029,18 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           'تعذر تحديد الجهة الحالية؛ أعد تحميل الإعدادات ثم حاول مجددًا.',
         );
       }
+      final compressedBytes = await prepareOrganizationLogoBytes(bytes);
+      final pngFileName = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '.png');
       final result = await widget.api.call(
         'settings.uploadLogo',
         mutation: true,
         input: {
           'organizationId': organizationId,
-          'fileName': file.name,
-          'contentType': contentType,
-          'base64': base64Encode(bytes),
+          'fileName': pngFileName == file.name
+              ? '$pngFileName.png'
+              : pngFileName,
+          'contentType': 'image/png',
+          'base64': base64Encode(compressedBytes),
         },
       );
       if (!mounted) return;
@@ -2047,7 +2052,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         // The upload endpoint returns an internal storage URL, not a public
         // image URL. Preview the selected bytes until settings are saved and
         // the server returns the authorized signed URL.
-        _pendingLogoPreviewBytes = Uint8List.fromList(bytes);
+        _pendingLogoPreviewBytes = compressedBytes;
       });
       Toast.success(context, 'تم رفع الشعار. اضغط حفظ لاعتماده.');
     } catch (exception) {

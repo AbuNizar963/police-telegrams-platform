@@ -8,6 +8,11 @@ import 'api.dart';
 import 'telegram_outbox.dart';
 
 const _composerNavy = Color(0xFF10233F);
+const telegramClassificationOptions = <String, String>{
+  'secret': 'سري',
+  'normal': 'عادية',
+};
+
 const _composerGold = Color(0xFFD8C38E);
 
 class AdvancedCreateTelegramSheet extends StatefulWidget {
@@ -43,10 +48,6 @@ class _AdvancedCreateTelegramSheetState
   List<Map<String, dynamic>> _descendants = [];
   PlatformFile? _attachment;
 
-  static const _classifications = <String, String>{
-    'normal': 'عادية',
-    'secret': 'سري',
-  };
   static const _priorities = <String, String>{
     'urgent': 'عاجلة',
     'normal': 'عادية',
@@ -548,9 +549,14 @@ class _AdvancedCreateTelegramSheetState
                             ],
                             const SizedBox(height: 14),
                             _fieldLabel('درجة السرية'),
-                            _choiceGrid(_classifications, _classification, (v) {
-                              setState(() => _classification = v);
-                            }, columns: 2),
+                            _choiceGrid(
+                              telegramClassificationOptions,
+                              _classification,
+                              (v) {
+                                setState(() => _classification = v);
+                              },
+                              columns: 2,
+                            ),
                             const SizedBox(height: 14),
                             _fieldLabel('درجة الأسبقية'),
                             _choiceGrid(_priorities, _priority, (v) {

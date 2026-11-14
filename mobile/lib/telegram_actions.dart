@@ -589,6 +589,8 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         transitions.add(('submitted', 'إرسال للمراجعة', Icons.send_outlined));
       } else if (status == 'submitted') {
         transitions.add(('in_review', 'بدء المراجعة', Icons.pending_actions));
+      } else if (status == 'pending') {
+        transitions.add(('in_progress', 'بدء الإجراء', Icons.play_arrow));
       } else if (status == 'in_review') {
         transitions.add(('approved', 'اعتماد', Icons.verified_outlined));
         transitions.add(('returned', 'إرجاع بسبب', Icons.undo_outlined));
@@ -599,6 +601,8 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
           'إكمال المعالجة',
           Icons.check_circle_outline,
         ));
+      } else if ({'resolved', 'completed'}.contains(status)) {
+        transitions.add(('archived', 'أرشفة', Icons.archive_outlined));
       }
     }
     return transitions

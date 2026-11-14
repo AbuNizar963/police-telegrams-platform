@@ -53,22 +53,24 @@ void main() {
       Future<bool> isEnabled() async => true;
       Future<String?> currentToken() async => 'device-token';
 
-      await registration.ensureRegistered(
+      final firstResult = await registration.ensureRegistered(
         organizationId: 'organization-a',
         notificationsEnabled: isEnabled,
         currentToken: currentToken,
         registerToken: registerToken,
       );
+      expect(firstResult, isFalse);
       expect(registration.registeredOrganizationId, isNull);
 
       shouldSucceed = true;
-      await registration.ensureRegistered(
+      final secondResult = await registration.ensureRegistered(
         organizationId: 'organization-a',
         notificationsEnabled: isEnabled,
         currentToken: currentToken,
         registerToken: registerToken,
       );
 
+      expect(secondResult, isTrue);
       expect(attempts, 2);
       expect(registration.registeredOrganizationId, 'organization-a');
     },

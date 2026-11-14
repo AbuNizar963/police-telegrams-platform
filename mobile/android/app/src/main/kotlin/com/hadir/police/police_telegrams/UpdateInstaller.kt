@@ -36,6 +36,12 @@ class UpdateInstaller(private val context: Context) {
         @Volatile private var sharedEventSink: EventChannel.EventSink? = null
     }
 
+    @Volatile
+    private var cancellationRequested = false
+
+    @Volatile
+    private var activeConnection: HttpURLConnection? = null
+
     private val mainHandler = Handler(Looper.getMainLooper())
 
     fun setEventSink(sink: EventChannel.EventSink?) {
@@ -53,6 +59,13 @@ class UpdateInstaller(private val context: Context) {
             sink.error("UPDATE_DOWNLOAD_FAILED", error.message ?: "تعذر تنزيل التحديث.", null)
         }
     }
+
+    fun cancelDownload() {
+        cancellationRequested = true
+        runCatching { activeConnection?.disconnect() }
+    }
+
+    fun isCancellationRequested(): Boolean = cancellationRequested
 
     fun startDownload(
         downloadUrl: String,
@@ -77,6 +90,7 @@ class UpdateInstaller(private val context: Context) {
             "الإصدار المنشور ليس أحدث من الإصدار المثبت."
         }
 
+        cancellationRequested = false
         showNotification("جارٍ تنزيل تحديث برقيات الشرطة", "يبدأ تنزيل ملف التحديث...", 0, true)
         Thread({
             val directory = File(context.cacheDir, UPDATE_DIRECTORY)
@@ -107,9 +121,16 @@ class UpdateInstaller(private val context: Context) {
                 )
             } catch (failure: Throwable) {
                 apk.delete()
-                showNotification("تعذر تنزيل التحديث", failure.message ?: "فشل تنزيل التحديث. افتح التطبيق وحاول مجددًا.", 0, false, failed = true)
-                onFinished(false, null)
-                emitError(failure)
+                if (cancellationRequested) {
+                    onFinished(false, null)
+                    emit(mapOf("status" to "cancelled"))
+                } else {
+                    showNotification("تعذر تنزيل التحديث", failure.message ?: "فشل تنزيل التحديث. افتح التطبيق وحاول مجددًا.", 0, false, failed = true)
+                    onFinished(false, null)
+                    emitError(failure)
+                }
+            } finally {
+                activeConnection = null
             }
         }, "police-telegrams-updater").apply { isDaemon = true }.start()
     }
@@ -137,6 +158,15 @@ class UpdateInstaller(private val context: Context) {
         val contentIntent = launchIntent?.let {
             PendingIntent.getActivity(context, NOTIFICATION_ID, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         }
+        val cancelIntent = Intent(context, UpdateDownloadService::class.java).apply {
+            action = UpdateDownloadService.ACTION_CANCEL
+        }
+        val cancelPendingIntent = PendingIntent.getService(
+            context,
+            NOTIFICATION_ID + 1,
+            cancelIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(title)
@@ -148,6 +178,13 @@ class UpdateInstaller(private val context: Context) {
             .setAutoCancel(false)
             .setProgress(100, progress.coerceIn(0, 100), false)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+        if (ongoing && !completed && !failed) {
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "إلغاء",
+                cancelPendingIntent
+            )
+        }
         if (contentIntent != null) builder.setContentIntent(contentIntent)
         if (completed || failed) {
             builder.setOngoing(false).setAutoCancel(true).setProgress(0, 0, false)
@@ -181,7 +218,9 @@ class UpdateInstaller(private val context: Context) {
             setRequestProperty("User-Agent", "Police-Telegrams-Android-Updater")
             setRequestProperty("Cache-Control", "no-cache")
         }
+        activeConnection = connection
         try {
+            check(!cancellationRequested) { "أُلغي تنزيل التحديث." }
             val responseCode = connection.responseCode
             if (responseCode !in 200..299) {
                 error("فشل تنزيل ملف التحديث (HTTP $responseCode).")
@@ -198,6 +237,7 @@ class UpdateInstaller(private val context: Context) {
                 destination.outputStream().buffered().use { output ->
                     val buffer = ByteArray(32 * 1024)
                     while (true) {
+                        check(!cancellationRequested) { "أُلغي تنزيل التحديث." }
                         val count = input.read(buffer)
                         if (count < 0) break
                         output.write(buffer, 0, count)
@@ -232,6 +272,7 @@ class UpdateInstaller(private val context: Context) {
                 error("لم يكتمل تنزيل ملف التحديث بالحجم الصحيح.")
             }
         } finally {
+            if (activeConnection === connection) activeConnection = null
             connection.disconnect()
         }
     }

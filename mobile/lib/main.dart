@@ -1990,7 +1990,7 @@ class _DashboardPageState extends State<DashboardPage>
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              LucideIcons.siren,
+              Icons.priority_high_rounded,
               color: Theme.of(context).colorScheme.onError,
             ),
           ),
@@ -3012,7 +3012,7 @@ class _DashboardPageState extends State<DashboardPage>
         'أولوية عاجلة اليوم',
         'todayUrgent',
         'من بداية اليوم',
-        LucideIcons.siren,
+        Icons.priority_high_rounded,
         context.appDanger,
       ),
       (
@@ -3754,7 +3754,7 @@ class _DashboardPageState extends State<DashboardPage>
                         : context.appInfoContainer,
                     priority == 'عاجلة' ? context.appDanger : context.appInfo,
                     icon: priority == 'عاجلة'
-                        ? LucideIcons.siren
+                        ? Icons.priority_high_rounded
                         : Icons.shield_outlined,
                   ),
                 if (_showCategory && category != null && category.isNotEmpty)
@@ -3852,7 +3852,7 @@ class _DashboardPageState extends State<DashboardPage>
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 11, color: foreground),
+          Icon(icon, size: 13, color: foreground),
           const SizedBox(width: 3),
         ],
         Text(

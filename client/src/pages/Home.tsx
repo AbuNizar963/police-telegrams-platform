@@ -1,5 +1,8 @@
 import { trpc } from "@/lib/trpc";
-import { prepareOrganizationLogoUpload } from "@/features/organizations/organizationLogoUpload";
+import {
+  prepareOrganizationLogoUpload,
+  uploadOrganizationLogoDirect,
+} from "@/features/organizations/organizationLogoUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { getQueryKey } from "@trpc/react-query";
 import OwnerUserManagement from "@/features/users/OwnerUserManagement";
@@ -5991,7 +5994,6 @@ function DepartmentSettingsModal({
     },
     onError: error => toast.error(error.message || "تعذر تحديث إعدادات الجهة"),
   });
-  const upload = trpc.settings.uploadLogo.useMutation();
   const isWorkplaceTransitioning = selectWorkplace.isPending || !settings;
 
   useEffect(() => {
@@ -6041,11 +6043,11 @@ function DepartmentSettingsModal({
     setUploading(true);
     try {
       const normalizedLogo = await prepareOrganizationLogoUpload(file);
-      const result = await upload.mutateAsync({
+      const result = await uploadOrganizationLogoDirect({
         organizationId: selectedWorkplaceId,
         fileName: file.name,
+        blob: normalizedLogo.blob,
         contentType: normalizedLogo.contentType,
-        base64: normalizedLogo.base64,
       });
       // Keep the server-provided stable storage path relative. The settings
       // validator intentionally accepts /api/storage/* paths, not arbitrary

@@ -123,7 +123,7 @@ class UpdateInstaller(private val context: Context) {
             if (responseCode !in 200..299) {
                 error("فشل تنزيل ملف التحديث (HTTP $responseCode).")
             }
-            val contentLength = connection.contentLengthLong
+            val contentLength = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
             if (contentLength > 0L && contentLength != expectedSize) {
                 error("حجم ملف التحديث المعلن لا يطابق بيانات الإصدار.")
             }

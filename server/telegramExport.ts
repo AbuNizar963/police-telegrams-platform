@@ -125,11 +125,20 @@ class TelegramExportRequestError extends Error {
 }
 
 async function loadOrganizationLogoDataUrl(
-  user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>>,
+  user: NonNullable<
+    Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
+  >,
   organizationId: string
 ): Promise<string> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(organizationId)) {
-    throw new TelegramExportRequestError("معرّف الجهة غير صالح لتصدير الشعار", 400);
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      organizationId
+    )
+  ) {
+    throw new TelegramExportRequestError(
+      "معرّف الجهة غير صالح لتصدير الشعار",
+      400
+    );
   }
 
   if (!isPlatformOwner(user)) {
@@ -139,7 +148,10 @@ async function loadOrganizationLogoDataUrl(
       !membership.isActive ||
       membership.organizationId !== organizationId
     ) {
-      throw new TelegramExportRequestError("لا تملك صلاحية تصدير شعار هذه الجهة", 403);
+      throw new TelegramExportRequestError(
+        "لا تملك صلاحية تصدير شعار هذه الجهة",
+        403
+      );
     }
   }
 
@@ -152,13 +164,19 @@ async function loadOrganizationLogoDataUrl(
     : null;
 
   if (!storageKey) {
-    throw new TelegramExportRequestError("الشعار المحفوظ غير متاح كملف ثنائي للتصدير", 422);
+    throw new TelegramExportRequestError(
+      "الشعار المحفوظ غير متاح كملف ثنائي للتصدير",
+      422
+    );
   }
 
   const departmentLogoKeyPattern =
     /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
   if (!departmentLogoKeyPattern.test(storageKey)) {
-    throw new TelegramExportRequestError("مسار شعار الجهة غير صالح للتصدير", 422);
+    throw new TelegramExportRequestError(
+      "مسار شعار الجهة غير صالح للتصدير",
+      422
+    );
   }
 
   const scopedStorageKey = storageKey.match(
@@ -168,7 +186,10 @@ async function loadOrganizationLogoDataUrl(
     scopedStorageKey &&
     scopedStorageKey[1].toLowerCase() !== organizationId.toLowerCase()
   ) {
-    throw new TelegramExportRequestError("الشعار المحفوظ لا يتبع الجهة المطلوبة", 403);
+    throw new TelegramExportRequestError(
+      "الشعار المحفوظ لا يتبع الجهة المطلوبة",
+      403
+    );
   }
 
   if (!isPlatformOwner(user) && !scopedStorageKey) {
@@ -177,13 +198,19 @@ async function loadOrganizationLogoDataUrl(
       organizationId
     );
     if (!isExclusive) {
-      throw new TelegramExportRequestError("الشعار القديم مستخدم لأكثر من جهة؛ أعد رفعه من إعدادات الجهة", 422);
+      throw new TelegramExportRequestError(
+        "الشعار القديم مستخدم لأكثر من جهة؛ أعد رفعه من إعدادات الجهة",
+        422
+      );
     }
   }
 
   const asset = await storageDownload(storageKey);
   if (asset.body.length === 0 || asset.body.length > MAX_OFFICIAL_LOGO_BYTES) {
-    throw new TelegramExportRequestError("حجم ملف شعار الجهة غير صالح للتصدير", 422);
+    throw new TelegramExportRequestError(
+      "حجم ملف شعار الجهة غير صالح للتصدير",
+      422
+    );
   }
 
   const mimeType = detectOfficialDocumentLogoMimeType(
@@ -192,7 +219,10 @@ async function loadOrganizationLogoDataUrl(
     storageKey
   );
   if (!mimeType) {
-    throw new TelegramExportRequestError("ملف شعار الجهة ليس صورة صالحة للتصدير", 422);
+    throw new TelegramExportRequestError(
+      "ملف شعار الجهة ليس صورة صالحة للتصدير",
+      422
+    );
   }
 
   return "data:" + mimeType + ";base64," + asset.body.toString("base64");
@@ -480,7 +510,9 @@ export function registerTelegramExportRoutes(app: Express): void {
     try {
       if (html.includes(OFFICIAL_LOGO_PLACEHOLDER)) {
         if (typeof body.organizationId !== "string") {
-          return res.status(400).json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
+          return res
+            .status(400)
+            .json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
         }
         const logoDataUrl = await loadOrganizationLogoDataUrl(
           user,

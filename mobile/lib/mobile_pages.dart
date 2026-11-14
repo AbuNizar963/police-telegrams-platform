@@ -2033,9 +2033,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       final pngFileName = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '.png');
       final result = await widget.api.uploadOrganizationLogo(
         organizationId: organizationId,
-        fileName: pngFileName == file.name
-            ? '$pngFileName.png'
-            : pngFileName,
+        fileName: pngFileName == file.name ? '$pngFileName.png' : pngFileName,
         contentType: 'image/png',
         bytes: compressedBytes,
       );

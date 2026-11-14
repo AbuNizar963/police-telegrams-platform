@@ -298,10 +298,7 @@ export async function notifyOrganizationTelegramCreated(input: {
     await listPushSubscriptions(input.organizationId)
   ).filter(subscription => activeRecipientIds.has(subscription.userId));
   const payload = JSON.stringify({
-    type:
-      direction === "incoming"
-        ? "telegram.incoming"
-        : "telegram.created",
+    type: direction === "incoming" ? "telegram.incoming" : "telegram.created",
     title: presentation.title,
     body: getTelegramNotificationBody(input.serialCode, direction),
     tag: `telegram-${input.telegramId}`,

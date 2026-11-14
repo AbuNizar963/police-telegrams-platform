@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import {
+  Building2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
@@ -1586,7 +1594,11 @@ export default function OwnerOrganizationManagement() {
                       <span
                         className={`rounded-full px-2 py-1 font-semibold ${item.isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}
                       >
-                        {item.deletedAt ? "محذوفة" : item.isActive ? "مفعلة" : "موقوفة"}
+                        {item.deletedAt
+                          ? "محذوفة"
+                          : item.isActive
+                            ? "مفعلة"
+                            : "موقوفة"}
                       </span>
                       <span className="hidden text-muted-foreground sm:inline">
                         {accountCountByOrganization.get(item.id) ?? 0} حساب

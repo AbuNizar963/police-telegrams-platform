@@ -51,7 +51,7 @@ export function clearCachedOfficialDocumentLogo(source?: string): void {
   }
   logoObjectUrlCache.clear();
 }
- 
+
 /**
  * Keeps validated binary-backed object URLs separate from the legacy data-URL
  * cache. URLs stay alive while preview/print DOM nodes may still reference

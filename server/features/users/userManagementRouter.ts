@@ -80,7 +80,7 @@ export const userManagementRouter = router({
           "id, organizationId, username, name, badgeNumber, phone, rank, unit, role, loginMethod, createdAt, lastSignedIn",
           { count: "exact" }
         )
-        .eq("isActive", true)
+        .or("isActive.eq.true,loginMethod.eq.disabled")
         .in("organizationId", scopedOrganizationIds)
         .order("createdAt", { ascending: false })
         .range(
@@ -502,6 +502,7 @@ export const userManagementRouter = router({
           password_hash: await hashPassword(input.password),
           mustChangePassword: true,
           loginMethod: "password",
+          isActive: true,
           updatedAt: new Date().toISOString(),
         })
         .eq("id", input.id);
@@ -606,6 +607,7 @@ export const userManagementRouter = router({
           authUserId: randomUUID(),
           password_hash: null,
           loginMethod: "disabled",
+          isActive: false,
           updatedAt: new Date().toISOString(),
         })
         .eq("id", input.id);

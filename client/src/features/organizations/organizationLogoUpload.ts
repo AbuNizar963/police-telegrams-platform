@@ -5,30 +5,13 @@ const MINIMUM_DIMENSION = 256;
 
 type OrganizationLogoContentType = "image/png" | "image/jpeg";
 
-function readBlobAsBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("تعذر قراءة ملف الشعار بعد ضغطه"));
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      const commaIndex = value.indexOf(",");
-      if (commaIndex < 0) {
-        reject(new Error("تعذر تجهيز ملف الشعار للرفع"));
-        return;
-      }
-      resolve(value.slice(commaIndex + 1));
-    };
-    reader.readAsDataURL(blob);
-  });
-}
-
 /**
- * Downsample organization logos before Base64 transport. The stored image stays
- * in its original PNG/JPEG format and within a payload size that Vercel accepts.
+ * Downsample organization logos before binary transport. The image stays in its
+ * original PNG/JPEG format and within the server's strict upload size limit.
  */
 export async function prepareOrganizationLogoUpload(
   file: File
-): Promise<{ base64: string; contentType: OrganizationLogoContentType }> {
+): Promise<{ blob: Blob; contentType: OrganizationLogoContentType }> {
   if (file.size === 0) throw new Error("ملف الشعار فارغ");
   if (file.size > MAX_SOURCE_LOGO_BYTES) {
     throw new Error("حجم ملف الشعار الأصلي يجب ألا يتجاوز 5 ميغابايت");
@@ -77,7 +60,7 @@ export async function prepareOrganizationLogoUpload(
       }
       if (blob.size <= MAX_STORED_LOGO_BYTES) {
         return {
-          base64: await readBlobAsBase64(blob),
+          blob,
           contentType: file.type,
         };
       }
@@ -96,4 +79,47 @@ export async function prepareOrganizationLogoUpload(
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+export type UploadedOrganizationLogo = {
+  key: string;
+  url: string;
+};
+
+type OrganizationLogoUploadResponse = {
+  key?: unknown;
+  url?: unknown;
+  error?: unknown;
+};
+
+/** Upload a prepared logo as raw bytes through the authenticated API. */
+export async function uploadOrganizationLogoDirect(input: {
+  organizationId: string;
+  fileName: string;
+  blob: Blob;
+  contentType: OrganizationLogoContentType;
+}): Promise<UploadedOrganizationLogo> {
+  const response = await fetch("/api/storage/department-logo", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": input.contentType,
+      "X-Organization-Id": input.organizationId,
+      "X-File-Name": encodeURIComponent(input.fileName),
+    },
+    body: input.blob,
+  });
+
+  const result = (await response
+    .json()
+    .catch(() => null)) as OrganizationLogoUploadResponse | null;
+  if (!response.ok) {
+    const message =
+      typeof result?.error === "string" ? result.error : "تعذر رفع شعار الجهة";
+    throw new Error(message);
+  }
+  if (typeof result?.key !== "string" || typeof result.url !== "string") {
+    throw new Error("استجابة الخادم لرفع الشعار غير صالحة");
+  }
+  return { key: result.key, url: result.url };
 }

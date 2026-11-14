@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
-import { prepareOrganizationLogoUpload } from "@/features/organizations/organizationLogoUpload";
+import {
+  prepareOrganizationLogoUpload,
+  uploadOrganizationLogoDirect,
+} from "@/features/organizations/organizationLogoUpload";
 import {
   hasOrganizationSettingsEditAccess,
   hasOrganizationStructureEditAccess,
@@ -136,6 +139,7 @@ export default function OwnerOrganizationManagement() {
   const [settingsSaveFailedForId, setSettingsSaveFailedForId] = useState<
     string | null
   >(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [organizationSearch, setOrganizationSearch] = useState("");
   const [organizationTypeFilter, setOrganizationTypeFilter] = useState<
     "all" | OrganizationType
@@ -241,7 +245,6 @@ export default function OwnerOrganizationManagement() {
     });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
-  const uploadLogo = trpc.settings.uploadLogo.useMutation();
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
       setCreatedAccount(result);
@@ -558,18 +561,21 @@ export default function OwnerOrganizationManagement() {
       return;
     }
 
+    setIsUploadingLogo(true);
     try {
       const normalizedLogo = await prepareOrganizationLogoUpload(file);
-      const result = await uploadLogo.mutateAsync({
+      const result = await uploadOrganizationLogoDirect({
         organizationId: editingId,
         fileName: file.name,
+        blob: normalizedLogo.blob,
         contentType: normalizedLogo.contentType,
-        base64: normalizedLogo.base64,
       });
       setSettingsDraft(current => ({ ...current, logoUrl: result.url }));
       toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر رفع الشعار");
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -1375,16 +1381,14 @@ export default function OwnerOrganizationManagement() {
                           type="file"
                           accept="image/png,image/jpeg"
                           className="block w-full text-xs"
-                          disabled={
-                            !editingId || !online || uploadLogo.isPending
-                          }
+                          disabled={!editingId || !online || isUploadingLogo}
                           onChange={event => {
                             void handleLogoFile(event.target.files?.[0]);
                             event.currentTarget.value = "";
                           }}
                         />
                         <p className="mt-1 font-normal leading-5 text-muted-foreground">
-                          {uploadLogo.isPending
+                          {isUploadingLogo
                             ? "جارٍ رفع الشعار..."
                             : !editingId
                               ? "احفظ الجهة أولًا ثم اختر ملف الشعار"

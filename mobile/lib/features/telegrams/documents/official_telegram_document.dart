@@ -1411,12 +1411,11 @@ class _OfficialTelegramDocumentPageState
           ],
         ),
         actions: [
-          if (widget.canOperate || widget.isAdmin)
-            IconButton(
-              tooltip: 'سير العمل والمرفقات وسجل الإجراءات',
-              onPressed: _showWorkflowActions,
-              icon: const Icon(Icons.account_tree_outlined),
-            ),
+          IconButton(
+            tooltip: 'سير العمل والمرفقات وسجل الإجراءات',
+            onPressed: _showWorkflowActions,
+            icon: const Icon(Icons.account_tree_outlined),
+          ),
           IconButton(
             tooltip: 'إغلاق تفاصيل البرقية',
             onPressed: () => Navigator.of(context).maybePop(),

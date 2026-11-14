@@ -1,6 +1,8 @@
 package com.police_telegrams
 
 import android.app.PendingIntent
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,6 +14,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.net.HttpURLConnection
@@ -27,6 +31,8 @@ class UpdateInstaller(private val context: Context) {
         const val INSTALL_PERMISSION_REQUIRED = "INSTALL_PERMISSION_REQUIRED"
         private const val INSTALL_REQUEST_CODE = 7412
         private const val UPDATE_DIRECTORY = "updates"
+        private const val NOTIFICATION_CHANNEL_ID = "app_update_progress"
+        private const val NOTIFICATION_ID = 4107
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -70,6 +76,7 @@ class UpdateInstaller(private val context: Context) {
             "الإصدار المنشور ليس أحدث من الإصدار المثبت."
         }
 
+        showNotification("جارٍ تنزيل تحديث برقيات الشرطة", "يبدأ تنزيل ملف التحديث...", 0, true)
         Thread({
             val directory = File(context.cacheDir, UPDATE_DIRECTORY)
             val apk = File(directory, "police-telegrams-update-$expectedVersionCode.apk")
@@ -86,6 +93,7 @@ class UpdateInstaller(private val context: Context) {
                     expectedVersionName,
                     expectedVersionCode
                 )
+                showNotification("اكتمل تنزيل التحديث", "تم تنزيل الملف والتحقق من سلامته. افتح التطبيق لمتابعة التثبيت.", 100, false, completed = true)
                 emit(
                     mapOf(
                         "status" to "completed",
@@ -97,9 +105,66 @@ class UpdateInstaller(private val context: Context) {
                 )
             } catch (failure: Throwable) {
                 apk.delete()
+                showNotification("تعذر تنزيل التحديث", failure.message ?: "فشل تنزيل التحديث. افتح التطبيق وحاول مجددًا.", 0, false, failed = true)
                 emitError(failure)
             }
         }, "police-telegrams-updater").apply { isDaemon = true }.start()
+    }
+
+    private fun showNotification(
+        title: String,
+        message: String,
+        progress: Int,
+        ongoing: Boolean,
+        completed: Boolean = false,
+        failed: Boolean = false
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            manager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null
+        ) {
+            manager.createNotificationChannel(
+                NotificationChannel(NOTIFICATION_CHANNEL_ID, "تحديث التطبيق", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "تقدم تنزيل تحديثات تطبيق برقيات الشرطة"
+                    setShowBadge(false)
+                }
+            )
+        }
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val contentIntent = launchIntent?.let {
+            PendingIntent.getActivity(context, NOTIFICATION_ID, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+        val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(context.applicationInfo.icon)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOnlyAlertOnce(true)
+            .setOngoing(ongoing)
+            .setAutoCancel(false)
+            .setProgress(100, progress.coerceIn(0, 100), false)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+        if (contentIntent != null) builder.setContentIntent(contentIntent)
+        if (completed || failed) {
+            builder.setOngoing(false).setAutoCancel(true).setProgress(0, 0, false)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+        }
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        } catch (_: SecurityException) {
+            // Notification permission may be revoked while the transfer is running.
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        val megabytes = bytes / (1024.0 * 1024.0)
+        return String.format(java.util.Locale.ROOT, "%.1f MB", megabytes)
     }
 
     private fun isTrustedReleaseUrl(value: String): Boolean {
@@ -149,6 +214,7 @@ class UpdateInstaller(private val context: Context) {
                             val elapsedSeconds = ((now - startedAt) / 1000L).coerceAtLeast(1L)
                             val bytesPerSecond = downloaded / elapsedSeconds
                             val remaining = (expectedSize - downloaded).coerceAtLeast(0L)
+                            showNotification("جارٍ تنزيل تحديث برقيات الشرطة", "اكتمل $percent% • ${formatBytes(downloaded)} من ${formatBytes(expectedSize)}", percent, true)
                             emit(
                                 mapOf(
                                     "status" to "downloading",

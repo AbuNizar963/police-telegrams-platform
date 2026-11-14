@@ -24,7 +24,7 @@ import java.net.URL
 import java.security.MessageDigest
 
 /**
- * Downloads and validates an official APK in the app cache, then hands it to
+ * Downloads and validates an official APK in private app storage, then hands it to
  * Android's PackageInstaller. Android remains responsible for user confirmation.
  */
 class UpdateInstaller(private val context: Context) {

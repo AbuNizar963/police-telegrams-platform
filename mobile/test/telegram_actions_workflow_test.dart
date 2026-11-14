@@ -62,9 +62,7 @@ void main() {
     );
     await tester.pump();
 
-    final workflowButton = find.byTooltip(
-      'سير العمل والمرفقات وسجل الإجراءات',
-    );
+    final workflowButton = find.byTooltip('سير العمل والمرفقات وسجل الإجراءات');
     expect(workflowButton, findsOneWidget);
     await tester.tap(workflowButton);
     await tester.pumpAndSettle();

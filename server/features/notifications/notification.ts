@@ -302,7 +302,7 @@ export async function notifyOrganizationTelegramCreated(input: {
   const payload = JSON.stringify({
     type: "telegram.created",
     title: presentation.title,
-    body: getTelegramNotificationBody(input.serialCode, input.direction),
+    body: getTelegramNotificationBody(input.serialCode, direction),
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {

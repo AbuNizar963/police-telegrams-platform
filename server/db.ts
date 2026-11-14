@@ -291,6 +291,7 @@ export async function getUserByUsername(
   const { data, error } = await getSupabaseAdmin()
     .from("users")
     .select("*")
+    .eq("isActive", true)
     .ilike("username", normalized)
     .maybeSingle();
   throwIfError(error, "Failed to load user by username");

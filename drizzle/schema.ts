@@ -99,6 +99,7 @@ export const organizations = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     type: organizationType("type").default("department").notNull(),
     isActive: boolean("isActive").default(true).notNull(),
+    deletedAt: timestamp("deletedAt", { withTimezone: true }),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -137,6 +138,7 @@ export const users = pgTable(
     avatarKey: text("avatarKey"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
+    isActive: boolean("isActive").default(true).notNull(),
     isPlatformOwner: boolean("isPlatformOwner").default(false).notNull(),
     mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
     role: userRole("role").default("user").notNull(),

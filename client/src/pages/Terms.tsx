@@ -146,12 +146,12 @@ export default function Terms() {
           </div>
         </CardHeader>
         <CardContent className="space-y-7 p-5 sm:p-7">
-          {sections.map((section) => (
+          {sections.map(section => (
             <section key={section.title} className="space-y-2">
               <h2 className="text-base font-bold text-foreground">
                 {section.title}
               </h2>
-              {section.paragraphs.map((paragraph) => (
+              {section.paragraphs.map(paragraph => (
                 <p
                   key={paragraph}
                   className="text-sm leading-8 text-muted-foreground"

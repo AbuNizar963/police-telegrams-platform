@@ -382,7 +382,7 @@ Future<void> _downloadAndInstall(
           final total = (data['totalBytes'] as num?)?.toInt() ?? release.apkSize;
           unawaited(
             _installerChannel.invokeMethod<void>('updateDownloadNotification', {
-              'progress': percent.clamp(0, 100),
+              'progress': percent.clamp(0, 100).toInt(),
               'received': received,
               'total': total,
             }),

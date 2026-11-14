@@ -172,7 +172,6 @@ async function notifyFirebaseOrganization(
     item => activeRecipientIds.has(item.userId)
   );
   if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
-  const shortNumber = getShortTelegramNumber(input.serialCode);
   const priority = input.priority ?? "normal";
   const presentation = getTelegramNotificationPresentation(input);
   const invalidTokens: MobilePushTokenRecord[] = [];
@@ -298,10 +297,11 @@ export async function notifyOrganizationTelegramCreated(input: {
   const subscriptions = (
     await listPushSubscriptions(input.organizationId)
   ).filter(subscription => activeRecipientIds.has(subscription.userId));
-  const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
     type:
-      direction === "incoming" ? "telegram.incoming" : "telegram.created",
+      direction === "incoming"
+        ? "telegram.incoming"
+        : "telegram.created",
     title: presentation.title,
     body: getTelegramNotificationBody(input.serialCode, direction),
     tag: `telegram-${input.telegramId}`,

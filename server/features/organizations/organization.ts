@@ -607,6 +607,97 @@ export async function updateOrganization(input: {
   return mapOrganization(data as Record<string, unknown>);
 }
 
+export async function archiveOrganizationSafely(input: {
+  organizationId: string;
+  actorUserId: number;
+  actorName: string;
+  actorRank?: string | null;
+  actorRole: string;
+  reason: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  deviceType?: string | null;
+}): Promise<{ organizationId: string; accountsDisabled: number }> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "archive_organization_safely",
+    {
+      p_organization_id: input.organizationId,
+      p_actor_user_id: input.actorUserId,
+      p_actor_name: input.actorName,
+      p_actor_rank: input.actorRank ?? null,
+      p_actor_role: input.actorRole,
+      p_reason: input.reason,
+      p_ip_address: input.ipAddress ?? null,
+      p_user_agent: input.userAgent ?? null,
+      p_device_type: input.deviceType ?? "unknown",
+    }
+  );
+  throwIfError(error, "Failed to delete organization safely");
+  if (!data || typeof data !== "object") {
+    throw new Error("لم يُرجع إجراء حذف الجهة نتيجة صالحة");
+  }
+  const result = data as {
+    organizationId?: unknown;
+    accountsDisabled?: unknown;
+    deleted?: unknown;
+  };
+  if (
+    result.deleted !== true ||
+    result.organizationId !== input.organizationId
+  ) {
+    throw new Error("لم يكتمل حذف الجهة بأمان");
+  }
+  return {
+    organizationId: input.organizationId,
+    accountsDisabled: Number(result.accountsDisabled ?? 0),
+  };
+}
+
+export type ArchivedOrganizationPurgeResult = {
+  deleted: true;
+  organizationId: string;
+  organizationCode: string;
+  deletedCounts: Record<string, number>;
+};
+
+export async function purgeArchivedOrganizationPermanently(input: {
+  organizationId: string;
+  ownerUserId: number;
+  reason: string;
+  confirmation: string;
+}): Promise<ArchivedOrganizationPurgeResult> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "purge_archived_organization_safely",
+    {
+      p_organization_id: input.organizationId,
+      p_owner_user_id: input.ownerUserId,
+      p_reason: input.reason,
+      p_confirmation: input.confirmation,
+    }
+  );
+  throwIfError(error, "Failed to purge archived organization");
+  if (!data || typeof data !== "object") {
+    throw new Error("لم يُرجع إجراء الحذف النهائي نتيجة صالحة");
+  }
+  const result = data as Record<string, unknown>;
+  if (
+    result.deleted !== true ||
+    result.organizationId !== input.organizationId ||
+    typeof result.organizationCode !== "string"
+  ) {
+    throw new Error("لم يكتمل الحذف النهائي للجهة المؤرشفة");
+  }
+  return {
+    deleted: true,
+    organizationId: input.organizationId,
+    organizationCode: result.organizationCode,
+    deletedCounts:
+      result.deletedCounts && typeof result.deletedCounts === "object"
+        ? (result.deletedCounts as Record<string, number>)
+        : {},
+  };
+}
+
 export async function updateOrganizationAccount(input: {
   organizationId: string;
   username: string;

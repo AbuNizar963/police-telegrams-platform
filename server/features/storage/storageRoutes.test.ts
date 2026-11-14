@@ -236,6 +236,22 @@ describe("binary department logo upload", () => {
     expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
   });
 
+  it("rejects uploads for logically deleted organizations", async () => {
+    getOrganizationByIdIncludingInactive.mockResolvedValueOnce({
+      id: testOrganizationId,
+      deletedAt: new Date(),
+    });
+    const { authorize, res } = createDepartmentLogoUploadHarness();
+    const next = vi.fn();
+
+    await authorize(requestHeaders(), res, next);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(next).not.toHaveBeenCalled();
+    expect(getUserOrganizationMembership).not.toHaveBeenCalled();
+    expect(storagePutDepartmentLogo).not.toHaveBeenCalled();
+  });
+
   it("rejects mismatched image signatures", async () => {
     const { authorize, upload, res } = createDepartmentLogoUploadHarness();
     await authorize(requestHeaders(), res, vi.fn());

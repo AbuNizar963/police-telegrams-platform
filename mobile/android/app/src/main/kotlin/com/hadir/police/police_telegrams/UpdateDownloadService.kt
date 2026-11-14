@@ -100,10 +100,12 @@ class UpdateDownloadService : Service() {
                 expectedVersionCode = build
             ) { success, apkPath ->
                 if (preferences.getString(KEY_STATUS, null) != "cancelled") {
+                    // Commit the terminal state before stopping the service so
+                    // a process death cannot leave a verified APK marked as downloading.
                     preferences.edit()
                         .putString(KEY_STATUS, if (success) "completed" else "failed")
                         .putString("apk_path", apkPath)
-                        .apply()
+                        .commit()
                 }
                 downloadStarted = false
                 updateInstaller = null

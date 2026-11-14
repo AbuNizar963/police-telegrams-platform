@@ -920,6 +920,59 @@ class PoliceApi {
     }
   }
 
+  Future<Map<String, dynamic>> uploadOrganizationLogo({
+    required String organizationId,
+    required String fileName,
+    required String contentType,
+    required Uint8List bytes,
+  }) async {
+    if (contentType != 'image/png' && contentType != 'image/jpeg') {
+      throw const ApiException(415, 'صيغة الشعار يجب أن تكون PNG أو JPG');
+    }
+    if (bytes.isEmpty || bytes.length > 2621440) {
+      throw const ApiException(
+        413,
+        'حجم الشعار بعد التجهيز يجب ألا يتجاوز 2.5 ميغابايت',
+      );
+    }
+
+    final cookie = await _storage.read(key: 'session_cookie');
+    final uri = Uri.parse('$baseUrl/api/storage/department-logo');
+    final headers = <String, String>{
+      'content-type': contentType,
+      'accept': 'application/json',
+      'x-organization-id': organizationId,
+      'x-file-name': Uri.encodeComponent(fileName),
+    };
+    if (cookie != null) headers['cookie'] = cookie;
+
+    late final http.Response response;
+    try {
+      response = await _httpClient
+          .put(uri, headers: headers, body: bytes)
+          .timeout(const Duration(seconds: 30));
+    } catch (error) {
+      if (error is IOException ||
+          error is http.ClientException ||
+          error is TimeoutException) {
+        throw const NetworkException();
+      }
+      rethrow;
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(response.statusCode, _message(response.body));
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map ||
+        decoded['key'] is! String ||
+        decoded['url'] is! String) {
+      throw const ApiException(502, 'استجابة الخادم لرفع الشعار غير صالحة');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
   String _message(String body) {
     try {
       final data = jsonDecode(body);

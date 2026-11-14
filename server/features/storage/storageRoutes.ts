@@ -13,13 +13,15 @@ import {
 } from "../../db";
 import { canAccessTelegramScope } from "../../telegramAccess";
 import {
-  getOrganizationByIdIncludingInactive,
   getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
 import { isPlatformOwner } from "../../ownerAccess";
 import { validateUploadedFile } from "../../fileSecurity";
-import { getUserOrganizationMembership } from "../organizations/organization";
+import {
+  getOrganizationByIdIncludingInactive,
+  getUserOrganizationMembership,
+} from "../organizations/organization";
 import {
   StorageAccessDeniedError,
   organizationAttachmentKeyMatches,

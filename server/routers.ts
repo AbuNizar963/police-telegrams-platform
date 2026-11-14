@@ -881,7 +881,6 @@ export const appRouter = router({
           return {
             organizationId: input.organizationId,
             logoUrl,
-            logoDataUrl: null,
           };
         }
 

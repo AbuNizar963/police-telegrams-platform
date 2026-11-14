@@ -304,7 +304,7 @@ class UpdateInstaller(private val context: Context) {
         try {
             check(!cancellationRequested) { "أُلغي تنزيل التحديث." }
             val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_REQUESTED_RANGE_NOT_SATISFIABLE) {
+            if (responseCode == 416) {
                 if (destination.length() == expectedSize) return
                 if (!destination.delete()) error("تعذر إعادة تهيئة ملف التنزيل غير المكتمل.")
                 error("رفض خادم التحديث استكمال التنزيل؛ أُعيد ضبط الجزء غير المكتمل. حاول مجددًا.")
@@ -343,7 +343,7 @@ class UpdateInstaller(private val context: Context) {
             var receivedThisSession = 0L
             var lastEmission = 0L
             connection.inputStream.use { input ->
-                FileOutputStream(destination, append = resumed).buffered().use { output ->
+                FileOutputStream(destination, resumed).buffered().use { output ->
                     val buffer = ByteArray(32 * 1024)
                     while (true) {
                         check(!cancellationRequested) { "أُلغي تنزيل التحديث." }

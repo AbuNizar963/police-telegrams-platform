@@ -28,38 +28,46 @@ class OrganizationPushTokenRegistration {
     _pendingOrganizationId = null;
   }
 
-  Future<void> ensureRegistered({
+  Future<bool> ensureRegistered({
     required String? organizationId,
     required Future<bool> Function() notificationsEnabled,
     required Future<String?> Function() currentToken,
     required Future<bool> Function(String token) registerToken,
   }) async {
     final requested = organizationId?.trim();
-    if (requested == null || requested.isEmpty) return;
+    if (requested == null || requested.isEmpty) return false;
     if (_syncInProgress) {
       _pendingOrganizationId = requested;
-      return;
+      return false;
     }
-    if (requested == _registeredOrganizationId) return;
+    if (requested == _registeredOrganizationId) return true;
 
     _syncInProgress = true;
     String? target = requested;
+    var requestedOrganizationRegistered = false;
     try {
       while (target != null && target.isNotEmpty) {
         if (target == _registeredOrganizationId) {
+          if (target == requested) {
+            requestedOrganizationRegistered = true;
+          }
           target = _pendingOrganizationId;
           _pendingOrganizationId = null;
           continue;
         }
-        if (!await notificationsEnabled()) return;
+        if (!await notificationsEnabled()) return false;
         final token = await currentToken();
-        if (token == null || token.trim().isEmpty) return;
-        if (!await registerToken(token)) return;
+        if (token == null || token.trim().isEmpty) return false;
+        if (!await registerToken(token)) return false;
 
         _registeredOrganizationId = target;
+        if (target == requested) {
+          requestedOrganizationRegistered = true;
+        }
         target = _pendingOrganizationId;
         _pendingOrganizationId = null;
       }
+      return requestedOrganizationRegistered;
     } finally {
       _syncInProgress = false;
       _pendingOrganizationId = null;
@@ -70,6 +78,41 @@ class OrganizationPushTokenRegistration {
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+}
+
+String telegramPushNotificationTitle(Map<String, dynamic> data) {
+  final category = '${data['category'] ?? ''}'.toLowerCase();
+  final priority = '${data['priority'] ?? ''}'.toLowerCase();
+  final priorityIsUrgent = const {
+    'urgent',
+    'critical',
+    'high',
+  }.contains(priority);
+  final incoming = data['type'] == 'telegram.incoming';
+
+  if (category == 'emergency') {
+    return priorityIsUrgent ? 'برقية طارئة عاجلة' : 'برقية طارئة';
+  }
+  if (priorityIsUrgent) {
+    return incoming ? 'برقية واردة عاجلة' : 'برقية صادرة عاجلة';
+  }
+  return incoming ? 'برقية واردة جديدة' : 'برقية صادرة جديدة';
+}
+
+String telegramPushNotificationBody(Map<String, dynamic> data) {
+  final rawSerial = '${data['serialCode'] ?? ''}'.trim();
+  var digitStart = rawSerial.length;
+  while (digitStart > 0 && int.tryParse(rawSerial[digitStart - 1]) != null) {
+    digitStart--;
+  }
+  final shortSerial = digitStart < rawSerial.length
+      ? rawSerial.substring(digitStart)
+      : rawSerial;
+  final direction = data['type'] == 'telegram.incoming' ? 'واردة' : 'صادرة';
+
+  return shortSerial.isEmpty
+      ? 'هناك برقية $direction جديدة.'
+      : 'هناك برقية $direction برقم: $shortSerial.';
 }
 
 class PushNotificationService {
@@ -184,7 +227,7 @@ class PushNotificationService {
 
     final data = message.data;
     final urgent = _isUrgentTelegram(data);
-    final title = message.notification?.title ?? _fallbackTitle(data, urgent);
+    final title = message.notification?.title ?? _fallbackTitle(data);
     final body = message.notification?.body ?? _fallbackBody(data);
 
     try {
@@ -207,30 +250,15 @@ class PushNotificationService {
   bool _isUrgentTelegram(Map<String, dynamic> data) {
     final priority = '${data['priority'] ?? ''}'.toLowerCase();
     final category = '${data['category'] ?? ''}'.toLowerCase();
-    return priority == 'urgent' || category == 'emergency';
+    const urgentPriorities = {'urgent', 'critical', 'high'};
+    return urgentPriorities.contains(priority) || category == 'emergency';
   }
 
-  String _fallbackTitle(Map<String, dynamic> data, bool urgent) {
-    final category = '${data['category'] ?? ''}'.toLowerCase();
-    final priority = '${data['priority'] ?? ''}'.toLowerCase();
-    if (category == 'emergency' && priority == 'urgent') {
-      return 'برقية طارئة عاجلة';
-    }
-    if (category == 'emergency') return 'برقية طارئة';
-    if (urgent) return 'برقية عاجلة';
-    return data['type'] == 'telegram.incoming'
-        ? 'برقية واردة جديدة'
-        : 'برقية جديدة';
-  }
+  String _fallbackTitle(Map<String, dynamic> data) =>
+      telegramPushNotificationTitle(data);
 
-  String _fallbackBody(Map<String, dynamic> data) {
-    final serial = '${data['serialCode'] ?? ''}'.trim();
-    final subject = '${data['subject'] ?? ''}'.trim();
-    final details = <String>[];
-    if (serial.isNotEmpty) details.add('رقم البرقية: $serial');
-    if (subject.isNotEmpty) details.add('الموضوع: $subject');
-    return details.isEmpty ? 'وصلت برقية جديدة إلى جهتك.' : details.join('\n');
-  }
+  String _fallbackBody(Map<String, dynamic> data) =>
+      telegramPushNotificationBody(data);
 
   int? _telegramId(RemoteMessage message) {
     final raw = message.data['telegramId'] ?? message.data['telegram_id'];

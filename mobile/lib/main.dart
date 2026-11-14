@@ -742,7 +742,8 @@ class _DashboardPageState extends State<DashboardPage>
             setState(() => _pushEnabled = enabled);
             if (enabled) {
               unawaited(
-                _syncPushTokenForActiveOrganization(activeOrganizationId),
+                _syncPushTokenForActiveOrganization(activeOrganizationId)
+                    .then<void>((_) {}),
               );
             }
           }
@@ -953,11 +954,11 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
-  Future<void> _syncPushTokenForActiveOrganization(
+  Future<bool> _syncPushTokenForActiveOrganization(
     String? organizationId,
   ) async {
-    if (!mounted || !_pushEnabled) return;
-    await _pushTokenRegistration.ensureRegistered(
+    if (!mounted || !_pushEnabled) return false;
+    return _pushTokenRegistration.ensureRegistered(
       organizationId: organizationId,
       notificationsEnabled: push.notificationsEnabled,
       currentToken: push.currentToken,
@@ -1077,17 +1078,30 @@ class _DashboardPageState extends State<DashboardPage>
         final enabled = await push.enableNotifications(
           onToken: _handlePushToken,
         );
-        if (mounted) {
-          setState(() => _pushEnabled = enabled);
+        if (!mounted) return;
+        setState(() => _pushEnabled = enabled);
+        if (!enabled) {
+          Toast.error(
+            context,
+            'اسمح بالإشعارات من إعدادات الجهاز ثم أعد المحاولة',
+          );
+          return;
+        }
+
+        final registered = await _syncPushTokenForActiveOrganization(
+          activeOrganizationId,
+        );
+        if (!mounted) return;
+        if (registered) {
           Toast.success(
             context,
-            enabled
-                ? 'تم تفعيل إشعارات البرقيات على هذا الجهاز'
-                : 'اسمح بالإشعارات من إعدادات الجهاز ثم أعد المحاولة',
+            'تم تفعيل الإشعارات وتسجيل هذا الجهاز لاستقبال البرقيات',
           );
-        }
-        if (enabled) {
-          unawaited(_syncPushTokenForActiveOrganization(activeOrganizationId));
+        } else {
+          Toast.error(
+            context,
+            'سُمح بالإشعارات، لكن تعذر تسجيل الجهاز لدى الخادم. تحقق من الاتصال ثم أعد المحاولة',
+          );
         }
       }
     } catch (_) {
@@ -1687,7 +1701,10 @@ class _DashboardPageState extends State<DashboardPage>
       }
       unawaited(_loadOrganizationLogo(organizationId, _organizationLogoUrl));
       if (organizationId != null && organizationId.isNotEmpty) {
-        unawaited(_syncPushTokenForActiveOrganization(organizationId));
+        unawaited(
+          _syncPushTokenForActiveOrganization(organizationId)
+              .then<void>((_) {}),
+        );
       }
       if (telegramPage == 1 &&
           section == 0 &&
@@ -3752,9 +3769,11 @@ class _DashboardPageState extends State<DashboardPage>
                     priority == 'عاجلة'
                         ? context.appDangerContainer
                         : context.appInfoContainer,
-                    priority == 'عاجلة' ? context.appDanger : context.appInfo,
+                    priority == 'عاجلة'
+                        ? context.appDangerText
+                        : context.appInfo,
                     icon: priority == 'عاجلة'
-                        ? LucideIcons.siren
+                        ? Icons.priority_high_rounded
                         : Icons.shield_outlined,
                   ),
                 if (_showCategory && category != null && category.isNotEmpty)
@@ -3852,7 +3871,7 @@ class _DashboardPageState extends State<DashboardPage>
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 11, color: foreground),
+          Icon(icon, size: 13, color: foreground),
           const SizedBox(width: 3),
         ],
         Text(

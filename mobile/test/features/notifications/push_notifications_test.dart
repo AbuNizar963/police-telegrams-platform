@@ -53,22 +53,24 @@ void main() {
       Future<bool> isEnabled() async => true;
       Future<String?> currentToken() async => 'device-token';
 
-      await registration.ensureRegistered(
+      final firstResult = await registration.ensureRegistered(
         organizationId: 'organization-a',
         notificationsEnabled: isEnabled,
         currentToken: currentToken,
         registerToken: registerToken,
       );
+      expect(firstResult, isFalse);
       expect(registration.registeredOrganizationId, isNull);
 
       shouldSucceed = true;
-      await registration.ensureRegistered(
+      final secondResult = await registration.ensureRegistered(
         organizationId: 'organization-a',
         notificationsEnabled: isEnabled,
         currentToken: currentToken,
         registerToken: registerToken,
       );
 
+      expect(secondResult, isTrue);
       expect(attempts, 2);
       expect(registration.registeredOrganizationId, 'organization-a');
     },
@@ -108,6 +110,91 @@ void main() {
 
       expect(registeredTokens, ['device-token', 'device-token']);
       expect(registration.registeredOrganizationId, 'organization-b');
+    },
+  );
+
+  test('uses directional titles for ordinary and urgent telegram pushes', () {
+    expect(
+      telegramPushNotificationTitle({
+        'type': 'telegram.created',
+        'priority': 'normal',
+      }),
+      'برقية صادرة جديدة',
+    );
+    expect(
+      telegramPushNotificationTitle({
+        'type': 'telegram.incoming',
+        'priority': 'urgent',
+      }),
+      'برقية واردة عاجلة',
+    );
+  });
+
+  test('treats legacy critical and high priorities as urgent', () {
+    for (final priority in ['critical', 'high']) {
+      expect(
+        telegramPushNotificationTitle({
+          'type': 'telegram.created',
+          'priority': priority,
+        }),
+        'برقية صادرة عاجلة',
+      );
+    }
+  });
+
+  test('uses the telegram serial and direction in push notification body', () {
+    expect(
+      telegramPushNotificationBody({
+        'type': 'telegram.created',
+        'serialCode': 'POL-2026-00123',
+      }),
+      'هناك برقية صادرة برقم: 00123.',
+    );
+    expect(
+      telegramPushNotificationBody({
+        'type': 'telegram.incoming',
+        'serialCode': 'UNIT-00072',
+      }),
+      'هناك برقية واردة برقم: 00072.',
+    );
+  });
+
+  test(
+    'reports whether the device token was registered successfully',
+    () async {
+      final registration = OrganizationPushTokenRegistration();
+
+      final registered = await registration.ensureRegistered(
+        organizationId: 'organization-a',
+        notificationsEnabled: () async => true,
+        currentToken: () async => 'device-token',
+        registerToken: (token) async => token == 'device-token',
+      );
+
+      expect(registered, isTrue);
+      expect(registration.registeredOrganizationId, 'organization-a');
+    },
+  );
+
+  test(
+    'does not report success when notification permission is disabled',
+    () async {
+      final registration = OrganizationPushTokenRegistration();
+      var tokenRequested = false;
+
+      final registered = await registration.ensureRegistered(
+        organizationId: 'organization-a',
+        notificationsEnabled: () async => false,
+        currentToken: () async {
+          tokenRequested = true;
+          return 'device-token';
+        },
+        registerToken: (_) async => true,
+      );
+
+      expect(registered, isFalse);
+      expect(tokenRequested, isFalse);
+      expect(registration.registeredOrganizationId, isNull);
     },
   );
 }

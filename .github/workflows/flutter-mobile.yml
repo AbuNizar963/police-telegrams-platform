@@ -86,6 +86,14 @@ jobs:
       - name: Build Android debug APK without signing secrets
         run: flutter build apk --debug
 
+      - name: Upload Android preview APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: police-telegrams-android-preview
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Enforce clean formatting and whitespace
         if: always()
         shell: bash

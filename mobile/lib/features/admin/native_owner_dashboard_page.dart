@@ -365,9 +365,9 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
       _metric(
         'العمليات الحساسة',
         _number('sensitiveOperations'),
-        Icons.shield_outlined,
+        Icons.shield_rounded,
         context.appDangerContainer,
-        context.appDanger,
+        context.appDangerText,
       ),
       _metric(
         'الجهات النشطة',
@@ -405,7 +405,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
               color: tint,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(icon, color: color, size: 20),
           ),
           const Spacer(),
           Text(

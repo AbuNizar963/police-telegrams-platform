@@ -7,14 +7,16 @@ import express, {
 import { ENV } from "../../_core/env";
 import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
-  getOrganizationByIdIncludingInactive,
-  getOrganizationSettings,
   getTelegramAttachmentByStorageKey,
   getTelegramById,
   getTelegramVersion,
-  isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
 import { canAccessTelegramScope } from "../../telegramAccess";
+import {
+  getOrganizationByIdIncludingInactive,
+  getOrganizationSettings,
+  isDepartmentLogoExclusiveToOrganization,
+} from "../../db";
 import { isPlatformOwner } from "../../ownerAccess";
 import { validateUploadedFile } from "../../fileSecurity";
 import { getUserOrganizationMembership } from "../organizations/organization";

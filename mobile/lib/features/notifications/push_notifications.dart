@@ -75,12 +75,15 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 String telegramPushNotificationTitle(Map<String, dynamic> data) {
   final category = '${data['category'] ?? ''}'.toLowerCase();
   final priority = '${data['priority'] ?? ''}'.toLowerCase();
+  final priorityIsUrgent = const {'urgent', 'critical', 'high'}.contains(
+    priority,
+  );
   final incoming = data['type'] == 'telegram.incoming';
 
   if (category == 'emergency') {
-    return priority == 'urgent' ? 'برقية طارئة عاجلة' : 'برقية طارئة';
+    return priorityIsUrgent ? 'برقية طارئة عاجلة' : 'برقية طارئة';
   }
-  if (priority == 'urgent') {
+  if (priorityIsUrgent) {
     return incoming ? 'برقية واردة عاجلة' : 'برقية صادرة عاجلة';
   }
   return incoming ? 'برقية واردة جديدة' : 'برقية صادرة جديدة';
@@ -237,7 +240,8 @@ class PushNotificationService {
   bool _isUrgentTelegram(Map<String, dynamic> data) {
     final priority = '${data['priority'] ?? ''}'.toLowerCase();
     final category = '${data['category'] ?? ''}'.toLowerCase();
-    return priority == 'urgent' || category == 'emergency';
+    const urgentPriorities = {'urgent', 'critical', 'high'};
+    return urgentPriorities.contains(priority) || category == 'emergency';
   }
 
   String _fallbackTitle(Map<String, dynamic> data) =>

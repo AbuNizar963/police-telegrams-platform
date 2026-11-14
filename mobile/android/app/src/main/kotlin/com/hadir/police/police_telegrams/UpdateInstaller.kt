@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.flutter.plugin.common.EventChannel
 import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -291,7 +292,7 @@ class UpdateInstaller(private val context: Context) {
             var receivedThisSession = 0L
             var lastEmission = 0L
             connection.inputStream.use { input ->
-                destination.outputStream().buffered().use { output ->
+                FileOutputStream(destination, append = resumed).buffered().use { output ->
                     val buffer = ByteArray(32 * 1024)
                     while (true) {
                         check(!cancellationRequested) { "أُلغي تنزيل التحديث." }

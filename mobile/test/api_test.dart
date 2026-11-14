@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -712,11 +711,12 @@ void main() {
       expect(request.headers['x-organization-id'], organizationId);
       expect(request.headers['x-file-name'], 'badge.png');
       expect(request, isA<http.Request>());
-      expect((request as http.Request).bodyBytes, imageBytes);
+      expect(request.bodyBytes, imageBytes);
       return http.Response(
         jsonEncode({
           'key': 'department/logos/$organizationId/generated-badge.png',
-          'url': '/api/storage/department/logos/$organizationId/generated-badge.png',
+          'url':
+              '/api/storage/department/logos/$organizationId/generated-badge.png',
         }),
         201,
         headers: {'content-type': 'application/json'},
@@ -776,5 +776,4 @@ void main() {
       ),
     );
   });
-
 }

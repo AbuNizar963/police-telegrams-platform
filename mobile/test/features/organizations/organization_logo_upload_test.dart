@@ -21,32 +21,37 @@ Future<Uint8List> _transparentPng() async {
 }
 
 void main() {
-  test('normalizes agency logos to PNG without removing transparency', () async {
-    final result = await prepareOrganizationLogoBytes(await _transparentPng());
-    expect(result.length, lessThanOrEqualTo(2621440));
-    expect(result.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
+  test(
+    'normalizes agency logos to PNG without removing transparency',
+    () async {
+      final result = await prepareOrganizationLogoBytes(
+        await _transparentPng(),
+      );
+      expect(result.length, lessThanOrEqualTo(2621440));
+      expect(result.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
 
-    final codec = await ui.instantiateImageCodec(result);
-    try {
-      final frame = await codec.getNextFrame();
+      final codec = await ui.instantiateImageCodec(result);
       try {
-        final rgba = await frame.image.toByteData(
-          format: ui.ImageByteFormat.rawRgba,
-        );
-        expect(rgba, isNotNull);
-        final bytes = rgba!.buffer.asUint8List(
-          rgba.offsetInBytes,
-          rgba.lengthInBytes,
-        );
-        expect(bytes[3], 255);
-        expect(bytes[(15 * 16 + 15) * 4 + 3], 0);
+        final frame = await codec.getNextFrame();
+        try {
+          final rgba = await frame.image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          expect(rgba, isNotNull);
+          final bytes = rgba!.buffer.asUint8List(
+            rgba.offsetInBytes,
+            rgba.lengthInBytes,
+          );
+          expect(bytes[3], 255);
+          expect(bytes[(15 * 16 + 15) * 4 + 3], 0);
+        } finally {
+          frame.image.dispose();
+        }
       } finally {
-        frame.image.dispose();
+        codec.dispose();
       }
-    } finally {
-      codec.dispose();
-    }
-  });
+    },
+  );
 
   test('rejects source logos larger than five MiB before decoding', () async {
     await expectLater(

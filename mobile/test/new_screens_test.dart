@@ -277,7 +277,7 @@ void main() {
     await tester.pumpWidget(_host(const TermsPage()));
     expect(find.text('الشروط والأحكام'), findsWidgets);
     expect(find.text('1. نطاق التطبيق والتعريفات'), findsOneWidget);
-    expect(find.text('17. المخالفات والمسؤولية'), findsOneWidget);
+    expect(find.text('11. المخالفات والمسؤولية'), findsOneWidget);
   });
 
   testWidgets('profile requires matching password confirmation', (

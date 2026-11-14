@@ -51,12 +51,15 @@ export function getTelegramNotificationPresentation(input: {
   const priority = (input.priority ?? "normal").toLowerCase();
   const category = input.category?.toLowerCase() ?? "";
   const isEmergency = category === "emergency";
-  const isUrgent = isEmergency || priority === "urgent";
+  const isPriorityUrgent = ["urgent", "critical", "high"].includes(
+    priority.toLowerCase()
+  );
+  const isUrgent = isEmergency || isPriorityUrgent;
   const title = isEmergency
-    ? priority === "urgent"
+    ? isPriorityUrgent
       ? "برقية طارئة عاجلة"
       : "برقية طارئة"
-    : priority === "urgent"
+    : isPriorityUrgent
       ? input.direction === "incoming"
         ? "برقية واردة عاجلة"
         : "برقية صادرة عاجلة"

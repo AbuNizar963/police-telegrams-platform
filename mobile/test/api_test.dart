@@ -689,4 +689,91 @@ void main() {
     expect(imageRequestCount, 0);
     expect(logoApiRequestCount, 1);
   });
+  test('organization logos upload as authenticated binary bytes', () async {
+    const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+    const sessionCookie = 'sid=authenticated-session';
+    final imageBytes = Uint8List.fromList([
+      0x89,
+      0x50,
+      0x4e,
+      0x47,
+      0x0d,
+      0x0a,
+      0x1a,
+      0x0a,
+    ]);
+    _secureStorageForTest['session_cookie'] = sessionCookie;
+    final client = MockClient((request) async {
+      expect(request.method, 'PUT');
+      expect(request.url.path, '/api/storage/department-logo');
+      expect(request.headers['cookie'], sessionCookie);
+      expect(request.headers['content-type'], 'image/png');
+      expect(request.headers['x-organization-id'], organizationId);
+      expect(request.headers['x-file-name'], 'badge.png');
+      expect(request, isA<http.Request>());
+      expect((request as http.Request).bodyBytes, imageBytes);
+      return http.Response(
+        jsonEncode({
+          'key': 'department/logos/$organizationId/generated-badge.png',
+          'url': '/api/storage/department/logos/$organizationId/generated-badge.png',
+        }),
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+
+    await expectLater(
+      api.uploadOrganizationLogo(
+        organizationId: organizationId,
+        fileName: 'badge.png',
+        contentType: 'image/png',
+        bytes: imageBytes,
+      ),
+      completion(
+        containsPair(
+          'url',
+          '/api/storage/department/logos/$organizationId/generated-badge.png',
+        ),
+      ),
+    );
+  });
+
+  test('binary logo upload surfaces server authorization errors', () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({'error': 'لا تملك صلاحية رفع شعار هذه الجهة'}),
+        403,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+
+    await expectLater(
+      api.uploadOrganizationLogo(
+        organizationId: '550e8400-e29b-41d4-a716-446655440000',
+        fileName: 'badge.png',
+        contentType: 'image/png',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      ),
+      throwsA(
+        isA<ApiException>()
+            .having((error) => error.statusCode, 'statusCode', 403)
+            .having(
+              (error) => error.message,
+              'message',
+              'لا تملك صلاحية رفع شعار هذه الجهة',
+            ),
+      ),
+    );
+  });
+
 }

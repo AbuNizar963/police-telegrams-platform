@@ -103,12 +103,15 @@ export function replaceOfficialLogoPlaceholder(
     throw new Error("The official organization logo is not a validated image");
   }
 
-  const markerAttribute = /src=(["'])telegram-logo:\/\/official\1/gi;
+  const markerAttribute = /src=(["'])telegram-logo:\/\/official\1/i;
   if (!markerAttribute.test(html)) {
     throw new Error("The official organization logo placeholder is missing");
   }
 
-  return html.replace(markerAttribute, \`src="\${logoDataUrl}"\`);
+  return html.replace(
+    /src=(["'])telegram-logo:\/\/official\1/gi,
+    'src="' + logoDataUrl + '"'
+  );
 }
 
 class TelegramExportRequestError extends Error {

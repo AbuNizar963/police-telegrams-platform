@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/telegram_actions.dart';
+import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
 
 class _WorkflowApi extends PoliceApi {
   _WorkflowApi() : super(baseUrl: 'https://example.test');
@@ -49,6 +50,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('أرشفة'), findsOneWidget);
+  });
+
+  testWidgets('official telegram view opens the workflow and records panel', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OfficialTelegramDocumentPage(
+          api: _WorkflowApi(),
+          telegramId: 17,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final workflowButton = find.byTooltip(
+      'سير العمل والمرفقات وسجل الإجراءات',
+    );
+    expect(workflowButton, findsOneWidget);
+    await tester.tap(workflowButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('إجراءات البرقية'), findsOneWidget);
   });
 
   testWidgets('view-only users do not receive workflow transition controls', (

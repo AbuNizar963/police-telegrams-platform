@@ -140,9 +140,8 @@ async function authorizeDepartmentLogoUpload(
     return;
   }
 
-  const organization = await getOrganizationByIdIncludingInactive(
-    organizationId
-  );
+  const organization =
+    await getOrganizationByIdIncludingInactive(organizationId);
   if (!organization) {
     res.status(404).json({ error: "الجهة غير موجودة" });
     return;
@@ -173,8 +172,7 @@ async function receiveDepartmentLogoUpload(
   res: Response
 ): Promise<void> {
   const upload = res.locals.departmentLogoUpload as
-    | DepartmentLogoUploadContext
-    | undefined;
+    DepartmentLogoUploadContext | undefined;
   if (!upload || !Buffer.isBuffer(req.body)) {
     res.status(400).json({ error: "لم يتم استلام بيانات صورة الشعار" });
     return;

@@ -110,20 +110,15 @@ export async function uploadOrganizationLogoDirect(input: {
     body: input.blob,
   });
 
-  const result = (await response.json().catch(() => null)) as
-    | OrganizationLogoUploadResponse
-    | null;
+  const result = (await response
+    .json()
+    .catch(() => null)) as OrganizationLogoUploadResponse | null;
   if (!response.ok) {
     const message =
-      typeof result?.error === "string"
-        ? result.error
-        : "تعذر رفع شعار الجهة";
+      typeof result?.error === "string" ? result.error : "تعذر رفع شعار الجهة";
     throw new Error(message);
   }
-  if (
-    typeof result?.key !== "string" ||
-    typeof result.url !== "string"
-  ) {
+  if (typeof result?.key !== "string" || typeof result.url !== "string") {
     throw new Error("استجابة الخادم لرفع الشعار غير صالحة");
   }
   return { key: result.key, url: result.url };

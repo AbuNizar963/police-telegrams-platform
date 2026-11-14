@@ -2039,7 +2039,9 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         mutation: true,
         input: {
           'organizationId': organizationId,
-          'fileName': pngFileName == file.name ? '$pngFileName.png' : pngFileName,
+          'fileName': pngFileName == file.name
+              ? '$pngFileName.png'
+              : pngFileName,
           'contentType': 'image/png',
           'base64': base64Encode(compressedBytes),
         },

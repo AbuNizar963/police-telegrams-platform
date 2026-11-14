@@ -186,7 +186,7 @@ export default function Terms() {
           </p>
           <h1 className="text-2xl font-bold tracking-tight">الشروط والأحكام</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            إطار الاستخدام الرسمي والسرية وأمن المعلومات وحماية البيانات في مركز البرقيات.
+            إطار الاستخدام الرسمي والسرية وأمن المعلومات وحماية البيانات في مركز\n            البرقيات.
           </p>
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function Terms() {
             <div>
               <CardTitle>الشروط والأحكام لاستخدام مركز البرقيات</CardTitle>
               <CardDescription>
-                أحكام الاستخدام والسرية وحماية المعلومات — للمستخدمين المصرح لهم فقط.
+                أحكام الاستخدام والسرية وحماية المعلومات — للمستخدمين المصرح لهم\n                فقط.
               </CardDescription>
             </div>
           </div>

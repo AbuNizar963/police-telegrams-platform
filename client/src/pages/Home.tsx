@@ -83,7 +83,7 @@ import {
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
-import { getCachedOfficialDocumentLogo } from "@/features/telegrams/documents/officialDocumentLogoCache";
+import { getCachedOfficialDocumentLogo, getCachedOfficialDocumentLogoObjectUrl } from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -2996,6 +2996,85 @@ async function loadOfficialDocumentLogoDataUrl(
   }
 }
 
+
+/**
+ * Fetches the official logo as binary data and exposes it to browser preview
+ * and native printing through a managed Blob URL. PDF/PNG server rendering
+ * deliberately keeps its separate self-contained image path because the
+ * isolated Chromium context cannot access browser Blob URLs.
+ */
+async function loadOfficialDocumentLogoObjectUrl(
+  logoUrl: string | null | undefined
+): Promise<string | null> {
+  const source = logoUrl?.trim();
+  if (!source) return null;
+
+  try {
+    return await getCachedOfficialDocumentLogoObjectUrl(source, async () => {
+      const response = source.startsWith("data:")
+        ? await fetch(source)
+        : await fetch(source, { credentials: "same-origin" });
+      if (!response.ok) {
+        throw new Error("تعذر تحميل صورة الشعار");
+      }
+
+      const blob = await response.blob();
+      if (blob.size === 0 || blob.size > 4 * 1024 * 1024) {
+        throw new Error("حجم ملف شعار الجهة غير صالح");
+      }
+
+      const contentType = blob.type.split(";")[0].trim().toLowerCase();
+      if (
+        contentType &&
+        !contentType.startsWith("image/") &&
+        contentType !== "application/octet-stream"
+      ) {
+        throw new Error("مصدر الشعار ليس صورة صالحة");
+      }
+
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const mimeType = detectOfficialDocumentLogoMimeType(
+        bytes,
+        contentType,
+        source
+      );
+      if (!mimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
+
+      const normalizedBlob = new Blob([bytes], { type: mimeType });
+      const objectUrl = URL.createObjectURL(normalizedBlob);
+      let bitmap: ImageBitmap | null = null;
+      try {
+        if (typeof createImageBitmap === "function") {
+          bitmap = await createImageBitmap(normalizedBlob);
+          if (bitmap.width <= 0 || bitmap.height <= 0) {
+            throw new Error("صورة الشعار غير صالحة");
+          }
+        } else {
+          const image = new Image();
+          image.decoding = "async";
+          image.src = objectUrl;
+          await image.decode();
+          if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+            throw new Error("صورة الشعار غير صالحة");
+          }
+        }
+        return objectUrl;
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        throw error;
+      } finally {
+        bitmap?.close();
+      }
+    });
+  } catch (error) {
+    console.warn("تعذر تحميل شعار الجهة كبيانات ثنائية للمعاينة والطباعة:", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new Error("تعذر تحميل شعار الجهة للمعاينة والطباعة. أعد المحاولة.");
+  }
+}
+
+
 function TelegramDetail({
   telegram,
   settings,
@@ -3592,23 +3671,10 @@ function TelegramDetail({
   const resolveTelegramPreviewLogoUrl = (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
-  }): Promise<string | null> => {
-    const fallbackLogoUrl = getTelegramPreviewLogoSource(exportSettings);
-
-    return resolveTelegramLogoDataUrl(exportSettings).catch(error => {
-      // Export keeps the strict, validated data-URL path. Preview can use the
-      // same organization-scoped source directly when a storage proxy serves
-      // a valid browser image but rejects client-side normalization.
-      if (fallbackLogoUrl) {
-        console.warn(
-          "تعذر تطبيع شعار المعاينة؛ سيُستخدم المصدر الموثق مباشرة",
-          { error: error instanceof Error ? error.message : String(error) }
-        );
-        return fallbackLogoUrl;
-      }
-      throw error;
-    });
-  };
+  }): Promise<string | null> =>
+    loadOfficialDocumentLogoObjectUrl(
+      getTelegramPreviewLogoSource(exportSettings)
+    );
   const documentTelegram = selectedVersion
     ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
     : telegram;
@@ -4553,9 +4619,11 @@ function TelegramDetail({
         utils.settings.get.fetch(undefined, { staleTime: 0 }),
       ]);
       reportExportProgress(25, "اكتملت قراءة إعدادات الجهة والوثيقة");
-      const logoDataUrl = await resolveTelegramLogoDataUrl(exportSettings);
+      const logoObjectUrl = await loadOfficialDocumentLogoObjectUrl(
+        getTelegramPreviewLogoSource(exportSettings)
+      );
       reportExportProgress(40, "تم تحميل شعار الجهة المعتمد");
-      exportWrapper = createExportPaper(documentSettings, logoDataUrl);
+      exportWrapper = createExportPaper(documentSettings, logoObjectUrl);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : DOCUMENT_SETTINGS_LOAD_ERROR

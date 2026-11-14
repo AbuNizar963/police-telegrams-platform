@@ -92,11 +92,33 @@ class UpdateDownloadService : Service() {
             }
         } catch (failure: Exception) {
             preferences.edit().putString(KEY_STATUS, "failed").apply()
+            showFailureNotification(
+                failure.message ?: "تعذر بدء تنزيل التحديث. افتح التطبيق وحاول مجددًا."
+            )
             downloadStarted = false
             stopForeground(false)
             stopSelf()
         }
         return START_STICKY
+    }
+
+    private fun showFailureNotification(message: String) {
+        val notification = NotificationCompat.Builder(
+            this,
+            UpdateInstaller.NOTIFICATION_CHANNEL_ID
+        )
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("تعذر تنزيل التحديث")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setAutoCancel(true)
+            .setOngoing(false)
+            .setOnlyAlertOnce(true)
+            .setProgress(0, 0, false)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .build()
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(UpdateInstaller.NOTIFICATION_ID, notification)
     }
 
     private fun startForegroundCompat() {

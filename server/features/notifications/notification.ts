@@ -32,6 +32,17 @@ function getShortTelegramNumber(serialCode: string): string {
   return lastNumericPart || serialCode;
 }
 
+export function getTelegramNotificationBody(
+  serialCode: string,
+  direction: TelegramNotificationDirection
+): string {
+  const shortNumber = getShortTelegramNumber(serialCode.trim());
+  const directionLabel = direction === "incoming" ? "واردة" : "صادرة";
+  return shortNumber
+    ? `هناك برقية ${directionLabel} برقم: ${shortNumber}.`
+    : `هناك برقية ${directionLabel} جديدة.`;
+}
+
 export function getTelegramNotificationPresentation(input: {
   priority?: string | null;
   category?: string | null;
@@ -40,16 +51,21 @@ export function getTelegramNotificationPresentation(input: {
   const priority = (input.priority ?? "normal").toLowerCase();
   const category = input.category?.toLowerCase() ?? "";
   const isEmergency = category === "emergency";
-  const isUrgent = isEmergency || priority === "urgent";
+  const isPriorityUrgent = ["urgent", "critical", "high"].includes(
+    priority.toLowerCase()
+  );
+  const isUrgent = isEmergency || isPriorityUrgent;
   const title = isEmergency
-    ? priority === "urgent"
+    ? isPriorityUrgent
       ? "برقية طارئة عاجلة"
       : "برقية طارئة"
-    : priority === "urgent"
-      ? "برقية عاجلة"
+    : isPriorityUrgent
+      ? input.direction === "incoming"
+        ? "برقية واردة عاجلة"
+        : "برقية صادرة عاجلة"
       : input.direction === "incoming"
         ? "برقية واردة جديدة"
-        : "برقية جديدة";
+        : "برقية صادرة جديدة";
 
   return {
     title,
@@ -159,7 +175,6 @@ async function notifyFirebaseOrganization(
     item => activeRecipientIds.has(item.userId)
   );
   if (tokens.length === 0) return { sent: 0, removed: 0, configured: true };
-  const shortNumber = getShortTelegramNumber(input.serialCode);
   const priority = input.priority ?? "normal";
   const presentation = getTelegramNotificationPresentation(input);
   const invalidTokens: MobilePushTokenRecord[] = [];
@@ -176,7 +191,7 @@ async function notifyFirebaseOrganization(
           title: presentation.title,
           // Telegram subjects may contain sensitive operational details. Keep
           // lock-screen notifications useful without exposing the document.
-          body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
+          body: getTelegramNotificationBody(input.serialCode, input.direction),
         },
         data: {
           type:
@@ -285,11 +300,10 @@ export async function notifyOrganizationTelegramCreated(input: {
   const subscriptions = (
     await listPushSubscriptions(input.organizationId)
   ).filter(subscription => activeRecipientIds.has(subscription.userId));
-  const shortNumber = getShortTelegramNumber(input.serialCode);
   const payload = JSON.stringify({
-    type: "telegram.created",
+    type: direction === "incoming" ? "telegram.incoming" : "telegram.created",
     title: presentation.title,
-    body: `رقم البرقية: ${shortNumber}\nوصلت برقية جديدة، اضغط لعرض التفاصيل.`,
+    body: getTelegramNotificationBody(input.serialCode, direction),
     tag: `telegram-${input.telegramId}`,
     url: `/?telegram=${input.telegramId}`,
     data: {

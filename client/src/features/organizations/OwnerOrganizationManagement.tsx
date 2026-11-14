@@ -139,6 +139,7 @@ export default function OwnerOrganizationManagement() {
   const [settingsSaveFailedForId, setSettingsSaveFailedForId] = useState<
     string | null
   >(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [organizationSearch, setOrganizationSearch] = useState("");
   const [organizationTypeFilter, setOrganizationTypeFilter] = useState<
     "all" | OrganizationType
@@ -560,6 +561,7 @@ export default function OwnerOrganizationManagement() {
       return;
     }
 
+    setIsUploadingLogo(true);
     try {
       const normalizedLogo = await prepareOrganizationLogoUpload(file);
       const result = await uploadOrganizationLogoDirect({
@@ -572,6 +574,8 @@ export default function OwnerOrganizationManagement() {
       toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر رفع الشعار");
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -1378,7 +1382,7 @@ export default function OwnerOrganizationManagement() {
                           accept="image/png,image/jpeg"
                           className="block w-full text-xs"
                           disabled={
-                            !editingId || !online || uploadLogo.isPending
+                            !editingId || !online || isUploadingLogo
                           }
                           onChange={event => {
                             void handleLogoFile(event.target.files?.[0]);
@@ -1386,7 +1390,7 @@ export default function OwnerOrganizationManagement() {
                           }}
                         />
                         <p className="mt-1 font-normal leading-5 text-muted-foreground">
-                          {uploadLogo.isPending
+                          {isUploadingLogo
                             ? "جارٍ رفع الشعار..."
                             : !editingId
                               ? "احفظ الجهة أولًا ثم اختر ملف الشعار"

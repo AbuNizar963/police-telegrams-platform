@@ -3752,7 +3752,7 @@ class _DashboardPageState extends State<DashboardPage>
                     priority == 'عاجلة'
                         ? context.appDangerContainer
                         : context.appInfoContainer,
-                    priority == 'عاجلة' ? context.appDanger : context.appInfo,
+                    priority == 'عاجلة' ? context.appDangerText : context.appInfo,
                     icon: priority == 'عاجلة'
                         ? Icons.priority_high_rounded
                         : Icons.shield_outlined,

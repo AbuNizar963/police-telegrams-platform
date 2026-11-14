@@ -134,6 +134,49 @@ class MainActivity : FlutterFragmentActivity() {
                             )
                         }
                     }
+                    "ensureInternalDownloadRunning" -> {
+                        val preferences = getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        )
+                        val status = preferences.getString("status", null)
+                        if (status == "starting" || status == "downloading") {
+                            val serviceIntent = Intent(
+                                this@MainActivity,
+                                UpdateDownloadService::class.java
+                            ).apply {
+                                action = UpdateDownloadService.ACTION_START
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_URL,
+                                    preferences.getString("url", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_SIZE,
+                                    preferences.getLong("size", 0L)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_SHA256,
+                                    preferences.getString("sha256", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_VERSION,
+                                    preferences.getString("version", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_BUILD,
+                                    preferences.getLong("build", 0L)
+                                )
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(serviceIntent)
+                            } else {
+                                startService(serviceIntent)
+                            }
+                            result.success(true)
+                        } else {
+                            result.success(false)
+                        }
+                    }
                     "clearInternalDownloadStatus" -> {
                         getSharedPreferences(
                             "internal_update_download",

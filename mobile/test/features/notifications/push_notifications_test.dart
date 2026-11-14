@@ -128,6 +128,18 @@ void main() {
     );
   });
 
+  test('treats legacy critical and high priorities as urgent', () {
+    for (final priority in ['critical', 'high']) {
+      expect(
+        telegramPushNotificationTitle({
+          'type': 'telegram.created',
+          'priority': priority,
+        }),
+        'برقية صادرة عاجلة',
+      );
+    }
+  });
+
   test('uses the telegram serial and direction in push notification body', () {
     expect(
       telegramPushNotificationBody({

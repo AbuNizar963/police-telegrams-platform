@@ -88,7 +88,9 @@ describe("user management organization assignment", () => {
     });
     mocks.hashPassword.mockResolvedValue("hashed-password");
     mocks.verifyPassword.mockResolvedValue(true);
-    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.getUserById.mockResolvedValue({
+      passwordHash: "hashed-owner-password",
+    });
     mocks.purgeInactiveUserSafely.mockResolvedValue({
       data: { deleted: true, userId: 25 },
       error: null,
@@ -215,14 +217,16 @@ describe("safe permanent user deletion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyPassword.mockResolvedValue(true);
-    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.getUserById.mockResolvedValue({
+      passwordHash: "hashed-owner-password",
+    });
     mocks.purgeInactiveUserSafely.mockResolvedValue({
       data: { deleted: true, userId: 25 },
       error: null,
     });
   });
 
-  it("requires the owner confirmation phrase and delegates deletion to the guarded database RPC", async () => {
+  it("requires owner phrase and calls guarded purge RPC", async () => {
     const caller = userManagementRouter.createCaller(adminContext());
 
     await expect(
@@ -249,7 +253,7 @@ describe("safe permanent user deletion", () => {
     );
   });
 
-  it("does not call the purge RPC when the owner password is invalid", async () => {
+  it("rejects invalid owner password before purge", async () => {
     mocks.verifyPassword.mockResolvedValue(false);
     const caller = userManagementRouter.createCaller(adminContext());
 
@@ -264,7 +268,7 @@ describe("safe permanent user deletion", () => {
     expect(mocks.purgeInactiveUserSafely).not.toHaveBeenCalled();
   });
 
-  it("returns a conflict when database safety checks reject the purge", async () => {
+  it("returns conflict when database safety checks reject purge", async () => {
     mocks.purgeInactiveUserSafely.mockResolvedValue({
       data: null,
       error: { message: "Account still owns telegrams" },
@@ -288,11 +292,13 @@ describe("user activation lifecycle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyPassword.mockResolvedValue(true);
-    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.getUserById.mockResolvedValue({
+      passwordHash: "hashed-owner-password",
+    });
     mocks.usersUpdate.mockResolvedValue({ error: null });
   });
 
-  it("marks a disabled account inactive and revokes its login credentials", async () => {
+  it("marks disabled accounts inactive and revokes credentials", async () => {
     mocks.userLookup.mockResolvedValue({
       data: {
         id: 25,
@@ -317,7 +323,7 @@ describe("user activation lifecycle", () => {
     );
   });
 
-  it("reactivates a disabled account by restoring the active flag", async () => {
+  it("reactivates disabled accounts and restores active status", async () => {
     mocks.userLookup.mockResolvedValue({
       data: {
         id: 25,

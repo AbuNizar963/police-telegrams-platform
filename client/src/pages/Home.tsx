@@ -83,7 +83,10 @@ import {
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
-import { getCachedOfficialDocumentLogo, getCachedOfficialDocumentLogoObjectUrl } from "@/features/telegrams/documents/officialDocumentLogoCache";
+import {
+  getCachedOfficialDocumentLogo,
+  getCachedOfficialDocumentLogoObjectUrl,
+} from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -2996,7 +2999,6 @@ async function loadOfficialDocumentLogoDataUrl(
   }
 }
 
-
 /**
  * Fetches the official logo as binary data and exposes it to browser preview
  * and native printing through a managed Blob URL. PDF/PNG server rendering
@@ -3073,7 +3075,6 @@ async function loadOfficialDocumentLogoObjectUrl(
     throw new Error("تعذر تحميل شعار الجهة للمعاينة والطباعة. أعد المحاولة.");
   }
 }
-
 
 function TelegramDetail({
   telegram,

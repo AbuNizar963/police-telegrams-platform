@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
-import { prepareOrganizationLogoUpload } from "@/features/organizations/organizationLogoUpload";
+import {
+  prepareOrganizationLogoUpload,
+  uploadOrganizationLogoDirect,
+} from "@/features/organizations/organizationLogoUpload";
 import {
   hasOrganizationSettingsEditAccess,
   hasOrganizationStructureEditAccess,
@@ -241,7 +244,6 @@ export default function OwnerOrganizationManagement() {
     });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
-  const uploadLogo = trpc.settings.uploadLogo.useMutation();
   const provisionAccount = trpc.organizations.provisionAccount.useMutation({
     onSuccess: async result => {
       setCreatedAccount(result);
@@ -560,11 +562,11 @@ export default function OwnerOrganizationManagement() {
 
     try {
       const normalizedLogo = await prepareOrganizationLogoUpload(file);
-      const result = await uploadLogo.mutateAsync({
+      const result = await uploadOrganizationLogoDirect({
         organizationId: editingId,
         fileName: file.name,
+        blob: normalizedLogo.blob,
         contentType: normalizedLogo.contentType,
-        base64: normalizedLogo.base64,
       });
       setSettingsDraft(current => ({ ...current, logoUrl: result.url }));
       toast.success("تم رفع الشعار؛ اضغط حفظ الجهة لاعتماده رسميًا");

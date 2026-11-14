@@ -680,6 +680,9 @@ Future<bool> _resumeInternalDownload(
 
   final status = raw['status'];
   if (status == 'starting' || status == 'downloading') {
+    await _installerChannel.invokeMethod<bool>(
+      'ensureInternalDownloadRunning',
+    );
     if (context.mounted) {
       _showUpdateMessage(
         context,

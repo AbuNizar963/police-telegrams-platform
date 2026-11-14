@@ -881,7 +881,7 @@ class _DashboardPageState extends State<DashboardPage>
                     errorBuilder: (context, error, stackTrace) => fallback,
                   ),
           ),
-        )
+        ),
       ),
     );
   }

@@ -245,7 +245,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: `data:image/png;base64,${logoBytes.toString("base64")}`,
     });
     expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
 
@@ -280,7 +279,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toMatchObject({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: null,
     });
   });
 
@@ -300,7 +298,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl,
-      logoDataUrl: null,
     });
     expect(mocks.storageDownload).not.toHaveBeenCalled();
   });

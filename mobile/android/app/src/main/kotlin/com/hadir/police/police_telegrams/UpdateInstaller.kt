@@ -103,6 +103,44 @@ class UpdateInstaller(private val context: Context) {
                 if (!directory.exists() && !directory.mkdirs()) {
                     error("تعذر تجهيز مساحة تنزيل التحديث.")
                 }
+
+                // Recover the narrow crash window after the verified partial APK
+                // was renamed but before the service persisted its completed state.
+                if (apk.isFile) {
+                    val existingApkIsValid = runCatching {
+                        validateApk(
+                            apk,
+                            expectedSize,
+                            expectedSha256,
+                            expectedVersionName,
+                            expectedVersionCode
+                        )
+                    }.isSuccess
+                    if (existingApkIsValid) {
+                        showNotification(
+                            "اكتمل تنزيل التحديث",
+                            "تم العثور على ملف التحديث المكتمل والتحقق من سلامته. افتح التطبيق لمتابعة التثبيت.",
+                            100,
+                            false,
+                            completed = true
+                        )
+                        onFinished(true, apk.absolutePath)
+                        emit(
+                            mapOf(
+                                "status" to "completed",
+                                "path" to apk.absolutePath,
+                                "downloadedBytes" to apk.length(),
+                                "totalBytes" to expectedSize,
+                                "percent" to 100
+                            )
+                        )
+                        return@Thread
+                    }
+                    if (!apk.delete()) {
+                        error("تعذر حذف ملف التحديث السابق غير الصالح.")
+                    }
+                }
+
                 download(downloadUrl, partialApk, expectedSize)
                 try {
                     validateApk(

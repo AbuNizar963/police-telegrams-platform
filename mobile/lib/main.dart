@@ -735,6 +735,7 @@ class _DashboardPageState extends State<DashboardPage>
             refresh();
           },
           onAppUpdate: _openAppUpdate,
+          onOpenNotifications: _showNotificationsPreview,
         )
         .then((_) async {
           final enabled = await push.notificationsEnabled();

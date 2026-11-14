@@ -21,6 +21,7 @@ import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -30,12 +31,26 @@ class MainActivity : FlutterFragmentActivity() {
         "com.police_telegrams/apk_installer"
     private val updateNotificationChannel = "app_update_progress"
     private val updateNotificationId = 4107
+    private lateinit var updateInstaller: UpdateInstaller
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
     private var telegramNotificationMethodChannel: MethodChannel? = null
     private var telegramNotificationHandlerReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        updateInstaller = UpdateInstaller(applicationContext)
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.police_telegrams/apk_installer/events"
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                updateInstaller.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                updateInstaller.setEventSink(null)
+            }
+        })
         createUpdateNotificationChannel()
         createTelegramNotificationChannels()
         telegramNotificationMethodChannel = MethodChannel(
@@ -59,6 +74,158 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installerChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "startInternalDownload" -> {
+                        try {
+                            val url = call.argument<String>("url")
+                            val expectedSize = call.argument<Number>("expectedSize")?.toLong()
+                            val expectedSha256 = call.argument<String>("expectedSha256")
+                            val version = call.argument<String>("version")
+                            val buildNumber = call.argument<Number>("buildNumber")?.toLong()
+                            if (url == null || expectedSize == null || expectedSha256 == null ||
+                                version == null || buildNumber == null
+                            ) {
+                                result.error("INVALID_UPDATE_METADATA", "بيانات التحديث غير مكتملة.", null)
+                            } else {
+                                val serviceIntent = Intent(
+                                    this@MainActivity,
+                                    UpdateDownloadService::class.java
+                                ).apply {
+                                    action = UpdateDownloadService.ACTION_START
+                                    putExtra(UpdateDownloadService.EXTRA_URL, url)
+                                    putExtra(UpdateDownloadService.EXTRA_SIZE, expectedSize)
+                                    putExtra(UpdateDownloadService.EXTRA_SHA256, expectedSha256)
+                                    putExtra(UpdateDownloadService.EXTRA_VERSION, version)
+                                    putExtra(UpdateDownloadService.EXTRA_BUILD, buildNumber)
+                                }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    startForegroundService(serviceIntent)
+                                } else {
+                                    startService(serviceIntent)
+                                }
+                                result.success(true)
+                            }
+                        } catch (error: Exception) {
+                            result.error(
+                                "UPDATE_START_FAILED",
+                                error.message ?: "تعذر بدء تنزيل التحديث.",
+                                null
+                            )
+                        }
+                    }
+                    "getInternalDownloadStatus" -> {
+                        val preferences = getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        )
+                        val status = preferences.getString("status", null)
+                        if (status == null) {
+                            result.success(null)
+                        } else {
+                            result.success(
+                                mapOf(
+                                    "status" to status,
+                                    "path" to preferences.getString("apk_path", null),
+                                    "url" to preferences.getString("url", null),
+                                    "size" to preferences.getLong("size", 0L),
+                                    "sha256" to preferences.getString("sha256", null),
+                                    "version" to preferences.getString("version", null),
+                                    "buildNumber" to preferences.getLong("build", 0L)
+                                )
+                            )
+                        }
+                    }
+                    "ensureInternalDownloadRunning" -> {
+                        val preferences = getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        )
+                        val status = preferences.getString("status", null)
+                        if (status == "starting" || status == "downloading") {
+                            val serviceIntent = Intent(
+                                this@MainActivity,
+                                UpdateDownloadService::class.java
+                            ).apply {
+                                action = UpdateDownloadService.ACTION_START
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_URL,
+                                    preferences.getString("url", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_SIZE,
+                                    preferences.getLong("size", 0L)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_SHA256,
+                                    preferences.getString("sha256", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_VERSION,
+                                    preferences.getString("version", null)
+                                )
+                                putExtra(
+                                    UpdateDownloadService.EXTRA_BUILD,
+                                    preferences.getLong("build", 0L)
+                                )
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(serviceIntent)
+                            } else {
+                                startService(serviceIntent)
+                            }
+                            result.success(true)
+                        } else {
+                            result.success(false)
+                        }
+                    }
+                    "clearInternalDownloadStatus" -> {
+                        getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        ).edit().clear().apply()
+                        result.success(true)
+                    }
+                    "installDownloadedApk" -> {
+                        try {
+                            val path = call.argument<String>("path")
+                            val expectedSize = call.argument<Number>("expectedSize")?.toLong()
+                            val expectedSha256 = call.argument<String>("expectedSha256")
+                            val version = call.argument<String>("version")
+                            val buildNumber = call.argument<Number>("buildNumber")?.toLong()
+                            if (path == null || expectedSize == null || expectedSha256 == null ||
+                                version == null || buildNumber == null
+                            ) {
+                                result.error("INVALID_UPDATE_METADATA", "بيانات التثبيت غير مكتملة.", null)
+                            } else {
+                                result.success(
+                                    updateInstaller.install(
+                                        path,
+                                        expectedSize,
+                                        expectedSha256,
+                                        version,
+                                        buildNumber
+                                    )
+                                )
+                            }
+                        } catch (error: Exception) {
+                            result.error(
+                                "INSTALL_FAILED",
+                                error.message ?: "تعذر تجهيز تثبيت التحديث.",
+                                null
+                            )
+                        }
+                    }
+                    "openInstallPermissionSettings" -> {
+                        try {
+                            updateInstaller.openInstallPermissionSettings()
+                            result.success(true)
+                        } catch (error: Exception) {
+                            result.error(
+                                "SETTINGS_FAILED",
+                                error.message ?: "تعذر فتح إعدادات التثبيت.",
+                                null
+                            )
+                        }
+                    }
                     "requestUpdateNotificationPermission" -> {
                         requestUpdateNotificationPermission(result)
                     }

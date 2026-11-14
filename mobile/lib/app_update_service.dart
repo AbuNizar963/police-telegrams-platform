@@ -13,6 +13,9 @@ import './features/notifications/toast.dart';
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
+const _updateProgressEvents = EventChannel(
+  'com.police_telegrams/apk_installer/events',
+);
 
 class _MobileRelease {
   const _MobileRelease({
@@ -235,6 +238,8 @@ Future<void> checkAndPromptForAppUpdate(
     if (!context.mounted) return;
     final resumed = await _resumePendingUpdate(context, packageInfo);
     if (resumed || !context.mounted) return;
+    final resumedInternal = await _resumeInternalDownload(context, packageInfo);
+    if (resumedInternal || !context.mounted) return;
 
     final response = await http
         .get(
@@ -313,7 +318,7 @@ Future<void> checkAndPromptForAppUpdate(
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'سيتم تنزيل التحديث داخل التطبيق، ثم سيطلب Android تأكيد التثبيت.',
+                  'سيستمر تنزيل التحديث في الخلفية حتى عند إغلاق واجهة التطبيق، ثم سيطلب Android تأكيد التثبيت.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12),
                 ),
@@ -359,6 +364,10 @@ Future<void> _downloadAndInstall(
   BuildContext context,
   _MobileRelease release,
 ) async {
+  StreamSubscription<dynamic>? subscription;
+  final completed = Completer<Map<String, dynamic>>();
+  final progressEvents = StreamController<Map<String, dynamic>>.broadcast();
+  var progressDialogOpen = false;
   try {
     try {
       await _installerChannel.invokeMethod<bool>(
@@ -370,39 +379,231 @@ Future<void> _downloadAndInstall(
       );
     }
 
-    final downloadId = await _installerChannel.invokeMethod<int>(
-      'enqueueBackgroundDownload',
+    subscription = _updateProgressEvents.receiveBroadcastStream().listen(
+      (dynamic event) {
+        if (event is! Map) return;
+        final data = Map<String, dynamic>.from(event);
+        progressEvents.add(data);
+        if (data['status'] == 'completed' && !completed.isCompleted) {
+          completed.complete(data);
+        } else if (data['status'] == 'cancelled' && !completed.isCompleted) {
+          completed.completeError(
+            PlatformException(
+              code: 'UPDATE_CANCELLED',
+              message: 'أُلغي تنزيل التحديث بناءً على طلبك.',
+            ),
+          );
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completed.isCompleted) {
+          completed.completeError(error, stackTrace);
+        }
+      },
+      onDone: () {
+        if (!completed.isCompleted) {
+          completed.completeError(
+            StateError('انقطع اتصال متابعة تنزيل التحديث قبل اكتماله.'),
+          );
+        }
+      },
+    );
+
+    if (context.mounted) {
+      progressDialogOpen = true;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: true,
+          builder: (dialogContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: StreamBuilder<Map<String, dynamic>>(
+              stream: progressEvents.stream,
+              initialData: <String, dynamic>{
+                'status': 'downloading',
+                'percent': 0,
+                'downloadedBytes': 0,
+                'totalBytes': release.apkSize,
+              },
+              builder: (context, snapshot) {
+                final data = snapshot.data ?? const <String, dynamic>{};
+                final percent = ((data['percent'] as num?)?.toDouble() ?? 0)
+                    .clamp(0.0, 100.0);
+                final downloaded =
+                    (data['downloadedBytes'] as num?)?.toInt() ?? 0;
+                final total =
+                    (data['totalBytes'] as num?)?.toInt() ?? release.apkSize;
+                final isComplete = data['status'] == 'completed';
+                return AlertDialog(
+                  title: const Text('تنزيل تحديث برقيات الشرطة'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LinearProgressIndicator(
+                        value: isComplete ? 1 : percent / 100,
+                        minHeight: 7,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        isComplete
+                            ? 'اكتمل التنزيل والتحقق من ملف التحديث.'
+                            : 'جارٍ التنزيل: ${percent.toStringAsFixed(0)}%',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${_formatUpdateBytes(downloaded)} من ${_formatUpdateBytes(total)}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(dialogContext).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'يمكنك إخفاء هذه النافذة أو إغلاق التطبيق؛ سيستمر التنزيل في الخلفية.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(dialogContext).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('إخفاء'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ).whenComplete(() => progressDialogOpen = false),
+      );
+    }
+
+    await _installerChannel.invokeMethod<bool>('startInternalDownload', {
+      'url': release.apkUrl.toString(),
+      'expectedSize': release.apkSize,
+      'expectedSha256': release.apkSha256,
+      'version': release.version,
+      'buildNumber': release.buildNumber,
+    });
+
+    final result = await completed.future;
+    final path = result['path'] as String?;
+    if (path == null || path.isEmpty) {
+      throw const FormatException('اكتمل التنزيل دون إرجاع مسار ملف التحديث.');
+    }
+    if (!context.mounted) return;
+    if (progressDialogOpen) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+    }
+    if (!context.mounted) return;
+    await _installInternalUpdate(context, release, path);
+  } catch (error) {
+    if (progressDialogOpen && context.mounted) {
+      await Navigator.of(context, rootNavigator: true).maybePop();
+    }
+    if (context.mounted) {
+      Toast.dismiss();
+      _showUpdateMessage(context, _updateErrorMessage(error));
+    }
+  } finally {
+    await subscription?.cancel();
+    await progressEvents.close();
+  }
+}
+
+String _formatUpdateBytes(int bytes) {
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
+
+Future<void> _installInternalUpdate(
+  BuildContext context,
+  _MobileRelease release,
+  String path,
+) async {
+  try {
+    final result = await _installerChannel.invokeMethod<String>(
+      'installDownloadedApk',
       {
-        'url': release.apkUrl.toString(),
+        'path': path,
         'expectedSize': release.apkSize,
         'expectedSha256': release.apkSha256,
         'version': release.version,
         'buildNumber': release.buildNumber,
       },
     );
-    if (downloadId == null || downloadId <= 0) {
-      throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
+    if (result == 'launched') {
+      await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
     }
-    if (!context.mounted) return;
-
-    Toast.info(
-      context,
-      'بدأ تنزيل التحديث بواسطة Android. سيستمر التنزيل عند مغادرة التطبيق، ويمكنك متابعة تقدمه من شريط الإشعارات.',
-      duration: const Duration(seconds: 8),
-    );
-
-    await _watchBackgroundDownload(
-      context,
-      downloadId: downloadId,
-      expectedSize: release.apkSize,
-      expectedSha256: release.apkSha256,
-    );
-  } catch (error) {
+    if (result == 'INSTALL_PERMISSION_REQUIRED' && context.mounted) {
+      await _showInternalInstallPermissionDialog(context, release, path);
+    } else if (result != 'launched' && context.mounted) {
+      _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
+    }
+  } on PlatformException catch (error) {
     if (context.mounted) {
-      Toast.dismiss();
-      _showUpdateMessage(context, _updateErrorMessage(error));
+      if (error.code == 'INSTALL_FAILED') {
+        _showUpdateMessage(
+          context,
+          error.message ?? 'تعذر تجهيز تثبيت التحديث.',
+        );
+      } else {
+        _showUpdateMessage(context, error.message ?? 'تعذر بدء تثبيت التحديث.');
+      }
     }
   }
+}
+
+Future<void> _showInternalInstallPermissionDialog(
+  BuildContext context,
+  _MobileRelease release,
+  String path,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('السماح بتثبيت التحديث'),
+        content: const Text(
+          'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر، ثم ارجع إلى التطبيق واضغط «إعادة محاولة التثبيت».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('لاحقًا'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _installerChannel.invokeMethod<bool>(
+                  'openInstallPermissionSettings',
+                );
+              } on PlatformException catch (error) {
+                if (context.mounted) {
+                  _showUpdateMessage(
+                    context,
+                    error.message ?? 'تعذر فتح إعدادات التثبيت.',
+                  );
+                }
+              }
+            },
+            child: const Text('فتح الإعدادات'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _installInternalUpdate(context, release, path);
+            },
+            child: const Text('إعادة محاولة التثبيت'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _watchBackgroundDownload(
@@ -562,6 +763,149 @@ String _updateErrorMessage(Object error) {
 
 void _showUpdateMessage(BuildContext context, String message) {
   Toast.info(context, message);
+}
+
+Future<bool> _resumeInternalDownload(
+  BuildContext context,
+  PackageInfo packageInfo,
+) async {
+  final raw = await _installerChannel.invokeMapMethod<String, dynamic>(
+    'getInternalDownloadStatus',
+  );
+  if (raw == null) return false;
+
+  final status = raw['status'];
+  if (status == 'starting' || status == 'downloading') {
+    await _installerChannel.invokeMethod<bool>('ensureInternalDownloadRunning');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'تنزيل التحديث مستمر في الخلفية. يمكنك متابعة النسبة من إشعارات Android.',
+      );
+    }
+    return true;
+  }
+  if (status == 'cancelled') {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    return false;
+  }
+  if (status != 'completed') {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'لم يكتمل تنزيل التحديث السابق. يمكنك إعادة المحاولة من فحص التحديثات.',
+      );
+    }
+    return false;
+  }
+
+  final version = raw['version'] as String?;
+  final buildNumber = (raw['buildNumber'] as num?)?.toInt();
+  final path = raw['path'] as String?;
+  final url = raw['url'] as String?;
+  final size = (raw['size'] as num?)?.toInt();
+  final sha256 = raw['sha256'] as String?;
+  final validSha256 =
+      sha256 != null &&
+      sha256.length == 64 &&
+      sha256.codeUnits.every(
+        (value) =>
+            (value >= 48 && value <= 57) ||
+            (value >= 65 && value <= 70) ||
+            (value >= 97 && value <= 102),
+      );
+  if (version == null ||
+      buildNumber == null ||
+      path == null ||
+      url == null ||
+      size == null ||
+      size <= 0 ||
+      sha256 == null ||
+      !validSha256) {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'بيانات التحديث المحفوظ غير مكتملة؛ أعد فحص التحديثات.',
+      );
+    }
+    return false;
+  }
+
+  final installedVersion = _compareVersion(packageInfo.version, version);
+  final installedBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+  if (installedVersion > 0 ||
+      (installedVersion == 0 && installedBuild >= buildNumber)) {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    return false;
+  }
+
+  if (!await File(path).exists()) {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'ملف التحديث المكتمل غير موجود؛ أعد تنزيل التحديث.',
+      );
+    }
+    return false;
+  }
+
+  final parsedUrl = Uri.tryParse(url);
+  if (parsedUrl == null ||
+      parsedUrl.scheme != 'https' ||
+      parsedUrl.host != 'github.com' ||
+      !parsedUrl.path.contains('/releases/download/')) {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    if (context.mounted) {
+      _showUpdateMessage(
+        context,
+        'رابط التحديث المحفوظ غير صالح؛ أعد فحص التحديثات.',
+      );
+    }
+    return false;
+  }
+
+  final release = _MobileRelease(
+    version: version,
+    buildNumber: buildNumber,
+    notes: 'اكتمل تنزيل هذا التحديث والتحقق من سلامة ملفه.',
+    apkUrl: parsedUrl,
+    apkSize: size,
+    apkSha256: sha256,
+  );
+  if (!context.mounted) return true;
+
+  final shouldInstall = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('اكتمل تنزيل التحديث في الخلفية'),
+        content: Text(
+          'التحديث ${release.version}+${release.buildNumber} جاهز. تم حفظ الملف والتحقق منه بينما كان التطبيق مغلقًا.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('لاحقًا'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.system_update_alt_rounded),
+            label: const Text('متابعة التثبيت'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (shouldInstall == true && context.mounted) {
+    await _installInternalUpdate(context, release, path);
+  }
+  return true;
 }
 
 Future<bool> _resumePendingUpdate(

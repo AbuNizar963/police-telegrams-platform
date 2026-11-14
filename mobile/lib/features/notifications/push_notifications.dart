@@ -175,8 +175,6 @@ class PushNotificationService {
         if (id != null) {
           await _showForegroundTelegramNotification(message, id);
           onForegroundTelegram(id);
-        } else if (message.data.isNotEmpty) {
-          _onOpenNotifications?.call();
         }
       });
       _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen((

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 
 /**
@@ -36,6 +37,7 @@ class UpdateDownloadService : Service() {
 
     @Volatile
     private var downloadStarted = false
+    private var downloadWakeLock: PowerManager.WakeLock? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -74,6 +76,7 @@ class UpdateDownloadService : Service() {
 
         downloadStarted = true
         preferences.edit().putString(KEY_STATUS, "downloading").apply()
+        acquireDownloadWakeLock()
         try {
             UpdateInstaller(applicationContext).startDownload(
                 downloadUrl = url,
@@ -87,6 +90,7 @@ class UpdateDownloadService : Service() {
                     .putString("apk_path", apkPath)
                     .apply()
                 downloadStarted = false
+                releaseDownloadWakeLock()
                 stopForeground(false)
                 stopSelf()
             }
@@ -96,10 +100,35 @@ class UpdateDownloadService : Service() {
                 failure.message ?: "تعذر بدء تنزيل التحديث. افتح التطبيق وحاول مجددًا."
             )
             downloadStarted = false
+            releaseDownloadWakeLock()
             stopForeground(false)
             stopSelf()
         }
         return START_STICKY
+    }
+
+    private fun acquireDownloadWakeLock() {
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        if (downloadWakeLock?.isHeld == true) return
+        downloadWakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "PoliceTelegrams:UpdateDownload"
+        ).apply {
+            setReferenceCounted(false)
+            acquire(2 * 60 * 60 * 1000L)
+        }
+    }
+
+    private fun releaseDownloadWakeLock() {
+        downloadWakeLock?.let { lock ->
+            if (lock.isHeld) lock.release()
+        }
+        downloadWakeLock = null
+    }
+
+    override fun onDestroy() {
+        releaseDownloadWakeLock()
+        super.onDestroy()
     }
 
     private fun showFailureNotification(message: String) {

@@ -40,6 +40,20 @@ describe("telegram push notification presentation", () => {
     );
   });
 
+
+  it("treats legacy critical and high values as urgent", () => {
+    for (const priority of ["critical", "high"]) {
+      const presentation = getTelegramNotificationPresentation({
+        priority,
+        category: "security",
+        direction: "outgoing",
+      });
+      expect(presentation.title).toBe("برقية صادرة عاجلة");
+      expect(presentation.isUrgent).toBe(true);
+      expect(presentation.alertLevel).toBe("urgent");
+    }
+  });
+
   it("routes urgent-priority telegrams to the urgent channel and time-sensitive APNs", () => {
     const presentation = getTelegramNotificationPresentation({
       priority: "urgent",

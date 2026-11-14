@@ -195,7 +195,7 @@ async function loadOrganizationLogoDataUrl(
     throw new TelegramExportRequestError("ملف شعار الجهة ليس صورة صالحة للتصدير", 422);
   }
 
-  return \`data:\${mimeType};base64,\${asset.body.toString("base64")}\`;
+  return "data:" + mimeType + ";base64," + asset.body.toString("base64");
 }
 
 export function isSafeExportHtml(html: string): boolean {

@@ -4267,8 +4267,29 @@ function TelegramDetail({
             }
           })
           .catch(error => {
-            // The immediate organization-scoped source remains visible. A
-            // normalization failure should not delay or remove the preview.
+            // If the optimized data URL or one of its cloned page images fails
+            // to load, restore the already displayed organization-scoped URL.
+            // This keeps a failed optimization from replacing a valid logo
+            // with an empty image in the final preview.
+            if (!cancelled && immediateLogoUrl) {
+              renderPreview(documentSettings, immediateLogoUrl);
+              const fallbackPreviewPages =
+                host.querySelector<HTMLElement>(".telegram-preview-page-stack");
+              if (fallbackPreviewPages) {
+                void withPreparationTimeout(
+                  waitForOfficialDocumentImages(fallbackPreviewPages),
+                  OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+                  "تعذر تثبيت شعار الجهة في صفحات المعاينة."
+                ).catch(fallbackError => {
+                  console.warn("تعذر تحميل شعار المعاينة الاحتياطي", {
+                    error:
+                      fallbackError instanceof Error
+                        ? fallbackError.message
+                        : String(fallbackError),
+                  });
+                });
+              }
+            }
             console.warn("تعذر تحسين شعار المعاينة في الخلفية", {
               error: error instanceof Error ? error.message : String(error),
             });

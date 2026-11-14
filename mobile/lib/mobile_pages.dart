@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import './features/auth_session/app_lock.dart';
 
 import 'api.dart';
+import 'features/organizations/organization_logo_upload.dart';
 import 'app_theme.dart';
 import './features/reports/audit_log_presentation.dart';
 import './features/reports/telegram_report_date_formatter.dart';
@@ -2028,14 +2029,305 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
           'تعذر تحديد الجهة الحالية؛ أعد تحميل الإعدادات ثم حاول مجددًا.',
         );
       }
+      final compressedBytes = await prepareOrganizationLogoBytes(bytes);
+      final pngFileName = file.name.replaceFirst(
+        RegExp(r'\\.[^.]+
+      if (!mounted) return;
+      final uploaded = Map<String, dynamic>.from(result as Map);
+      final logo = _text(uploaded['url']);
+      if (logo.isEmpty) throw Exception('لم يُرجع الخادم رابط الشعار.');
+      setState(() {
+        _logoUrl = logo;
+        // The upload endpoint returns an internal storage URL, not a public
+        // image URL. Preview the selected bytes until settings are saved and
+        // the server returns the authorized signed URL.
+        _pendingLogoPreviewBytes = compressedBytes;
+      });
+      Toast.success(context, 'تم رفع الشعار. اضغط حفظ لاعتماده.');
+    } catch (exception) {
+      if (mounted) {
+        setState(
+          () => _error = exception.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingLogo = false);
+    }
+  }
+
+  Widget _input(
+    TextEditingController controller,
+    String label, {
+    bool numeric = false,
+    int maxLength = 255,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: TextField(
+      controller: controller,
+      enabled: !_saving,
+      maxLength: maxLength,
+      keyboardType: numeric ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+    ),
+  );
+
+  Widget _dropdown(
+    String label,
+    String value,
+    List<MapEntry<String, String>> options,
+    ValueChanged<String?> onChanged,
+  ) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      items: options
+          .map(
+            (option) => DropdownMenuItem(
+              value: option.key,
+              child: Text(
+                option.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: _saving ? null : onChanged,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'إعدادات الجهة',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_error != null) _ErrorCard(message: _error!),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'هوية الجهة وترويسة البرقية',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.appBorder),
+                              ),
+                              child: _pendingLogoPreviewBytes != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _pendingLogoPreviewBytes!,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => Icon(
+                                          Icons.broken_image_outlined,
+                                          color: context.appMutedText,
+                                          size: 30,
+                                        ),
+                                      ),
+                                    )
+                                  : _savedLogoPreviewBytes != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _savedLogoPreviewBytes!,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => Icon(
+                                          Icons.broken_image_outlined,
+                                          color: context.appMutedText,
+                                          size: 30,
+                                        ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.image_not_supported_outlined,
+                                      color: context.appMutedText,
+                                      size: 30,
+                                    ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _saving || _uploadingLogo
+                                    ? null
+                                    : _uploadLogo,
+                                icon: const Icon(Icons.upload_file_outlined),
+                                label: Text(
+                                  _uploadingLogo
+                                      ? 'جارٍ رفع الشعار...'
+                                      : 'رفع شعار PNG أو JPG',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_logoUrl != null) ...[
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: _saving || _uploadingLogo
+                                  ? null
+                                  : () => setState(() {
+                                      _logoUrl = null;
+                                      _pendingLogoPreviewBytes = null;
+                                      _savedLogoPreviewBytes = null;
+                                    }),
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('إزالة الشعار عند الحفظ'),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        _input(_departmentName, 'اسم الجهة الشرطية'),
+                        _input(_unitName, 'اسم الوحدة التابعة'),
+                        _input(_unitChiefRank, 'رتبة رئيس الوحدة'),
+                        _input(_unitChiefName, 'اسم رئيس الوحدة'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _FormCard(
+                  title: 'الترقيم والتوقيت',
+                  children: [
+                    _input(
+                      _serialPrefix,
+                      'بادئة البرقيات الصادرة',
+                      maxLength: 24,
+                    ),
+                    _input(
+                      _incomingSerialPrefix,
+                      'بادئة البرقيات الواردة',
+                      maxLength: 24,
+                    ),
+                    _input(
+                      _serialStart,
+                      'بداية تسلسل الصادر',
+                      numeric: true,
+                      maxLength: 9,
+                    ),
+                    _input(
+                      _incomingSerialStart,
+                      'بداية تسلسل الوارد',
+                      numeric: true,
+                      maxLength: 9,
+                    ),
+                    _dropdown(
+                      'المنطقة الزمنية',
+                      _timezone,
+                      _withCurrent(_timeZones, _timezone),
+                      (value) {
+                        if (value != null) setState(() => _timezone = value);
+                      },
+                    ),
+                    _dropdown(
+                      'تنسيق التاريخ',
+                      _dateFormat,
+                      _withCurrent(_dateFormats, _dateFormat),
+                      (value) {
+                        if (value != null) setState(() => _dateFormat = value);
+                      },
+                    ),
+                    _dropdown(
+                      'تنسيق الوقت',
+                      _timeFormat,
+                      const [
+                        MapEntry('24', '24 ساعة'),
+                        MapEntry('12', '12 ساعة'),
+                      ],
+                      (value) {
+                        if (value != null) setState(() => _timeFormat = value);
+                      },
+                    ),
+                    _dropdown(
+                      'نظام الأرقام',
+                      _numberSystem,
+                      const [
+                        MapEntry('latin', 'لاتينية 123'),
+                        MapEntry('arabic', 'عربية ١٢٣'),
+                      ],
+                      (value) {
+                        if (value != null) {
+                          setState(() => _numberSystem = value);
+                        }
+                      },
+                    ),
+                    if (_settings['nextOutgoingSerial'] != null ||
+                        _settings['nextIncomingSerial'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'الرقم التالي — صادر: ${_text(_settings['nextOutgoingSerial'], '—')}، وارد: ${_text(_settings['nextIncomingSerial'], '—')}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    FilledButton.icon(
+                      onPressed: _saving || _uploadingLogo ? null : _save,
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(
+                        _saving ? 'جارٍ حفظ الإعدادات...' : 'حفظ إعدادات الجهة',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    ),
+  );
+}
+),
+        '.png',
+      );
       final result = await widget.api.call(
         'settings.uploadLogo',
         mutation: true,
         input: {
           'organizationId': organizationId,
-          'fileName': file.name,
-          'contentType': contentType,
-          'base64': base64Encode(bytes),
+          'fileName': pngFileName == file.name ? '$pngFileName.png' : pngFileName,
+          'contentType': 'image/png',
+          'base64': base64Encode(compressedBytes),
         },
       );
       if (!mounted) return;

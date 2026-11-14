@@ -209,9 +209,22 @@ class UpdateInstaller(private val context: Context) {
                 }
             )
         }
-        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("com.police_telegrams.extra.OPEN_APP_UPDATE", true)
+        }
         val contentIntent = launchIntent?.let {
-            PendingIntent.getActivity(context, NOTIFICATION_ID, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            PendingIntent.getActivity(
+                context,
+                NOTIFICATION_ID,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+            )
         }
         val cancelIntent = Intent(context, UpdateDownloadService::class.java).apply {
             action = UpdateDownloadService.ACTION_CANCEL

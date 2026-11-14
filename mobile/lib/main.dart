@@ -868,14 +868,20 @@ class _DashboardPageState extends State<DashboardPage>
         borderRadius: BorderRadius.circular(
           borderRadius > 3.0 ? borderRadius - 3.0 : 0.0,
         ),
-        child: bytes == null
-            ? fallback
-            : Image.memory(
-                bytes,
-                fit: BoxFit.contain,
-                semanticLabel: 'شعار الجهة',
-                errorBuilder: (context, error, stackTrace) => fallback,
-              ),
+        child: Center(
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: bytes == null
+                ? fallback
+                : Image.memory(
+                    bytes,
+                    fit: BoxFit.contain,
+                    semanticLabel: 'شعار الجهة',
+                    errorBuilder: (context, error, stackTrace) => fallback,
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -2107,7 +2113,7 @@ class _DashboardPageState extends State<DashboardPage>
                             valueColor: AlwaysStoppedAnimation<Color>(accent),
                           ),
                         )
-                      : Icon(icon, color: accent, size: 24),
+                      : Icon(icon, color: accent, size: 32),
                 ),
               ),
               const SizedBox(width: 10),

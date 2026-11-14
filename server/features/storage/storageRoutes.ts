@@ -1,4 +1,9 @@
-import express, { type Express, type RequestHandler } from "express";
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { ENV } from "../../_core/env";
 import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
@@ -95,11 +100,11 @@ type DepartmentLogoUploadContext = {
   contentType: "image/png" | "image/jpeg";
 };
 
-const authorizeDepartmentLogoUpload: RequestHandler = async (
-  req,
-  res,
-  next
-) => {
+async function authorizeDepartmentLogoUpload(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const user = await getAuthenticatedUserFromRequest(req);
   if (!user) {
     res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
@@ -159,9 +164,12 @@ const authorizeDepartmentLogoUpload: RequestHandler = async (
     contentType,
   } satisfies DepartmentLogoUploadContext;
   next();
-};
+}
 
-const receiveDepartmentLogoUpload: RequestHandler = async (req, res) => {
+async function receiveDepartmentLogoUpload(
+  req: Request,
+  res: Response
+): Promise<void> {
   const upload = res.locals.departmentLogoUpload as
     | DepartmentLogoUploadContext
     | undefined;
@@ -202,7 +210,7 @@ const receiveDepartmentLogoUpload: RequestHandler = async (req, res) => {
     console.error("[Storage] Department logo upload failed", error);
     res.status(502).json({ error: "تعذر رفع الشعار إلى مساحة التخزين" });
   }
-};
+}
 
 export function registerStorageRoutes(app: Express): void {
   app.put(

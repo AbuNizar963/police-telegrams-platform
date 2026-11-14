@@ -47,11 +47,7 @@ function Router() {
           <About />
         </DashboardPage>
       </Route>
-      <Route path="/terms">
-        <DashboardPage>
-          <Terms />
-        </DashboardPage>
-      </Route>
+      <Route path="/terms" component={Terms} />
       <Route path="/">
         <DashboardPage>
           <Home />

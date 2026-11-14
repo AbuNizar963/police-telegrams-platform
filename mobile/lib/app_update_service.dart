@@ -29,7 +29,8 @@ Future<bool> hasPendingInternalUpdate() async {
     final state = status?['status'];
     return state == 'starting' ||
         state == 'downloading' ||
-        state == 'completed';
+        state == 'completed' ||
+        state == 'failed';
   } on PlatformException catch (error) {
     debugPrint('Unable to read pending internal update: ${error.message}');
     return false;

@@ -889,16 +889,23 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _checkForAppUpdate() async {
     if (!mounted || _updateCheckInProgress) return;
 
-    final now = DateTime.now();
-    final lastCheck = _lastUpdateCheckAt;
-    if (lastCheck != null &&
-        now.difference(lastCheck) < const Duration(minutes: 2)) {
-      return;
-    }
-
     _updateCheckInProgress = true;
-    _lastUpdateCheckAt = now;
     try {
+      // Always inspect the tiny local state first. A completed background APK
+      // must be offered for installation immediately, even inside the regular
+      // two-minute network update-check throttle.
+      final hasPendingUpdate = await hasPendingInternalUpdate();
+      if (!mounted) return;
+
+      final now = DateTime.now();
+      final lastCheck = _lastUpdateCheckAt;
+      if (!hasPendingUpdate &&
+          lastCheck != null &&
+          now.difference(lastCheck) < const Duration(minutes: 2)) {
+        return;
+      }
+
+      _lastUpdateCheckAt = now;
       await checkAndPromptForAppUpdate(context);
     } finally {
       _updateCheckInProgress = false;

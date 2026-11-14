@@ -4250,14 +4250,19 @@ function TelegramDetail({
           .then(async logoUrl => {
             if (cancelled || !logoUrl || logoUrl === immediateLogoUrl) return;
             renderPreview(documentSettings, logoUrl);
-            const logoPaper = host.querySelector<HTMLElement>(
-              ".telegram-export-page"
-            );
-            if (logoPaper) {
+            // renderPreview() builds the visible A4 pages by cloning the
+            // off-screen source paper. Waiting for that source paper alone is
+            // insufficient: cloned <img> elements have their own loading and
+            // decode lifecycle, especially on mobile browsers. Do not consider
+            // the enhanced preview ready until every image in the actual page
+            // stack has loaded and decoded successfully.
+            const visiblePreviewPages =
+              host.querySelector<HTMLElement>(".telegram-preview-page-stack");
+            if (visiblePreviewPages) {
               await withPreparationTimeout(
-                waitForOfficialDocumentImages(logoPaper),
+                waitForOfficialDocumentImages(visiblePreviewPages),
                 OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-                "استغرق تحميل شعار الجهة في المعاينة وقتًا أطول من المتوقع."
+                "استغرق تحميل شعار الجهة في صفحات المعاينة وقتًا أطول من المتوقع."
               );
             }
           })

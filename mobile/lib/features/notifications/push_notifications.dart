@@ -124,14 +124,19 @@ class PushNotificationService {
   StreamSubscription<RemoteMessage>? _openedSubscription;
   StreamSubscription<String>? _tokenRefreshSubscription;
   void Function(int telegramId)? _onTelegramOpened;
+  void Function()? _onAppUpdate;
+  void Function()? _onOpenNotifications;
 
   Future<void> initialize({
     required void Function(int telegramId) onTelegramOpened,
     required void Function(int telegramId) onForegroundTelegram,
     required void Function(String token) onToken,
     void Function()? onAppUpdate,
+    void Function()? onOpenNotifications,
   }) async {
     _onTelegramOpened = onTelegramOpened;
+    _onAppUpdate = onAppUpdate;
+    _onOpenNotifications = onOpenNotifications;
     await _prepareAndroidNotificationBridge();
     await _foregroundSubscription?.cancel();
     await _openedSubscription?.cancel();
@@ -167,9 +172,12 @@ class PushNotificationService {
           return;
         }
         final id = _telegramId(message);
-        if (id == null) return;
-        await _showForegroundTelegramNotification(message, id);
-        onForegroundTelegram(id);
+        if (id != null) {
+          await _showForegroundTelegramNotification(message, id);
+          onForegroundTelegram(id);
+        } else if (message.data.isNotEmpty) {
+          _onOpenNotifications?.call();
+        }
       });
       _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen((
         message,
@@ -179,7 +187,11 @@ class PushNotificationService {
           return;
         }
         final id = _telegramId(message);
-        if (id != null) onTelegramOpened(id);
+        if (id != null) {
+          onTelegramOpened(id);
+        } else if (message.data.isNotEmpty) {
+          _onOpenNotifications?.call();
+        }
       });
       final initial = await _messaging.getInitialMessage();
       if (initial != null && _isAppUpdate(initial)) {
@@ -187,7 +199,11 @@ class PushNotificationService {
         return;
       }
       final initialId = initial == null ? null : _telegramId(initial);
-      if (initialId != null) onTelegramOpened(initialId);
+      if (initialId != null) {
+        onTelegramOpened(initialId);
+      } else if (initial != null && initial.data.isNotEmpty) {
+        _onOpenNotifications?.call();
+      }
     } on FirebaseException {
       // Firebase configuration is supplied per Android/iOS environment.
       // The app remains usable when a developer build has no Firebase files.
@@ -198,10 +214,13 @@ class PushNotificationService {
     if (defaultTargetPlatform != TargetPlatform.android) return;
 
     _androidTelegramNotificationChannel.setMethodCallHandler((call) async {
-      if (call.method != 'onTelegramNotificationOpened') return;
-      final telegramId = int.tryParse('${call.arguments}');
-      if (telegramId != null && telegramId > 0) {
-        _onTelegramOpened?.call(telegramId);
+      if (call.method == 'onTelegramNotificationOpened') {
+        final telegramId = int.tryParse('${call.arguments}');
+        if (telegramId != null && telegramId > 0) {
+          _onTelegramOpened?.call(telegramId);
+        }
+      } else if (call.method == 'onAppUpdateNotificationOpened') {
+        _onAppUpdate?.call();
       }
     });
 
@@ -211,6 +230,9 @@ class PushNotificationService {
       if (pendingId != null && pendingId > 0) {
         _onTelegramOpened?.call(pendingId);
       }
+      final pendingUpdate = await _androidTelegramNotificationChannel
+          .invokeMethod<bool>('markAppUpdateNotificationHandlerReady');
+      if (pendingUpdate == true) _onAppUpdate?.call();
     } on MissingPluginException {
       // Native notifications are unavailable in widget tests and unsupported
       // preview builds; this must not prevent Firebase from initializing.
@@ -334,6 +356,8 @@ class PushNotificationService {
     _openedSubscription = null;
     _tokenRefreshSubscription = null;
     _onTelegramOpened = null;
+    _onAppUpdate = null;
+    _onOpenNotifications = null;
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       _androidTelegramNotificationChannel.setMethodCallHandler(null);

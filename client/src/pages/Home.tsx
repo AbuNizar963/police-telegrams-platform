@@ -5339,11 +5339,13 @@ function TelegramDetail({
             type="button"
             variant="outline"
             onClick={() => {
-              const latitude = Number(telegram.gpsLatitude);
-              const longitude = Number(telegram.gpsLongitude);
+              const latitudeValue = telegram.gpsLatitude?.trim();
+              const longitudeValue = telegram.gpsLongitude?.trim();
+              const latitude = Number(latitudeValue);
+              const longitude = Number(longitudeValue);
               if (
-                telegram.gpsLatitude == null ||
-                telegram.gpsLongitude == null ||
+                !latitudeValue ||
+                !longitudeValue ||
                 !Number.isFinite(latitude) ||
                 !Number.isFinite(longitude) ||
                 latitude < -90 ||

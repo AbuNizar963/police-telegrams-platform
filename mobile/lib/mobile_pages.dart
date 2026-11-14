@@ -2031,17 +2031,13 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       }
       final compressedBytes = await prepareOrganizationLogoBytes(bytes);
       final pngFileName = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '.png');
-      final result = await widget.api.call(
-        'settings.uploadLogo',
-        mutation: true,
-        input: {
-          'organizationId': organizationId,
-          'fileName': pngFileName == file.name
-              ? '$pngFileName.png'
-              : pngFileName,
-          'contentType': 'image/png',
-          'base64': base64Encode(compressedBytes),
-        },
+      final result = await widget.api.uploadOrganizationLogo(
+        organizationId: organizationId,
+        fileName: pngFileName == file.name
+            ? '$pngFileName.png'
+            : pngFileName,
+        contentType: 'image/png',
+        bytes: compressedBytes,
       );
       if (!mounted) return;
       final uploaded = Map<String, dynamic>.from(result as Map);

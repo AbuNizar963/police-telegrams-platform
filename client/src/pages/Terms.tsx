@@ -182,8 +182,8 @@ export default function Terms() {
         </Button>
         <div>
           <p
-        className="text-xs font-semibold tracking-wide text-muted-foreground"
-      >
+            className="text-xs font-semibold tracking-wide text-muted-foreground"
+          >
             إعدادات النظام
           </p>
           <h1 className="text-2xl font-bold tracking-tight">الشروط والأحكام</h1>

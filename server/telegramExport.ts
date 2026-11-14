@@ -2,8 +2,16 @@ import type { Express, Request, Response } from "express";
 import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
+import { ENV } from "./_core/env";
+import { getOrganizationSettings, isDepartmentLogoExclusiveToOrganization } from "./db";
+import { getUserOrganizationMembership } from "./features/organizations/organization";
+import { storageDownload, storageKeyFromStoredUrl } from "./features/storage/storage";
+import { isPlatformOwner } from "./ownerAccess";
+import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 
-const MAX_HTML_BYTES = 3_900_000;
+const MAX_HTML_BYTES = 7_500_000;
+const OFFICIAL_LOGO_PLACEHOLDER = "telegram-logo://official";
+const MAX_OFFICIAL_LOGO_BYTES = 2_500_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 // Render at 384 DPI first, then fall back only when PNG would approach
 // Vercel's 4.5 MB response cap. 4,000,000 bytes leaves protocol headroom.
@@ -74,6 +82,101 @@ export function withPngDpiMetadata(png: Buffer, dpi = 384): Buffer {
     createPngChunk("pHYs", physicalResolution),
     cleanRest,
   ]);
+}
+
+/**
+ * Replace only the explicit official-logo image source marker. The marker is
+ * never allowed to reach Chromium: that isolated browser cannot access the
+ * user's Blob URL or the authenticated storage route.
+ */
+export function replaceOfficialLogoPlaceholder(
+  html: string,
+  logoDataUrl: string
+): string {
+  if (!/^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/]+=*$/i.test(logoDataUrl)) {
+    throw new Error("The official organization logo is not a validated image");
+  }
+
+  const markerAttribute = /src=(["'])telegram-logo:\/\/official\1/gi;
+  if (!markerAttribute.test(html)) {
+    throw new Error("The official organization logo placeholder is missing");
+  }
+
+  return html.replace(markerAttribute, \`src="\${logoDataUrl}"\`);
+}
+
+async function loadOrganizationLogoDataUrl(
+  user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>>,
+  organizationId: string
+): Promise<string> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(organizationId)) {
+    throw new Error("معرّف الجهة غير صالح لتصدير الشعار");
+  }
+
+  if (!isPlatformOwner(user)) {
+    const membership = await getUserOrganizationMembership(user.id);
+    if (
+      !membership ||
+      !membership.isActive ||
+      membership.organizationId !== organizationId
+    ) {
+      throw new Error("لا تملك صلاحية تصدير شعار هذه الجهة");
+    }
+  }
+
+  const settings = await getOrganizationSettings(organizationId);
+  const storedLogo = settings?.logoKey?.trim() || settings?.logoUrl?.trim();
+  const storageKey = storedLogo
+    ? storedLogo.startsWith("department/logos/")
+      ? storedLogo
+      : storageKeyFromStoredUrl(storedLogo, ENV.supabaseStorageBucket)
+    : null;
+
+  if (!storageKey) {
+    throw new Error("الشعار المحفوظ غير متاح كملف ثنائي للتصدير");
+  }
+
+  const departmentLogoKeyPattern =
+    /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
+  if (!departmentLogoKeyPattern.test(storageKey)) {
+    throw new Error("مسار شعار الجهة غير صالح للتصدير");
+  }
+
+  const scopedStorageKey = storageKey.match(
+    /^department\/logos\/([0-9a-f-]{36})\//i
+  );
+  if (
+    scopedStorageKey &&
+    scopedStorageKey[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
+    throw new Error("الشعار المحفوظ لا يتبع الجهة المطلوبة");
+  }
+
+  if (!isPlatformOwner(user) && !scopedStorageKey) {
+    const isExclusive = await isDepartmentLogoExclusiveToOrganization(
+      storageKey,
+      organizationId
+    );
+    if (!isExclusive) {
+      throw new Error("الشعار القديم مستخدم لأكثر من جهة؛ أعد رفعه من إعدادات الجهة");
+    }
+  }
+
+  const asset = await storageDownload(storageKey);
+  if (asset.body.length === 0 || asset.body.length > MAX_OFFICIAL_LOGO_BYTES) {
+    throw new Error("حجم ملف شعار الجهة غير صالح للتصدير");
+  }
+
+  const mimeType = detectOfficialDocumentLogoMimeType(
+    asset.body,
+    asset.contentType,
+    storageKey
+  );
+  if (!mimeType) {
+    throw new Error("ملف شعار الجهة ليس صورة صالحة للتصدير");
+  }
+
+  return \`data:\${mimeType};base64,\${asset.body.toString("base64")}\`;
 }
 
 export function isSafeExportHtml(html: string): boolean {
@@ -338,16 +441,39 @@ export function registerTelegramExportRoutes(app: Express): void {
     const user = await getAuthenticatedUserFromRequest(req);
     if (!user) return res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
 
-    const body = req.body as { html?: unknown; format?: unknown };
-    const html = typeof body.html === "string" ? body.html : "";
+    const body = req.body as {
+      html?: unknown;
+      format?: unknown;
+      organizationId?: unknown;
+    };
+    let html = typeof body.html === "string" ? body.html : "";
     const format =
       body.format === "pdf" || body.format === "png" ? body.format : null;
 
-    if (!format || !ALLOWED_FORMATS.has(format) || !isSafeExportHtml(html)) {
+    if (
+      !format ||
+      !ALLOWED_FORMATS.has(format) ||
+      Buffer.byteLength(html, "utf8") > 3_900_000
+    ) {
       return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
     }
 
     try {
+      if (html.includes(OFFICIAL_LOGO_PLACEHOLDER)) {
+        if (typeof body.organizationId !== "string") {
+          return res.status(400).json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
+        }
+        const logoDataUrl = await loadOrganizationLogoDataUrl(
+          user,
+          body.organizationId
+        );
+        html = replaceOfficialLogoPlaceholder(html, logoDataUrl);
+      }
+
+      if (!isSafeExportHtml(html)) {
+        return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
+      }
+
       const result = await renderTelegramDocument(html, format);
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(

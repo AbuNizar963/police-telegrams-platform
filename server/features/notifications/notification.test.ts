@@ -40,7 +40,6 @@ describe("telegram push notification presentation", () => {
     );
   });
 
-
   it("treats legacy critical and high values as urgent", () => {
     for (const priority of ["critical", "high"]) {
       const presentation = getTelegramNotificationPresentation({

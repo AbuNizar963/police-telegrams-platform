@@ -62,6 +62,8 @@ class MainActivity : FlutterFragmentActivity() {
                     "showTelegramNotification" -> showTelegramNotification(call, result)
                     "markTelegramNotificationHandlerReady" ->
                         markTelegramNotificationHandlerReady(result)
+                    "markAppUpdateNotificationHandlerReady" ->
+                        markAppUpdateNotificationHandlerReady(result)
                     "markTelegramNotificationHandlerNotReady" -> {
                         telegramNotificationHandlerReady = false
                         result.success(null)
@@ -71,6 +73,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         handleTelegramNotificationIntent(intent)
+        handleAppUpdateNotificationIntent(intent)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installerChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -510,6 +513,7 @@ class MainActivity : FlutterFragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleTelegramNotificationIntent(intent)
+        handleAppUpdateNotificationIntent(intent)
     }
 
     private fun createTelegramNotificationChannels() {
@@ -680,6 +684,32 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun markAppUpdateNotificationHandlerReady(result: MethodChannel.Result) {
+        val preferences = getSharedPreferences(
+            TELEGRAM_NOTIFICATION_PREFERENCES,
+            Context.MODE_PRIVATE
+        )
+        val pending = preferences.getBoolean(PENDING_APP_UPDATE_NOTIFICATION, false)
+        preferences.edit().remove(PENDING_APP_UPDATE_NOTIFICATION).apply()
+        result.success(pending)
+    }
+
+    private fun handleAppUpdateNotificationIntent(notificationIntent: Intent?) {
+        if (notificationIntent?.getBooleanExtra(EXTRA_OPEN_APP_UPDATE, false) != true) return
+        notificationIntent.removeExtra(EXTRA_OPEN_APP_UPDATE)
+        if (telegramNotificationHandlerReady) {
+            telegramNotificationMethodChannel?.invokeMethod(
+                "onAppUpdateNotificationOpened",
+                null
+            )
+        } else {
+            getSharedPreferences(
+                TELEGRAM_NOTIFICATION_PREFERENCES,
+                Context.MODE_PRIVATE
+            ).edit().putBoolean(PENDING_APP_UPDATE_NOTIFICATION, true).apply()
+        }
+    }
+
     private fun createUpdateNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -706,7 +736,10 @@ class MainActivity : FlutterFragmentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(EXTRA_OPEN_APP_UPDATE, true)
+        }
         val pendingIntent = launchIntent?.let {
             PendingIntent.getActivity(
                 this,
@@ -859,6 +892,8 @@ class MainActivity : FlutterFragmentActivity() {
         private const val TELEGRAM_URGENT_CHANNEL_ID = "police_telegram_urgent_v1"
         private const val TELEGRAM_NOTIFICATION_PREFERENCES = "telegram_notification_state"
         private const val PENDING_TELEGRAM_NOTIFICATION_ID = "pending_telegram_id"
+        private const val PENDING_APP_UPDATE_NOTIFICATION = "pending_app_update_notification"
+        private const val EXTRA_OPEN_APP_UPDATE = "com.police_telegrams.extra.OPEN_APP_UPDATE"
         private const val EXTRA_TELEGRAM_NOTIFICATION_ID =
             "com.police_telegrams.extra.TELEGRAM_NOTIFICATION_ID"
         private val SHA256_PATTERN = Regex("^[a-f0-9]{64}$")

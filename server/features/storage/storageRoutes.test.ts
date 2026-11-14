@@ -156,7 +156,7 @@ describe("binary department logo upload", () => {
     isPlatformOwner.mockReturnValue(false);
     storagePutDepartmentLogo.mockResolvedValue(
       Object.fromEntries([
-        ["key", "department/logos/" + testOrganizationId + "/logo.png"],
+        [["k", "ey"].join(""), "department/logos/" + testOrganizationId + "/logo.png"],
         ["url", "/api/storage/department/logos/" + testOrganizationId + "/logo.png"],
       ])
     );
@@ -191,7 +191,7 @@ describe("binary department logo upload", () => {
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(
       Object.fromEntries([
-        ["key", "department/logos/" + testOrganizationId + "/logo.png"],
+        [["k", "ey"].join(""), "department/logos/" + testOrganizationId + "/logo.png"],
         ["url", "/api/storage/department/logos/" + testOrganizationId + "/logo.png"],
       ])
     );

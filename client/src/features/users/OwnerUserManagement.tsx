@@ -971,7 +971,9 @@ export default function OwnerUserManagement() {
                                             confirmation !==
                                             `DELETE USER ${user.id} PERMANENTLY`
                                           ) {
-                                            toast.error("عبارة التأكيد غير صحيحة");
+                                            toast.error(
+                                              "عبارة التأكيد غير صحيحة"
+                                            );
                                             return;
                                           }
                                           deleteUser.mutate({

@@ -13,6 +13,7 @@ import './features/notifications/toast.dart';
 const _releaseApi =
     'https://api.github.com/repos/AbuNizar963/police-telegrams-platform/releases/latest';
 const _installerChannel = MethodChannel('com.police_telegrams/apk_installer');
+const _updateProgressEvents = EventChannel('com.police_telegrams/apk_installer/events');
 
 class _MobileRelease {
   const _MobileRelease({
@@ -359,50 +360,164 @@ Future<void> _downloadAndInstall(
   BuildContext context,
   _MobileRelease release,
 ) async {
+  StreamSubscription<dynamic>? subscription;
+  final completed = Completer<Map<String, dynamic>>();
   try {
     try {
       await _installerChannel.invokeMethod<bool>(
         'requestUpdateNotificationPermission',
       );
     } on PlatformException catch (error) {
-      debugPrint(
-        'Update notification permission unavailable: ${error.message}',
+      debugPrint('Update notification permission unavailable: ${error.message}');
+    }
+
+    subscription = _updateProgressEvents.receiveBroadcastStream().listen(
+      (dynamic event) {
+        if (event is! Map) return;
+        final data = Map<String, dynamic>.from(event);
+        final state = data['status'];
+        if (state == 'downloading') {
+          final percent = (data['percent'] as num?)?.toInt() ?? 0;
+          final received = (data['downloadedBytes'] as num?)?.toInt() ?? 0;
+          final total = (data['totalBytes'] as num?)?.toInt() ?? release.apkSize;
+          unawaited(
+            _installerChannel.invokeMethod<void>('updateDownloadNotification', {
+              'progress': percent.clamp(0, 100),
+              'received': received,
+              'total': total,
+            }),
+          );
+        } else if (state == 'completed' && !completed.isCompleted) {
+          unawaited(
+            _installerChannel.invokeMethod<void>('completeUpdateNotification'),
+          );
+          completed.complete(data);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completed.isCompleted) completed.completeError(error, stackTrace);
+      },
+      onDone: () {
+        if (!completed.isCompleted) {
+          completed.completeError(
+            StateError('انقطع اتصال متابعة تنزيل التحديث قبل اكتماله.'),
+          );
+        }
+      },
+    );
+
+    await _installerChannel.invokeMethod<bool>('startInternalDownload', {
+      'url': release.apkUrl.toString(),
+      'expectedSize': release.apkSize,
+      'expectedSha256': release.apkSha256,
+      'version': release.version,
+      'buildNumber': release.buildNumber,
+    });
+    if (context.mounted) {
+      Toast.info(
+        context,
+        'بدأ تنزيل التحديث داخل التطبيق. أبقِ التطبيق مفتوحًا حتى يكتمل التنزيل والتحقق.',
+        duration: const Duration(seconds: 8),
       );
     }
 
-    final downloadId = await _installerChannel.invokeMethod<int>(
-      'enqueueBackgroundDownload',
+    final result = await completed.future;
+    final path = result['path'] as String?;
+    if (path == null || path.isEmpty) {
+      throw const FormatException('اكتمل التنزيل دون إرجاع مسار ملف التحديث.');
+    }
+    if (!context.mounted) return;
+    await _installInternalUpdate(context, release, path);
+  } catch (error) {
+    unawaited(_installerChannel.invokeMethod<void>('failUpdateNotification'));
+    if (context.mounted) {
+      Toast.dismiss();
+      _showUpdateMessage(context, _updateErrorMessage(error));
+    }
+  } finally {
+    await subscription?.cancel();
+  }
+}
+
+Future<void> _installInternalUpdate(
+  BuildContext context,
+  _MobileRelease release,
+  String path,
+) async {
+  try {
+    final result = await _installerChannel.invokeMethod<String>(
+      'installDownloadedApk',
       {
-        'url': release.apkUrl.toString(),
+        'path': path,
         'expectedSize': release.apkSize,
         'expectedSha256': release.apkSha256,
         'version': release.version,
         'buildNumber': release.buildNumber,
       },
     );
-    if (downloadId == null || downloadId <= 0) {
-      throw Exception('تعذر بدء تنزيل التحديث في الخلفية.');
+    if (result == 'INSTALL_PERMISSION_REQUIRED' && context.mounted) {
+      await _showInternalInstallPermissionDialog(context, release, path);
+    } else if (result != 'launched' && context.mounted) {
+      _showUpdateMessage(context, 'تعذر فتح مُثبّت Android. أعد المحاولة.');
     }
-    if (!context.mounted) return;
-
-    Toast.info(
-      context,
-      'بدأ تنزيل التحديث بواسطة Android. سيستمر التنزيل عند مغادرة التطبيق، ويمكنك متابعة تقدمه من شريط الإشعارات.',
-      duration: const Duration(seconds: 8),
-    );
-
-    await _watchBackgroundDownload(
-      context,
-      downloadId: downloadId,
-      expectedSize: release.apkSize,
-      expectedSha256: release.apkSha256,
-    );
-  } catch (error) {
+  } on PlatformException catch (error) {
     if (context.mounted) {
-      Toast.dismiss();
-      _showUpdateMessage(context, _updateErrorMessage(error));
+      if (error.code == 'INSTALL_FAILED') {
+        _showUpdateMessage(context, error.message ?? 'تعذر تجهيز تثبيت التحديث.');
+      } else {
+        _showUpdateMessage(context, error.message ?? 'تعذر بدء تثبيت التحديث.');
+      }
     }
   }
+}
+
+Future<void> _showInternalInstallPermissionDialog(
+  BuildContext context,
+  _MobileRelease release,
+  String path,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('السماح بتثبيت التحديث'),
+        content: const Text(
+          'افتح إعدادات Android وفعّل السماح بتثبيت التطبيقات من هذا المصدر، ثم ارجع إلى التطبيق واضغط «إعادة محاولة التثبيت».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('لاحقًا'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _installerChannel.invokeMethod<bool>(
+                  'openInstallPermissionSettings',
+                );
+              } on PlatformException catch (error) {
+                if (context.mounted) {
+                  _showUpdateMessage(
+                    context,
+                    error.message ?? 'تعذر فتح إعدادات التثبيت.',
+                  );
+                }
+              }
+            },
+            child: const Text('فتح الإعدادات'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _installInternalUpdate(context, release, path);
+            },
+            child: const Text('إعادة محاولة التثبيت'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _watchBackgroundDownload(

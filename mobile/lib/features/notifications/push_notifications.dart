@@ -187,7 +187,9 @@ class PushNotificationService {
         final id = _telegramId(message);
         if (id != null) {
           onTelegramOpened(id);
-        } else if (message.data.isNotEmpty) {
+        } else {
+          // Notification-only FCM messages may have no data payload. They still
+          // represent a deliberate tap and should open the in-app notification inbox.
           _onOpenNotifications?.call();
         }
       });
@@ -199,7 +201,8 @@ class PushNotificationService {
       final initialId = initial == null ? null : _telegramId(initial);
       if (initialId != null) {
         onTelegramOpened(initialId);
-      } else if (initial != null && initial.data.isNotEmpty) {
+      } else if (initial != null) {
+        // A notification-only launch has no data map; fall back to the inbox.
         _onOpenNotifications?.call();
       }
     } on FirebaseException {

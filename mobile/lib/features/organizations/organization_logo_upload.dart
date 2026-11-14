@@ -40,10 +40,10 @@ Future<Uint8List> prepareOrganizationLogoBytes(Uint8List source) async {
 
   var maxDimension = _initialMaxLogoDimension;
   while (true) {
-    final scale = (maxDimension / (sourceWidth > sourceHeight
-            ? sourceWidth
-            : sourceHeight))
-        .clamp(0.0, 1.0);
+    final scale =
+        (maxDimension /
+                (sourceWidth > sourceHeight ? sourceWidth : sourceHeight))
+            .clamp(0.0, 1.0);
     final targetWidth = (sourceWidth * scale)
         .round()
         .clamp(1, sourceWidth)

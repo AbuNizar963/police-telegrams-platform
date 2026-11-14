@@ -5338,9 +5338,28 @@ function TelegramDetail({
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              toast.info("سيظهر موقع البلاغ بعد تفعيل خريطة العمليات")
-            }
+            onClick={() => {
+              const latitude = Number(telegram.gpsLatitude);
+              const longitude = Number(telegram.gpsLongitude);
+              if (
+                telegram.gpsLatitude == null ||
+                telegram.gpsLongitude == null ||
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                latitude < -90 ||
+                latitude > 90 ||
+                longitude < -180 ||
+                longitude > 180
+              ) {
+                toast.info("لا يوجد موقع جغرافي صالح مسجل لهذه البرقية");
+                return;
+              }
+              window.open(
+                `https://www.google.com/maps?q=${latitude},${longitude}`,
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
             title="موقع البرقية"
             aria-label="موقع البرقية"
             className="h-11 w-full min-w-0 justify-center gap-1 rounded-lg px-1.5 text-[11px] whitespace-nowrap"

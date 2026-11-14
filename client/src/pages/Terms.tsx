@@ -181,12 +181,15 @@ export default function Terms() {
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div>
-          <p\n        className="text-xs font-semibold tracking-wide text-muted-foreground"\n      >
+          <p
+        className="text-xs font-semibold tracking-wide text-muted-foreground"
+      >
             إعدادات النظام
           </p>
           <h1 className="text-2xl font-bold tracking-tight">الشروط والأحكام</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            إطار الاستخدام الرسمي والسرية وأمن المعلومات وحماية البيانات في مركز\n            البرقيات.
+            إطار الاستخدام الرسمي والسرية وأمن المعلومات وحماية البيانات في مركز
+            البرقيات.
           </p>
         </div>
       </div>
@@ -194,13 +197,16 @@ export default function Terms() {
       <Card className="overflow-hidden border-border/70 shadow-sm">
         <CardHeader className="bg-muted/30">
           <div className="flex items-center gap-3">
-            <div\n              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"\n            >
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+            >
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
               <CardTitle>الشروط والأحكام لاستخدام مركز البرقيات</CardTitle>
               <CardDescription>
-                أحكام الاستخدام والسرية وحماية المعلومات — للمستخدمين المصرح لهم\n                فقط.
+                أحكام الاستخدام والسرية وحماية المعلومات — للمستخدمين المصرح لهم
+                فقط.
               </CardDescription>
             </div>
           </div>

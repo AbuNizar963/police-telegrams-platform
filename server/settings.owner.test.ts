@@ -227,7 +227,7 @@ describe("platform owner organization settings", () => {
     });
   });
 
-  it("returns a protected same-origin logo URL without serializing image bytes", async () => {
+  it("returns only a protected same-origin binary logo URL", async () => {
     const storageKey = `department/logos/${organizationA.id}/logo.png`;
     const logoBytes = Buffer.from([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
@@ -250,7 +250,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: `data:image/png;base64,${logoBytes.toString("base64")}`,
     });
     expect(mocks.storageDownload).toHaveBeenCalledWith(storageKey);
 
@@ -261,7 +260,7 @@ describe("platform owner organization settings", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("omits inline data for logos larger than the safe tRPC payload cap", async () => {
+  it("does not serialize large logo bytes into the tRPC response", async () => {
     const storageKey = `department/logos/${organizationA.id}/large-logo.png`;
     const logoBytes = Buffer.alloc(2_500_001);
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(
@@ -282,10 +281,9 @@ describe("platform owner organization settings", () => {
       caller.organizations.logoForExport({
         organizationId: organizationA.id,
       })
-    ).resolves.toMatchObject({
+    ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: null,
     });
   });
 
@@ -309,7 +307,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl: `/api/storage/${storageKey}`,
-      logoDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     });
     expect(mocks.isDepartmentLogoExclusiveToOrganization).toHaveBeenCalledWith(
       storageKey,
@@ -370,7 +367,6 @@ describe("platform owner organization settings", () => {
     ).resolves.toEqual({
       organizationId: organizationA.id,
       logoUrl,
-      logoDataUrl: null,
     });
     expect(mocks.storageDownload).not.toHaveBeenCalled();
   });

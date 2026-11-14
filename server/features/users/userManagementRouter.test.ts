@@ -80,7 +80,9 @@ describe("user management organization assignment", () => {
     mocks.userLookup.mockResolvedValue({ data: null, error: null });
     mocks.usersUpdate.mockResolvedValue({ error: null });
     mocks.verifyPassword.mockResolvedValue(true);
-    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.getUserById.mockResolvedValue({
+      passwordHash: "hashed-owner-password",
+    });
     mocks.purgeInactiveUserSafely.mockResolvedValue({
       data: { deleted: true, userId: 25 },
       error: null,
@@ -212,11 +214,13 @@ describe("user activation lifecycle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyPassword.mockResolvedValue(true);
-    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.getUserById.mockResolvedValue({
+      passwordHash: "hashed-owner-password",
+    });
     mocks.usersUpdate.mockResolvedValue({ error: null });
   });
 
-  it("marks a disabled account inactive and revokes its login credentials", async () => {
+  it("marks disabled accounts inactive and revokes credentials", async () => {
     mocks.userLookup.mockResolvedValue({
       data: {
         id: 25,
@@ -241,7 +245,7 @@ describe("user activation lifecycle", () => {
     );
   });
 
-  it("reactivates a disabled account by restoring the active flag", async () => {
+  it("reactivates disabled accounts and restores active status", async () => {
     mocks.userLookup.mockResolvedValue({
       data: {
         id: 25,

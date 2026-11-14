@@ -124,9 +124,7 @@ export default function Terms() {
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            الشروط والأحكام
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">الشروط والأحكام</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             إطار واضح للاستخدام المصرح والسرية وحماية المعلومات في مركز
             البرقيات.
@@ -143,8 +141,8 @@ export default function Terms() {
             <div>
               <CardTitle>الشروط والأحكام لاستخدام مركز البرقيات</CardTitle>
               <CardDescription>
-                قواعد الاستخدام الرسمي وحماية المعلومات — للمستخدمين
-                المصرح لهم فقط.
+                قواعد الاستخدام الرسمي وحماية المعلومات — للمستخدمين المصرح لهم
+                فقط.
               </CardDescription>
             </div>
           </div>

@@ -1,0 +1,29 @@
+name: Temporary Terms Formatter
+on:
+  push:
+    branches:
+      - terms-polish-web-20261114
+    paths:
+      - ".github/workflows/temporary-terms-formatter.yml"
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier output for the terms page
+        run: |
+          pnpm exec prettier client/src/pages/Terms.tsx > /tmp/Terms.formatted.tsx
+          echo "FORMATTED_TERMS_BASE64_BEGIN"
+          base64 -w0 /tmp/Terms.formatted.tsx
+          echo
+          echo "FORMATTED_TERMS_BASE64_END"

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { categoryLabels, classificationLabels, priorityLabels, statusLabels } from "./uiLabels";
+import {
+  categoryLabels,
+  classificationLabels,
+  priorityLabels,
+  statusLabels,
+} from "./uiLabels";
 
 describe("canonical Arabic UI labels", () => {
   it("keeps the classification choices in the approved web order", () => {

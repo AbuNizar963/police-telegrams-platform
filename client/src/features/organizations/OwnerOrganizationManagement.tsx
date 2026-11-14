@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { Building2, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useAuth } from "@/features/auth-session/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
@@ -204,6 +204,32 @@ export default function OwnerOrganizationManagement() {
       void utils.organizations.allAccounts.invalidate();
     },
   });
+  const deleteOrganization = trpc.organizations.delete.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.organizations.all.invalidate(),
+        utils.organizations.allAccounts.invalidate(),
+        utils.organizations.accounts.invalidate(),
+      ]);
+      setSelectedOrganizationId(null);
+      toast.success("تم حذف الجهة وتعطيل حساباتها مع حفظ سجل التدقيق");
+    },
+    onError: error => toast.error(error.message || "تعذر حذف الجهة"),
+  });
+  const purgeArchivedOrganization =
+    trpc.organizations.purgeArchived.useMutation({
+      onSuccess: async result => {
+        await Promise.all([
+          utils.organizations.all.invalidate(),
+          utils.organizations.allAccounts.invalidate(),
+          utils.organizations.accounts.invalidate(),
+        ]);
+        setSelectedOrganizationId(null);
+        toast.success(`تم حذف الجهة نهائيًا (${result.organizationCode})`);
+      },
+      onError: error =>
+        toast.error(error.message || "تعذر الحذف النهائي للجهة"),
+    });
   const saveOrganizationSettings =
     trpc.organizations.settings.update.useMutation();
   const uploadLogo = trpc.settings.uploadLogo.useMutation();
@@ -1559,7 +1585,7 @@ export default function OwnerOrganizationManagement() {
                       <span
                         className={`rounded-full px-2 py-1 font-semibold ${item.isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}
                       >
-                        {item.isActive ? "مفعلة" : "موقوفة"}
+                        {item.deletedAt ? "محذوفة" : item.isActive ? "مفعلة" : "موقوفة"}
                       </span>
                       <span className="hidden text-muted-foreground sm:inline">
                         {accountCountByOrganization.get(item.id) ?? 0} حساب
@@ -1616,6 +1642,69 @@ export default function OwnerOrganizationManagement() {
                       </Button>
                     </>
                   )}
+                  {isPlatformOwner &&
+                    !selectedOrganization.deletedAt &&
+                    selectedOrganization.type !== "central" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={deleteOrganization.isPending}
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `هل تريد حذف الجهة «${selectedOrganization.name}»؟ سيتم تعطيل حساباتها وإبطال جلساتها، مع الاحتفاظ بسجل التدقيق والسجلات التاريخية. لا يمكن إتمام الحذف إذا كانت للجهة جهات فرعية أو كانت وجهة برقيات مفعلة.`
+                          );
+                          if (confirmed) {
+                            deleteOrganization.mutate({
+                              id: selectedOrganization.id,
+                              reason: "طلب مالك النظام من إدارة الجهات",
+                            });
+                          }
+                        }}
+                      >
+                        <Trash2 className="ml-1 h-4 w-4" />
+                        {deleteOrganization.isPending
+                          ? "جارٍ الحذف..."
+                          : "حذف الجهة"}
+                      </Button>
+                    )}
+                  {isPlatformOwner &&
+                    Boolean(selectedOrganization.deletedAt) &&
+                    selectedOrganization.type !== "central" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={purgeArchivedOrganization.isPending}
+                        onClick={() => {
+                          const password = window.prompt(
+                            "أدخل كلمة مرور مالك النظام لإعادة التحقق. سيتم حذف الجهة نهائيًا ولا تُحفظ كلمة المرور."
+                          );
+                          if (!password) return;
+                          const confirmation = window.prompt(
+                            `اكتب حرفيًا: DELETE ${selectedOrganization.code} PERMANENTLY`
+                          );
+                          if (
+                            confirmation !==
+                            `DELETE ${selectedOrganization.code} PERMANENTLY`
+                          ) {
+                            toast.error("عبارة التأكيد غير صحيحة");
+                            return;
+                          }
+                          purgeArchivedOrganization.mutate({
+                            id: selectedOrganization.id,
+                            password,
+                            confirmation,
+                            reason: "حذف نهائي لجهة مؤرشفة بطلب مالك النظام",
+                          });
+                        }}
+                      >
+                        <Trash2 className="ml-1 h-4 w-4" />
+                        {purgeArchivedOrganization.isPending
+                          ? "جارٍ الحذف النهائي..."
+                          : "حذف الجهة نهائيًا"}
+                      </Button>
+                    )}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3">

@@ -382,6 +382,13 @@ Future<void> _downloadAndInstall(
         progressEvents.add(data);
         if (data['status'] == 'completed' && !completed.isCompleted) {
           completed.complete(data);
+        } else if (data['status'] == 'cancelled' && !completed.isCompleted) {
+          completed.completeError(
+            PlatformException(
+              code: 'UPDATE_CANCELLED',
+              message: 'أُلغي تنزيل التحديث بناءً على طلبك.',
+            ),
+          );
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -771,6 +778,10 @@ Future<bool> _resumeInternalDownload(
       );
     }
     return true;
+  }
+  if (status == 'cancelled') {
+    await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');
+    return false;
   }
   if (status != 'completed') {
     await _installerChannel.invokeMethod<void>('clearInternalDownloadStatus');

@@ -86,13 +86,22 @@ class MainActivity : FlutterFragmentActivity() {
                             ) {
                                 result.error("INVALID_UPDATE_METADATA", "بيانات التحديث غير مكتملة.", null)
                             } else {
-                                updateInstaller.startDownload(
-                                    url,
-                                    expectedSize,
-                                    expectedSha256,
-                                    version,
-                                    buildNumber
-                                )
+                                val serviceIntent = Intent(
+                                    this@MainActivity,
+                                    UpdateDownloadService::class.java
+                                ).apply {
+                                    action = UpdateDownloadService.ACTION_START
+                                    putExtra(UpdateDownloadService.EXTRA_URL, url)
+                                    putExtra(UpdateDownloadService.EXTRA_SIZE, expectedSize)
+                                    putExtra(UpdateDownloadService.EXTRA_SHA256, expectedSha256)
+                                    putExtra(UpdateDownloadService.EXTRA_VERSION, version)
+                                    putExtra(UpdateDownloadService.EXTRA_BUILD, buildNumber)
+                                }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    startForegroundService(serviceIntent)
+                                } else {
+                                    startService(serviceIntent)
+                                }
                                 result.success(true)
                             }
                         } catch (error: Exception) {

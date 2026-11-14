@@ -209,7 +209,8 @@ class TermsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _PublicScaffold(
     title: 'الشروط والأحكام',
-    subtitle: 'إطار واضح للاستخدام المصرح والسرية وحماية المعلومات في مركز البرقيات.',
+    subtitle:
+        'إطار واضح للاستخدام المصرح والسرية وحماية المعلومات في مركز البرقيات.',
     child: Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

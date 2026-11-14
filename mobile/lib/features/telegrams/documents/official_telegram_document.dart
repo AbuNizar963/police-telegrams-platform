@@ -19,6 +19,7 @@ import 'package:police_telegrams/features/organizations/organization_logo_resolu
 import 'package:police_telegrams/telegram_display.dart';
 import 'package:police_telegrams/features/reports/telegram_report_labels.dart';
 import 'package:police_telegrams/features/notifications/toast.dart';
+import 'package:police_telegrams/telegram_actions.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;
@@ -220,6 +221,9 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
     this.onDelete,
     this.onSubmitForReview,
     this.canReissue = false,
+    this.canOperate = false,
+    this.isAdmin = false,
+    this.onWorkflowChanged,
   });
 
   final PoliceApi api;
@@ -228,6 +232,9 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
   final Future<void> Function()? onDelete;
   final Future<void> Function()? onSubmitForReview;
   final bool canReissue;
+  final bool canOperate;
+  final bool isAdmin;
+  final VoidCallback? onWorkflowChanged;
 
   @override
   State<OfficialTelegramDocumentPage> createState() =>
@@ -1242,6 +1249,33 @@ class _OfficialTelegramDocumentPageState
     return null;
   }
 
+  Future<void> _showWorkflowActions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            12,
+            12,
+            12,
+            MediaQuery.viewInsetsOf(sheetContext).bottom + 20,
+          ),
+          child: TelegramActionsPanel(
+            api: widget.api,
+            telegramId: widget.telegramId,
+            telegramStatus: '${telegram?['status'] ?? 'draft'}',
+            canOperate: widget.canOperate,
+            isAdmin: widget.isAdmin,
+            onChanged: widget.onWorkflowChanged ?? () {},
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showLocation() async {
     final latitude = telegram?['gpsLatitude'];
     final longitude = telegram?['gpsLongitude'];
@@ -1377,6 +1411,12 @@ class _OfficialTelegramDocumentPageState
           ],
         ),
         actions: [
+          if (widget.canOperate || widget.isAdmin)
+            IconButton(
+              tooltip: 'سير العمل والمرفقات وسجل الإجراءات',
+              onPressed: _showWorkflowActions,
+              icon: const Icon(Icons.account_tree_outlined),
+            ),
           IconButton(
             tooltip: 'إغلاق تفاصيل البرقية',
             onPressed: () => Navigator.of(context).maybePop(),

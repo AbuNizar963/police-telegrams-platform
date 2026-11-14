@@ -205,6 +205,16 @@ export default function DashboardLayout({
           >
             {loginMutation.isPending ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول"}
           </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            بتسجيل الدخول، فإنك توافق على{" "}
+            <a
+              href="/terms"
+              className="text-muted-foreground underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              الشروط والأحكام
+            </a>
+            .
+          </p>
         </form>
       </div>
     );

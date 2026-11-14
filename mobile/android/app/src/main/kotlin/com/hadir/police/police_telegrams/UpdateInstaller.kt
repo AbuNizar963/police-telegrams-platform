@@ -294,10 +294,11 @@ class UpdateInstaller(private val context: Context) {
         val sessionId = installer.createSession(params)
         var session: PackageInstaller.Session? = null
         try {
-            session = installer.openSession(sessionId)
-            session.openWrite("base.apk", 0, apk.length()).use { output ->
+            val installSession = installer.openSession(sessionId)
+            session = installSession
+            installSession.openWrite("base.apk", 0, apk.length()).use { output ->
                 apk.inputStream().buffered().use { input -> input.copyTo(output) }
-                session.fsync(output)
+                installSession.fsync(output)
             }
             val callback = Intent(context, NativeInstallReceiver::class.java)
                 .setPackage(context.packageName)

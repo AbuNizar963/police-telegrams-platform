@@ -1,17 +1,17 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { ENV } from "../../_core/env";
 import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
+  getOrganizationByIdIncludingInactive,
+  getOrganizationSettings,
   getTelegramAttachmentByStorageKey,
   getTelegramById,
   getTelegramVersion,
-} from "../../db";
-import { canAccessTelegramScope } from "../../telegramAccess";
-import {
-  getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
+import { canAccessTelegramScope } from "../../telegramAccess";
 import { isPlatformOwner } from "../../ownerAccess";
+import { validateUploadedFile } from "../../fileSecurity";
 import { getUserOrganizationMembership } from "../organizations/organization";
 import {
   StorageAccessDeniedError,
@@ -21,6 +21,7 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
+  storagePutDepartmentLogo,
 } from "./storage";
 
 const ORGANIZATION_ID_PATTERN =
@@ -87,6 +88,121 @@ async function assertDepartmentLogoAccess(
 }
 
 export function registerStorageRoutes(app: Express): void {
+  app.put(
+    "/api/storage/department-logo",
+    async (req, res, next) => {
+      const user = await getAuthenticatedUserFromRequest(req);
+      if (!user) {
+        res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
+        return;
+      }
+
+      const organizationId = req.get("x-organization-id")?.trim() ?? "";
+      if (!ORGANIZATION_ID_PATTERN.test(organizationId)) {
+        res.status(400).json({ error: "معرّف الجهة غير صالح" });
+        return;
+      }
+
+      const encodedFileName = req.get("x-file-name") ?? "";
+      let fileName: string;
+      try {
+        fileName = decodeURIComponent(encodedFileName);
+      } catch {
+        res.status(400).json({ error: "اسم ملف الشعار غير صالح" });
+        return;
+      }
+
+      const contentType = req.get("content-type")?.split(";")[0]?.trim();
+      if (contentType !== "image/png" && contentType !== "image/jpeg") {
+        res.status(415).json({ error: "صيغة الشعار يجب أن تكون PNG أو JPG" });
+        return;
+      }
+
+      const expectedExtension =
+        contentType === "image/png" ? /\.png$/i : /\.(?:jpe?g)$/i;
+      if (!expectedExtension.test(fileName)) {
+        res.status(400).json({ error: "امتداد الملف لا يطابق صيغة الصورة" });
+        return;
+      }
+
+      const organization = await getOrganizationByIdIncludingInactive(
+        organizationId
+      );
+      if (!organization) {
+        res.status(404).json({ error: "الجهة غير موجودة" });
+        return;
+      }
+
+      if (!isPlatformOwner(user)) {
+        const membership = await getUserOrganizationMembership(user.id);
+        if (
+          !membership ||
+          !membership.isActive ||
+          !["system_admin", "organization_admin"].includes(membership.role) ||
+          membership.organizationId !== organization.id
+        ) {
+          res.status(403).json({ error: "لا تملك صلاحية رفع شعار هذه الجهة" });
+          return;
+        }
+      }
+
+      res.locals.departmentLogoUpload = {
+        organizationId: organization.id,
+        fileName,
+        contentType,
+      };
+      next();
+    },
+    express.raw({
+      type: ["image/png", "image/jpeg"],
+      limit: 2_621_440,
+    }),
+    async (req, res) => {
+      const upload = res.locals.departmentLogoUpload as
+        | {
+            organizationId: string;
+            fileName: string;
+            contentType: "image/png" | "image/jpeg";
+          }
+        | undefined;
+      if (!upload || !Buffer.isBuffer(req.body)) {
+        res.status(400).json({ error: "لم يتم استلام بيانات صورة الشعار" });
+        return;
+      }
+
+      try {
+        validateUploadedFile({
+          bytes: req.body,
+          declaredType: upload.contentType,
+          fileName: upload.fileName,
+          maxBytes: 2_621_440,
+        });
+        const result = await storagePutDepartmentLogo(
+          upload.organizationId,
+          upload.fileName,
+          req.body,
+          upload.contentType
+        );
+        res.set("Cache-Control", "no-store");
+        res.status(201).json(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "تعذر التحقق من ملف الشعار";
+        if (
+          message === "حجم الملف غير صالح" ||
+          message === "اسم الملف غير صالح" ||
+          message === "نوع الملف لا يطابق محتواه الحقيقي" ||
+          message === "هذا الامتداد غير مسموح به"
+        ) {
+          res.status(400).json({ error: message });
+          return;
+        }
+        console.error("[Storage] Department logo upload failed", error);
+        res.status(502).json({ error: "تعذر رفع الشعار إلى مساحة التخزين" });
+      }
+    }
+  );
+
   app.get(
     "/api/telegrams/:telegramId/versions/:versionNumber/logo",
     async (req, res) => {

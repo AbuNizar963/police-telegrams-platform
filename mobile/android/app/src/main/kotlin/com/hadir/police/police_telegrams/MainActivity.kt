@@ -112,6 +112,35 @@ class MainActivity : FlutterFragmentActivity() {
                             )
                         }
                     }
+                    "getInternalDownloadStatus" -> {
+                        val preferences = getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        )
+                        val status = preferences.getString("status", null)
+                        if (status == null) {
+                            result.success(null)
+                        } else {
+                            result.success(
+                                mapOf(
+                                    "status" to status,
+                                    "path" to preferences.getString("apk_path", null),
+                                    "url" to preferences.getString("url", null),
+                                    "size" to preferences.getLong("size", 0L),
+                                    "sha256" to preferences.getString("sha256", null),
+                                    "version" to preferences.getString("version", null),
+                                    "buildNumber" to preferences.getLong("build", 0L)
+                                )
+                            )
+                        }
+                    }
+                    "clearInternalDownloadStatus" -> {
+                        getSharedPreferences(
+                            "internal_update_download",
+                            Context.MODE_PRIVATE
+                        ).edit().clear().apply()
+                        result.success(true)
+                    }
                     "installDownloadedApk" -> {
                         try {
                             val path = call.argument<String>("path")

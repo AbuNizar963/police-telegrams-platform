@@ -251,9 +251,7 @@ class _SessionGateState extends State<SessionGate> {
                   Text(
                     'يرجى الانتظار لحظات',
                     style: TextStyle(
-                      color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
                     ),
                   ),
@@ -493,7 +491,9 @@ class _LoginPageState extends State<LoginPage> {
                         Text(
                           'بتسجيل الدخول، فإنك توافق على',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
@@ -506,8 +506,9 @@ class _LoginPageState extends State<LoginPage> {
                             );
                           },
                           style: TextButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -522,7 +523,9 @@ class _LoginPageState extends State<LoginPage> {
                         Text(
                           '.',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),

@@ -1381,9 +1381,7 @@ export default function OwnerOrganizationManagement() {
                           type="file"
                           accept="image/png,image/jpeg"
                           className="block w-full text-xs"
-                          disabled={
-                            !editingId || !online || isUploadingLogo
-                          }
+                          disabled={!editingId || !online || isUploadingLogo}
                           onChange={event => {
                             void handleLogoFile(event.target.files?.[0]);
                             event.currentTarget.value = "";

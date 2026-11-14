@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRouteFirebaseMessage,
   getTelegramNotificationPresentation,
+  getTelegramNotificationBody,
   TELEGRAM_ANDROID_GENERAL_CHANNEL_ID,
   TELEGRAM_ANDROID_URGENT_CHANNEL_ID,
   TELEGRAM_IOS_NOTIFICATION_SOUND,
@@ -32,7 +33,7 @@ describe("telegram push notification presentation", () => {
       direction: "outgoing",
     });
 
-    expect(presentation.title).toBe("برقية جديدة");
+    expect(presentation.title).toBe("برقية صادرة جديدة");
     expect(presentation.alertLevel).toBe("normal");
     expect(presentation.androidChannelId).toBe(
       TELEGRAM_ANDROID_GENERAL_CHANNEL_ID
@@ -46,7 +47,7 @@ describe("telegram push notification presentation", () => {
       direction: "outgoing",
     });
 
-    expect(presentation.title).toBe("برقية عاجلة");
+    expect(presentation.title).toBe("برقية صادرة عاجلة");
     expect(presentation.isUrgent).toBe(true);
     expect(presentation.alertLevel).toBe("urgent");
     expect(presentation.androidChannelId).toBe(
@@ -116,5 +117,25 @@ describe("route event FCM message", () => {
     expect(message.android.ttl).toBe(300_000);
     expect(message.android.notification.visibility).toBe("private");
     expect(message.apns.headers["apns-priority"]).toBe("5");
+  });
+});
+ 
+describe("directional telegram notification body", () => {
+  it("identifies an outgoing telegram by its real serial number", () => {
+    expect(getTelegramNotificationBody("POL-2026-00123", "outgoing")).toBe(
+      "هناك برقية صادرة برقم: 00123."
+    );
+  });
+
+  it("identifies an incoming telegram by its real serial number", () => {
+    expect(getTelegramNotificationBody("UNIT-00072", "incoming")).toBe(
+      "هناك برقية واردة برقم: 00072."
+    );
+  });
+
+  it("does not show an empty serial number", () => {
+    expect(getTelegramNotificationBody(" ", "outgoing")).toBe(
+      "هناك برقية صادرة جديدة."
+    );
   });
 });

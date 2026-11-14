@@ -7,16 +7,21 @@ const mocks = vi.hoisted(() => ({
   organizationLookup: vi.fn(),
   addOrganizationMembership: vi.fn(),
   hashPassword: vi.fn(),
+  verifyPassword: vi.fn(),
+  getUserById: vi.fn(),
+  purgeInactiveUserSafely: vi.fn(),
   writeAuditLog: vi.fn(),
 }));
 
 vi.mock("../../_core/auth", () => ({
   hashPassword: mocks.hashPassword,
+  verifyPassword: mocks.verifyPassword,
 }));
 vi.mock("../organizations/organization", () => ({
   addOrganizationMembership: mocks.addOrganizationMembership,
 }));
 vi.mock("../../db", () => ({
+  getUserById: mocks.getUserById,
   writeAuditLog: mocks.writeAuditLog,
 }));
 vi.mock("../../_core/supabase", () => ({
@@ -36,6 +41,7 @@ vi.mock("../../_core/supabase", () => ({
         insert: mocks.usersInsert,
       };
     },
+    rpc: mocks.purgeInactiveUserSafely,
   }),
 }));
 
@@ -50,6 +56,8 @@ function adminContext(): TrpcContext {
       id: 1,
       authUserId: "00000000-0000-4000-8000-000000000001",
       name: "مالك النظام",
+      username: "owner",
+      isPlatformOwner: true,
       badgeNumber: null,
       email: "owner@example.com",
       loginMethod: "password",
@@ -73,6 +81,12 @@ describe("user management organization assignment", () => {
       error: null,
     });
     mocks.hashPassword.mockResolvedValue("hashed-password");
+    mocks.verifyPassword.mockResolvedValue(true);
+    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.purgeInactiveUserSafely.mockResolvedValue({
+      data: { deleted: true, userId: 25 },
+      error: null,
+    });
     mocks.addOrganizationMembership.mockResolvedValue({ id: 9 });
     mocks.writeAuditLog.mockResolvedValue(undefined);
     mocks.usersInsert.mockReturnValue({
@@ -188,5 +202,78 @@ describe("user management organization assignment", () => {
         role: "reviewer",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("safe permanent user deletion", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.verifyPassword.mockResolvedValue(true);
+    mocks.getUserById.mockResolvedValue({ passwordHash: "hashed-owner-password" });
+    mocks.purgeInactiveUserSafely.mockResolvedValue({
+      data: { deleted: true, userId: 25 },
+      error: null,
+    });
+  });
+
+  it("requires the owner confirmation phrase and delegates deletion to the guarded database RPC", async () => {
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.delete({
+        id: 25,
+        confirmPassword: "owner-password",
+        confirmation: "DELETE USER 25 PERMANENTLY",
+      })
+    ).resolves.toMatchObject({ deleted: true, userId: 25 });
+
+    expect(mocks.getUserById).toHaveBeenCalledWith(1);
+    expect(mocks.verifyPassword).toHaveBeenCalledWith(
+      "owner-password",
+      "hashed-owner-password"
+    );
+    expect(mocks.purgeInactiveUserSafely).toHaveBeenCalledWith(
+      "purge_inactive_user_safely",
+      {
+        p_user_id: 25,
+        p_owner_user_id: 1,
+        p_reason: "حذف نهائي لحساب بطلب مالك النظام",
+        p_confirmation: "DELETE USER 25 PERMANENTLY",
+      }
+    );
+  });
+
+  it("does not call the purge RPC when the owner password is invalid", async () => {
+    mocks.verifyPassword.mockResolvedValue(false);
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.delete({
+        id: 25,
+        confirmPassword: "incorrect",
+        confirmation: "DELETE USER 25 PERMANENTLY",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(mocks.purgeInactiveUserSafely).not.toHaveBeenCalled();
+  });
+
+  it("returns a conflict when database safety checks reject the purge", async () => {
+    mocks.purgeInactiveUserSafely.mockResolvedValue({
+      data: null,
+      error: { message: "Account still owns telegrams" },
+    });
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.delete({
+        id: 25,
+        confirmPassword: "owner-password",
+        confirmation: "DELETE USER 25 PERMANENTLY",
+      })
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Account still owns telegrams",
+    });
   });
 });

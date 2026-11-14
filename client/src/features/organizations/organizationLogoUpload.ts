@@ -81,13 +81,14 @@ export async function prepareOrganizationLogoUpload(
   }
 }
 
-
 export type UploadedOrganizationLogo = {
   key: string;
   url: string;
 };
 
-/** Upload a prepared logo as raw bytes through the authenticated application API. */
+/**
+ * Upload a prepared logo as raw bytes through the authenticated application API.
+ */
 export async function uploadOrganizationLogoDirect(input: {
   organizationId: string;
   fileName: string;

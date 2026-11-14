@@ -40,6 +40,10 @@ class UpdateDownloadService : Service() {
     private var downloadWakeLock: PowerManager.WakeLock? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (downloadStarted && intent?.action == ACTION_START) {
+            startForegroundCompat()
+            return START_STICKY
+        }
         val preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         if (intent?.action == ACTION_START) {
             preferences.edit()

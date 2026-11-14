@@ -742,7 +742,9 @@ class _DashboardPageState extends State<DashboardPage>
             setState(() => _pushEnabled = enabled);
             if (enabled) {
               unawaited(
-                _syncPushTokenForActiveOrganization(activeOrganizationId),
+                _syncPushTokenForActiveOrganization(
+                  activeOrganizationId,
+                ).then<void>((_) {}),
               );
             }
           }
@@ -1700,7 +1702,11 @@ class _DashboardPageState extends State<DashboardPage>
       }
       unawaited(_loadOrganizationLogo(organizationId, _organizationLogoUrl));
       if (organizationId != null && organizationId.isNotEmpty) {
-        unawaited(_syncPushTokenForActiveOrganization(organizationId));
+        unawaited(
+          _syncPushTokenForActiveOrganization(
+            organizationId,
+          ).then<void>((_) {}),
+        );
       }
       if (telegramPage == 1 &&
           section == 0 &&

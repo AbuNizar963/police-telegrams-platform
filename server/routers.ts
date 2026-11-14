@@ -931,10 +931,8 @@ export const appRouter = router({
         return {
           organizationId: input.organizationId,
           logoUrl,
-          logoDataUrl:
-            asset.body.length <= 2_500_000
-              ? `data:${mimeType};base64,${asset.body.toString("base64")}`
-              : null,
+          // Keep image bytes on the protected binary storage route; do not
+          // expand them into a Base64 tRPC response.
         };
       }),
 

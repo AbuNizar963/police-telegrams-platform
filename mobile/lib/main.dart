@@ -4466,6 +4466,9 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         onEdit: _editTelegram,
         onDelete: _deleteTelegram,
         canReissue: !_managementExpired,
+        canOperate: _canOperate,
+        isAdmin: _isAdmin,
+        onWorkflowChanged: load,
         onSubmitForReview: _canOperate && data?['status'] == 'draft'
             ? () async {
                 await widget.api.call(

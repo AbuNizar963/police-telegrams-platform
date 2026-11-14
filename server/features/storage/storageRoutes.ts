@@ -143,8 +143,8 @@ async function authorizeDepartmentLogoUpload(
 
   const organization =
     await getOrganizationByIdIncludingInactive(organizationId);
-  if (!organization) {
-    res.status(404).json({ error: "الجهة غير موجودة" });
+  if (!organization || organization.deletedAt) {
+    res.status(404).json({ error: "الجهة غير موجودة أو محذوفة" });
     return;
   }
 

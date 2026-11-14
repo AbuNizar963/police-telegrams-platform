@@ -672,6 +672,7 @@ class _DashboardPageState extends State<DashboardPage>
   bool _refreshInProgress = false;
   bool _refreshQueued = false;
   bool _updateCheckInProgress = false;
+  bool _forceUpdateCheckQueued = false;
   DateTime? _lastUpdateCheckAt;
 
   String get _currentOrganizationLabel {
@@ -735,6 +736,7 @@ class _DashboardPageState extends State<DashboardPage>
             refresh();
           },
           onAppUpdate: _openAppUpdate,
+          onOpenNotifications: _showNotificationsPreview,
         )
         .then((_) async {
           final enabled = await push.notificationsEnabled();
@@ -886,22 +888,38 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Future<void> _checkForAppUpdate() async {
-    if (!mounted || _updateCheckInProgress) return;
-
-    final now = DateTime.now();
-    final lastCheck = _lastUpdateCheckAt;
-    if (lastCheck != null &&
-        now.difference(lastCheck) < const Duration(minutes: 2)) {
+  Future<void> _checkForAppUpdate({bool force = false}) async {
+    if (!mounted) return;
+    if (_updateCheckInProgress) {
+      if (force) _forceUpdateCheckQueued = true;
       return;
     }
 
     _updateCheckInProgress = true;
-    _lastUpdateCheckAt = now;
     try {
+      // Always inspect the tiny local state first. A completed background APK
+      // must be offered for installation immediately, even inside the regular
+      // two-minute network update-check throttle.
+      final hasPendingUpdate = await hasPendingInternalUpdate();
+      if (!mounted) return;
+
+      final now = DateTime.now();
+      final lastCheck = _lastUpdateCheckAt;
+      if (!force &&
+          !hasPendingUpdate &&
+          lastCheck != null &&
+          now.difference(lastCheck) < const Duration(minutes: 2)) {
+        return;
+      }
+
+      _lastUpdateCheckAt = now;
       await checkAndPromptForAppUpdate(context);
     } finally {
       _updateCheckInProgress = false;
+      if (_forceUpdateCheckQueued && mounted) {
+        _forceUpdateCheckQueued = false;
+        unawaited(_checkForAppUpdate(force: true));
+      }
     }
   }
 
@@ -1198,6 +1216,12 @@ class _DashboardPageState extends State<DashboardPage>
   void _openAppUpdate() {
     if (!mounted) return;
     _pushPage(const AppUpdatePage());
+    // A notification tap is an explicit request to inspect the update now.
+    // Run after the update page is pushed so any install/resume prompt appears
+    // above that page rather than behind it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_checkForAppUpdate(force: true));
+    });
   }
 
   void _updateAccountProfile(Map<String, dynamic> profile) {

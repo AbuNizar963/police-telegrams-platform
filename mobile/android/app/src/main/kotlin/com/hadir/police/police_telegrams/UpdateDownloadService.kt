@@ -100,10 +100,12 @@ class UpdateDownloadService : Service() {
                 expectedVersionCode = build
             ) { success, apkPath ->
                 if (preferences.getString(KEY_STATUS, null) != "cancelled") {
+                    // Commit the terminal state before stopping the service so
+                    // a process death cannot leave a verified APK marked as downloading.
                     preferences.edit()
                         .putString(KEY_STATUS, if (success) "completed" else "failed")
                         .putString("apk_path", apkPath)
-                        .apply()
+                        .commit()
                 }
                 downloadStarted = false
                 updateInstaller = null
@@ -164,6 +166,23 @@ class UpdateDownloadService : Service() {
     }
 
     private fun showFailureNotification(message: String) {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("com.police_telegrams.extra.OPEN_APP_UPDATE", true)
+        }
+        val contentIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                UpdateInstaller.NOTIFICATION_ID,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+            )
+        }
         val notification = NotificationCompat.Builder(
             this,
             UpdateInstaller.NOTIFICATION_CHANNEL_ID
@@ -177,6 +196,7 @@ class UpdateDownloadService : Service() {
             .setOnlyAlertOnce(true)
             .setProgress(0, 0, false)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setContentIntent(contentIntent)
             .build()
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(UpdateInstaller.NOTIFICATION_ID, notification)
@@ -213,6 +233,23 @@ class UpdateDownloadService : Service() {
                     0
                 }
         )
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("com.police_telegrams.extra.OPEN_APP_UPDATE", true)
+        }
+        val contentIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                UpdateInstaller.NOTIFICATION_ID,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+            )
+        }
         val notification = NotificationCompat.Builder(
             this,
             UpdateInstaller.NOTIFICATION_CHANNEL_ID
@@ -224,6 +261,7 @@ class UpdateDownloadService : Service() {
             .setOnlyAlertOnce(true)
             .setProgress(100, 0, false)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setContentIntent(contentIntent)
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 "إلغاء",

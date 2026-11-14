@@ -17,6 +17,26 @@ const _updateProgressEvents = EventChannel(
   'com.police_telegrams/apk_installer/events',
 );
 
+/// Returns whether an internal update is still pending recovery or installation.
+/// This lightweight native-state check lets the dashboard bypass its network
+/// update-check throttle when the user returns to a completed background download.
+Future<bool> hasPendingInternalUpdate() async {
+  if (!Platform.isAndroid) return false;
+  try {
+    final status = await _installerChannel.invokeMapMethod<String, dynamic>(
+      'getInternalDownloadStatus',
+    );
+    final state = status?['status'];
+    return state == 'starting' ||
+        state == 'downloading' ||
+        state == 'completed' ||
+        state == 'failed';
+  } on PlatformException catch (error) {
+    debugPrint('Unable to read pending internal update: ${error.message}');
+    return false;
+  }
+}
+
 class _MobileRelease {
   const _MobileRelease({
     required this.version,

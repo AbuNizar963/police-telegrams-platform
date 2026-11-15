@@ -54,6 +54,6 @@ void main() {
     final resource = Map<String, dynamic>.from(resources.single as Map);
     expect(resource['id'], '123e4567-e89b-42d3-a456-426614174000');
     expect(resource['mimeType'], 'image/png');
-    expect(resource['bytes'], imageBytes);
+    expect(List<int>.from(resource['bytes'] as Uint8List), imageBytes);
   });
 }

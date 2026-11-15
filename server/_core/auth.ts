@@ -177,15 +177,14 @@ export async function getAuthenticatedUserFromRequest(
     if (!user || user.isActive === false || user.loginMethod === "disabled")
       return null;
     const currentSessionVersion = user.sessionVersion ?? user.authUserId;
-    // Accept pre-migration JWTs during rollout. The migration seeds existing
-    // sessionVersion values from authUserId, so password changes still revoke
-    // these legacy tokens as soon as the version is rotated.
-    const tokenSessionVersion = payload.sessionVersion ?? payload.authUserId;
-    if (
-      typeof tokenSessionVersion !== "string" ||
-      tokenSessionVersion !== currentSessionVersion
-    )
+    if (typeof payload.sessionVersion === "string") {
+      if (payload.sessionVersion !== currentSessionVersion) return null;
+    } else if (currentSessionVersion !== user.authUserId) {
+      // Legacy JWTs issued before sessionVersion existed contain no version
+      // claim. Accept them only while the account still has its initial
+      // authUserId-based version; rotating the version revokes them.
       return null;
+    }
     return publicUser(user);
   } catch {
     return null;

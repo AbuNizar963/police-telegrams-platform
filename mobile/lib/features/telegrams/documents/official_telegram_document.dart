@@ -7,7 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+
 import 'telegram_pdf_resource_renderer.dart';
+
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
@@ -108,10 +110,8 @@ class NativeOfficialTelegramDocumentRenderer
   Future<Uint8List> renderPdf(
     String html, {
     Map<String, TelegramPdfImageResource> resources = const {},
-  }) => TelegramPdfResourceRenderer().renderPdf(
-    html: html,
-    resources: resources,
-  );
+  }) =>
+      TelegramPdfResourceRenderer().renderPdf(html: html, resources: resources);
 
   @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) =>
@@ -733,10 +733,7 @@ class _OfficialTelegramDocumentPageState
     return fontDataUrls;
   }
 
-  String _registerOfficialLogoResource(
-    Uint8List bytes,
-    String cacheKey,
-  ) {
+  String _registerOfficialLogoResource(Uint8List bytes, String cacheKey) {
     final cached = _officialLogoResourceUris[cacheKey];
     if (cached != null) {
       final cachedUri = Uri.tryParse(cached);

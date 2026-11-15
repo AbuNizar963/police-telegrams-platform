@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -392,7 +391,14 @@ void main() {
   test('image asset downloads retry a transient network failure', () async {
     var attempts = 0;
     final imageBytes = Uint8List.fromList([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
     ]);
     final client = MockClient((request) async {
       attempts++;
@@ -419,66 +425,67 @@ void main() {
     expect(restored, orderedEquals(imageBytes));
   });
 
-  test(
-    'confirmed organization logo bytes survive reopening settings offline',
-    () async {
-      final cacheRoot = await Directory.systemTemp.createTemp(
-        'police-telegrams-logo-persist-test-',
-      );
-      addTearDown(() => cacheRoot.delete(recursive: true));
+  test('confirmed organization logo bytes survive reopening settings offline', () async {
+    final cacheRoot = await Directory.systemTemp.createTemp(
+      'police-telegrams-logo-persist-test-',
+    );
+    addTearDown(() => cacheRoot.delete(recursive: true));
 
-      final logoBytes = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-      ]);
-      const organizationId = '123e4567-e89b-42d3-a456-426614174000';
-      const logoPath =
-          '/api/storage/department/logos/123e4567-e89b-42d3-a456-426614174000/logo.png';
+    final logoBytes = Uint8List.fromList([
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
+    ]);
+    const organizationId = '123e4567-e89b-42d3-a456-426614174000';
+    const logoPath =
+        '/api/storage/department/logos/123e4567-e89b-42d3-a456-426614174000/logo.png';
 
-      final uploaderApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        imageCacheDirectory: cacheRoot,
-      );
-      await uploaderApi.cacheOrganizationLogo(
-        organizationId: organizationId,
-        source: logoPath,
-        bytes: logoBytes,
-      );
+    final uploaderApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      imageCacheDirectory: cacheRoot,
+    );
+    await uploaderApi.cacheOrganizationLogo(
+      organizationId: organizationId,
+      source: logoPath,
+      bytes: logoBytes,
+    );
 
-      final client = MockClient((request) async {
-        if (request.url.path.contains('/api/trpc/')) {
-          return http.Response(
-            jsonEncode({
-              'result': {
-                'data': {
-                  'json': {
-                    'organizationId': organizationId,
-                    'logoUrl': logoPath,
-                  },
-                },
+    final client = MockClient((request) async {
+      if (request.url.path.contains('/api/trpc/')) {
+        return http.Response(
+          jsonEncode({
+            'result': {
+              'data': {
+                'json': {'organizationId': organizationId, 'logoUrl': logoPath},
               },
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
-          );
-        }
-        return http.Response('not found', 404);
-      });
-      addTearDown(client.close);
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('not found', 404);
+    });
+    addTearDown(client.close);
 
-      final reopenedApi = PoliceApi(
-        baseUrl: 'https://police.example.test',
-        httpClient: client,
-        imageCacheDirectory: cacheRoot,
-      );
-      final restored = await reopenedApi.fetchOrganizationLogo(
-        organizationId: organizationId,
-        source: logoPath,
-      );
+    final reopenedApi = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+      imageCacheDirectory: cacheRoot,
+    );
+    final restored = await reopenedApi.fetchOrganizationLogo(
+      organizationId: organizationId,
+      source: logoPath,
+    );
 
-      expect(restored, orderedEquals(logoBytes));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    },
-  );
+    expect(restored, orderedEquals(logoBytes));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  });
 
   test('organization logo cache identities never persist URL query tokens', () {
     final api = PoliceApi(baseUrl: 'https://police.example.test');

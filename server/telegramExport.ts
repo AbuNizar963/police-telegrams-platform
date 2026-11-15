@@ -261,8 +261,8 @@ async function loadOrganizationLogoBinary(
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
   // a legitimate telegram may contain words such as "javascript:" or "data:".
-  // Cairo fonts and logos are intentionally embedded as safe data URLs by the
-  // authenticated client before this document reaches Chromium.
+  // Cairo fonts and legacy external logos may be embedded as safe data URLs.
+  // Protected organization logos are fulfilled from validated storage bytes.
   const unsafeUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*(?:javascript|vbscript):|'[ \t\r\n]*(?:javascript|vbscript):|(?:javascript|vbscript):)/i;
   const unsafeDataUrl =

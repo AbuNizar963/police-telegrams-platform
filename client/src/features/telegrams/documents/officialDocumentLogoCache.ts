@@ -31,9 +31,9 @@ function rememberObjectUrl(key: string, objectUrl: string): void {
 }
 
 /**
- * Keeps one validated logo per stable source for the lifetime of the web app.
- * The cache is intentionally memory-only: logos are private organization data
- * and must not be copied into localStorage or shared between browser profiles.
+ * Keeps validated logos in bounded, memory-only caches keyed by their stable
+ * source. Private organization images are never copied into localStorage or
+ * shared between browser profiles.
  */
 export function getCachedOfficialDocumentLogo(
   source: string,

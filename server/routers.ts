@@ -929,9 +929,10 @@ export const appRouter = router({
 
         return {
           organizationId: input.organizationId,
-          logoUrl,
-          // Keep image bytes on the protected binary storage route; do not
-          // expand them into a Base64 tRPC response.
+          // Prefer the authenticated same-origin binary route for private
+          // organization logos. Keep approved external URLs only for legacy
+          // configurations that are not backed by managed storage.
+          logoUrl: storageKey ? storageStableUrl(storageKey) : logoUrl,
         };
       }),
 

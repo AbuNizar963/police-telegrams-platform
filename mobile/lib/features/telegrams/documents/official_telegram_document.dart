@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
-import 'telegram_pdf_resource_renderer.dart';
 
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
@@ -22,6 +21,8 @@ import 'package:police_telegrams/telegram_display.dart';
 import 'package:police_telegrams/features/reports/telegram_report_labels.dart';
 import 'package:police_telegrams/features/notifications/toast.dart';
 import 'package:police_telegrams/telegram_actions.dart';
+
+import 'telegram_pdf_resource_renderer.dart';
 
 const _documentPageWidth = 794;
 const _documentPageHeight = 1123;

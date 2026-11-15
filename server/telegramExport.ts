@@ -256,6 +256,13 @@ export function hasMultiPageTelegramLayout(html: string): boolean {
   return MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN.test(html);
 }
 
+const MULTI_PAGE_PAGE_HEIGHT_THRESHOLD = 1124;
+
+/** Mirrors the web preview's page-height decision without executing HTML scripts. */
+export function isTelegramMultiPageHeight(height: number): boolean {
+  return Number.isFinite(height) && height > MULTI_PAGE_PAGE_HEIGHT_THRESHOLD;
+}
+
 /** Keep the A4 page box full-size; the document's sole 10mm inset is its padding. */
 export function getTelegramRenderLayoutCss(printLayout: boolean): string {
   return `
@@ -378,14 +385,11 @@ export async function renderTelegramDocument(
           }
           await route.abort("blockedbyclient");
         });
-        await page.emulateMedia({ media: printLayout ? "print" : "screen" });
-        await page.setContent(
-          html.replace(
-            "</head>",
-            `<style>${getTelegramRenderLayoutCss(printLayout)}</style></head>`
-          ),
-          { waitUntil: "load" }
-        );
+        // Measure the document in its screen layout before applying print
+        // overrides. This mirrors the web preview's pagination decision while
+        // keeping untrusted export HTML script-free.
+        await page.emulateMedia({ media: "screen" });
+        await page.setContent(html, { waitUntil: "load" });
         await page.evaluate(async () => {
           await document.fonts.ready;
           const images = Array.from(document.images);
@@ -424,6 +428,25 @@ export async function renderTelegramDocument(
         await page
           .locator(".telegram-export-page")
           .waitFor({ state: "visible" });
+        await page.evaluate(heightThreshold => {
+          const paper = document.querySelector<HTMLElement>(
+            ".telegram-export-page"
+          );
+          if (!paper) {
+            throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
+          }
+          const pageHeight = paper.getBoundingClientRect().height;
+          paper.classList.toggle(
+            "telegram-multipage",
+            pageHeight > heightThreshold
+          );
+        }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
+        await page.addStyleTag({
+          content: getTelegramRenderLayoutCss(printLayout),
+        });
+        await page.emulateMedia({
+          media: printLayout ? "print" : "screen",
+        });
         return page;
       } catch (error) {
         await page.close();

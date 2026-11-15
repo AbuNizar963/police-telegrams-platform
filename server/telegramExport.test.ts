@@ -156,6 +156,7 @@ describe("telegram export resource isolation", () => {
   it("blocks unsafe network and data resources", () => {
     for (const url of [
       "https://example.com/image.png",
+      "https://telegram-logo.invalid/official",
       "http://127.0.0.1:3000/admin",
       "http://169.254.169.254/latest/meta-data/",
       "file:///etc/passwd",

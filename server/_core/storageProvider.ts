@@ -14,6 +14,8 @@ export interface StorageProvider {
     options: { contentType: string; cacheControl: string }
   ): Promise<void>;
   createSignedUrl(key: string, expiresInSeconds: number): Promise<string>;
+  createSignedUploadUrl(key: string): Promise<string>;
+  getObjectInfo(key: string): Promise<{ size: number; contentType: string }>;
   download(key: string): Promise<{ body: Buffer; contentType: string }>;
   remove?(key: string): Promise<void>;
 }
@@ -52,6 +54,40 @@ class SupabaseStorageProvider implements StorageProvider {
     }
 
     return data.signedUrl;
+  }
+
+  async createSignedUploadUrl(key: string): Promise<string> {
+    const { data, error } = await getSupabaseAdmin()
+      .storage.from(ENV.supabaseStorageBucket)
+      .createSignedUploadUrl(key, { upsert: false });
+
+    if (error || !data?.signedUrl) {
+      throw new Error(
+        `Storage signed upload URL failed: ${error?.message ?? "empty URL"}`
+      );
+    }
+
+    return data.signedUrl;
+  }
+
+  async getObjectInfo(
+    key: string
+  ): Promise<{ size: number; contentType: string }> {
+    const { data, error } = await getSupabaseAdmin()
+      .storage.from(ENV.supabaseStorageBucket)
+      .info(key);
+
+    const size = Number(data?.size);
+    if (error || !data || !Number.isSafeInteger(size) || size < 0) {
+      throw new Error(
+        `Storage object info failed: ${error?.message ?? "invalid metadata"}`
+      );
+    }
+
+    return {
+      size,
+      contentType: data.contentType || "application/octet-stream",
+    };
   }
 
   async download(key: string): Promise<{ body: Buffer; contentType: string }> {

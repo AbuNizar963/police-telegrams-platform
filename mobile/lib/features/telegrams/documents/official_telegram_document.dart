@@ -2200,17 +2200,7 @@ $watermark
 <p class="footer-date">$_documentFooterCalendarIcon<span class="footer-text"><span class="footer-date-label">تاريخ ووقت إخراج النسخة:</span> <span class="footer-output-time">${_escapeHtml(documentOutputAt)}</span></span></p>
 </footer>
 $importNotesMarkup
-</article><script>
-(() => {
-  const updatePagination = () => {
-    const page = document.querySelector('.telegram-export-page');
-    if (!page) return;
-    page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > ${_documentPageHeight + 1});
-  };
-  if (document.fonts?.ready) document.fonts.ready.then(() => requestAnimationFrame(updatePagination));
-  window.addEventListener('load', updatePagination, { once: true });
-})();
-</script></body></html>''';
+</article></body></html>''';
 }
 
 String _createQrSvg(String value) {

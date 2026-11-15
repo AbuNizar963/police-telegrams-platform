@@ -189,6 +189,13 @@ class _TestPoliceApi extends PoliceApi {
         'organizationId': input?['organizationId'],
         'logoUrl': resolvedOrganizationLogoUrl ?? organizationLogoUrl,
       },
+      'organizations.logoForExport' => {
+        'organizationId': input?['organizationId'],
+        'logoUrl':
+            resolvedOrganizationLogoUrl ??
+            organizationLogoUrl ??
+            '/api/storage/department/logos/org-1/logo.png',
+      },
       'telegrams.list' => {
         'items': [_sampleTelegram()],
       },
@@ -308,12 +315,23 @@ class _TestOfficialTelegramDocumentRenderer
   String? renderedHtml;
 
   @override
-  Future<Uint8List> renderPdf(String html) async {
+  Future<Uint8List> renderPdf(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) async {
     renderedHtml = html;
     expect(html, contains(_telegramSubject));
     expect(html, contains('routing-qr'));
     return Uint8List.fromList([37, 80, 68, 70]);
   }
+
+  @override
+  Future<Uint8List> renderPng(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) async => _testPng;
 
   @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
@@ -333,7 +351,11 @@ class _TestOfficialTelegramDocumentRenderer
 class _StalledPdfDocumentRenderer
     extends _TestOfficialTelegramDocumentRenderer {
   @override
-  Future<Uint8List> renderPdf(String html) => Completer<Uint8List>().future;
+  Future<Uint8List> renderPdf(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) => Completer<Uint8List>().future;
 }
 
 void main() {
@@ -406,7 +428,7 @@ void main() {
     _setMobileViewport(tester);
     final api = _TestPoliceApi(
       signedIn: true,
-      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+      organizationLogoUrl: '/api/storage/department/logos/org-1/logo.png',
     );
 
     await tester.pumpWidget(
@@ -465,15 +487,13 @@ void main() {
     _setMobileViewport(tester);
     final api = _TestPoliceApi(
       signedIn: true,
-      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+      organizationLogoUrl: '/api/storage/department/logos/org-1/logo.png',
     );
     final renderer = _TestOfficialTelegramDocumentRenderer();
 
     await tester.pumpWidget(
       OfficialTelegramDocumentRendererScope(
         renderer: renderer,
-        logoFileWriter: (bytes, cacheKey) async =>
-            'file:///tmp/official-logo.png',
         child: MaterialApp(
           home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
         ),
@@ -486,8 +506,10 @@ void main() {
     await tester.pump();
 
     final renderedHtml = renderer.renderedHtml!;
-    expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderedHtml, contains('class="official-logo" src="file://'));
+    expect(
+      renderedHtml,
+      contains('class="official-logo" src="telegram-logo://official"'),
+    );
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));
@@ -519,8 +541,6 @@ void main() {
       await tester.pumpWidget(
         OfficialTelegramDocumentRendererScope(
           renderer: renderer,
-          logoFileWriter: (bytes, cacheKey) async =>
-              'file:///tmp/official-logo.png',
           child: MaterialApp(
             home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
           ),
@@ -532,10 +552,13 @@ void main() {
       );
       await tester.pump();
 
-      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+      expect(
+        api.calls['organizations.logoForExport']?['organizationId'],
+        'org-1',
+      );
       expect(
         renderer.renderedHtml,
-        contains('class="official-logo" src="file://'),
+        contains('class="official-logo" src="telegram-logo://official"'),
       );
       expect(renderer.renderedHtml, isNot(contains('data:image/png;base64')));
     },
@@ -589,7 +612,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 25));
+      await tester.pump(const Duration(seconds: 61));
       await tester.pump();
 
       expect(
@@ -1218,15 +1241,15 @@ void main() {
 
     await tester.tap(find.text('تنزيل'));
     await tester.pumpAndSettle();
-    expect(find.text('تنزيل PDF'), findsOneWidget);
-    expect(find.text('تنزيل صورة'), findsOneWidget);
+    expect(find.text('تنزيل ملف PDF'), findsOneWidget);
+    expect(find.text('تنزيل صور الصفحات'), findsOneWidget);
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('مشاركة'));
     await tester.pumpAndSettle();
-    expect(find.text('مشاركة PDF'), findsOneWidget);
-    expect(find.text('مشاركة صورة'), findsOneWidget);
+    expect(find.text('مشاركة ملف PDF'), findsOneWidget);
+    expect(find.text('مشاركة صور الصفحات'), findsOneWidget);
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
     expect(find.text('تعديل البرقية'), findsOneWidget);

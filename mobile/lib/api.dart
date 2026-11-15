@@ -192,6 +192,101 @@ class PoliceApi {
     return value;
   }
 
+  /// Renders an official telegram through the authenticated server-side
+  /// Chromium pipeline shared with the web client.
+  ///
+  /// The logo is represented in HTML only by the fixed server-side marker;
+  /// the actual storage source and organization scope travel as separate
+  /// request fields and are revalidated by the server.
+  Future<Uint8List> renderTelegramDocument({
+    required String html,
+    required String format,
+    String? organizationId,
+    String? logoSource,
+  }) async {
+    if (html.trim().isEmpty || !{'pdf', 'png'}.contains(format)) {
+      throw const FormatException('بيانات تصدير الوثيقة غير صالحة.');
+    }
+    final requiresOfficialLogo = html.contains('telegram-logo://official');
+    final normalizedOrganizationId = organizationId?.trim() ?? '';
+    final normalizedLogoSource = logoSource?.trim() ?? '';
+    if (requiresOfficialLogo &&
+        (normalizedOrganizationId.isEmpty || normalizedLogoSource.isEmpty)) {
+      throw const FormatException(
+        'بيانات شعار الجهة غير مكتملة لتصدير الوثيقة.',
+      );
+    }
+
+    final cookie = await _storage.read(key: 'session_cookie');
+    final uri = Uri.parse('$baseUrl/api/telegram-render');
+    final headers = <String, String>{
+      'content-type': 'application/json',
+      'accept': 'application/pdf, image/png',
+    };
+    if (cookie != null && cookie.isNotEmpty) {
+      headers['cookie'] = cookie;
+    }
+
+    final body = <String, Object>{
+      'format': format,
+      'html': html,
+      if (requiresOfficialLogo) ...{
+        'organizationId': normalizedOrganizationId,
+        'logoSource': normalizedLogoSource,
+      },
+    };
+    final encodedBody = jsonEncode(body);
+    if (utf8.encode(encodedBody).length > 3900000) {
+      throw const FormatException(
+        'حجم قالب الوثيقة يتجاوز الحد الآمن للتصدير.',
+      );
+    }
+
+    late final http.Response response;
+    try {
+      response = await _httpClient
+          .post(uri, headers: headers, body: encodedBody)
+          .timeout(const Duration(seconds: 60));
+    } on TimeoutException {
+      throw const NetworkException('انتهت مهلة إنشاء الوثيقة. أعد المحاولة.');
+    } on IOException {
+      throw const NetworkException();
+    } on http.ClientException {
+      throw const NetworkException();
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(response.statusCode, _message(response.body));
+    }
+
+    final contentType = (response.headers['content-type'] ?? '')
+        .split(';')
+        .first
+        .trim()
+        .toLowerCase();
+    final bytes = response.bodyBytes;
+    final isPdf =
+        contentType == 'application/pdf' &&
+        bytes.length >= 5 &&
+        String.fromCharCodes(bytes.take(5)) == '%PDF-';
+    final isPng =
+        contentType == 'image/png' &&
+        bytes.length >= 8 &&
+        bytes[0] == 137 &&
+        bytes[1] == 80 &&
+        bytes[2] == 78 &&
+        bytes[3] == 71 &&
+        bytes[4] == 13 &&
+        bytes[5] == 10 &&
+        bytes[6] == 26 &&
+        bytes[7] == 10;
+    final validContent = format == 'pdf' ? isPdf : isPdf || isPng;
+    if (!validContent) {
+      throw const ApiException(502, 'أعاد الخادم ملف وثيقة بصيغة غير متوقعة.');
+    }
+    return Uint8List.fromList(bytes);
+  }
+
   Future<Map<String, dynamic>> uploadTelegramAttachment({
     required int telegramId,
     required String fileName,

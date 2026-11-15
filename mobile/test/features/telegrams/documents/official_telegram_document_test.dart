@@ -90,12 +90,8 @@ void main() {
         '.telegram-export-page { z-index: 2; background: transparent; }',
       ),
     );
-    expect(
-      html,
-      contains(
-        "page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > 1124);",
-      ),
-    );
+    expect(html, isNot(contains('<script')));
+    expect(html, isNot(contains('page.classList.toggle')));
     expect(html, isNot(contains('width:190mm')));
     expect(html, isNot(contains('(277 * 96 / 25.4)')));
   });
@@ -135,7 +131,8 @@ void main() {
       expect(html, contains('size: A4 portrait;'));
       expect(html, contains('@page telegram-multipage'));
       expect(html, contains('counter(page) " من " counter(pages)'));
-      expect(html, contains('classList.toggle(\'telegram-multipage\''));
+      expect(html, isNot(contains('<script')));
+      expect(html, isNot(contains('classList.toggle')));
       expect(html, contains('font-family:"Cairo"'));
       expect(
         html,
@@ -178,42 +175,6 @@ void main() {
       expect(html, contains('اسم المسؤول'));
       expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
       expect(html, isNot(contains('نص الوثيقة')));
-    },
-  );
-
-  test(
-    'detects original logo formats without converting the bytes to Base64',
-    () {
-      expect(
-        officialTelegramDocumentLogoFileExtension(
-          Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
-        ),
-        'png',
-      );
-      expect(
-        officialTelegramDocumentLogoFileExtension(
-          Uint8List.fromList([255, 216, 255, 0]),
-        ),
-        'jpg',
-      );
-      expect(
-        officialTelegramDocumentLogoFileExtension(
-          Uint8List.fromList([71, 73, 70, 56, 57, 97]),
-        ),
-        'gif',
-      );
-      expect(
-        officialTelegramDocumentLogoFileExtension(
-          Uint8List.fromList([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]),
-        ),
-        'webp',
-      );
-      expect(
-        () => officialTelegramDocumentLogoFileExtension(
-          Uint8List.fromList([0, 1, 2, 3]),
-        ),
-        throwsFormatException,
-      );
     },
   );
 
@@ -422,20 +383,16 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'file:///tmp/official-logo.png',
+        logoSource: 'telegram-logo://official',
       );
 
       expect(
         html,
-        contains(
-          '<img class="official-logo" src="file:///tmp/official-logo.png"',
-        ),
+        contains('<img class="official-logo" src="telegram-logo://official"'),
       );
       expect(
         html,
-        contains(
-          '<img class="watermark-logo" src="file:///tmp/official-logo.png"',
-        ),
+        contains('<img class="watermark-logo" src="telegram-logo://official"'),
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, isNot(contains('data:image/')));
@@ -514,7 +471,7 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'file:///tmp/official-logo.png',
+        logoSource: 'telegram-logo://official',
       );
 
       expect(html, isNot(contains('class="watermark-text-pattern"')));

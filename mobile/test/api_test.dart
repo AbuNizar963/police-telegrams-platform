@@ -1039,4 +1039,187 @@ void main() {
       ),
     );
   });
+
+  test(
+    'renders official telegram PDF through authenticated Chromium endpoint',
+    () async {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const logoSource =
+          '/api/storage/department/logos/$organizationId/logo.png';
+      const sessionCookie = 'sid=authenticated-session';
+      const html = '<img src="telegram-logo://official" alt="الشعار الرسمي" />';
+      final pdfBytes = Uint8List.fromList(
+        utf8.encode('%PDF-1.7\\nChromium rendered document'),
+      );
+      _secureStorageForTest['session_cookie'] = sessionCookie;
+
+      final client = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/telegram-render');
+        expect(request.headers['cookie'], sessionCookie);
+        expect(request.headers['content-type'], 'application/json');
+        expect(jsonDecode(request.body), {
+          'format': 'pdf',
+          'html': html,
+          'organizationId': organizationId,
+          'logoSource': logoSource,
+        });
+        return http.Response.bytes(
+          pdfBytes,
+          200,
+          headers: {'content-type': 'application/pdf'},
+        );
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      expect(
+        await api.renderTelegramDocument(
+          html: html,
+          format: 'pdf',
+          organizationId: organizationId,
+          logoSource: logoSource,
+        ),
+        orderedEquals(pdfBytes),
+      );
+    },
+  );
+
+  test(
+    'accepts a direct Chromium PNG response for single-page export',
+    () async {
+      const html = '<article class="telegram-export-page"></article>';
+      const pngBytes = <int>[137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3];
+      final client = MockClient((request) async {
+        expect(jsonDecode(request.body), {'format': 'png', 'html': html});
+        return http.Response.bytes(
+          pngBytes,
+          200,
+          headers: {'content-type': 'image/png'},
+        );
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      expect(
+        await api.renderTelegramDocument(html: html, format: 'png'),
+        orderedEquals(pngBytes),
+      );
+    },
+  );
+
+  test(
+    'accepts the shared renderer PDF response for multi-page PNG export',
+    () async {
+      const html =
+          '<article class="telegram-export-page telegram-multipage"></article>';
+      final pdfBytes = Uint8List.fromList(
+        utf8.encode('%PDF-1.7\\nMultipage source'),
+      );
+      final client = MockClient((request) async {
+        expect(jsonDecode(request.body), {'format': 'png', 'html': html});
+        return http.Response.bytes(
+          pdfBytes,
+          200,
+          headers: {'content-type': 'application/pdf'},
+        );
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      expect(
+        await api.renderTelegramDocument(html: html, format: 'png'),
+        orderedEquals(pdfBytes),
+      );
+    },
+  );
+
+  test('rejects a logo placeholder without organization-scoped source before network access', () async {
+    var requestStarted = false;
+    final client = MockClient((request) async {
+      requestStarted = true;
+      return http.Response('unexpected', 500);
+    });
+    addTearDown(client.close);
+
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+    await expectLater(
+      api.renderTelegramDocument(
+        html: '<img src="telegram-logo://official" />',
+        format: 'pdf',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    expect(requestStarted, isFalse);
+  });
+
+  test(
+    'rejects oversized Chromium export HTML before network access',
+    () async {
+      var requestStarted = false;
+      final client = MockClient((request) async {
+        requestStarted = true;
+        return http.Response('unexpected', 500);
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      await expectLater(
+        api.renderTelegramDocument(
+          html: List<String>.filled(3900001, 'x').join(),
+          format: 'pdf',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(requestStarted, isFalse);
+    },
+  );
+
+  test(
+    'surfaces server authorization failures for document rendering',
+    () async {
+      _secureStorageForTest['session_cookie'] = 'sid=expired-session';
+      final client = MockClient((request) async {
+        expect(request.headers['cookie'], 'sid=expired-session');
+        return http.Response(
+          jsonEncode({'error': 'يجب تسجيل الدخول أولًا'}),
+          401,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      await expectLater(
+        api.renderTelegramDocument(html: '<article></article>', format: 'pdf'),
+        throwsA(
+          isA<ApiException>()
+              .having((error) => error.statusCode, 'statusCode', 401)
+              .having(
+                (error) => error.message,
+                'message',
+                'يجب تسجيل الدخول أولًا',
+              ),
+        ),
+      );
+    },
+  );
 }

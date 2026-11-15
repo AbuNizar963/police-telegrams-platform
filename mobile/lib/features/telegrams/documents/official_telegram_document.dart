@@ -248,6 +248,7 @@ class _OfficialTelegramDocumentPageState
   final Map<String, Future<String?>> _officialLogoFileRequests =
       <String, Future<String?>>{};
   Directory? _officialLogoDirectory;
+  int _officialLogoFileSequence = 0;
 
   @override
   void didChangeDependencies() {
@@ -709,12 +710,12 @@ class _OfficialTelegramDocumentPageState
     final existing = _officialLogoDirectory;
     if (existing != null) return existing;
     final temporaryDirectory = await getTemporaryDirectory();
-    final directory = Directory(
+    final cacheRoot = Directory(
       '${temporaryDirectory.path}${Platform.pathSeparator}'
-      'official-telegram-logos${Platform.pathSeparator}'
-      '${identityHashCode(this)}',
+      'official-telegram-logos',
     );
-    await directory.create(recursive: true);
+    await cacheRoot.create(recursive: true);
+    final directory = await cacheRoot.createTemp('document-');
     _officialLogoDirectory = directory;
     return directory;
   }
@@ -742,9 +743,10 @@ class _OfficialTelegramDocumentPageState
     if (cached != null) return cached;
     final extension = officialTelegramDocumentLogoFileExtension(bytes);
     final directory = await _getOfficialLogoDirectory();
+    final sequence = ++_officialLogoFileSequence;
     final file = File(
       '${directory.path}${Platform.pathSeparator}'
-      'logo-${cacheKey.hashCode.toRadixString(16)}.$extension',
+      'official-logo-$sequence.$extension',
     );
     await file.writeAsBytes(bytes, flush: true);
     if (!await file.exists() || await file.length() != bytes.length) {

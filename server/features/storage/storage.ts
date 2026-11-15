@@ -1,9 +1,42 @@
 import type { User } from "../../../drizzle/schema";
 import type { AllowedAttachmentType } from "../../fileSecurity";
+import { ENV } from "../../_core/env";
 import { getStorageProvider } from "../../_core/storageProvider";
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
+}
+
+/**
+ * Validates URLs returned by the storage provider before exposing them to a client.
+ * Local development may use HTTP for a local Supabase instance; production must use HTTPS.
+ */
+export function validateStorageProviderUrl(
+  value: string,
+  isProduction = ENV.isProduction
+): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Storage provider returned an invalid URL");
+  }
+
+  if (
+    (url.protocol !== "https:" && url.protocol !== "http:") ||
+    !url.hostname ||
+    url.username ||
+    url.password ||
+    url.hash
+  ) {
+    throw new Error("Storage provider returned an unsafe URL");
+  }
+
+  if (isProduction && url.protocol !== "https:") {
+    throw new Error("Storage URLs must use HTTPS in production");
+  }
+
+  return url.toString();
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -198,7 +231,9 @@ export async function storageCreateOrganizationAttachmentUploadUrl(
 
   const safeFileName = sanitizeFileName(fileName);
   const key = `organizations/${safeOrganizationId}/telegrams/${telegramId}/attachments/${crypto.randomUUID()}-${safeFileName}`;
-  const uploadUrl = await getStorageProvider().createSignedUploadUrl(key);
+  const uploadUrl = validateStorageProviderUrl(
+    await getStorageProvider().createSignedUploadUrl(key)
+  );
   return { key, uploadUrl };
 }
 
@@ -275,7 +310,9 @@ export async function storageCreateSignedUrl(
     throw new StorageAccessDeniedError();
   }
 
-  return getStorageProvider().createSignedUrl(key, expiresInSeconds);
+  return validateStorageProviderUrl(
+    await getStorageProvider().createSignedUrl(key, expiresInSeconds)
+  );
 }
 
 export async function storageDownload(

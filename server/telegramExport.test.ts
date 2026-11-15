@@ -5,6 +5,7 @@ import {
   isAllowedExportResourceUrl,
   isSafeExportHtml,
   replaceOfficialLogoPlaceholder,
+  resolveDepartmentLogoStorageKey,
   withPngDpiMetadata,
   MAX_TELEGRAM_PNG_BYTES,
   PNG_RENDER_SCALE_FACTORS,
@@ -136,6 +137,31 @@ describe("telegram export HTML validation", () => {
   it("rejects an internally expanded export document above the renderer budget", () => {
     const oversizedDocument = `${safeDocument}${"x".repeat(7_500_001)}`;
     expect(isSafeExportHtml(oversizedDocument)).toBe(false);
+  });
+});
+
+describe("official organization logo storage path", () => {
+  it("decodes only the same-origin protected storage path", () => {
+    expect(
+      resolveDepartmentLogoStorageKey(
+        "/api/storage/department/logos/00000000-0000-4000-8000-000000000101/logo%20mark.png"
+      )
+    ).toBe(
+      "department/logos/00000000-0000-4000-8000-000000000101/logo mark.png"
+    );
+  });
+
+  it("rejects external and path-escaping logo sources", () => {
+    expect(() =>
+      resolveDepartmentLogoStorageKey(
+        "https://storage.example.com/department/logos/logo.png"
+      )
+    ).toThrow();
+    expect(() =>
+      resolveDepartmentLogoStorageKey(
+        "/api/storage/department/logos/../../private/file.png"
+      )
+    ).toThrow();
   });
 });
 

@@ -1,14 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { upload, createSignedUrl, download, from, getSupabaseAdmin } =
-  vi.hoisted(() => {
+const {
+  upload,
+  createSignedUrl,
+  createSignedUploadUrl,
+  info,
+  download,
+  from,
+  getSupabaseAdmin,
+} = vi.hoisted(() => {
     const upload = vi.fn();
     const createSignedUrl = vi.fn();
+    const createSignedUploadUrl = vi.fn();
+    const info = vi.fn();
     const download = vi.fn();
-    const from = vi.fn(() => ({ upload, createSignedUrl, download }));
+    const from = vi.fn(() => ({
+      upload,
+      createSignedUrl,
+      createSignedUploadUrl,
+      info,
+      download,
+    }));
     const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-    return { upload, createSignedUrl, download, from, getSupabaseAdmin };
+    return {
+      upload,
+      createSignedUrl,
+      createSignedUploadUrl,
+      info,
+      download,
+      from,
+      getSupabaseAdmin,
+    };
   });
 
 vi.mock("./supabase", () => ({ getSupabaseAdmin }));
@@ -29,6 +52,14 @@ describe("Supabase storage provider", () => {
     });
     createSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://storage.example/signed-object" },
+      error: null,
+    });
+    createSignedUploadUrl.mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed-upload?token=opaque" },
+      error: null,
+    });
+    info.mockResolvedValue({
+      data: { size: 123, contentType: "application/pdf" },
       error: null,
     });
   });
@@ -64,6 +95,27 @@ describe("Supabase storage provider", () => {
         cacheControl: "3600",
       })
     ).rejects.toThrow("Storage upload failed: bucket unavailable");
+  });
+
+  it("creates a signed upload URL without allowing object replacement", async () => {
+    await expect(
+      getStorageProvider().createSignedUploadUrl("organizations/org/file.pdf")
+    ).resolves.toBe("https://storage.example/signed-upload?token=opaque");
+
+    expect(createSignedUploadUrl).toHaveBeenCalledWith(
+      "organizations/org/file.pdf",
+      { upsert: false }
+    );
+  });
+
+  it("reads object size and content type before downloading file bytes", async () => {
+    await expect(
+      getStorageProvider().getObjectInfo("organizations/org/file.pdf")
+    ).resolves.toEqual({
+      size: 123,
+      contentType: "application/pdf",
+    });
+    expect(info).toHaveBeenCalledWith("organizations/org/file.pdf");
   });
 
   it("downloads object bytes and returns the stored content type", async () => {

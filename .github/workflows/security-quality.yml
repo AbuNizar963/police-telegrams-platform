@@ -59,4 +59,4 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
       - name: Lint workflow files
-        run: "$(go env GOPATH)/bin/actionlint" -color
+        run: '$(go env GOPATH)/bin/actionlint -color'

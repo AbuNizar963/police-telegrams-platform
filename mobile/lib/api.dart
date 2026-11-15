@@ -220,8 +220,7 @@ class PoliceApi {
         }),
       ),
     );
-    if (prepareResponse.statusCode < 200 ||
-        prepareResponse.statusCode >= 300) {
+    if (prepareResponse.statusCode < 200 || prepareResponse.statusCode >= 300) {
       throw ApiException(
         prepareResponse.statusCode,
         _message(prepareResponse.body),
@@ -250,8 +249,7 @@ class PoliceApi {
       ),
       timeout: const Duration(seconds: 60),
     );
-    if (storageResponse.statusCode < 200 ||
-        storageResponse.statusCode >= 300) {
+    if (storageResponse.statusCode < 200 || storageResponse.statusCode >= 300) {
       throw ApiException(
         storageResponse.statusCode,
         _message(storageResponse.body),

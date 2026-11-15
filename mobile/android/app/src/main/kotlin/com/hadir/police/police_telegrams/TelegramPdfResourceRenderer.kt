@@ -148,24 +148,20 @@ internal class TelegramPdfResourceRenderer(
                 val current = activeWebView ?: return
                 val readyScript = """
                     (function() {
+                      window.__telegramPdfResourcesStatus = 'pending';
                       const images = Array.from(document.images);
-                      return Promise.all(images.map((image) =>
+                      Promise.all(images.map((image) =>
                         image.decode().then(() => true).catch(() => false)
-                      )).then((results) => document.fonts.ready.then(() =>
-                        results.every(Boolean)
-                      ));
+                      )).then((results) => document.fonts.ready.then(() => {
+                        window.__telegramPdfResourcesStatus =
+                          results.every(Boolean) ? 'ready' : 'failed';
+                      })).catch(() => {
+                        window.__telegramPdfResourcesStatus = 'failed';
+                      });
                     })();
                 """.trimIndent()
-                current.evaluateJavascript(readyScript) { value ->
-                    if (activeWebView !== current) return@evaluateJavascript
-                    if (value != "true") {
-                        finishWithError(
-                            "PDF_IMAGE_LOAD_FAILED",
-                            "تعذر تحميل شعار الجهة داخل الوثيقة.",
-                        )
-                    } else {
-                        printToPdf(current)
-                    }
+                current.evaluateJavascript(readyScript) {
+                    if (activeWebView === current) pollResourcesReady(current, 0)
                 }
             }
 
@@ -201,6 +197,30 @@ internal class TelegramPdfResourceRenderer(
         "UTF-8",
         ByteArrayInputStream(ByteArray(0)),
     )
+
+    private fun pollResourcesReady(webView: WebView, attempt: Int) {
+        if (activeWebView !== webView) return
+        webView.evaluateJavascript("window.__telegramPdfResourcesStatus || 'pending'") { value ->
+            when (value) {
+                "\"ready\"" -> printToPdf(webView)
+                "\"failed\"" -> finishWithError(
+                    "PDF_IMAGE_LOAD_FAILED",
+                    "تعذر تحميل شعار الجهة داخل الوثيقة.",
+                )
+                else -> if (attempt >= RESOURCE_WAIT_ATTEMPTS) {
+                    finishWithError(
+                        "PDF_IMAGE_LOAD_TIMEOUT",
+                        "انتهت مهلة تحميل صور الوثيقة.",
+                    )
+                } else {
+                    mainHandler.postDelayed(
+                        { pollResourcesReady(webView, attempt + 1) },
+                        RESOURCE_POLL_INTERVAL_MS,
+                    )
+                }
+            }
+        }
+    }
 
     private fun printToPdf(webView: WebView) {
         val adapter = webView.createPrintDocumentAdapter("official-telegram")
@@ -316,5 +336,7 @@ internal class TelegramPdfResourceRenderer(
     companion object {
         private const val DOCUMENT_BASE_URL = "https://telegram-document.invalid/"
         private const val RENDER_TIMEOUT_MS = 25_000L
+        private const val RESOURCE_POLL_INTERVAL_MS = 100L
+        private const val RESOURCE_WAIT_ATTEMPTS = 150
     }
 }

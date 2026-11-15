@@ -101,43 +101,40 @@ describe("profile router", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it(
-    "revokes previous sessions and refreshes the current session after password change",
-    async () => {
-      const user = {
-        ...contextFor().user!,
-        passwordHash: "current-hash",
-      } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
-      const rotatedAuthUserId = "00000000-0000-4000-8000-000000000099";
+  it("revokes old sessions and refreshes this device", async () => {
+    const user = {
+      ...contextFor().user!,
+      passwordHash: "old-hash",
+    } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
+    const rotatedAuthUserId = "00000000-0000-4000-8000-000000000099";
 
-      const verify = vi.spyOn(auth, "verifyPassword").mockResolvedValue(true);
-      const hash = vi
-        .spyOn(auth, "hashPassword")
-        .mockResolvedValue("new-password-hash");
-      const update = vi
-        .spyOn(db, "updateUserPassword")
-        .mockResolvedValue(rotatedAuthUserId);
-      const refreshSession = vi
-        .spyOn(auth, "setAuthenticatedSession")
-        .mockResolvedValue(undefined);
+    const verify = vi.spyOn(auth, "verifyPassword").mockResolvedValue(true);
+    const hash = vi
+      .spyOn(auth, "hashPassword")
+      .mockResolvedValue("new-password-hash");
+    const update = vi
+      .spyOn(db, "updateUserPassword")
+      .mockResolvedValue(rotatedAuthUserId);
+    const refreshSession = vi
+      .spyOn(auth, "setAuthenticatedSession")
+      .mockResolvedValue(undefined);
 
-      try {
-        await appRouter.createCaller(contextFor()).profile.changePassword({
-          currentPassword: "current-password",
-          newPassword: "new-password-123",
-        });
+    try {
+      await appRouter.createCaller(contextFor()).profile.changePassword({
+        currentPassword: "old-pass",
+        newPassword: "new-password-123",
+      });
 
-        expect(verify).toHaveBeenCalledWith("current-password", "current-hash");
-        expect(hash).toHaveBeenCalledWith("new-password-123");
-        expect(update).toHaveBeenCalledWith(9, "new-password-hash");
-        expect(refreshSession).toHaveBeenCalledWith(expect.anything(), {
-          id: user.id,
-          role: user.role,
-          authUserId: rotatedAuthUserId,
-        });
-      } finally {
-        vi.restoreAllMocks();
-      }
+      expect(verify).toHaveBeenCalledWith("old-pass", "old-hash");
+      expect(hash).toHaveBeenCalledWith("new-password-123");
+      expect(update).toHaveBeenCalledWith(9, "new-password-hash");
+      expect(refreshSession).toHaveBeenCalledWith(expect.anything(), {
+        id: user.id,
+        role: user.role,
+        authUserId: rotatedAuthUserId,
+      });
+    } finally {
+      vi.restoreAllMocks();
     }
-  );
+  });
 });

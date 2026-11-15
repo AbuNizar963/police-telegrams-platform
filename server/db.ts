@@ -1137,7 +1137,9 @@ export async function getTelegramAttachmentById(id: number) {
 export async function getTelegramAttachmentByStorageKey(storageKey: string) {
   const { data, error } = await getSupabaseAdmin()
     .from("telegram_attachments")
-    .select("id, telegramId, storageOrganizationId, storageKey")
+    .select(
+      "id, telegramId, storageOrganizationId, storageKey, originalName, mimeType, sizeBytes"
+    )
     .eq("storageKey", storageKey)
     .maybeSingle();
   throwIfError(error, "Failed to load attachment metadata by storage key");
@@ -1146,6 +1148,9 @@ export async function getTelegramAttachmentByStorageKey(storageKey: string) {
     telegramId: number;
     storageOrganizationId: string | null;
     storageKey: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
   } | null;
 }
 

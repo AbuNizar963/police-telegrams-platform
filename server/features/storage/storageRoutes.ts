@@ -7,17 +7,25 @@ import express, {
 import { ENV } from "../../_core/env";
 import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
+  createTelegramAttachment,
   getTelegramAttachmentByStorageKey,
   getTelegramById,
   getTelegramVersion,
+  writeAuditLog,
 } from "../../db";
+import { getRequestAuditContext } from "../../auditContext";
 import { canAccessTelegramScope } from "../../telegramAccess";
 import {
   getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
 import { isPlatformOwner } from "../../ownerAccess";
-import { validateUploadedFile } from "../../fileSecurity";
+import {
+  ALLOWED_ATTACHMENT_TYPES,
+  sha256Hex,
+  validateUploadedFile,
+  type AllowedAttachmentType,
+} from "../../fileSecurity";
 import {
   getOrganizationByIdIncludingInactive,
   getUserOrganizationMembership,
@@ -30,11 +38,291 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
+  storageCreateOrganizationAttachmentUploadUrl,
+  storageDelete,
+  storageGetObjectInfo,
   storagePutDepartmentLogo,
 } from "./storage";
 
 const ORGANIZATION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+type TelegramAttachmentRequestContext = {
+  user: NonNullable<
+    Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
+  >;
+  telegram: NonNullable<Awaited<ReturnType<typeof getTelegramById>>>;
+};
+
+async function authorizeTelegramAttachmentRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const user = await getAuthenticatedUserFromRequest(req);
+    if (!user) {
+      res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
+      return;
+    }
+
+    const telegramId = Number(req.params.telegramId);
+    if (!Number.isSafeInteger(telegramId) || telegramId < 1) {
+      res.status(400).json({ error: "معرّف البرقية غير صالح" });
+      return;
+    }
+
+    const telegram = await getTelegramById(telegramId);
+    if (!telegram) {
+      res.status(404).json({ error: "البرقية غير موجودة" });
+      return;
+    }
+    if (!(await canAccessTelegramScope(user, telegram))) {
+      res.status(403).json({ error: "لا تملك صلاحية إرفاق ملف بهذه البرقية" });
+      return;
+    }
+
+    res.locals.telegramAttachmentRequest = {
+      user,
+      telegram,
+    } satisfies TelegramAttachmentRequestContext;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+function parseTelegramAttachmentMetadata(body: unknown): {
+  fileName: string;
+  contentType: AllowedAttachmentType;
+  sizeBytes: number;
+} | null {
+  if (!body || typeof body !== "object") return null;
+  const value = body as Record<string, unknown>;
+  const fileName =
+    typeof value.fileName === "string" ? value.fileName.trim() : "";
+  const contentType =
+    typeof value.contentType === "string"
+      ? value.contentType.trim().toLowerCase()
+      : "";
+  const sizeBytes =
+    typeof value.sizeBytes === "number" ? value.sizeBytes : Number.NaN;
+
+  if (
+    !fileName ||
+    fileName.length > 180 ||
+    /[\u0000-\u001f]/.test(fileName) ||
+    fileName.includes("/") ||
+    fileName.includes("\\") ||
+    !ALLOWED_ATTACHMENT_TYPES.includes(contentType as AllowedAttachmentType) ||
+    !Number.isSafeInteger(sizeBytes) ||
+    sizeBytes < 1 ||
+    sizeBytes > MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES
+  ) {
+    return null;
+  }
+
+  return {
+    fileName,
+    contentType: contentType as AllowedAttachmentType,
+    sizeBytes,
+  };
+}
+
+async function createTelegramAttachmentUploadUrl(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const context = res.locals.telegramAttachmentRequest as
+    TelegramAttachmentRequestContext | undefined;
+  const metadata = parseTelegramAttachmentMetadata(req.body);
+  if (!context || !metadata) {
+    res.status(400).json({ error: "بيانات رفع المرفق غير صالحة" });
+    return;
+  }
+
+  try {
+    const upload = await storageCreateOrganizationAttachmentUploadUrl(
+      context.telegram.organizationId,
+      context.telegram.id,
+      metadata.fileName
+    );
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({
+      ...upload,
+      fileName: metadata.fileName,
+      contentType: metadata.contentType,
+      sizeBytes: metadata.sizeBytes,
+    });
+  } catch (error) {
+    console.error("[Storage] Telegram attachment upload URL failed", error);
+    res.status(502).json({ error: "تعذر تجهيز رابط رفع المرفق" });
+  }
+}
+
+async function removeUncommittedAttachment(key: string): Promise<void> {
+  try {
+    await storageDelete(key);
+  } catch (error) {
+    console.error("[Storage] Uncommitted attachment cleanup failed", error);
+  }
+}
+
+async function finalizeTelegramAttachmentUpload(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const context = res.locals.telegramAttachmentRequest as
+    TelegramAttachmentRequestContext | undefined;
+  const metadata = parseTelegramAttachmentMetadata(req.body);
+  const key =
+    req.body &&
+    typeof req.body === "object" &&
+    typeof (req.body as Record<string, unknown>).key === "string"
+      ? ((req.body as Record<string, unknown>).key as string).trim()
+      : "";
+
+  if (!context || !metadata || !key || key.length > 512) {
+    res.status(400).json({ error: "بيانات اعتماد المرفق غير صالحة" });
+    return;
+  }
+
+  if (
+    !organizationAttachmentKeyMatches(
+      key,
+      context.telegram.organizationId,
+      context.telegram.id
+    )
+  ) {
+    res.status(403).json({ error: "مسار المرفق لا يخص هذه البرقية" });
+    return;
+  }
+
+  const storedFileName = key.split("/").pop()?.slice(37) ?? "";
+  const expectedStorageFileName = metadata.fileName.replace(/\.\.+/g, "_");
+  if (storedFileName !== expectedStorageFileName) {
+    res.status(400).json({ error: "اسم الملف لا يطابق رابط الرفع" });
+    return;
+  }
+
+  try {
+    const existing = await getTelegramAttachmentByStorageKey(key);
+    if (existing) {
+      if (
+        existing.telegramId !== context.telegram.id ||
+        existing.storageOrganizationId !== context.telegram.organizationId ||
+        existing.originalName !== metadata.fileName ||
+        existing.mimeType !== metadata.contentType ||
+        existing.sizeBytes !== metadata.sizeBytes
+      ) {
+        res.status(403).json({ error: "المرفق مسجل ضمن جهة أخرى" });
+        return;
+      }
+      res.set("Cache-Control", "no-store");
+      res.status(200).json({
+        success: true,
+        alreadyFinalized: true,
+        key,
+        fileName: metadata.fileName,
+        contentType: metadata.contentType,
+        size: existing.sizeBytes,
+      });
+      return;
+    }
+
+    const objectInfo = await storageGetObjectInfo(key);
+    const storedContentType = objectInfo.contentType
+      .split(";")[0]
+      ?.trim()
+      .toLowerCase();
+    if (
+      objectInfo.size !== metadata.sizeBytes ||
+      objectInfo.size < 1 ||
+      objectInfo.size > MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES ||
+      storedContentType !== metadata.contentType
+    ) {
+      await removeUncommittedAttachment(key);
+      res.status(400).json({
+        error: "حجم الملف المرفوع لا يطابق البيانات المعلنة",
+      });
+      return;
+    }
+
+    const asset = await storageDownload(key);
+    if (asset.body.byteLength !== metadata.sizeBytes) {
+      await removeUncommittedAttachment(key);
+      res.status(400).json({ error: "حجم الملف المرفوع غير صالح" });
+      return;
+    }
+
+    try {
+      validateUploadedFile({
+        bytes: asset.body,
+        declaredType: metadata.contentType,
+        fileName: metadata.fileName,
+        maxBytes: MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES,
+      });
+    } catch (error) {
+      await removeUncommittedAttachment(key);
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "محتوى المرفق غير صالح",
+      });
+      return;
+    }
+
+    const sha256 = sha256Hex(asset.body);
+    try {
+      await createTelegramAttachment({
+        telegramId: context.telegram.id,
+        storageOrganizationId: context.telegram.organizationId,
+        storageKey: key,
+        originalName: metadata.fileName,
+        mimeType: metadata.contentType,
+        sizeBytes: asset.body.byteLength,
+        sha256,
+        uploadedByUserId: context.user.id,
+      });
+    } catch (error) {
+      await removeUncommittedAttachment(key);
+      console.error(
+        "[Storage] Telegram attachment metadata write failed",
+        error
+      );
+      res.status(500).json({ error: "تعذر تسجيل بيانات المرفق" });
+      return;
+    }
+
+    await writeAuditLog({
+      ...getRequestAuditContext(req),
+      actorUserId: context.user.id,
+      actorName: context.user.name ?? context.user.email ?? "Officer",
+      action: "attachment.upload",
+      entityType: "telegram_attachment",
+      entityId: String(context.telegram.id),
+      metadata: JSON.stringify({
+        fileName: metadata.fileName,
+        contentType: metadata.contentType,
+        size: asset.body.byteLength,
+        sha256,
+      }),
+    });
+
+    res.set("Cache-Control", "no-store");
+    res.status(201).json({
+      success: true,
+      key,
+      fileName: metadata.fileName,
+      contentType: metadata.contentType,
+      size: asset.body.byteLength,
+      sha256,
+    });
+  } catch (error) {
+    console.error("[Storage] Telegram attachment finalization failed", error);
+    res.status(502).json({ error: "تعذر التحقق من المرفق وتسجيله" });
+  }
+}
 
 const DEPARTMENT_LOGO_KEY_PATTERN =
   /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
@@ -215,6 +503,18 @@ async function receiveDepartmentLogoUpload(
 }
 
 export function registerStorageRoutes(app: Express): void {
+  app.post(
+    "/api/telegrams/:telegramId/attachments/upload-url",
+    authorizeTelegramAttachmentRequest,
+    createTelegramAttachmentUploadUrl
+  );
+
+  app.post(
+    "/api/telegrams/:telegramId/attachments/finalize",
+    authorizeTelegramAttachmentRequest,
+    finalizeTelegramAttachmentUpload
+  );
+
   app.put(
     "/api/storage/department-logo",
     authorizeDepartmentLogoUpload,

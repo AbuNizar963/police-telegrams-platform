@@ -182,6 +182,41 @@ export function organizationAttachmentKeyMatches(
   );
 }
 
+export async function storageCreateOrganizationAttachmentUploadUrl(
+  organizationId: string,
+  telegramId: number,
+  fileName: string
+): Promise<{ key: string; uploadUrl: string }> {
+  const safeOrganizationId = organizationId.trim();
+  if (
+    !UUID_PATTERN.test(safeOrganizationId) ||
+    !Number.isSafeInteger(telegramId) ||
+    telegramId <= 0
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+
+  const safeFileName = sanitizeFileName(fileName);
+  const key = `organizations/${safeOrganizationId}/telegrams/${telegramId}/attachments/${crypto.randomUUID()}-${safeFileName}`;
+  const uploadUrl = await getStorageProvider().createSignedUploadUrl(key);
+  return { key, uploadUrl };
+}
+
+export async function storageGetObjectInfo(
+  relKey: string
+): Promise<{ size: number; contentType: string }> {
+  const key = normalizeKey(relKey);
+  if (
+    !key ||
+    key
+      .split("/")
+      .some(segment => !segment || segment === "." || segment === "..")
+  ) {
+    throw new StorageAccessDeniedError();
+  }
+  return getStorageProvider().getObjectInfo(key);
+}
+
 export async function storagePutOrganizationAttachment(
   organizationId: string,
   telegramId: number,

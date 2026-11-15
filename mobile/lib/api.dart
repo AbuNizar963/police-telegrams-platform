@@ -579,6 +579,9 @@ class PoliceApi {
     return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port$path';
   }
 
+  String _organizationLogoFileStem(String organizationId) =>
+      organizationId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+
   Future<Directory> _organizationLogoCacheDirectory() =>
       _logoCacheDirectoryFuture ??= _resolveOrganizationLogoCacheDirectory();
 
@@ -660,9 +663,7 @@ class PoliceApi {
     required String identity,
     required int generation,
   }) async {
-    final fileStem = base64Url
-        .encode(utf8.encode(organizationId))
-        .replaceAll('=', '');
+    final fileStem = _organizationLogoFileStem(organizationId);
     final cacheDirectory = await _organizationLogoCacheDirectory();
     final imageFile = File(
       '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
@@ -725,9 +726,7 @@ class PoliceApi {
     if (_organizationLogoRefreshes.containsKey(requestKey)) return;
     final refresh = () async {
       final cacheDirectory = await _organizationLogoCacheDirectory();
-      final fileStem = base64Url
-          .encode(utf8.encode(organizationId))
-          .replaceAll('=', '');
+      final fileStem = _organizationLogoFileStem(organizationId);
       await _refreshOrganizationLogo(
         requestKey: requestKey,
         organizationId: organizationId,

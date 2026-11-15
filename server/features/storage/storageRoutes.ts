@@ -84,8 +84,10 @@ async function authorizeTelegramAttachmentRequest(
       return;
     }
 
-    res.locals.telegramAttachmentRequest = { user, telegram } satisfies
-      TelegramAttachmentRequestContext;
+    res.locals.telegramAttachmentRequest = {
+      user,
+      telegram,
+    } satisfies TelegramAttachmentRequestContext;
     next();
   } catch (error) {
     next(error);
@@ -133,8 +135,7 @@ async function createTelegramAttachmentUploadUrl(
   res: Response
 ): Promise<void> {
   const context = res.locals.telegramAttachmentRequest as
-    | TelegramAttachmentRequestContext
-    | undefined;
+    TelegramAttachmentRequestContext | undefined;
   const metadata = parseTelegramAttachmentMetadata(req.body);
   if (!context || !metadata) {
     res.status(400).json({ error: "بيانات رفع المرفق غير صالحة" });
@@ -173,11 +174,11 @@ async function finalizeTelegramAttachmentUpload(
   res: Response
 ): Promise<void> {
   const context = res.locals.telegramAttachmentRequest as
-    | TelegramAttachmentRequestContext
-    | undefined;
+    TelegramAttachmentRequestContext | undefined;
   const metadata = parseTelegramAttachmentMetadata(req.body);
   const key =
-    req.body && typeof req.body === "object" &&
+    req.body &&
+    typeof req.body === "object" &&
     typeof (req.body as Record<string, unknown>).key === "string"
       ? ((req.body as Record<string, unknown>).key as string).trim()
       : "";
@@ -262,8 +263,7 @@ async function finalizeTelegramAttachmentUpload(
     } catch (error) {
       await removeUncommittedAttachment(key);
       res.status(400).json({
-        error:
-          error instanceof Error ? error.message : "محتوى المرفق غير صالح",
+        error: error instanceof Error ? error.message : "محتوى المرفق غير صالح",
       });
       return;
     }
@@ -319,8 +319,6 @@ async function finalizeTelegramAttachmentUpload(
     res.status(502).json({ error: "تعذر التحقق من المرفق وتسجيله" });
   }
 }
-
-
 
 const DEPARTMENT_LOGO_KEY_PATTERN =
   /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;

@@ -4,7 +4,7 @@ These instructions apply to every contributor and automated coding agent working
 
 ## Required security workflow
 
-1. Read `SECURITY.md`, this file, and `docs/OWASP_SECURITY_CHECKLIST_AR.md` before changing authentication, authorization, tenant data, uploads, exports, storage, database policies, secrets, or CI workflows.
+1. Read `SECURITY.md`, this file, `docs/security/SECURE_ENGINEERING_STANDARD.md`, and `docs/OWASP_SECURITY_CHECKLIST_AR.md` before changing authentication, authorization, tenant data, uploads, exports, storage, database policies, secrets, or CI workflows.
 2. For security audits and security-sensitive code changes, load `.agents/skills/vibe-security/SKILL.md` and `.agents/skills/owasp-security/SKILL.md`, then load only the technology references that match this codebase. Treat examples as audit patterns, not copy-paste fixes; verify against current official documentation and this repository's architecture.
 3. Define the trust boundary and threat before coding: actor, resource, organization/tenant, operation, entry point, privileged dependencies, and expected denial behavior.
 4. Trace authorization from the public route to the final database/storage operation. A hidden UI control is never authorization.

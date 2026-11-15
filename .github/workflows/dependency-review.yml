@@ -2,10 +2,12 @@ name: Dependency Review
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: ["main", "flutter-mobile-app"]
     paths:
       - "package.json"
       - "pnpm-lock.yaml"
+      - "mobile/pubspec.yaml"
+      - "mobile/pubspec.lock"
       - ".github/workflows/**"
       - ".github/dependabot.yml"
   workflow_dispatch:

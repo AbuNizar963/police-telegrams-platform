@@ -306,10 +306,15 @@ class _EmptyTelegramOutbox extends TelegramOutbox {
 class _TestOfficialTelegramDocumentRenderer
     implements OfficialTelegramDocumentRenderer {
   String? renderedHtml;
+  Map<String, TelegramPdfImageResource> renderedResources = {};
 
   @override
-  Future<Uint8List> renderPdf(String html) async {
+  Future<Uint8List> renderPdf(
+    String html, {
+    Map<String, TelegramPdfImageResource> resources = const {},
+  }) async {
     renderedHtml = html;
+    renderedResources = resources;
     expect(html, contains(_telegramSubject));
     expect(html, contains('routing-qr'));
     return Uint8List.fromList([37, 80, 68, 70]);
@@ -333,7 +338,10 @@ class _TestOfficialTelegramDocumentRenderer
 class _StalledPdfDocumentRenderer
     extends _TestOfficialTelegramDocumentRenderer {
   @override
-  Future<Uint8List> renderPdf(String html) => Completer<Uint8List>().future;
+  Future<Uint8List> renderPdf(
+    String html, {
+    Map<String, TelegramPdfImageResource> resources = const {},
+  }) => Completer<Uint8List>().future;
 }
 
 void main() {
@@ -473,7 +481,7 @@ void main() {
       OfficialTelegramDocumentRendererScope(
         renderer: renderer,
         logoFileWriter: (bytes, cacheKey) async =>
-            'file:///tmp/official-logo.png',
+            'telegram-resource://document/123e4567-e89b-42d3-a456-426614174000',
         child: MaterialApp(
           home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
         ),
@@ -487,7 +495,7 @@ void main() {
 
     final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderedHtml, contains('class="official-logo" src="file://'));
+    expect(renderedHtml, contains('class="official-logo" src="telegram-resource://document/'));
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));
@@ -535,7 +543,7 @@ void main() {
       expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
       expect(
         renderer.renderedHtml,
-        contains('class="official-logo" src="file://'),
+        contains('class="official-logo" src="telegram-resource://document/'),
       );
       expect(renderer.renderedHtml, isNot(contains('data:image/png;base64')));
     },

@@ -68,6 +68,10 @@ internal class TelegramPdfResourceRenderer(
             return
         }
 
+        if (rawResources.size > MAX_RESOURCE_COUNT) {
+            result.error("INVALID_PDF_RESOURCE", "عدد موارد الصور يتجاوز الحد المسموح.", null)
+            return
+        }
         val resources = HashMap<String, Pair<String, ByteArray>>()
         try {
             rawResources.forEach { item ->
@@ -75,7 +79,9 @@ internal class TelegramPdfResourceRenderer(
                 val mimeType = item["mimeType"] as? String ?: throw IllegalArgumentException("Missing MIME type")
                 val bytes = item["bytes"] as? ByteArray ?: throw IllegalArgumentException("Missing image bytes")
                 UUID.fromString(id)
-                if (!mimeType.matches(Regex("^image/(png|jpeg|gif|webp)$")) || bytes.isEmpty()) {
+                if (!mimeType.matches(Regex("^image/(png|jpeg|gif|webp)$")) ||
+                    bytes.isEmpty() || bytes.size > MAX_RESOURCE_BYTES
+                ) {
                     throw IllegalArgumentException("Unsupported image resource")
                 }
                 resources[id] = mimeType to bytes
@@ -122,7 +128,9 @@ internal class TelegramPdfResourceRenderer(
             ): WebResourceResponse? {
                 val uri = request?.url ?: return blockedResponse()
                 if (uri.scheme == "telegram-resource") {
-                    if (uri.host != "document" || uri.pathSegments.size != 1) {
+                    if (uri.host != "document" || uri.pathSegments.size != 1 ||
+                        uri.query != null || uri.fragment != null
+                    ) {
                         return blockedResponse()
                     }
                     val resourceId = uri.lastPathSegment ?: return blockedResponse()
@@ -256,7 +264,12 @@ internal class TelegramPdfResourceRenderer(
     }
 
     private fun writePdf(adapter: PrintDocumentAdapter) {
-        val output = File.createTempFile("official-telegram-", ".pdf", activity.cacheDir)
+        val output = try {
+            File.createTempFile("official-telegram-", ".pdf", activity.cacheDir)
+        } catch (error: IOException) {
+            finishWithError("PDF_FILE_CREATE_FAILED", error.message ?: "تعذر إنشاء ملف PDF المؤقت.")
+            return
+        }
         val descriptor = try {
             android.os.ParcelFileDescriptor.open(
                 output,
@@ -339,5 +352,7 @@ internal class TelegramPdfResourceRenderer(
         private const val RENDER_TIMEOUT_MS = 25_000L
         private const val RESOURCE_POLL_INTERVAL_MS = 100L
         private const val RESOURCE_WAIT_ATTEMPTS = 150
+        private const val MAX_RESOURCE_COUNT = 8
+        private const val MAX_RESOURCE_BYTES = 10 * 1024 * 1024
     }
 }

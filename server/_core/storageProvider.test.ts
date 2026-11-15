@@ -9,30 +9,30 @@ const {
   from,
   getSupabaseAdmin,
 } = vi.hoisted(() => {
-    const upload = vi.fn();
-    const createSignedUrl = vi.fn();
-    const createSignedUploadUrl = vi.fn();
-    const info = vi.fn();
-    const download = vi.fn();
-    const from = vi.fn(() => ({
-      upload,
-      createSignedUrl,
-      createSignedUploadUrl,
-      info,
-      download,
-    }));
-    const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
+  const upload = vi.fn();
+  const createSignedUrl = vi.fn();
+  const createSignedUploadUrl = vi.fn();
+  const info = vi.fn();
+  const download = vi.fn();
+  const from = vi.fn(() => ({
+    upload,
+    createSignedUrl,
+    createSignedUploadUrl,
+    info,
+    download,
+  }));
+  const getSupabaseAdmin = vi.fn(() => ({ storage: { from } }));
 
-    return {
-      upload,
-      createSignedUrl,
-      createSignedUploadUrl,
-      info,
-      download,
-      from,
-      getSupabaseAdmin,
-    };
-  });
+  return {
+    upload,
+    createSignedUrl,
+    createSignedUploadUrl,
+    info,
+    download,
+    from,
+    getSupabaseAdmin,
+  };
+});
 
 vi.mock("./supabase", () => ({ getSupabaseAdmin }));
 

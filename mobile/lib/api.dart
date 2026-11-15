@@ -657,30 +657,47 @@ class PoliceApi {
         ? parsed
         : baseUri.resolve(value);
     if (!uri.isScheme('http') && !uri.isScheme('https')) return null;
-    final headers = <String, String>{};
+
+    final headers = <String, String>{'accept': 'image/*'};
     final cookie = await _storage.read(key: 'session_cookie');
     if (cookie != null && cookie.isNotEmpty && uri.origin == baseUri.origin) {
       headers['cookie'] = cookie;
     }
-    late final http.Response response;
-    try {
-      response = await _httpClient
-          .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 8));
-    } catch (_) {
-      return null;
+
+    const retryableStatusCodes = {408, 425, 429, 500, 502, 503, 504};
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response = await _httpClient
+            .get(uri, headers: headers)
+            .timeout(const Duration(seconds: 12));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final contentType =
+              response.headers['content-type']
+                  ?.split(';')
+                  .first
+                  .trim()
+                  .toLowerCase() ??
+              '';
+          final bytes = response.bodyBytes;
+          if (!_isSupportedImagePayload(contentType, bytes)) return null;
+          return bytes;
+        }
+        if (!retryableStatusCodes.contains(response.statusCode) ||
+            attempt == 2) {
+          return null;
+        }
+      } catch (_) {
+        if (attempt == 2) return null;
+      }
+
+      // Wi-Fi networks can briefly lose the route to the API while mobile
+      // data remains available. Retry transient transport failures without
+      // changing hosts or bypassing the authenticated same-origin endpoint.
+      await Future<void>.delayed(
+        Duration(milliseconds: 300 * (attempt + 1)),
+      );
     }
-    if (response.statusCode < 200 || response.statusCode >= 300) return null;
-    final contentType =
-        response.headers['content-type']
-            ?.split(';')
-            .first
-            .trim()
-            .toLowerCase() ??
-        '';
-    final bytes = response.bodyBytes;
-    if (!_isSupportedImagePayload(contentType, bytes)) return null;
-    return bytes;
+    return null;
   }
 
   String organizationLogoCacheIdentity(String source) {
@@ -774,6 +791,65 @@ class PoliceApi {
     return request.whenComplete(() {
       _organizationLogoRequests.remove(requestKey);
     });
+  }
+
+  /// Persists bytes that were just uploaded and accepted by settings.update.
+  ///
+  /// This makes the confirmed logo available after the settings screen closes,
+  /// even when the current network cannot immediately reload the protected
+  /// storage URL. The cache is scoped to both organization and storage path.
+  Future<void> cacheOrganizationLogo({
+    required String organizationId,
+    required String source,
+    required Uint8List bytes,
+  }) async {
+    final normalizedOrganizationId = organizationId.trim();
+    if (normalizedOrganizationId.isEmpty ||
+        bytes.isEmpty ||
+        bytes.length > _maximumCachedOrganizationLogoBytes ||
+        !_isSupportedImagePayload('', bytes)) {
+      throw ArgumentError('Invalid organization logo cache payload');
+    }
+
+    final sourceIdentity = organizationLogoCacheIdentity(source);
+    final identity = sourceIdentity.isEmpty ? 'api-export' : sourceIdentity;
+    final requestKey = '$normalizedOrganizationId\n$identity';
+    final generation = _logoCacheGeneration;
+    final cacheDirectory = await _organizationLogoCacheDirectory();
+    await cacheDirectory.create(recursive: true);
+    final fileStem = _organizationLogoFileStem(normalizedOrganizationId);
+    final imageFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
+    );
+    final metadataFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.json',
+    );
+    final temporaryImage = File('${imageFile.path}.tmp');
+    final temporaryMetadata = File('${metadataFile.path}.tmp');
+
+    await temporaryImage.writeAsBytes(bytes, flush: true);
+    await temporaryMetadata.writeAsString(
+      jsonEncode({
+        'identity': identity,
+        'cachedAt': DateTime.now().toIso8601String(),
+      }),
+      flush: true,
+    );
+    if (generation != _logoCacheGeneration) {
+      await temporaryImage.delete().catchError((_) => temporaryImage);
+      await temporaryMetadata.delete().catchError((_) => temporaryMetadata);
+      return;
+    }
+
+    await temporaryImage.rename(imageFile.path);
+    await temporaryMetadata.rename(metadataFile.path);
+    if (generation != _logoCacheGeneration) return;
+
+    final copiedBytes = Uint8List.fromList(bytes);
+    _organizationLogoMemory[requestKey] = _OrganizationLogoCacheEntry(
+      copiedBytes,
+      DateTime.now(),
+    );
   }
 
   Future<Uint8List?> _fetchOrganizationLogo({

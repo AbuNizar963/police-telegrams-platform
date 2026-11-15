@@ -83,7 +83,9 @@ import {
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
-import { getCachedOfficialDocumentLogoObjectUrl } from "@/features/telegrams/documents/officialDocumentLogoCache";
+import {
+  getCachedOfficialDocumentLogoObjectUrl,
+} from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,
@@ -2870,9 +2872,8 @@ function isOfficialLogoStorageSource(
 
 /**
  * Fetches the official logo as binary data and exposes it to browser preview
- * and native printing through a managed Blob URL. PDF/PNG server rendering
- * deliberately keeps its separate self-contained image path because the
- * isolated Chromium context cannot access browser Blob URLs.
+ * and native printing through a managed Blob URL. PDF/PNG export sends the
+ * validated storage source separately for server-side binary retrieval.
  */
 async function loadOfficialDocumentLogoObjectUrl(
   logoUrl: string | null | undefined
@@ -2880,7 +2881,9 @@ async function loadOfficialDocumentLogoObjectUrl(
   const source = logoUrl?.trim();
   if (!source) return null;
   if (!isOfficialLogoStorageSource(source)) {
-    throw new Error("مصدر الشعار ليس ملف تخزين ثنائيًا معتمدًا. أعد رفع الشعار من إعدادات الجهة.");
+    throw new Error(
+      "مصدر الشعار ليس ملف تخزين ثنائيًا معتمدًا. أعد رفع الشعار من إعدادات الجهة."
+    );
   }
 
   try {
@@ -3456,9 +3459,8 @@ function TelegramDetail({
       "تعذر تحديد ملف شعار الجهة من التخزين. أعد رفع الشعار من إعدادات الجهة ثم أعد المحاولة."
     );
   };
-  // Preview and export share the same authenticated, deduplicated in-memory
-  // logo loader. Passing its data URL into the preview avoids a second image
-  // request and decode after the export preparation path has already loaded it.
+  // Preview, print, and export resolve the same authenticated organization
+  // storage source. No image data URL is generated for the official logo.
   const getTelegramPreviewLogoSource = (exportSettings: {
     organizationId?: string | null;
     logoUrl?: string | null;
@@ -4306,7 +4308,9 @@ function TelegramDetail({
 
     const exportWrapper = wrapper.cloneNode(true) as HTMLDivElement;
     let replacedLogoImages = 0;
-    for (const image of exportWrapper.querySelectorAll<HTMLImageElement>("img")) {
+    for (const image of exportWrapper.querySelectorAll<HTMLImageElement>(
+      "img"
+    )) {
       if (image.getAttribute("src") === logoForDocument) {
         image.setAttribute("src", "telegram-logo://official");
         replacedLogoImages += 1;

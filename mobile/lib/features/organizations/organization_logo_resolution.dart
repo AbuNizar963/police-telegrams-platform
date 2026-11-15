@@ -40,7 +40,8 @@ String? resolveOrganizationLogoSourceIdentity(
 bool isOfficialOrganizationLogoStorageSource(String? source) {
   final value = source?.trim() ?? '';
   if (value.isEmpty) return false;
-  if (value.startsWith('/api/storage/')) return true;
+  final uri = Uri.tryParse(value);
+  if (uri != null && uri.path.startsWith('/api/storage/')) return true;
 
   return RegExp(
     r'/storage/v1/object/(?:sign|public|authenticated)/[^/]+/department/logos/',

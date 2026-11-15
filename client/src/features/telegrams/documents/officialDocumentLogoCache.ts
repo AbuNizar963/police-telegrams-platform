@@ -18,8 +18,7 @@ function rememberObjectUrl(key: string, objectUrl: string): void {
   logoObjectUrlCache.set(key, objectUrl);
 
   while (
-    logoObjectUrlCache.size >
-    MAX_CACHED_OFFICIAL_DOCUMENT_LOGO_OBJECT_URLS
+    logoObjectUrlCache.size > MAX_CACHED_OFFICIAL_DOCUMENT_LOGO_OBJECT_URLS
   ) {
     const oldestEntry = logoObjectUrlCache.entries().next().value;
     if (!oldestEntry) break;

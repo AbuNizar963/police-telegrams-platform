@@ -424,7 +424,10 @@ class _OfficialTelegramDocumentPageState
           hasSelectedVersion &&
           isOfficialOrganizationLogoStorageSource(historicalLogoUrl);
       final logoOrganizationId = hasHistoricalLogo
-          ? _value(telegramData['organizationId'], fallback: '').trim().toLowerCase()
+          ? _value(
+              telegramData['organizationId'],
+              fallback: '',
+            ).trim().toLowerCase()
           : resolveOrganizationLogoId(
                   accountOrganizationId:
                       accountOrganizationContext['organizationId'] ??
@@ -851,9 +854,8 @@ class _OfficialTelegramDocumentPageState
         )
         .timeout(
           const Duration(seconds: 60),
-          onTimeout: () => throw Exception(
-            'انتهت مهلة تجهيز ملف الوثيقة. أعد المحاولة.',
-          ),
+          onTimeout: () =>
+              throw Exception('انتهت مهلة تجهيز ملف الوثيقة. أعد المحاولة.'),
         );
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
@@ -886,9 +888,8 @@ class _OfficialTelegramDocumentPageState
         )
         .timeout(
           const Duration(seconds: 60),
-          onTimeout: () => throw Exception(
-            'انتهت مهلة تجهيز صورة الوثيقة. أعد المحاولة.',
-          ),
+          onTimeout: () =>
+              throw Exception('انتهت مهلة تجهيز صورة الوثيقة. أعد المحاولة.'),
         );
 
     if (_hasPngSignature(renderedBytes)) {

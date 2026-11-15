@@ -2,8 +2,19 @@ import type { Express, Request, Response } from "express";
 import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
+import { ENV } from "./_core/env";
+import { getOrganizationSettings } from "./db";
+import { getUserOrganizationMembership } from "./features/organizations/organization";
+import {
+  storageDownload,
+  storageKeyFromStoredUrl,
+} from "./features/storage/storage";
+import { isPlatformOwner } from "./ownerAccess";
+import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 
 const MAX_HTML_BYTES = 8_000_000;
+const OFFICIAL_LOGO_PLACEHOLDER = "telegram-logo://official";
+const MAX_OFFICIAL_LOGO_BYTES = 2_500_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 // Keep the export in the high-quality print range while avoiding the very
 // large Chromium surface that can fail in serverless memory limits.
@@ -74,6 +85,139 @@ export function withPngDpiMetadata(png: Buffer, dpi = PNG_DPI): Buffer {
     createPngChunk("pHYs", physicalResolution),
     cleanRest,
   ]);
+}
+
+/**
+ * Replace the explicit official-logo marker only after the authenticated
+ * server has loaded and validated the image bytes from organization storage.
+ */
+export function replaceOfficialLogoPlaceholder(
+  html: string,
+  logoDataUrl: string
+): string {
+  if (
+    !/^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/]+=*$/i.test(logoDataUrl)
+  ) {
+    throw new Error("The official organization logo is not a validated image");
+  }
+
+  const markerAttribute = /src=(["'])telegram-logo:\/\/official\1/i;
+  if (!markerAttribute.test(html)) {
+    throw new Error("The official organization logo placeholder is missing");
+  }
+
+  return html.replace(
+    /src=(["'])telegram-logo:\/\/official\1/gi,
+    'src="' + logoDataUrl + '"'
+  );
+}
+
+class TelegramExportRequestError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode: number
+  ) {
+    super(message);
+    this.name = "TelegramExportRequestError";
+  }
+}
+
+async function loadOrganizationLogoDataUrl(
+  user: NonNullable<
+    Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
+  >,
+  organizationId: string
+): Promise<string> {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      organizationId
+    )
+  ) {
+    throw new TelegramExportRequestError(
+      "معرّف الجهة غير صالح لتصدير الشعار",
+      400
+    );
+  }
+
+  if (!isPlatformOwner(user)) {
+    const membership = await getUserOrganizationMembership(user.id);
+    if (
+      !membership ||
+      !membership.isActive ||
+      membership.organizationId !== organizationId
+    ) {
+      throw new TelegramExportRequestError(
+        "لا تملك صلاحية تصدير شعار هذه الجهة",
+        403
+      );
+    }
+  }
+
+  const settings = await getOrganizationSettings(organizationId);
+  const storedLogo = settings?.logoKey?.trim() || settings?.logoUrl?.trim();
+  const storageKey = storedLogo
+    ? storedLogo.startsWith("department/logos/")
+      ? storedLogo
+      : storageKeyFromStoredUrl(storedLogo, ENV.supabaseStorageBucket)
+    : null;
+
+  if (!storageKey) {
+    throw new TelegramExportRequestError(
+      "الشعار المحفوظ غير متاح كملف ثنائي للتصدير",
+      422
+    );
+  }
+
+  const departmentLogoKeyPattern =
+    /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
+  if (!departmentLogoKeyPattern.test(storageKey)) {
+    throw new TelegramExportRequestError(
+      "مسار شعار الجهة غير صالح للتصدير",
+      422
+    );
+  }
+
+  const scopedStorageKey = storageKey.match(
+    /^department\/logos\/([0-9a-f-]{36})\//i
+  );
+  if (
+    scopedStorageKey &&
+    scopedStorageKey[1].toLowerCase() !== organizationId.toLowerCase()
+  ) {
+    throw new TelegramExportRequestError(
+      "الشعار المحفوظ لا يتبع الجهة المطلوبة",
+      403
+    );
+  }
+
+  if (!isPlatformOwner(user) && !scopedStorageKey) {
+    throw new TelegramExportRequestError(
+      "أعد رفع الشعار من إعدادات الجهة؛ مسار الشعار القديم غير معزول",
+      422
+    );
+  }
+
+  const asset = await storageDownload(storageKey);
+  if (asset.body.length === 0 || asset.body.length > MAX_OFFICIAL_LOGO_BYTES) {
+    throw new TelegramExportRequestError(
+      "حجم ملف شعار الجهة غير صالح للتصدير",
+      422
+    );
+  }
+
+  const mimeType = detectOfficialDocumentLogoMimeType(
+    asset.body,
+    asset.contentType,
+    storageKey
+  );
+  if (!mimeType) {
+    throw new TelegramExportRequestError(
+      "ملف شعار الجهة ليس صورة صالحة للتصدير",
+      422
+    );
+  }
+
+  return "data:" + mimeType + ";base64," + asset.body.toString("base64");
 }
 
 export function isSafeExportHtml(html: string): boolean {
@@ -263,16 +407,41 @@ export function registerTelegramExportRoutes(app: Express): void {
     const user = await getAuthenticatedUserFromRequest(req);
     if (!user) return res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
 
-    const body = req.body as { html?: unknown; format?: unknown };
-    const html = typeof body.html === "string" ? body.html : "";
+    const body = req.body as {
+      html?: unknown;
+      format?: unknown;
+      organizationId?: unknown;
+    };
+    let html = typeof body.html === "string" ? body.html : "";
     const format =
       body.format === "pdf" || body.format === "png" ? body.format : null;
 
-    if (!format || !ALLOWED_FORMATS.has(format) || !isSafeExportHtml(html)) {
+    if (
+      !format ||
+      !ALLOWED_FORMATS.has(format) ||
+      Buffer.byteLength(html, "utf8") > 3_900_000
+    ) {
       return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
     }
 
     try {
+      if (html.includes(OFFICIAL_LOGO_PLACEHOLDER)) {
+        if (typeof body.organizationId !== "string") {
+          return res
+            .status(400)
+            .json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
+        }
+        const logoDataUrl = await loadOrganizationLogoDataUrl(
+          user,
+          body.organizationId
+        );
+        html = replaceOfficialLogoPlaceholder(html, logoDataUrl);
+      }
+
+      if (!isSafeExportHtml(html)) {
+        return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
+      }
+
       const result = await renderTelegramDocument(html, format);
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(
@@ -281,6 +450,12 @@ export function registerTelegramExportRoutes(app: Express): void {
       );
       return res.status(200).send(result.body);
     } catch (error) {
+      if (error instanceof TelegramExportRequestError) {
+        return res
+          .status(error.statusCode)
+          .json({ error: error.message });
+      }
+
       console.error("Telegram Chromium export failed:", error);
       return res
         .status(503)

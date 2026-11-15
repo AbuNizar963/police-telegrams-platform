@@ -1,5 +1,3 @@
-const logoDataUrlCache = new Map<string, string>();
-const pendingLogoRequests = new Map<string, Promise<string>>();
 const logoObjectUrlCache = new Map<string, string>();
 const pendingLogoObjectUrlRequests = new Map<string, Promise<string>>();
 const MAX_CACHED_OFFICIAL_DOCUMENT_LOGO_OBJECT_URLS = 12;
@@ -30,55 +28,8 @@ function rememberObjectUrl(key: string, objectUrl: string): void {
 }
 
 /**
- * Keeps validated logos in bounded, memory-only caches keyed by their stable
- * source. Private organization images are never copied into localStorage or
- * shared between browser profiles.
- */
-export function getCachedOfficialDocumentLogo(
-  source: string,
-  loader: () => Promise<string>
-): Promise<string> {
-  const key = cacheKey(source);
-  const cached = logoDataUrlCache.get(key);
-  if (cached) return Promise.resolve(cached);
-
-  const pending = pendingLogoRequests.get(key);
-  if (pending) return pending;
-
-  const request = loader()
-    .then(value => {
-      if (value) logoDataUrlCache.set(key, value);
-      return value;
-    })
-    .finally(() => {
-      pendingLogoRequests.delete(key);
-    });
-  pendingLogoRequests.set(key, request);
-  return request;
-}
-
-export function clearCachedOfficialDocumentLogo(source?: string): void {
-  if (source) {
-    const key = cacheKey(source);
-    logoDataUrlCache.delete(key);
-    const objectUrl = logoObjectUrlCache.get(key);
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    logoObjectUrlCache.delete(key);
-    return;
-  }
-
-  logoDataUrlCache.clear();
-  for (const objectUrl of logoObjectUrlCache.values()) {
-    URL.revokeObjectURL(objectUrl);
-  }
-  logoObjectUrlCache.clear();
-}
-
-/**
- * Keeps validated binary-backed object URLs separate from the legacy data-URL
- * cache. URLs stay alive while preview/print DOM nodes may still reference
- * them; clearCachedOfficialDocumentLogo revokes them when their source is
- * explicitly invalidated or the cache is cleared.
+ * Keeps binary-backed logo object URLs in a bounded, memory-only cache.
+ * Private organization images are never persisted or shared between profiles.
  */
 export function getCachedOfficialDocumentLogoObjectUrl(
   source: string,
@@ -104,4 +55,19 @@ export function getCachedOfficialDocumentLogoObjectUrl(
     });
   pendingLogoObjectUrlRequests.set(key, request);
   return request;
+}
+
+export function clearCachedOfficialDocumentLogo(source?: string): void {
+  if (source) {
+    const key = cacheKey(source);
+    const objectUrl = logoObjectUrlCache.get(key);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    logoObjectUrlCache.delete(key);
+    return;
+  }
+
+  for (const objectUrl of logoObjectUrlCache.values()) {
+    URL.revokeObjectURL(objectUrl);
+  }
+  logoObjectUrlCache.clear();
 }

@@ -6520,21 +6520,67 @@ async function uploadTelegramAttachmentBinary(
     throw new Error("نوع المرفق غير مسموح أو يتجاوز 10 ميغابايت");
   }
 
-  const response = await fetch(`/api/telegrams/${telegramId}/attachments`, {
+  const requestOptions = {
+    credentials: "same-origin" as const,
+    headers: { "Content-Type": "application/json" },
+  };
+  const prepareResponse = await fetch(
+    `/api/telegrams/${telegramId}/attachments/upload-url`,
+    {
+      ...requestOptions,
+      method: "POST",
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+      }),
+    }
+  );
+  const prepared = (await prepareResponse.json().catch(() => null)) as
+    | { key?: unknown; uploadUrl?: unknown; error?: unknown }
+    | null;
+  if (
+    !prepareResponse.ok ||
+    typeof prepared?.key !== "string" ||
+    typeof prepared.uploadUrl !== "string"
+  ) {
+    throw new Error(
+      typeof prepared?.error === "string"
+        ? prepared.error
+        : "تعذر تجهيز رابط رفع المرفق"
+    );
+  }
+
+  const storageResponse = await fetch(prepared.uploadUrl, {
     method: "PUT",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": file.type,
-      "X-File-Name": encodeURIComponent(file.name),
-    },
+    headers: { "Content-Type": file.type },
     body: file,
   });
-  const payload = (await response.json().catch(() => null)) as
+  if (!storageResponse.ok) {
+    throw new Error("تعذر رفع الملف إلى مساحة التخزين الآمنة");
+  }
+
+  const finalizeResponse = await fetch(
+    `/api/telegrams/${telegramId}/attachments/finalize`,
+    {
+      ...requestOptions,
+      method: "POST",
+      body: JSON.stringify({
+        key: prepared.key,
+        fileName: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+      }),
+    }
+  );
+  const finalized = (await finalizeResponse.json().catch(() => null)) as
     | { error?: unknown }
     | null;
-  if (!response.ok) {
+  if (!finalizeResponse.ok) {
     throw new Error(
-      typeof payload?.error === "string" ? payload.error : "تعذر رفع المرفق"
+      typeof finalized?.error === "string"
+        ? finalized.error
+        : "تعذر التحقق من المرفق وتسجيله"
     );
   }
 }

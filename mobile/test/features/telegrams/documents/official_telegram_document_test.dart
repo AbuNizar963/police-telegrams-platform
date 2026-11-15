@@ -92,8 +92,6 @@ void main() {
     );
     expect(html, isNot(contains('<script')));
     expect(html, isNot(contains('page.classList.toggle')));
-      ),
-    );
     expect(html, isNot(contains('width:190mm')));
     expect(html, isNot(contains('(277 * 96 / 25.4)')));
   });

@@ -78,21 +78,18 @@ export const profileRouter = router({
           message: "اختر كلمة مرور مختلفة عن الحالية",
         });
       }
-      await updateUserPassword(
+      const authUserId = await updateUserPassword(
         ctx.user.id,
         await hashPassword(input.newPassword)
       );
 
-      // Password changes rotate authUserId in the database, revoking every
-      // previously issued JWT. Re-issue a session only for this verified device.
-      const refreshedUser = await getUserById(ctx.user.id);
-      if (!refreshedUser) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "تم تغيير كلمة المرور، لكن تعذر تجديد جلسة الدخول. سجّل الدخول مجددًا.",
-        });
-      }
-      await setAuthenticatedSession(ctx.res, refreshedUser);
+      // The database rotation invalidates every old JWT. Re-issue a session
+      // only for the device that completed this password change.
+      await setAuthenticatedSession(ctx.res, {
+        id: user.id,
+        role: user.role,
+        authUserId,
+      });
       return { success: true };
     }),
 

@@ -3042,31 +3042,10 @@ async function loadOfficialDocumentLogoObjectUrl(
       );
       if (!mimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
 
-      const normalizedBlob = new Blob([bytes], { type: mimeType });
-      const objectUrl = URL.createObjectURL(normalizedBlob);
-      let bitmap: ImageBitmap | null = null;
-      try {
-        if (typeof createImageBitmap === "function") {
-          bitmap = await createImageBitmap(normalizedBlob);
-          if (bitmap.width <= 0 || bitmap.height <= 0) {
-            throw new Error("صورة الشعار غير صالحة");
-          }
-        } else {
-          const image = new Image();
-          image.decoding = "async";
-          image.src = objectUrl;
-          await image.decode();
-          if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-            throw new Error("صورة الشعار غير صالحة");
-          }
-        }
-        return objectUrl;
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        throw error;
-      } finally {
-        bitmap?.close();
-      }
+      // The final document images are awaited by
+      // waitForOfficialDocumentImages before print/export. Decoding a second
+      // detached bitmap here duplicated work and delayed logo readiness.
+      return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
     });
   } catch (error) {
     console.warn("تعذر تحميل شعار الجهة كبيانات ثنائية للمعاينة والطباعة:", {

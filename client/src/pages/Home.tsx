@@ -4557,7 +4557,12 @@ function TelegramDetail({
   <body>${exportWrapper.innerHTML}</body>
 </html>`;
     const organizationId = resolveTelegramExportOrganizationId(exportSettings);
-    const requestBody = JSON.stringify({ format, html, organizationId });
+    const requestBody = JSON.stringify({
+      format,
+      html,
+      organizationId,
+      logoSource: usesProtectedStorageLogo ? logoSource : null,
+    });
     const requestBytes = new TextEncoder().encode(requestBody).byteLength;
     if (requestBytes > 3_900_000) {
       throw new Error(

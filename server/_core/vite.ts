@@ -44,14 +44,14 @@ export async function setupVite(app: Express, server: Server) {
       const stat = await fileHandle.stat();
       if (!templateCache || templateCache.mtimeMs !== stat.mtimeMs) {
         let source = await fileHandle.readFile({ encoding: "utf-8" });
-      // Vite HMR handles source changes. A stable mtime-based query preserves
-      // browser caching between requests while still invalidating the entry
-      // when the HTML shell itself changes.
-      source = source.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${Math.trunc(stat.mtimeMs)}"`
-      );
-      templateCache = { mtimeMs: stat.mtimeMs, source };
+        // Vite HMR handles source changes. A stable mtime-based query preserves
+        // browser caching between requests while still invalidating the entry
+        // when the HTML shell itself changes.
+        source = source.replace(
+          `src="/src/main.tsx"`,
+          `src="/src/main.tsx?v=${Math.trunc(stat.mtimeMs)}"`
+        );
+        templateCache = { mtimeMs: stat.mtimeMs, source };
         transformedIndexCache.clear();
       }
       return templateCache;

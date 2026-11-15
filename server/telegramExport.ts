@@ -246,10 +246,7 @@ export function isSafeExportHtml(html: string): boolean {
 }
 
 export function isAllowedExportResourceUrl(url: string): boolean {
-  return (
-    url === "about:blank" ||
-    /^data:font\/ttf;base64,/i.test(url)
-  );
+  return url === "about:blank" || /^data:font\/ttf;base64,/i.test(url);
 }
 
 const MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN =

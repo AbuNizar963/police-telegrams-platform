@@ -389,6 +389,36 @@ void main() {
     expect(await logoCacheDirectory.exists(), isFalse);
   });
 
+  test('image asset downloads retry a transient network failure', () async {
+    var attempts = 0;
+    final imageBytes = Uint8List.fromList([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    ]);
+    final client = MockClient((request) async {
+      attempts++;
+      if (attempts == 1) {
+        throw const SocketException('temporary Wi-Fi route failure');
+      }
+      return http.Response.bytes(
+        imageBytes,
+        200,
+        headers: {'content-type': 'image/png'},
+      );
+    });
+    addTearDown(client.close);
+
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+    final restored = await api.fetchImageAsset(
+      '/api/storage/department/logos/example/logo.png',
+    );
+
+    expect(attempts, 2);
+    expect(restored, orderedEquals(imageBytes));
+  });
+
   test(
     'confirmed organization logo bytes survive reopening settings offline',
     () async {

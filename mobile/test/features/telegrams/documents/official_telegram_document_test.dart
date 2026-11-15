@@ -422,23 +422,23 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'file:///tmp/official-logo.png',
+        logoSource: 'data:image/png;base64,iVBORw0KGgo=',
       );
 
       expect(
         html,
         contains(
-          '<img class="official-logo" src="file:///tmp/official-logo.png"',
+          '<img class="official-logo" src="data:image/png;base64,iVBORw0KGgo="',
         ),
       );
       expect(
         html,
         contains(
-          '<img class="watermark-logo" src="file:///tmp/official-logo.png"',
+          '<img class="watermark-logo" src="data:image/png;base64,iVBORw0KGgo="',
         ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
-      expect(html, isNot(contains('data:image/')));
+      expect(html, contains('data:image/png;base64,'));
       expect(
         html.indexOf('class="watermark-text-pattern"'),
         lessThan(html.indexOf('class="watermark-logo"')),
@@ -474,7 +474,7 @@ void main() {
     },
   );
 
-  test('rejects Base64 and network URLs as official logo sources', () {
+  test('accepts embedded image bytes and rejects non-image sources', () {
     expect(
       () => buildOfficialTelegramHtml(
         telegram: telegram(),
@@ -482,7 +482,7 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'data:image/png;base64,AA==',
+        logoSource: 'data:text/html;base64,PGh0bWw+',
       ),
       throwsArgumentError,
     );

@@ -239,7 +239,9 @@ async function finalizeTelegramAttachmentUpload(
       storedContentType !== metadata.contentType
     ) {
       await removeUncommittedAttachment(key);
-      res.status(400).json({ error: "حجم الملف المرفوع لا يطابق البيانات المعلنة" });
+      res.status(400).json({
+        error: "حجم الملف المرفوع لا يطابق البيانات المعلنة",
+      });
       return;
     }
 
@@ -280,7 +282,10 @@ async function finalizeTelegramAttachmentUpload(
       });
     } catch (error) {
       await removeUncommittedAttachment(key);
-      console.error("[Storage] Telegram attachment metadata write failed", error);
+      console.error(
+        "[Storage] Telegram attachment metadata write failed",
+        error
+      );
       res.status(500).json({ error: "تعذر تسجيل بيانات المرفق" });
       return;
     }

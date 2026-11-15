@@ -31,7 +31,7 @@ Examine the codebase systematically. For each step, load the relevant reference 
 
 5. **Payment Security** — Check for client-side price manipulation, webhook signature verification, and subscription status validation. See `references/payments.md`.
 
-6. **Mobile Security** — Verify secure token storage, API key protection via backend proxy, and deep link validation. See `references/mobile.md`.
+6. **Mobile Security** — Verify secure token storage, API key protection via backend proxy, and deep link validation. For Flutter/Dart apps, use `references/flutter.md`; use `references/mobile.md` only for React Native/Expo.
 
 7. **AI / LLM Integration** — Check for exposed AI API keys, missing usage caps, prompt injection vectors, and unsafe output rendering. See `references/ai-integration.md`.
 
@@ -41,6 +41,10 @@ Examine the codebase systematically. For each step, load the relevant reference 
 
 If doing a partial review or generating code in a specific area, load only the relevant reference files.
 
+
+## Repository-specific guidance
+
+This repository maintains a TypeScript web/server application and a Flutter mobile application with Supabase-backed data/storage. For project-specific requirements, follow `docs/security/SECURE_ENGINEERING_STANDARD.md` and `docs/OWASP_SECURITY_CHECKLIST_AR.md`. Review server-side organization authorization for every privileged/service-role operation; RLS alone does not protect privileged server code. Apply shared fixes to both maintained branches using each branch's native technology.
 
 ## Core Instructions
 

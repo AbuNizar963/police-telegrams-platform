@@ -229,6 +229,7 @@ export function isSafeExportHtml(html: string): boolean {
   // separately as authenticated binary storage objects.
   const unsafeUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*(?:javascript|vbscript):|'[ \t\r\n]*(?:javascript|vbscript):|(?:javascript|vbscript):)/i;
+  // prettier-ignore
   const unsafeDataUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*data:(?!font\/ttf;base64,)|'[ \t\r\n]*data:(?!font\/ttf;base64,)|data:(?!font\/ttf;base64,))/i;
   const eventHandler = /\bon[a-z][\w:-]*\s*=\s*(?:["']|[^\s>]+)/i;

@@ -25,7 +25,7 @@ const safeDocument = `<!doctype html>
   <body>
     <article class="telegram-export-page">
       <p>يُرجى إرسال البيانات عبر data: والقناة javascript: عند الحاجة.</p>
-      <img src="data:image/png;base64,AAAA" alt="شعار" />
+      <img src="https://telegram-logo.invalid/official" alt="شعار" />
     </article>
   </body>
 </html>`;
@@ -67,7 +67,7 @@ describe("telegram export page geometry", () => {
 });
 
 describe("telegram export HTML validation", () => {
-  it("allows legitimate text, embedded images, and Cairo fonts", () => {
+  it("allows safe document text, the server logo marker, and Cairo fonts", () => {
     expect(isSafeExportHtml(safeDocument)).toBe(true);
   });
 
@@ -93,7 +93,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          "data:image/png;base64,AAAA",
+          "https://telegram-logo.invalid/official",
           "javascript:alert(1)"
         )
       )
@@ -101,7 +101,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          "data:image/png;base64,AAAA",
+          "https://telegram-logo.invalid/official",
           "data:text/html;base64,AAAA"
         )
       )
@@ -109,11 +109,28 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          'src="data:image/png;base64,AAAA"',
+          'src="https://telegram-logo.invalid/official"',
           "src=data:text/html;base64,AAAA"
         )
       )
     ).toBe(false);
+  });
+
+  it("rejects Base64 image URLs while continuing to allow embedded fonts", () => {
+    expect(
+      isSafeExportHtml(
+        safeDocument.replace(
+          "https://telegram-logo.invalid/official",
+          "data:image/png;base64,AAAA"
+        )
+      )
+    ).toBe(false);
+    expect(isAllowedExportResourceUrl("data:image/png;base64,AAAA")).toBe(
+      false
+    );
+    expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
+      true
+    );
   });
 
   it("rejects unsafe URLs with mixed whitespace and quoted attributes", () => {
@@ -124,7 +141,7 @@ describe("telegram export HTML validation", () => {
     ]) {
       expect(
         isSafeExportHtml(
-          safeDocument.replace('src="data:image/png;base64,AAAA"', attribute)
+          safeDocument.replace('src="https://telegram-logo.invalid/official"', attribute)
         )
       ).toBe(false);
     }
@@ -141,6 +158,17 @@ describe("telegram export HTML validation", () => {
 });
 
 describe("official organization logo storage path", () => {
+  it("resolves legacy Supabase object URLs to binary storage keys", () => {
+    expect(
+      resolveDepartmentLogoStorageKey(
+        "https://project.supabase.co/storage/v1/object/public/telegram-files/department/logos/00000000-0000-4000-8000-000000000101/logo%20mark.png",
+        "telegram-files"
+      )
+    ).toBe(
+      "department/logos/00000000-0000-4000-8000-000000000101/logo mark.png"
+    );
+  });
+
   it("decodes only the same-origin protected storage path", () => {
     expect(
       resolveDepartmentLogoStorageKey(
@@ -185,14 +213,14 @@ describe("official organization logo binary handoff", () => {
 });
 
 describe("telegram export resource isolation", () => {
-  it("allows the blank origin, inline images, and embedded TTF fonts", () => {
+  it("allows only the blank origin and embedded TTF font resources", () => {
     expect(isAllowedExportResourceUrl("about:blank")).toBe(true);
     expect(
       isAllowedExportResourceUrl("data:image/png;base64,iVBORw0KGgo=")
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E")
-    ).toBe(true);
+    ).toBe(false);
     expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
       true
     );

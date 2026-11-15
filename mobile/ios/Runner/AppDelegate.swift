@@ -182,27 +182,31 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     let readyScript = """
       (function() {
+        window.__telegramPdfResourcesStatus = 'pending';
         const images = Array.from(document.images);
-        return Promise.all(images.map((image) =>
+        Promise.all(images.map((image) =>
           image.decode().then(() => true).catch(() => false)
-        )).then((results) => document.fonts.ready.then(() =>
-          results.every(Boolean)
-        ));
+        )).then((results) => document.fonts.ready.then(() => {
+          window.__telegramPdfResourcesStatus =
+            results.every(Boolean) ? 'ready' : 'failed';
+        })).catch(() => {
+          window.__telegramPdfResourcesStatus = 'failed';
+        });
       })();
     """
-    webView.evaluateJavaScript(readyScript) { [weak self] value, error in
+    webView.evaluateJavaScript(readyScript) { [weak self] _, error in
       guard let self, self.webView === webView else { return }
-      if error != nil || (value as? Bool) != true {
+      if let error {
         self.finish(
           error: FlutterError(
             code: "PDF_IMAGE_LOAD_FAILED",
-            message: "تعذر تحميل شعار الجهة داخل الوثيقة.",
-            details: error?.localizedDescription
+            message: "تعذر تحميل صور الوثيقة.",
+            details: error.localizedDescription
           )
         )
         return
       }
-      self.createPdf(from: webView)
+      self.pollResourcesReady(webView, attempt: 0)
     }
   }
 
@@ -232,6 +236,37 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
         details: error.localizedDescription
       )
     )
+  }
+
+  private func pollResourcesReady(_ webView: WKWebView, attempt: Int) {
+    guard self.webView === webView else { return }
+    webView.evaluateJavaScript("window.__telegramPdfResourcesStatus || 'pending'") {
+      [weak self] value, error in
+      guard let self, self.webView === webView else { return }
+      if error != nil || (value as? String) == "failed" {
+        self.finish(
+          error: FlutterError(
+            code: "PDF_IMAGE_LOAD_FAILED",
+            message: "تعذر تحميل شعار الجهة داخل الوثيقة.",
+            details: error?.localizedDescription
+          )
+        )
+      } else if (value as? String) == "ready" {
+        self.createPdf(from: webView)
+      } else if attempt >= 150 {
+        self.finish(
+          error: FlutterError(
+            code: "PDF_IMAGE_LOAD_TIMEOUT",
+            message: "انتهت مهلة تحميل صور الوثيقة.",
+            details: nil
+          )
+        )
+      } else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          self.pollResourcesReady(webView, attempt: attempt + 1)
+        }
+      }
+    }
   }
 
   private func createPdf(from webView: WKWebView) {

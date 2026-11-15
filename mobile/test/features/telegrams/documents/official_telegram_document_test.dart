@@ -387,15 +387,11 @@ void main() {
 
       expect(
         html,
-        contains(
-          '<img class="official-logo" src="telegram-logo://official"',
-        ),
+        contains('<img class="official-logo" src="telegram-logo://official"'),
       );
       expect(
         html,
-        contains(
-          '<img class="watermark-logo" src="telegram-logo://official"',
-        ),
+        contains('<img class="watermark-logo" src="telegram-logo://official"'),
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, isNot(contains('data:image/')));

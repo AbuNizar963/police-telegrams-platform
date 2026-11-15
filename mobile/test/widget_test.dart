@@ -500,7 +500,10 @@ void main() {
       renderer.renderedResources.values.single.mimeType,
       'image/png',
     );
-    expect(renderedHtml, contains('class="official-logo" src="telegram-resource://document/'));
+    expect(
+      renderedHtml,
+      contains('class="official-logo" src="telegram-resource://document/'),
+    );
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));

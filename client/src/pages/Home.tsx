@@ -774,8 +774,6 @@ export default function Home() {
     onError: error => toast.error(error.message || "تعذر تصدير ملف Excel"),
   });
   const composerAttachmentRef = useRef<File | null>(null);
-  const uploadComposerAttachment =
-    trpc.telegrams.uploadAttachment.useMutation();
   const create = trpc.telegrams.create.useMutation({
     onSuccess: async telegram => {
       toast.success("تم تسجيل البرقية وربطها بهويتك الرقمية");
@@ -792,19 +790,7 @@ export default function Home() {
       composerAttachmentRef.current = null;
       if (attachment) {
         try {
-          await uploadComposerAttachment.mutateAsync({
-            telegramId: telegram.id,
-            fileName: attachment.name,
-            contentType: attachment.type as
-              | "image/jpeg"
-              | "image/png"
-              | "image/webp"
-              | "application/pdf"
-              | "audio/mpeg"
-              | "audio/wav"
-              | "audio/webm",
-            base64: await readFileAsBase64(attachment),
-          });
+          await uploadTelegramAttachmentBinary(telegram.id, attachment);
           toast.success("تم إرفاق الملف بالبرقية");
         } catch (error) {
           toast.error(
@@ -1532,7 +1518,7 @@ export default function Home() {
       )}
       {composerOpen && (
         <TelegramComposer
-          pending={create.isPending || uploadComposerAttachment.isPending}
+          pending={create.isPending}
           routingDirectory={routingDirectory.data ?? []}
           descendants={organizationDescendants.data ?? []}
           numberSystem={numberSystem}
@@ -3453,28 +3439,7 @@ function TelegramDetail({
 
     setUploadingAttachment(true);
     try {
-      const response = await fetch(
-        `/api/telegrams/${telegram.id}/attachments`,
-        {
-          method: "PUT",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": file.type,
-            "X-File-Name": encodeURIComponent(file.name),
-          },
-          body: file,
-        }
-      );
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: unknown }
-        | null;
-      if (!response.ok) {
-        throw new Error(
-          typeof payload?.error === "string"
-            ? payload.error
-            : "تعذر رفع المرفق"
-        );
-      }
+      await uploadTelegramAttachmentBinary(telegram.id, file);
 
       toast.success("تم رفع المرفق وتسجيل بصمته في الخادم");
       await Promise.all([
@@ -6532,11 +6497,44 @@ function DepartmentSettingsModal({
   );
 }
 
-function readFileAsBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = () => reject(new Error("تعذر قراءة الملف"));
-    reader.readAsDataURL(file);
+async function uploadTelegramAttachmentBinary(
+  telegramId: number,
+  file: File
+): Promise<void> {
+  const allowedTypes = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/webm",
+  ]);
+  if (
+    !Number.isSafeInteger(telegramId) ||
+    telegramId < 1 ||
+    !allowedTypes.has(file.type) ||
+    file.size < 1 ||
+    file.size > 10 * 1024 * 1024
+  ) {
+    throw new Error("نوع المرفق غير مسموح أو يتجاوز 10 ميغابايت");
+  }
+
+  const response = await fetch(`/api/telegrams/${telegramId}/attachments`, {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": file.type,
+      "X-File-Name": encodeURIComponent(file.name),
+    },
+    body: file,
   });
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: unknown }
+    | null;
+  if (!response.ok) {
+    throw new Error(
+      typeof payload?.error === "string" ? payload.error : "تعذر رفع المرفق"
+    );
+  }
 }

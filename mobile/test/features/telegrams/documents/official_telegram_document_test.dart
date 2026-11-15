@@ -90,10 +90,8 @@ void main() {
         '.telegram-export-page { z-index: 2; background: transparent; }',
       ),
     );
-    expect(
-      html,
-      contains(
-        "page.classList.toggle('telegram-multipage', page.getBoundingClientRect().height > 1124);",
+    expect(html, isNot(contains('<script')));
+    expect(html, isNot(contains('page.classList.toggle')));
       ),
     );
     expect(html, isNot(contains('width:190mm')));

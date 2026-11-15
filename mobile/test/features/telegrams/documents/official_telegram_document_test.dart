@@ -182,6 +182,39 @@ void main() {
     },
   );
 
+  test('detects original logo formats without converting the bytes to Base64', () {
+    expect(
+      officialTelegramDocumentLogoFileExtension(
+        Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
+      ),
+      'png',
+    );
+    expect(
+      officialTelegramDocumentLogoFileExtension(
+        Uint8List.fromList([255, 216, 255, 0]),
+      ),
+      'jpg',
+    );
+    expect(
+      officialTelegramDocumentLogoFileExtension(
+        Uint8List.fromList([71, 73, 70, 56, 57, 97]),
+      ),
+      'gif',
+    );
+    expect(
+      officialTelegramDocumentLogoFileExtension(
+        Uint8List.fromList([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]),
+      ),
+      'webp',
+    );
+    expect(
+      () => officialTelegramDocumentLogoFileExtension(
+        Uint8List.fromList([0, 1, 2, 3]),
+      ),
+      throwsFormatException,
+    );
+  });
+
   test('archives each exported page as a separately numbered PNG', () {
     final archive = ZipDecoder().decodeBytes(
       createTelegramPageImageArchive([
@@ -387,17 +420,17 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoDataUrl: 'data:image/png;base64,AA==',
+        logoSource: 'file:///tmp/official-logo.png',
       );
 
       expect(
         html,
-        contains('<img class="official-logo" src="data:image/png;base64,AA=="'),
+        contains('<img class="official-logo" src="file:///tmp/official-logo.png"'),
       );
       expect(
         html,
         contains(
-          '<img class="watermark-logo" src="data:image/png;base64,AA=="',
+          '<img class="watermark-logo" src="file:///tmp/official-logo.png"',
         ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
@@ -451,7 +484,7 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoDataUrl: 'data:image/png;base64,AA==',
+        logoSource: 'file:///tmp/official-logo.png',
       );
 
       expect(html, isNot(contains('class="watermark-text-pattern"')));

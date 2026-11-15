@@ -134,8 +134,8 @@ describe("telegram export HTML validation", () => {
     expect(isSafeExportHtml("")).toBe(false);
   });
 
-  it("rejects an internally expanded export document above the renderer budget", () => {
-    const oversizedDocument = `${safeDocument}${"x".repeat(7_500_001)}`;
+  it("rejects an export document above the serverless request budget", () => {
+    const oversizedDocument = `${safeDocument}${"x".repeat(3_900_001)}`;
     expect(isSafeExportHtml(oversizedDocument)).toBe(false);
   });
 });
@@ -177,10 +177,7 @@ describe("official organization logo binary handoff", () => {
     );
   });
 
-  it("rejects missing markers and unsupported image data", () => {
-    expect(() =>
-      replaceOfficialLogoPlaceholder("<img src='/logo.png' />")
-    ).toThrow();
+  it("rejects a missing official-logo marker", () => {
     expect(() =>
       replaceOfficialLogoPlaceholder("<img src='/logo.png' />")
     ).toThrow(/placeholder is missing/);

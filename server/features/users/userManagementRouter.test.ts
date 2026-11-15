@@ -39,6 +39,7 @@ vi.mock("../../_core/supabase", () => ({
       return {
         select: () => ({
           ilike: () => ({
+            maybeSingle: mocks.userDuplicateLookup,
             neq: () => ({ maybeSingle: mocks.userDuplicateLookup }),
           }),
           eq: () => ({ maybeSingle: mocks.userLookup }),

@@ -44,7 +44,7 @@ If doing a partial review or generating code in a specific area, load only the r
 
 ## Repository-specific guidance
 
-This repository maintains a TypeScript web/server application and a Flutter mobile application with Supabase-backed data/storage. For project-specific requirements, follow `docs/security/SECURE_ENGINEERING_STANDARD.md` and `docs/OWASP_SECURITY_CHECKLIST_AR.md`. Review server-side organization authorization for every privileged/service-role operation; RLS alone does not protect privileged server code. Apply shared fixes to both maintained branches using each branch's native technology.
+This repository maintains a TypeScript web/server application and a Flutter mobile application with Supabase-backed data/storage. For project-specific requirements, follow `AGENTS.md` and `docs/OWASP_SECURITY_CHECKLIST_AR.md`. Review server-side organization authorization for every privileged/service-role operation; RLS alone does not protect privileged server code. Apply shared fixes to both maintained branches using each branch's native technology.
 
 ## Core Instructions
 
@@ -120,6 +120,7 @@ These rules also apply proactively. Before writing code that touches auth, payme
 - `references/authentication.md` — JWT verification, middleware, Server Actions, and session management.
 - `references/rate-limiting.md` — Rate limiting strategies and abuse prevention.
 - `references/payments.md` — Stripe security, webhook verification, and price validation.
+- `references/flutter.md` — Flutter/Dart security: secure storage, deep links, platform configuration, and privacy.
 - `references/mobile.md` — React Native and Expo security: secure storage, API proxy, deep links.
 - `references/ai-integration.md` — LLM API key protection, usage caps, prompt injection, and output sanitization.
 - `references/deployment.md` — Production configuration, security headers, and environment separation.

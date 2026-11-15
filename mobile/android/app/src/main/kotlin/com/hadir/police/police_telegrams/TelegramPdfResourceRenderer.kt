@@ -220,7 +220,7 @@ internal class TelegramPdfResourceRenderer(
         if (activeWebView !== webView) return
         webView.evaluateJavascript("window.__telegramPdfResourcesStatus || 'pending'") { value ->
             when (value) {
-                "\"ready\"" -> printToPdf(webView)
+                "\\"ready\\" -> waitForWebViewLayout(webView, 0)
                 "\"failed\"" -> finishWithError(
                     "PDF_IMAGE_LOAD_FAILED",
                     "تعذر تحميل شعار الجهة داخل الوثيقة.",
@@ -238,6 +238,48 @@ internal class TelegramPdfResourceRenderer(
                 }
             }
         }
+    }
+
+    /**
+     * WebView can finish loading its HTML before Android has completed the
+     * first measure/layout pass for the off-screen document container. The
+     * print adapter reports zero pages in that state. Wait for a real attached
+     * and measured view before asking Chromium to paginate the HTML, just as
+     * the browser print flow waits for its document surface to be ready.
+     */
+    private fun waitForWebViewLayout(webView: WebView, attempt: Int) {
+        if (activeWebView !== webView) return
+
+        webView.requestLayout()
+        if (webView.isAttachedToWindow && webView.isLaidOut &&
+            webView.width > 0 && webView.height > 0
+        ) {
+            webView.post {
+                if (activeWebView !== webView) return@post
+                if (webView.isAttachedToWindow && webView.width > 0 && webView.height > 0) {
+                    printToPdf(webView)
+                } else {
+                    scheduleWebViewLayoutRetry(webView, attempt)
+                }
+            }
+            return
+        }
+
+        scheduleWebViewLayoutRetry(webView, attempt)
+    }
+
+    private fun scheduleWebViewLayoutRetry(webView: WebView, attempt: Int) {
+        if (attempt >= WEBVIEW_LAYOUT_WAIT_ATTEMPTS) {
+            finishWithError(
+                "PDF_WEBVIEW_LAYOUT_TIMEOUT",
+                "لم تكتمل تهيئة مساحة عرض الوثيقة قبل الطباعة.",
+            )
+            return
+        }
+        mainHandler.postDelayed(
+            { waitForWebViewLayout(webView, attempt + 1) },
+            WEBVIEW_LAYOUT_WAIT_INTERVAL_MS,
+        )
     }
 
     private fun printToPdf(webView: WebView) {
@@ -400,6 +442,8 @@ internal class TelegramPdfResourceRenderer(
         private const val RENDER_TIMEOUT_MS = 25_000L
         private const val RESOURCE_POLL_INTERVAL_MS = 100L
         private const val RESOURCE_WAIT_ATTEMPTS = 150
+        private const val WEBVIEW_LAYOUT_WAIT_INTERVAL_MS = 100L
+        private const val WEBVIEW_LAYOUT_WAIT_ATTEMPTS = 50
         private const val MAX_RESOURCE_COUNT = 8
         private const val MAX_RESOURCE_BYTES = 10 * 1024 * 1024
         private const val MAX_TOTAL_RESOURCE_BYTES = 20 * 1024 * 1024

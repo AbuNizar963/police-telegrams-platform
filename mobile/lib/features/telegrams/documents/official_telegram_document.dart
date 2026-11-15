@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -573,7 +572,7 @@ class _OfficialTelegramDocumentPageState
         verificationUrl: verificationUrl,
         referenceLinks: referenceLinks,
         fontDataUrls: fontDataUrls,
-        logoSource: logoSource == null ? null : 'telegram-logo://official',
+        logoSource: 'telegram-logo://official',
       );
       // The authenticated server-side Chromium renderer is shared with the
       // web exporter. Its PDF is the single source for preview and all outputs.

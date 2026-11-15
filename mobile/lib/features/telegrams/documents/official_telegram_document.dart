@@ -772,10 +772,28 @@ class _OfficialTelegramDocumentPageState
     if (pending != null) return pending;
     final request = () async {
       try {
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] requesting logo image bytes');
+        }
         final bytes = await loadBytes();
-        if (bytes == null || bytes.isEmpty) return null;
-        return await _writeOfficialLogoFile(bytes, cacheKey);
-      } catch (_) {
+        if (bytes == null || bytes.isEmpty) {
+          if (kDebugMode) {
+            debugPrint('[telegram-preview] logo image bytes unavailable');
+          }
+          return null;
+        }
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] received logo bytes: ${bytes.length}');
+        }
+        final source = await _writeOfficialLogoFile(bytes, cacheKey);
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] official logo file ready');
+        }
+        return source;
+      } catch (exception) {
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] logo file preparation failed: $exception');
+        }
         return null;
       }
     }();

@@ -61,13 +61,19 @@ describe("stable storage URLs", () => {
       validateStorageProviderUrl("javascript:alert(1)", true)
     ).toThrow("Storage provider returned an unsafe URL");
     expect(() =>
-      validateStorageProviderUrl("https://user:password@storage.example/upload", true)
+      validateStorageProviderUrl(
+        "https://user:password@storage.example/upload",
+        true
+      )
     ).toThrow("Storage provider returned an unsafe URL");
   });
 
   it("allows local HTTP storage URLs only outside production", () => {
     expect(
-      validateStorageProviderUrl("http://127.0.0.1:54321/storage/upload", false)
+      validateStorageProviderUrl(
+        "http://127.0.0.1:54321/storage/upload",
+        false
+      )
     ).toBe("http://127.0.0.1:54321/storage/upload");
     expect(
       validateStorageProviderUrl("https://storage.example/upload", true)

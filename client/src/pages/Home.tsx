@@ -4102,17 +4102,11 @@ function TelegramDetail({
 
         // Use the authenticated binary storage URL directly in the preview.
         // No Base64 image payload is generated or embedded in the document.
+        // Opening the telegram must not wait for remote logo/image decoding.
+        // The preview is already mounted above; the browser can finish loading
+        // its images in the background. Printing and PDF/PNG export still run
+        // waitForOfficialDocumentImages and fail clearly if an asset is missing.
         renderPreview(documentSettings, immediateLogoUrl);
-        const visiblePreviewPages = host.querySelector<HTMLElement>(
-          ".telegram-preview-page-stack"
-        );
-        if (visiblePreviewPages) {
-          await withPreparationTimeout(
-            waitForOfficialDocumentImages(visiblePreviewPages),
-            OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-            "استغرق تحميل شعار الجهة وصور الوثيقة في صفحات المعاينة وقتًا أطول من المتوقع."
-          );
-        }
         if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {

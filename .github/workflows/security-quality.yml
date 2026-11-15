@@ -2,7 +2,7 @@ name: Security and Workflow Quality
 
 on:
   push:
-    branches: ["main", "flutter-mobile-app"]
+    branches: ["main", "flutter-mobile-app", "security/**"]
   pull_request:
     branches: ["main", "flutter-mobile-app"]
   schedule:

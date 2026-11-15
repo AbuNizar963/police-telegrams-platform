@@ -27,7 +27,7 @@ const safeDocument = `<!doctype html>
 </html>`;
 
 describe("telegram export HTML validation", () => {
-  it("allows legitimate text, embedded images, and Cairo fonts", () => {
+  it("allows safe document text, the server logo marker, and Cairo fonts", () => {
     expect(isSafeExportHtml(safeDocument)).toBe(true);
   });
 
@@ -168,14 +168,14 @@ describe("official organization logo binary handoff", () => {
 });
 
 describe("telegram export resource isolation", () => {
-  it("allows the blank origin, inline images, and embedded TTF fonts", () => {
+  it("allows only the blank origin and embedded TTF font resources", () => {
     expect(isAllowedExportResourceUrl("about:blank")).toBe(true);
     expect(
       isAllowedExportResourceUrl("data:image/png;base64,iVBORw0KGgo=")
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isAllowedExportResourceUrl("data:image/svg+xml;charset=utf-8,%3Csvg%3E")
-    ).toBe(true);
+    ).toBe(false);
     expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
       true
     );

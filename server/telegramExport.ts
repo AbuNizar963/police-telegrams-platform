@@ -351,11 +351,7 @@ export async function renderTelegramDocument(
 ) {
   const browser = await launchBrowser();
   try {
-    const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
-    const createReadyPage = async (
-      deviceScaleFactor: number,
-      printLayout: boolean
-    ) => {
+    const createMeasuredPage = async (deviceScaleFactor: number) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },
         deviceScaleFactor,
@@ -428,7 +424,7 @@ export async function renderTelegramDocument(
         await page
           .locator(".telegram-export-page")
           .waitFor({ state: "visible" });
-        await page.evaluate(heightThreshold => {
+        const isMultiPage = await page.evaluate(heightThreshold => {
           const paper = document.querySelector<HTMLElement>(
             ".telegram-export-page"
           );
@@ -436,18 +432,11 @@ export async function renderTelegramDocument(
             throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
           }
           const pageHeight = paper.getBoundingClientRect().height;
-          paper.classList.toggle(
-            "telegram-multipage",
-            pageHeight > heightThreshold
-          );
+          const multiPage = pageHeight > heightThreshold;
+          paper.classList.toggle("telegram-multipage", multiPage);
+          return multiPage;
         }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
-        await page.addStyleTag({
-          content: getTelegramRenderLayoutCss(printLayout),
-        });
-        await page.emulateMedia({
-          media: printLayout ? "print" : "screen",
-        });
-        return page;
+        return { page, isMultiPage };
       } catch (error) {
         await page.close();
         throw error;
@@ -457,9 +446,13 @@ export async function renderTelegramDocument(
     // Multi-page documents must retain Chromium's paginated print layout.
     // The client rasterizes this PDF into individual PNG pages at 384 DPI;
     // clipping the long flowing article as a single screenshot would crop text.
-    if (format === "pdf" || isMultiPagePng) {
-      const page = await createReadyPage(1, true);
+    if (format === "pdf") {
+      const { page } = await createMeasuredPage(1);
       try {
+        await page.addStyleTag({
+          content: getTelegramRenderLayoutCss(true),
+        });
+        await page.emulateMedia({ media: "print" });
         return {
           body: await page.pdf({
             printBackground: true,
@@ -467,8 +460,7 @@ export async function renderTelegramDocument(
             tagged: true,
           }),
           contentType: "application/pdf",
-          fileName:
-            format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
+          fileName: "telegram.pdf",
         };
       } finally {
         await page.close();
@@ -476,8 +468,29 @@ export async function renderTelegramDocument(
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
-      const page = await createReadyPage(deviceScaleFactor, false);
+      const { page, isMultiPage } =
+        await createMeasuredPage(deviceScaleFactor);
       try {
+        if (isMultiPage) {
+          await page.addStyleTag({
+            content: getTelegramRenderLayoutCss(true),
+          });
+          await page.emulateMedia({ media: "print" });
+          return {
+            body: await page.pdf({
+              printBackground: true,
+              preferCSSPageSize: true,
+              tagged: true,
+            }),
+            contentType: "application/pdf",
+            fileName: "telegram-pages-source.pdf",
+          };
+        }
+
+        await page.addStyleTag({
+          content: getTelegramRenderLayoutCss(false),
+        });
+        await page.emulateMedia({ media: "screen" });
         const renderedPng = await page.screenshot({
           type: "png",
           animations: "disabled",

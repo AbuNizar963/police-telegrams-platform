@@ -350,7 +350,7 @@ function TemporaryPasswordDialog({
             confirmPassword &&
             newPassword !== confirmPassword && (
               <p className="text-xs text-destructive">
-                كلمتا المرور غير متطابقتين.
+                كلمتا المرور غير متطابقتين
               </p>
             )}
           {changePassword.error && (

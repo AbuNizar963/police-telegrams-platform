@@ -259,12 +259,12 @@ export default function AuditLogPage() {
             <div className="flex items-end gap-2 lg:col-span-6">
               <Button type="submit" disabled={auditQuery.isFetching}>
                 <Search className="ml-2 h-4 w-4" />
-                تطبيق المرشحات
+                تطبيق الفلاتر
               </Button>
               {hasFilters ? (
                 <Button type="button" variant="outline" onClick={clearFilters}>
                   <FilterX className="ml-2 h-4 w-4" />
-                  مسح المرشحات
+                  مسح الفلاتر
                 </Button>
               ) : null}
             </div>

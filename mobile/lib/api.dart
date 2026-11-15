@@ -270,10 +270,14 @@ class PoliceApi {
         String.fromCharCodes(bytes.take(5)) == '%PDF-';
     final isPng = contentType == 'image/png' &&
         bytes.length >= 8 &&
-        const [137, 80, 78, 71, 13, 10, 26, 10]
-            .asMap()
-            .entries
-            .every((entry) => bytes[entry.key] == entry.value);
+        bytes[0] == 137 &&
+        bytes[1] == 80 &&
+        bytes[2] == 78 &&
+        bytes[3] == 71 &&
+        bytes[4] == 13 &&
+        bytes[5] == 10 &&
+        bytes[6] == 26 &&
+        bytes[7] == 10;
     final validContent = format == 'pdf'
         ? isPdf
         : isPdf || isPng;

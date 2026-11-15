@@ -3,7 +3,7 @@ export function getContentSecurityPolicy(isProduction: boolean): {
   value: string;
 } {
   const commonDirectives =
-    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;";
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' blob: data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https:;";
   const scriptDirective = isProduction
     ? "script-src 'self' https://maps.googleapis.com https://maps.gstatic.com;"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval';";

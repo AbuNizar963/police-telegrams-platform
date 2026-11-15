@@ -2017,8 +2017,7 @@ String buildOfficialTelegramHtml({
     final isEmbeddedImage =
         uri?.isScheme('data') == true &&
         uri?.data?.mimeType.startsWith('image/') == true &&
-        uri?.data?.contentText != null &&
-        uri!.data!.contentText!.isNotEmpty;
+        uri?.data?.contentAsBytes().isNotEmpty == true;
     if (!isLocalFile && !isEmbeddedImage) {
       throw ArgumentError.value(
         logoSource,

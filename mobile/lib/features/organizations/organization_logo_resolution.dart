@@ -18,7 +18,6 @@ String? resolveOrganizationLogoId({
   return null;
 }
 
-
 /// Produces a cache identity even when settings omit a direct logo URL.
 ///
 /// In that case the authenticated binary endpoint can still resolve the

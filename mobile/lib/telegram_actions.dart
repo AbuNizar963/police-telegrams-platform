@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -373,15 +371,11 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
       return;
     }
     await _run(() async {
-      await widget.api.call(
-        'telegrams.uploadAttachment',
-        mutation: true,
-        input: {
-          'telegramId': widget.telegramId,
-          'fileName': file.name,
-          'contentType': contentType,
-          'base64': base64Encode(bytes),
-        },
+      await widget.api.uploadTelegramAttachment(
+        telegramId: widget.telegramId,
+        fileName: file.name,
+        contentType: contentType,
+        bytes: bytes,
       );
       await load();
       _show('تم رفع المرفق بنجاح', kind: ToastKind.success);

@@ -181,7 +181,9 @@ void main() {
     },
   );
 
-  test('detects original logo formats without converting the bytes to Base64', () {
+  test(
+    'detects original logo formats without converting the bytes to Base64',
+    () {
     expect(
       officialTelegramDocumentLogoFileExtension(
         Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -211,8 +213,9 @@ void main() {
         Uint8List.fromList([0, 1, 2, 3]),
       ),
       throwsFormatException,
-    );
-  });
+      );
+    },
+  );
 
   test('archives each exported page as a separately numbered PNG', () {
     final archive = ZipDecoder().decodeBytes(
@@ -424,7 +427,9 @@ void main() {
 
       expect(
         html,
-        contains('<img class="official-logo" src="file:///tmp/official-logo.png"'),
+        contains(
+          '<img class="official-logo" src="file:///tmp/official-logo.png"',
+        ),
       );
       expect(
         html,

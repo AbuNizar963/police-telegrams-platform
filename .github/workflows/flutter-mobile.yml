@@ -78,7 +78,8 @@ jobs:
         run: flutter build apk --debug
 
       - name: Enforce clean formatting and whitespace
-        if: always()
+        # Do not convert an upstream cancellation or skipped Flutter setup into a false formatting failure.
+        if: always() && steps.dart_format_check.outcome != 'skipped' && steps.dart_format_check.outcome != 'cancelled'
         shell: bash
         run: |
           set -euo pipefail

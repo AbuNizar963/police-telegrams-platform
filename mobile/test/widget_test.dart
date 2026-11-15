@@ -472,6 +472,8 @@ void main() {
     await tester.pumpWidget(
       OfficialTelegramDocumentRendererScope(
         renderer: renderer,
+        logoFileWriter: (bytes, cacheKey) async =>
+            'file:///tmp/official-logo.png',
         child: MaterialApp(
           home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
         ),
@@ -517,6 +519,8 @@ void main() {
       await tester.pumpWidget(
         OfficialTelegramDocumentRendererScope(
           renderer: renderer,
+          logoFileWriter: (bytes, cacheKey) async =>
+              'file:///tmp/official-logo.png',
           child: MaterialApp(
             home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
           ),

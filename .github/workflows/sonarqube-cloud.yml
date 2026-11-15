@@ -2,7 +2,7 @@ name: SonarQube Cloud Analysis
 
 on:
   push:
-    branches: ["main", "flutter-mobile-app"]
+    branches: ["main", "flutter-mobile-app", "security/**"]
   pull_request:
     branches: ["main", "flutter-mobile-app"]
   workflow_dispatch:
@@ -17,12 +17,20 @@ concurrency:
 jobs:
   analyze:
     name: Analyze web source quality
-    if: ${{ vars.SONAR_ORGANIZATION != '' && secrets.SONAR_TOKEN != '' }}
+    if: ${{ vars.SONAR_ORGANIZATION != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
+      - name: Require SonarQube Cloud token
+        if: ${{ env.SONAR_TOKEN == '' }}
+        run: |
+          echo "::error::Set the SONAR_TOKEN repository secret to enable SonarQube Cloud analysis."
+          exit 1
+
       - name: Checkout full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

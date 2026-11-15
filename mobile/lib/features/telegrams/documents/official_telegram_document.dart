@@ -641,7 +641,8 @@ class _OfficialTelegramDocumentPageState
             : null;
         documentHtml = html;
         previewPages = <Uint8List>[firstPage];
-        loading = false;
+        // Keep the preparation state visible until every preview page has
+        // finished rasterizing. The first page can remain visible meanwhile.
       });
 
       // Render only pages after the first; it is already visible above.
@@ -661,6 +662,7 @@ class _OfficialTelegramDocumentPageState
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         previewPages = <Uint8List>[firstPage, ...images];
+        loading = false;
       });
     } catch (exception) {
       if (!mounted || generation != _loadGeneration) return;

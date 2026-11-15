@@ -3447,9 +3447,7 @@ function TelegramDetail({
         utils.telegrams.actions.invalidate({ telegramId: telegram.id }),
       ]);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "تعذر رفع المرفق"
-      );
+      toast.error(error instanceof Error ? error.message : "تعذر رفع المرفق");
     } finally {
       setUploadingAttachment(false);
     }

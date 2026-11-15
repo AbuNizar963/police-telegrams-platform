@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedExportResourceUrl,
   isSafeExportHtml,
+  replaceOfficialLogoPlaceholder,
+  resolveDepartmentLogoStorageKey,
   withPngDpiMetadata,
 } from "./telegramExport";
 
@@ -93,6 +95,50 @@ describe("telegram export HTML validation", () => {
   });
 });
 
+describe("official organization logo storage path", () => {
+  it("decodes only the same-origin protected storage path", () => {
+    expect(
+      resolveDepartmentLogoStorageKey(
+        "/api/storage/department/logos/00000000-0000-4000-8000-000000000101/logo%20mark.png"
+      )
+    ).toBe(
+      "department/logos/00000000-0000-4000-8000-000000000101/logo mark.png"
+    );
+  });
+
+  it("rejects external and path-escaping logo sources", () => {
+    expect(() =>
+      resolveDepartmentLogoStorageKey(
+        "https://storage.example.com/department/logos/logo.png"
+      )
+    ).toThrow();
+    expect(() =>
+      resolveDepartmentLogoStorageKey(
+        "/api/storage/department/logos/../../private/file.png"
+      )
+    ).toThrow();
+  });
+});
+
+describe("official organization logo binary handoff", () => {
+  it("replaces the server-only marker with the internal binary image URL", () => {
+    const html =
+      '<img src="telegram-logo://official" alt="شعار" />' +
+      '<img src="telegram-logo://official" alt="علامة مائية" />';
+
+    expect(replaceOfficialLogoPlaceholder(html)).toBe(
+      '<img src="https://telegram-logo.invalid/official" alt="شعار" />' +
+        '<img src="https://telegram-logo.invalid/official" alt="علامة مائية" />'
+    );
+  });
+
+  it("rejects a missing official-logo marker", () => {
+    expect(() =>
+      replaceOfficialLogoPlaceholder("<img src='/logo.png' />")
+    ).toThrow(/placeholder is missing/);
+  });
+});
+
 describe("telegram export resource isolation", () => {
   it("allows the blank origin, inline images, and embedded TTF fonts", () => {
     expect(isAllowedExportResourceUrl("about:blank")).toBe(true);
@@ -110,6 +156,7 @@ describe("telegram export resource isolation", () => {
   it("blocks unsafe network and data resources", () => {
     for (const url of [
       "https://example.com/image.png",
+      "https://telegram-logo.invalid/official",
       "http://127.0.0.1:3000/admin",
       "http://169.254.169.254/latest/meta-data/",
       "file:///etc/passwd",

@@ -882,7 +882,6 @@ export const appRouter = router({
           return {
             organizationId: input.organizationId,
             logoUrl,
-            logoDataUrl: null,
           };
         }
 
@@ -930,11 +929,10 @@ export const appRouter = router({
 
         return {
           organizationId: input.organizationId,
-          logoUrl,
-          logoDataUrl:
-            asset.body.length <= 2_500_000
-              ? `data:${mimeType};base64,${asset.body.toString("base64")}`
-              : null,
+          // Prefer the authenticated same-origin binary route for private
+          // organization logos. Keep approved external URLs only for legacy
+          // configurations that are not backed by managed storage.
+          logoUrl: storageKey ? storageStableUrl(storageKey) : logoUrl,
         };
       }),
 

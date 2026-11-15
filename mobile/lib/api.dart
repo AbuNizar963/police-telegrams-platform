@@ -819,23 +819,39 @@ class PoliceApi {
           result['organizationId']?.toString() != organizationId) {
         return null;
       }
-      final dataUrl = result['logoDataUrl']?.toString().trim() ?? '';
+      // New server responses expose only a protected binary URL. Fetch its
+      // bytes with the authenticated session instead of transporting Base64
+      // inside the tRPC JSON response.
+      final logoUrl = result['logoUrl']?.toString().trim() ?? '';
+      if (logoUrl.isNotEmpty) {
+        final binaryBytes = await fetchImageAsset(logoUrl);
+        if (binaryBytes != null &&
+            binaryBytes.isNotEmpty &&
+            binaryBytes.length <= _maximumCachedOrganizationLogoBytes &&
+            _isSupportedImagePayload('', binaryBytes)) {
+          return binaryBytes;
+        }
+      }
+
+      // Older deployments may still return a data URL. Keep this strictly as
+      // a compatibility fallback; current servers no longer populate it.
+      final legacyDataUrl = result['logoDataUrl']?.toString().trim() ?? '';
       final match = RegExp(
         r'^data:(image/(?:png|jpeg|webp));base64,',
         caseSensitive: false,
-      ).firstMatch(dataUrl);
+      ).firstMatch(legacyDataUrl);
       final contentType = match?.group(1);
       if (match == null || contentType == null) return null;
 
-      final bytes = Uint8List.fromList(
-        base64Decode(dataUrl.substring(match.end)),
+      final legacyBytes = Uint8List.fromList(
+        base64Decode(legacyDataUrl.substring(match.end)),
       );
-      if (bytes.isEmpty ||
-          bytes.length > _maximumCachedOrganizationLogoBytes ||
-          !_isSupportedImagePayload(contentType, bytes)) {
+      if (legacyBytes.isEmpty ||
+          legacyBytes.length > _maximumCachedOrganizationLogoBytes ||
+          !_isSupportedImagePayload(contentType, legacyBytes)) {
         return null;
       }
-      return bytes;
+      return legacyBytes;
     } catch (_) {
       // The same-origin byte route remains the primary path; this fallback is
       // best-effort and must not prevent settings or telegram screens opening.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as auth from "../../_core/auth";
 import * as db from "../../db";
+import type { TrpcContext } from "../../_core/context";
 import { appRouter } from "../../routers";
 
 vi.mock("../../db", async importOriginal => {
@@ -21,6 +22,7 @@ vi.mock("../../_core/auth", async importOriginal => {
     verifyPassword: vi.fn(),
   };
 });
+
 function contextFor(
   overrides: Partial<NonNullable<TrpcContext["user"]>> = {}
 ): TrpcContext {
@@ -127,7 +129,7 @@ describe("profile router", () => {
 
     vi.mocked(db.getUserById).mockResolvedValue(user);
     vi.mocked(auth.verifyPassword).mockResolvedValue(true);
-    vi.mocked(auth.hashPassword).mockResolvedValue("new-password-hash");
+    vi.mocked(auth.hashPassword).mockResolvedValue("new-hash");
     vi.mocked(db.updateUserPassword).mockResolvedValue(rotatedAuthUserId);
     vi.mocked(auth.setAuthenticatedSession).mockResolvedValue(undefined);
 
@@ -139,12 +141,15 @@ describe("profile router", () => {
 
       expect(auth.verifyPassword).toHaveBeenCalledWith("old-pass", "old-hash");
       expect(auth.hashPassword).toHaveBeenCalledWith("new-password-123");
-      expect(db.updateUserPassword).toHaveBeenCalledWith(9, "new-password-hash");
-      expect(auth.setAuthenticatedSession).toHaveBeenCalledWith(expect.anything(), {
+      expect(db.updateUserPassword).toHaveBeenCalledWith(9, "new-hash");
+      expect(auth.setAuthenticatedSession).toHaveBeenCalledWith(
+        expect.anything(),
+        {
         id: user.id,
         role: user.role,
-        authUserId: rotatedAuthUserId,
-      });
+          authUserId: rotatedAuthUserId,
+        }
+      );
     } finally {
       vi.clearAllMocks();
     }

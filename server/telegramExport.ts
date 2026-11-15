@@ -319,10 +319,7 @@ export async function renderTelegramDocument(
     // the application API, or arbitrary external hosts while rendering.
     await page.route("**/*", async route => {
       const requestedUrl = route.request().url();
-      if (
-        officialLogo &&
-        requestedUrl === OFFICIAL_LOGO_RENDER_URL
-      ) {
+      if (officialLogo && requestedUrl === OFFICIAL_LOGO_RENDER_URL) {
         await route.fulfill({
           status: 200,
           contentType: officialLogo.mimeType,

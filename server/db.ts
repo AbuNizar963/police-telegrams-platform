@@ -1991,6 +1991,17 @@ export async function updateUserPassword(
   return authUserId;
 }
 
+export async function revokeUserSessions(id: number): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .update({
+      authUserId: randomUUID(),
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id);
+  throwIfError(error, "Failed to revoke user sessions");
+}
+
 export async function dismissTemporaryPasswordChange(
   id: number
 ): Promise<void> {

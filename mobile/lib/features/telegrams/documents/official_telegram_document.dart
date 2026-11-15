@@ -163,8 +163,10 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
   return Uint8List.fromList(encodedArchive);
 }
 
-typedef OfficialTelegramLogoFileWriter =
-    Future<String> Function(Uint8List bytes, String cacheKey);
+typedef OfficialTelegramLogoFileWriter = Future<String> Function(
+  Uint8List bytes,
+  String cacheKey,
+);
 
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   const OfficialTelegramDocumentRendererScope({
@@ -178,12 +180,11 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   @visibleForTesting
   final OfficialTelegramLogoFileWriter? logoFileWriter;
 
-  static OfficialTelegramDocumentRendererScope? maybeOf(
-    BuildContext context,
-  ) => context
-      .dependOnInheritedWidgetOfExactType<
-        OfficialTelegramDocumentRendererScope
-      >();
+  static OfficialTelegramDocumentRendererScope? maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<
+            OfficialTelegramDocumentRendererScope
+          >();
 
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
@@ -825,7 +826,9 @@ class _OfficialTelegramDocumentPageState
         return source;
       } catch (exception) {
         if (kDebugMode) {
-          debugPrint('[telegram-preview] logo file preparation failed: $exception');
+          debugPrint(
+            '[telegram-preview] logo file preparation failed: $exception',
+          );
         }
         return null;
       }

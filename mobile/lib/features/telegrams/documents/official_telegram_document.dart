@@ -2005,6 +2005,13 @@ String buildOfficialTelegramHtml({
   String? logoSource,
   String? outputTimestamp,
 }) {
+  if (logoSource != null && Uri.tryParse(logoSource)?.isScheme('file') != true) {
+    throw ArgumentError.value(
+      logoSource,
+      'logoSource',
+      'شعار الوثيقة يجب أن يكون ملفًا محليًا وليس Data URL أو عنوان شبكة.',
+    );
+  }
   final numberSystem = settings['numberSystem'];
   final showVerificationQr =
       platformDocumentSettings['showVerificationQr'] != false;

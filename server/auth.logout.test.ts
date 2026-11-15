@@ -47,9 +47,7 @@ describe("auth.logout", () => {
     );
     const caller = appRouter.createCaller(context);
 
-    await expect(caller.auth.logout()).rejects.toThrow(
-      "database unavailable"
-    );
+    await expect(caller.auth.logout()).rejects.toThrow("database unavailable");
     expect(context.res.setHeader).toHaveBeenCalledWith(
       "Set-Cookie",
       expect.stringContaining("Max-Age=0")

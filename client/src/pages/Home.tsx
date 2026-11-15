@@ -4328,10 +4328,14 @@ function TelegramDetail({
   </head>
   <body>${exportWrapper.innerHTML}</body>
 </html>`;
-    const organizationId = resolveTelegramExportOrganizationId({
-      currentOrganizationId: telegram.currentOrganizationId,
-      ownerOrganizationId: telegram.organizationId,
-    });
+    const historicalLogoSource = selectedVersion?.logoUrl?.trim();
+    const organizationId = isOfficialLogoStorageSource(historicalLogoSource)
+      ? telegram.organizationId
+      : resolveTelegramExportOrganizationId({
+          accountOrganizationId: exportSettings.organizationId,
+          currentOrganizationId: telegram.currentOrganizationId,
+          ownerOrganizationId: telegram.organizationId,
+        });
     const requestBody = JSON.stringify({
       format,
       html,

@@ -84,9 +84,8 @@ class AppLockService {
       return true;
     }
 
-    final previousAttempts = int.tryParse(
-          await _storage.read(key: _pinFailedAttemptsKey) ?? '',
-        ) ??
+    final previousAttempts =
+        int.tryParse(await _storage.read(key: _pinFailedAttemptsKey) ?? '') ??
         0;
     final failedAttempts = (previousAttempts + 1).clamp(0, 1000000).toInt();
     await _storage.write(
@@ -95,13 +94,13 @@ class AppLockService {
     );
 
     if (failedAttempts >= _pinLockoutThreshold) {
-      final exponent =
-          (failedAttempts - _pinLockoutThreshold).clamp(0, 5).toInt();
+      final exponent = (failedAttempts - _pinLockoutThreshold)
+          .clamp(0, 5)
+          .toInt();
       final multiplier = 1 << exponent;
-      final lockoutSeconds =
-          (_initialPinLockoutSeconds * multiplier)
-              .clamp(_initialPinLockoutSeconds, _maximumPinLockoutSeconds)
-              .toInt();
+      final lockoutSeconds = (_initialPinLockoutSeconds * multiplier)
+          .clamp(_initialPinLockoutSeconds, _maximumPinLockoutSeconds)
+          .toInt();
       final lockedUntil = DateTime.now()
           .add(Duration(seconds: lockoutSeconds))
           .millisecondsSinceEpoch;

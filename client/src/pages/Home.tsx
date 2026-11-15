@@ -6534,9 +6534,11 @@ async function uploadTelegramAttachmentBinary(
       }),
     }
   );
-  const prepared = (await prepareResponse.json().catch(() => null)) as
-    | { key?: unknown; uploadUrl?: unknown; error?: unknown }
-    | null;
+  const prepared = (await prepareResponse.json().catch(() => null)) as {
+    key?: unknown;
+    uploadUrl?: unknown;
+    error?: unknown;
+  } | null;
   if (
     !prepareResponse.ok ||
     typeof prepared?.key !== "string" ||
@@ -6571,9 +6573,9 @@ async function uploadTelegramAttachmentBinary(
       }),
     }
   );
-  const finalized = (await finalizeResponse.json().catch(() => null)) as
-    | { error?: unknown }
-    | null;
+  const finalized = (await finalizeResponse.json().catch(() => null)) as {
+    error?: unknown;
+  } | null;
   if (!finalizeResponse.ok) {
     throw new Error(
       typeof finalized?.error === "string"

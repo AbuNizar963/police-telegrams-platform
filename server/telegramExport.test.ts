@@ -132,10 +132,7 @@ describe("official organization logo binary handoff", () => {
     );
   });
 
-  it("rejects missing markers and unsupported image data", () => {
-    expect(() =>
-      replaceOfficialLogoPlaceholder("<img src='/logo.png' />")
-    ).toThrow();
+  it("rejects a missing official-logo marker", () => {
     expect(() =>
       replaceOfficialLogoPlaceholder("<img src='/logo.png' />")
     ).toThrow(/placeholder is missing/);

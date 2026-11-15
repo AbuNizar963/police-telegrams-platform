@@ -65,10 +65,7 @@ export function validateUploadedFile(input: unknown): void {
   if (bytes.length === 0 || bytes.length > maxBytes) {
     throw new Error("حجم الملف غير صالح");
   }
-  if (
-    !/^[^\x00-\x1f\\/]+$/.test(fileName) ||
-    fileName.length > 180
-  ) {
+  if (!/^[^\x00-\x1f\\/]+$/.test(fileName) || fileName.length > 180) {
     throw new Error("اسم الملف غير صالح");
   }
   const actualType = detectFileType(bytes);

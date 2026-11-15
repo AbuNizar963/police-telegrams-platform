@@ -74,6 +74,7 @@ import {
   createLocalOwnerUser,
   getUserById,
   getUserByUsername,
+  revokeUserSessions,
   deletePushSubscription,
   deleteMobilePushToken,
   listUserNotifications,
@@ -779,8 +780,13 @@ export const appRouter = router({
         return user;
       }),
 
-    logout: publicProcedure.mutation(({ ctx }) => {
-      clearAuthenticatedSession(ctx.res);
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      try {
+        if (ctx.user) await revokeUserSessions(ctx.user.id);
+      } finally {
+        // Always clear the browser cookie, even if server-side revocation fails.
+        clearAuthenticatedSession(ctx.res);
+      }
       return { success: true } as const;
     }),
   }),

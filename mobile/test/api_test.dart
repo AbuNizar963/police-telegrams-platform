@@ -742,6 +742,90 @@ void main() {
     expect(bytes, isNull);
   });
 
+  test('telegram attachments upload directly to signed private storage', () async {
+    const sessionCookie = 'sid=authenticated-session';
+    const storageUrl =
+        'https://storage.example.test/storage/v1/object/upload/sign/telegram-files/attachments/report.pdf?token=opaque';
+    const storageKey =
+        'organizations/550e8400-e29b-41d4-a716-446655440000/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf';
+    final bytes = Uint8List.fromList(utf8.encode('%PDF-1.7\\nfixture'));
+    _secureStorageForTest['session_cookie'] = sessionCookie;
+    final requests = <String>[];
+    final client = MockClient((request) async {
+      requests.add('${request.method} ${request.url.path}');
+      if (request.url.path.endsWith('/attachments/upload-url')) {
+        expect(request.method, 'POST');
+        expect(request.headers['cookie'], sessionCookie);
+        expect(jsonDecode(request.body), {
+          'fileName': 'report.pdf',
+          'contentType': 'application/pdf',
+          'sizeBytes': bytes.length,
+        });
+        return http.Response(
+          jsonEncode({
+            'key': storageKey,
+            'uploadUrl': storageUrl,
+            'fileName': 'report.pdf',
+            'contentType': 'application/pdf',
+            'sizeBytes': bytes.length,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (request.url.toString() == storageUrl) {
+        expect(request.method, 'PUT');
+        expect(request.headers['content-type'], 'application/pdf');
+        expect(request.headers.containsKey('cookie'), isFalse);
+        expect(request.bodyBytes, bytes);
+        return http.Response('', 200);
+      }
+      if (request.url.path.endsWith('/attachments/finalize')) {
+        expect(request.method, 'POST');
+        expect(request.headers['cookie'], sessionCookie);
+        expect(jsonDecode(request.body), {
+          'key': storageKey,
+          'fileName': 'report.pdf',
+          'contentType': 'application/pdf',
+          'sizeBytes': bytes.length,
+        });
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'key': storageKey,
+            'fileName': 'report.pdf',
+            'contentType': 'application/pdf',
+            'size': bytes.length,
+            'sha256': 'a' * 64,
+          }),
+          201,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('unexpected request', 404);
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+    final events = <ApiMutationEvent>[];
+    final subscription = api.mutationEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+
+    final result = await api.uploadTelegramAttachment(
+      telegramId: 7,
+      fileName: 'report.pdf',
+      contentType: 'application/pdf',
+      bytes: bytes,
+    );
+
+    expect(result['success'], isTrue);
+    expect(requests, hasLength(3));
+    expect(events.single.procedure, 'telegrams.uploadAttachment');
+    expect(events.single.telegramId, 7);
+  });
+
   test('organization logos upload as authenticated binary bytes', () async {
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
     const sessionCookie = 'sid=authenticated-session';

@@ -1,0 +1,71 @@
+name: Playwright Browser Smoke Test
+
+on:
+  push:
+    branches: ["main", "flutter-mobile-app"]
+  pull_request:
+    branches: ["main", "flutter-mobile-app"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  browser-smoke:
+    name: Build and smoke-test the web application
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web application
+        run: pnpm build
+
+      - name: Install Chromium and system dependencies
+        run: pnpm exec playwright-core install --with-deps chromium
+
+      - name: Start Vite preview server
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec vite preview --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/vite-preview.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/vite-preview.pid"
+
+      - name: Wait for preview server
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/vite-preview.log"
+          echo "::error::Vite preview did not become ready."
+          exit 1
+
+      - name: Run browser smoke test
+        run: node scripts/playwright-smoke.mjs
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173

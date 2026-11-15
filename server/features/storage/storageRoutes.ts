@@ -110,7 +110,7 @@ function parseTelegramAttachmentMetadata(body: unknown): {
   if (
     !fileName ||
     fileName.length > 180 ||
-    !/^[^\\x00-\\x1f\\\\/]+$/.test(fileName) ||
+    !/^[^\x00-\x1f\\/]+$/.test(fileName) ||
     !ALLOWED_ATTACHMENT_TYPES.includes(contentType as AllowedAttachmentType) ||
     !Number.isSafeInteger(sizeBytes) ||
     sizeBytes < 1 ||
@@ -197,7 +197,8 @@ async function finalizeTelegramAttachmentUpload(
   }
 
   const storedFileName = key.split("/").pop()?.slice(37) ?? "";
-  if (storedFileName !== metadata.fileName) {
+  const expectedStorageFileName = metadata.fileName.replace(/\.\.+/g, "_");
+  if (storedFileName !== expectedStorageFileName) {
     res.status(400).json({ error: "اسم الملف لا يطابق رابط الرفع" });
     return;
   }
@@ -225,10 +226,15 @@ async function finalizeTelegramAttachmentUpload(
     }
 
     const objectInfo = await storageGetObjectInfo(key);
+    const storedContentType = objectInfo.contentType
+      .split(";")[0]
+      ?.trim()
+      .toLowerCase();
     if (
       objectInfo.size !== metadata.sizeBytes ||
       objectInfo.size < 1 ||
-      objectInfo.size > MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES
+      objectInfo.size > MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES ||
+      storedContentType !== metadata.contentType
     ) {
       await removeUncommittedAttachment(key);
       res.status(400).json({ error: "حجم الملف المرفوع لا يطابق البيانات المعلنة" });

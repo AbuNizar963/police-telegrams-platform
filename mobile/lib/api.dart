@@ -185,36 +185,107 @@ class PoliceApi {
     }
 
     final cookie = await _storage.read(key: 'session_cookie');
-    final uri = Uri.parse('$baseUrl/api/telegrams/$telegramId/attachments');
-    final headers = <String, String>{
-      'content-type': contentType,
+    final requestHeaders = <String, String>{
+      'content-type': 'application/json',
       'accept': 'application/json',
-      'x-file-name': Uri.encodeComponent(fileName),
     };
-    if (cookie != null) headers['cookie'] = cookie;
+    if (cookie != null) requestHeaders['cookie'] = cookie;
 
-    late final http.Response response;
-    try {
-      response = await _httpClient
-          .put(uri, headers: headers, body: bytes)
-          .timeout(const Duration(seconds: 45));
-    } on TimeoutException {
-      throw const NetworkException();
-    } on IOException {
-      throw const NetworkException();
-    } on http.ClientException {
-      throw const NetworkException();
+    Future<http.Response> send(
+      Future<http.Response> Function() request, {
+      Duration timeout = const Duration(seconds: 20),
+    }) async {
+      try {
+        return await request().timeout(timeout);
+      } on TimeoutException {
+        throw const NetworkException();
+      } on IOException {
+        throw const NetworkException();
+      } on http.ClientException {
+        throw const NetworkException();
+      }
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(response.statusCode, _message(response.body));
+    final prepareUri = Uri.parse(
+      '$baseUrl/api/telegrams/$telegramId/attachments/upload-url',
+    );
+    final prepareResponse = await send(
+      () => _httpClient.post(
+        prepareUri,
+        headers: requestHeaders,
+        body: jsonEncode({
+          'fileName': fileName,
+          'contentType': contentType,
+          'sizeBytes': bytes.length,
+        }),
+      ),
+    );
+    if (prepareResponse.statusCode < 200 ||
+        prepareResponse.statusCode >= 300) {
+      throw ApiException(
+        prepareResponse.statusCode,
+        _message(prepareResponse.body),
+      );
     }
 
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map) {
-      throw const FormatException('استجابة رفع المرفق غير صالحة');
+    final preparedValue = jsonDecode(prepareResponse.body);
+    if (preparedValue is! Map ||
+        preparedValue['key'] is! String ||
+        preparedValue['uploadUrl'] is! String) {
+      throw const FormatException('لم يُرجع الخادم رابط رفع صالحًا');
     }
-    final result = Map<String, dynamic>.from(decoded);
+    final key = preparedValue['key'] as String;
+    final uploadUri = Uri.tryParse(preparedValue['uploadUrl'] as String);
+    if (uploadUri == null ||
+        !{'https', 'http'}.contains(uploadUri.scheme) ||
+        uploadUri.host.isEmpty) {
+      throw const FormatException('رابط التخزين المؤقت غير صالح');
+    }
+
+    final storageResponse = await send(
+      () => _httpClient.put(
+        uploadUri,
+        headers: {'content-type': contentType},
+        body: bytes,
+      ),
+      timeout: const Duration(seconds: 60),
+    );
+    if (storageResponse.statusCode < 200 ||
+        storageResponse.statusCode >= 300) {
+      throw ApiException(
+        storageResponse.statusCode,
+        _message(storageResponse.body),
+      );
+    }
+
+    final finalizeUri = Uri.parse(
+      '$baseUrl/api/telegrams/$telegramId/attachments/finalize',
+    );
+    final finalizeResponse = await send(
+      () => _httpClient.post(
+        finalizeUri,
+        headers: requestHeaders,
+        body: jsonEncode({
+          'key': key,
+          'fileName': fileName,
+          'contentType': contentType,
+          'sizeBytes': bytes.length,
+        }),
+      ),
+    );
+    if (finalizeResponse.statusCode < 200 ||
+        finalizeResponse.statusCode >= 300) {
+      throw ApiException(
+        finalizeResponse.statusCode,
+        _message(finalizeResponse.body),
+      );
+    }
+
+    final finalizedValue = jsonDecode(finalizeResponse.body);
+    if (finalizedValue is! Map) {
+      throw const FormatException('استجابة اعتماد المرفق غير صالحة');
+    }
+    final result = Map<String, dynamic>.from(finalizedValue);
     _mutationEvents.add(
       ApiMutationEvent(
         procedure: 'telegrams.uploadAttachment',

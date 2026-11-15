@@ -37,6 +37,8 @@ private final class TelegramPdfResourceSchemeHandler: NSObject, WKURLSchemeHandl
       let url = urlSchemeTask.request.url,
       url.host == "document",
       url.pathComponents.count == 2,
+      url.query == nil,
+      url.fragment == nil,
       let resource = resources[url.lastPathComponent]
     else {
       urlSchemeTask.didFailWithError(
@@ -121,6 +123,17 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
       return
     }
 
+    guard rawResources.count <= 8 else {
+      result(
+        FlutterError(
+          code: "INVALID_PDF_RESOURCE",
+          message: "عدد موارد الصور يتجاوز الحد المسموح.",
+          details: nil
+        )
+      )
+      return
+    }
+
     var resources: [String: TelegramPdfImageResource] = [:]
     for item in rawResources {
       guard
@@ -129,7 +142,8 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
         let mimeType = item["mimeType"] as? String,
         ["image/png", "image/jpeg", "image/gif", "image/webp"].contains(mimeType),
         let typedData = item["bytes"] as? FlutterStandardTypedData,
-        !typedData.data.isEmpty
+        !typedData.data.isEmpty,
+        typedData.data.count <= 10 * 1024 * 1024
       else {
         result(
           FlutterError(

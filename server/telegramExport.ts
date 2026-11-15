@@ -223,7 +223,7 @@ export function isSafeExportHtml(html: string): boolean {
   const unsafeUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*(?:javascript|vbscript):|'[ \t\r\n]*(?:javascript|vbscript):|(?:javascript|vbscript):)/i;
   const unsafeDataUrl =
-    /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)|'[ \t\r\n]*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)|data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,))/i;
+    /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*data:(?!font\/ttf;base64,)|'[ \t\r\n]*data:(?!font\/ttf;base64,)|data:(?!font\/ttf;base64,))/i;
   const eventHandler = /\bon[a-z][\w:-]*\s*=\s*(?:["']|[^\s>]+)/i;
   return (
     html.length > 0 &&
@@ -240,7 +240,6 @@ export function isSafeExportHtml(html: string): boolean {
 export function isAllowedExportResourceUrl(url: string): boolean {
   return (
     url === "about:blank" ||
-    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url) ||
     /^data:font\/ttf;base64,/i.test(url)
   );
 }

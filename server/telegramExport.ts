@@ -259,7 +259,8 @@ export function hasMultiPageTelegramLayout(html: string): boolean {
 const MULTI_PAGE_PAGE_HEIGHT_THRESHOLD = 1124;
 
 /**
- * Mirrors the web preview's page-height decision without executing HTML scripts.
+ * Mirrors the web preview's page-height decision without executing
+ * HTML scripts.
  */
 export function isTelegramMultiPageHeight(height: number): boolean {
   return Number.isFinite(height) && height > MULTI_PAGE_PAGE_HEIGHT_THRESHOLD;
@@ -470,8 +471,7 @@ export async function renderTelegramDocument(
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
-      const { page, isMultiPage } =
-        await createMeasuredPage(deviceScaleFactor);
+      const { page, isMultiPage } = await createMeasuredPage(deviceScaleFactor);
       try {
         if (isMultiPage) {
           await page.addStyleTag({

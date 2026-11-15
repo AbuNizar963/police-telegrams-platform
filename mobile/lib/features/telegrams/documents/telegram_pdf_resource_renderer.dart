@@ -5,10 +5,7 @@ import 'package:flutter/services.dart';
 /// The image bytes are transferred separately from HTML and are never
 /// serialized into a data URL or written to a broadly accessible file path.
 class TelegramPdfImageResource {
-  const TelegramPdfImageResource({
-    required this.bytes,
-    required this.mimeType,
-  });
+  const TelegramPdfImageResource({required this.bytes, required this.mimeType});
 
   final Uint8List bytes;
   final String mimeType;
@@ -42,10 +39,7 @@ class TelegramPdfResourceRenderer {
 
     final result = await _channel.invokeMethod<Uint8List>(
       'renderHtmlToPdf',
-      <String, Object>{
-        'html': html,
-        'resources': resourcePayload,
-      },
+      <String, Object>{'html': html, 'resources': resourcePayload},
     );
 
     if (result == null || result.isEmpty) {

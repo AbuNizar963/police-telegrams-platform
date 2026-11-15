@@ -1,6 +1,7 @@
 package com.police_telegrams
 
 import android.app.Activity
+import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
@@ -8,6 +9,7 @@ import android.print.PageRange
 import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
+import android.print.TelegramPrintCallbackShim
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -38,6 +40,8 @@ internal class TelegramPdfResourceRenderer(
     private var activeWebView: WebView? = null
     private var activeContainer: FrameLayout? = null
     private var activeResult: MethodChannel.Result? = null
+    private var activeOutput: File? = null
+    private var activeDescriptor: android.os.ParcelFileDescriptor? = null
     private var timeoutRunnable: Runnable? = null
 
     init {
@@ -242,28 +246,33 @@ internal class TelegramPdfResourceRenderer(
             .setResolution(PrintAttributes.Resolution("telegram-pdf", "PDF", 300, 300))
             .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
             .build()
+        val layoutCallback = object : TelegramPrintCallbackShim.LayoutCallback {
+            override fun onLayoutFinished(info: PrintDocumentInfo, changed: Boolean) {
+                if (activeResult == null) return
+                if (info.pageCount <= 0) {
+                    finishWithError("PDF_LAYOUT_EMPTY", "لم ينتج محرك الطباعة صفحات للوثيقة.")
+                    return
+                }
+                writePdf(adapter)
+            }
+
+            override fun onLayoutFailed(error: CharSequence?) {
+                finishWithError(
+                    "PDF_LAYOUT_FAILED",
+                    error?.toString() ?: "تعذر تخطيط صفحات الوثيقة.",
+                )
+            }
+
+            override fun onLayoutCancelled() {
+                finishWithError("PDF_LAYOUT_CANCELLED", "أُلغيت عملية تخطيط الوثيقة.")
+            }
+        }
         adapter.onLayout(
             null,
             attributes,
             CancellationSignal(),
-            object : PrintDocumentAdapter.LayoutResultCallback() {
-                override fun onLayoutFinished(info: PrintDocumentInfo?, changed: Boolean) {
-                    if (info == null || info.pageCount == 0) {
-                        finishWithError("PDF_LAYOUT_EMPTY", "لم ينتج محرك الطباعة صفحات للوثيقة.")
-                        return
-                    }
-                    writePdf(adapter)
-                }
-
-                override fun onLayoutFailed(error: CharSequence?) {
-                    finishWithError("PDF_LAYOUT_FAILED", error?.toString() ?: "تعذر تخطيط صفحات الوثيقة.")
-                }
-
-                override fun onLayoutCancelled() {
-                    finishWithError("PDF_LAYOUT_CANCELLED", "أُلغيت عملية تخطيط الوثيقة.")
-                }
-            },
-            null,
+            TelegramPrintCallbackShim.createLayoutResultCallback(layoutCallback),
+            Bundle(),
         )
     }
 
@@ -287,40 +296,61 @@ internal class TelegramPdfResourceRenderer(
             return
         }
 
+        activeOutput = output
+        activeDescriptor = descriptor
+        val writeCallback = object : TelegramPrintCallbackShim.WriteCallback {
+            override fun onWriteFinished(pages: Array<PageRange>) {
+                try {
+                    descriptor.close()
+                    if (activeDescriptor === descriptor) activeDescriptor = null
+                    if (activeResult == null) return
+                    val bytes = output.readBytes()
+                    if (bytes.isEmpty()) {
+                        finishWithError("PDF_OUTPUT_EMPTY", "ملف PDF الناتج فارغ.")
+                    } else {
+                        finishWithBytes(bytes)
+                    }
+                } catch (error: Exception) {
+                    finishWithError("PDF_READ_FAILED", error.message ?: "تعذرت قراءة ملف PDF.")
+                } finally {
+                    if (activeOutput == output) activeOutput = null
+                    output.delete()
+                }
+            }
+
+            override fun onWriteFailed(error: CharSequence?) {
+                closeOutput(descriptor, output)
+                finishWithError(
+                    "PDF_WRITE_FAILED",
+                    error?.toString() ?: "تعذرت كتابة صفحات PDF.",
+                )
+            }
+
+            override fun onWriteCancelled() {
+                closeOutput(descriptor, output)
+                finishWithError("PDF_WRITE_CANCELLED", "أُلغيت كتابة ملف PDF.")
+            }
+        }
         adapter.onWrite(
             arrayOf(PageRange.ALL_PAGES),
             descriptor,
             CancellationSignal(),
-            object : PrintDocumentAdapter.WriteResultCallback() {
-                override fun onWriteFinished(pages: Array<PageRange>) {
-                    try {
-                        descriptor.close()
-                        val bytes = output.readBytes()
-                        if (bytes.isEmpty()) {
-                            finishWithError("PDF_OUTPUT_EMPTY", "ملف PDF الناتج فارغ.")
-                        } else {
-                            finishWithBytes(bytes)
-                        }
-                    } catch (error: Exception) {
-                        finishWithError("PDF_READ_FAILED", error.message ?: "تعذرت قراءة ملف PDF.")
-                    } finally {
-                        output.delete()
-                    }
-                }
-
-                override fun onWriteFailed(error: CharSequence?) {
-                    try { descriptor.close() } catch (_: Exception) {}
-                    output.delete()
-                    finishWithError("PDF_WRITE_FAILED", error?.toString() ?: "تعذرت كتابة صفحات PDF.")
-                }
-
-                override fun onWriteCancelled() {
-                    try { descriptor.close() } catch (_: Exception) {}
-                    output.delete()
-                    finishWithError("PDF_WRITE_CANCELLED", "أُلغيت كتابة ملف PDF.")
-                }
-            },
+            TelegramPrintCallbackShim.createWriteResultCallback(writeCallback),
         )
+    }
+
+    private fun closeOutput(
+        descriptor: android.os.ParcelFileDescriptor,
+        output: File,
+    ) {
+        try {
+            descriptor.close()
+        } catch (_: IOException) {
+            // The descriptor may already have been closed by timeout cleanup.
+        }
+        if (activeDescriptor === descriptor) activeDescriptor = null
+        if (activeOutput == output) activeOutput = null
+        output.delete()
     }
 
     private fun finishWithBytes(bytes: ByteArray) {
@@ -338,6 +368,16 @@ internal class TelegramPdfResourceRenderer(
     private fun cleanup() {
         timeoutRunnable?.let(mainHandler::removeCallbacks)
         timeoutRunnable = null
+        activeDescriptor?.let { descriptor ->
+            try {
+                descriptor.close()
+            } catch (_: IOException) {
+                // Ignore close failures during renderer teardown.
+            }
+        }
+        activeDescriptor = null
+        activeOutput?.delete()
+        activeOutput = null
         activeWebView?.apply {
             stopLoading()
             webViewClient = WebViewClient()

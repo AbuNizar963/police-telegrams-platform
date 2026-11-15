@@ -422,23 +422,24 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'file:///tmp/official-logo.png',
+        logoSource: 'telegram-resource://document/123e4567-e89b-42d3-a456-426614174000',
       );
 
       expect(
         html,
         contains(
-          '<img class="official-logo" src="file:///tmp/official-logo.png"',
+          '<img class="official-logo" src="telegram-resource://document/123e4567-e89b-42d3-a456-426614174000"',
         ),
       );
       expect(
         html,
         contains(
-          '<img class="watermark-logo" src="file:///tmp/official-logo.png"',
+          '<img class="watermark-logo" src="telegram-resource://document/123e4567-e89b-42d3-a456-426614174000"',
         ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, isNot(contains('data:image/')));
+      expect(html, isNot(contains('file://')));
       expect(
         html.indexOf('class="watermark-text-pattern"'),
         lessThan(html.indexOf('class="watermark-logo"')),
@@ -514,7 +515,7 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoSource: 'file:///tmp/official-logo.png',
+        logoSource: 'telegram-resource://document/123e4567-e89b-42d3-a456-426614174000',
       );
 
       expect(html, isNot(contains('class="watermark-text-pattern"')));

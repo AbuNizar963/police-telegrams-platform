@@ -798,6 +798,11 @@ class PoliceApi {
   /// This makes the confirmed logo available after the settings screen closes,
   /// even when the current network cannot immediately reload the protected
   /// storage URL. The cache is scoped to both organization and storage path.
+  /// Persists bytes that were just uploaded and accepted by settings.update.
+  ///
+  /// This makes the confirmed logo available after the settings screen closes,
+  /// even when the current network cannot immediately reload the protected
+  /// storage URL. The cache is scoped to both organization and storage path.
   Future<void> cacheOrganizationLogo({
     required String organizationId,
     required String source,
@@ -815,37 +820,47 @@ class PoliceApi {
     final identity = sourceIdentity.isEmpty ? 'api-export' : sourceIdentity;
     final requestKey = '$normalizedOrganizationId\n$identity';
     final generation = _logoCacheGeneration;
-    final cacheDirectory = await _organizationLogoCacheDirectory();
-    await cacheDirectory.create(recursive: true);
-    final fileStem = _organizationLogoFileStem(normalizedOrganizationId);
-    final imageFile = File(
-      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
-    );
-    final metadataFile = File(
-      '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.json',
-    );
-    final temporaryImage = File('${imageFile.path}.tmp');
-    final temporaryMetadata = File('${metadataFile.path}.tmp');
+    final copiedBytes = Uint8List.fromList(bytes);
 
-    await temporaryImage.writeAsBytes(bytes, flush: true);
-    await temporaryMetadata.writeAsString(
-      jsonEncode({
-        'identity': identity,
-        'cachedAt': DateTime.now().toIso8601String(),
-      }),
-      flush: true,
-    );
-    if (generation != _logoCacheGeneration) {
-      await temporaryImage.delete().catchError((_) => temporaryImage);
-      await temporaryMetadata.delete().catchError((_) => temporaryMetadata);
-      return;
+    try {
+      final cacheDirectory = await _organizationLogoCacheDirectory();
+      await cacheDirectory.create(recursive: true);
+      final fileStem = _organizationLogoFileStem(normalizedOrganizationId);
+      final imageFile = File(
+        '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
+      );
+      final metadataFile = File(
+        '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.json',
+      );
+      final temporaryImage = File('${imageFile.path}.tmp');
+      final temporaryMetadata = File('${metadataFile.path}.tmp');
+
+      await temporaryImage.writeAsBytes(copiedBytes, flush: true);
+      await temporaryMetadata.writeAsString(
+        jsonEncode({
+          'identity': identity,
+          'cachedAt': DateTime.now().toIso8601String(),
+        }),
+        flush: true,
+      );
+      if (generation != _logoCacheGeneration) {
+        try {
+          await temporaryImage.delete();
+        } catch (_) {}
+        try {
+          await temporaryMetadata.delete();
+        } catch (_) {}
+        return;
+      }
+
+      await temporaryImage.rename(imageFile.path);
+      await temporaryMetadata.rename(metadataFile.path);
+    } catch (_) {
+      // Local persistence is best-effort. A valid, server-confirmed upload
+      // must remain visible in this session even if device storage is busy.
     }
 
-    await temporaryImage.rename(imageFile.path);
-    await temporaryMetadata.rename(metadataFile.path);
     if (generation != _logoCacheGeneration) return;
-
-    final copiedBytes = Uint8List.fromList(bytes);
     _organizationLogoMemory[requestKey] = _OrganizationLogoCacheEntry(
       copiedBytes,
       DateTime.now(),

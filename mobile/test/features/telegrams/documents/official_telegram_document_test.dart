@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -434,6 +433,8 @@ void main() {
         ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
+      expect(html, isNot(contains('data:image/')));
+      expect(html, isNot(contains('base64,')));
       expect(
         html.indexOf('class="watermark-text-pattern"'),
         lessThan(html.indexOf('class="watermark-logo"')),
@@ -502,41 +503,6 @@ void main() {
       );
     },
   );
-
-  test('preserves source logo resolution and aspect ratio', () async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    canvas.drawRect(
-      const ui.Rect.fromLTWH(0, 0, 120, 60),
-      ui.Paint()..color = const ui.Color(0xFFD8C38E),
-    );
-    final picture = recorder.endRecording();
-    final sourceImage = await picture.toImage(120, 60);
-    picture.dispose();
-    final sourceData = await sourceImage.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
-    sourceImage.dispose();
-    final sourceBytes = sourceData!.buffer.asUint8List(
-      sourceData.offsetInBytes,
-      sourceData.lengthInBytes,
-    );
-
-    final normalized = await normalizeOfficialDocumentLogo(sourceBytes);
-    final codec = await ui.instantiateImageCodec(normalized);
-    try {
-      final frame = await codec.getNextFrame();
-      try {
-        expect(frame.image.width, 120);
-        expect(frame.image.height, 60);
-      } finally {
-        frame.image.dispose();
-      }
-    } finally {
-      codec.dispose();
-    }
-  });
 
   test('escapes telegram text before embedding it in the renderer HTML', () {
     final html = buildOfficialTelegramHtml(

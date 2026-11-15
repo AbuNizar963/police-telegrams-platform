@@ -1241,15 +1241,15 @@ void main() {
 
     await tester.tap(find.text('تنزيل'));
     await tester.pumpAndSettle();
-    expect(find.text('تنزيل PDF'), findsOneWidget);
-    expect(find.text('تنزيل صورة'), findsOneWidget);
+    expect(find.text('تنزيل ملف PDF'), findsOneWidget);
+    expect(find.text('تنزيل صور الصفحات'), findsOneWidget);
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('مشاركة'));
     await tester.pumpAndSettle();
-    expect(find.text('مشاركة PDF'), findsOneWidget);
-    expect(find.text('مشاركة صورة'), findsOneWidget);
+    expect(find.text('مشاركة ملف PDF'), findsOneWidget);
+    expect(find.text('مشاركة صور الصفحات'), findsOneWidget);
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
     expect(find.text('تعديل البرقية'), findsOneWidget);

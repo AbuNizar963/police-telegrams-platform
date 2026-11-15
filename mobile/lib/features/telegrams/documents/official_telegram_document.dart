@@ -52,7 +52,6 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
   <path d="M16 3v4M8 3v4M3.5 10h17" />
 </svg>''';
 
-// The API also keeps a persistent, revalidated file cache. This small
 /// Resolve a supported logo's file extension from its signature without
 /// decoding or converting its image bytes.
 @visibleForTesting

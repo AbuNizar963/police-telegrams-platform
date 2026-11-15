@@ -31,3 +31,23 @@ String? resolveOrganizationLogoSourceIdentity(
   final identity = cacheIdentity(value);
   return identity.isEmpty ? null : identity;
 }
+
+/// Accepts only the protected application storage route or a Supabase object
+/// URL that can be resolved by the server's configured storage bucket.
+///
+/// This is an early client-side guard only; the export endpoint independently
+/// validates the URL, object key, image signature, and organization ownership.
+bool isOfficialOrganizationLogoStorageSource(String? source) {
+  final value = source?.trim() ?? '';
+  if (value.isEmpty) return false;
+  if (value.startsWith('/api/storage/department/logos/')) return true;
+
+  final uri = Uri.tryParse(value);
+  if (uri == null || uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) {
+    return false;
+  }
+  return RegExp(
+    r'/storage/v1/object/(?:public|sign|authenticated)/[^/]+/department/logos/',
+    caseSensitive: false,
+  ).hasMatch(uri.path);
+}

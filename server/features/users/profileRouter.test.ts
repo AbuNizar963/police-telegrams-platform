@@ -102,22 +102,22 @@ describe("profile router", () => {
   });
 
   it("revokes previous sessions and refreshes the current session after password change", async () => {
-    const originalUser = {
+    const user = {
       ...contextFor().user!,
       passwordHash: "current-hash",
     } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
-    const refreshedUser = {
-      ...originalUser,
-      authUserId: "00000000-0000-4000-8000-000000000099",
-    };
+    const rotatedAuthUserId = "00000000-0000-4000-8000-000000000099";
 
-    const getUser = vi.spyOn(db, "getUserById")
-      .mockResolvedValueOnce(originalUser)
-      .mockResolvedValueOnce(refreshedUser);
     const verify = vi.spyOn(auth, "verifyPassword").mockResolvedValue(true);
-    const hash = vi.spyOn(auth, "hashPassword").mockResolvedValue("new-password-hash");
-    const update = vi.spyOn(db, "updateUserPassword").mockResolvedValue();
-    const refreshSession = vi.spyOn(auth, "setAuthenticatedSession").mockResolvedValue();
+    const hash = vi
+      .spyOn(auth, "hashPassword")
+      .mockResolvedValue("new-password-hash");
+    const update = vi
+      .spyOn(db, "updateUserPassword")
+      .mockResolvedValue(rotatedAuthUserId);
+    const refreshSession = vi
+      .spyOn(auth, "setAuthenticatedSession")
+      .mockResolvedValue(undefined);
 
     try {
       await appRouter.createCaller(contextFor()).profile.changePassword({
@@ -128,8 +128,11 @@ describe("profile router", () => {
       expect(verify).toHaveBeenCalledWith("current-password", "current-hash");
       expect(hash).toHaveBeenCalledWith("new-password-123");
       expect(update).toHaveBeenCalledWith(9, "new-password-hash");
-      expect(getUser).toHaveBeenCalledTimes(2);
-      expect(refreshSession).toHaveBeenCalledWith(expect.anything(), refreshedUser);
+      expect(refreshSession).toHaveBeenCalledWith(expect.anything(), {
+        id: user.id,
+        role: user.role,
+        authUserId: rotatedAuthUserId,
+      });
     } finally {
       vi.restoreAllMocks();
     }

@@ -1145,7 +1145,7 @@ void main() {
     );
     await expectLater(
       api.renderTelegramDocument(
-        html: 'x' * 3900001,
+        html: List<String>.filled(3900001, 'x').join(),
         format: 'pdf',
       ),
       throwsA(isA<FormatException>()),

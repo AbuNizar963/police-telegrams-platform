@@ -46,7 +46,21 @@ vi.mock("../../_core/supabase", () => ({
         insert: mocks.usersInsert,
         update: (values: Record<string, unknown>) => {
           mocks.usersUpdate(values);
-          return { eq: () => Promise.resolve({ error: null }) };
+          const result = Promise.resolve({
+            data: { id: 25 },
+            error: null,
+          }) as Promise<{ data: { id: number }; error: null }> & {
+            select: () => {
+              single: () => Promise<{
+                data: { id: number };
+                error: null;
+              }>;
+            };
+          };
+          result.select = () => ({
+            single: () => Promise.resolve({ data: { id: 25 }, error: null }),
+          });
+          return { eq: () => result };
         },
       };
     },

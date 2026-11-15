@@ -74,7 +74,6 @@ export function getJsonBodyLimit(path: string): string {
 function requiresAuthenticatedLargeBody(path: string): boolean {
   return (
     path === "/api/telegram-render" ||
-    /^\/api\/telegrams\/[1-9]\d*\/attachments$/.test(path) ||
     path.includes("/api/trpc/telegrams.importRows") ||
     path.includes("/api/trpc/telegrams.importWorkbookPreview") ||
     path.includes("/api/trpc/telegrams.uploadAttachment") ||

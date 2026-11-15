@@ -487,7 +487,7 @@ void main() {
     _setMobileViewport(tester);
     final api = _TestPoliceApi(
       signedIn: true,
-      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+      organizationLogoUrl: '/api/storage/department/logos/org-1/logo.png',
     );
     final renderer = _TestOfficialTelegramDocumentRenderer();
 

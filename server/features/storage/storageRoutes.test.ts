@@ -377,6 +377,9 @@ describe("signed telegram attachment uploads", () => {
       telegramId: 7,
       storageOrganizationId: testOrganizationId,
       storageKey: key,
+      originalName: "report.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: pdfBytes.byteLength,
     });
     const { authorize, finalize, res } =
       createSignedTelegramAttachmentHarness();

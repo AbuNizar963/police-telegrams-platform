@@ -8,14 +8,20 @@ import { storageDownload } from "./features/storage/storage";
 import { isPlatformOwner } from "./ownerAccess";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 
-const MAX_HTML_BYTES = 7_500_000;
+const MAX_HTML_BYTES = 3_900_000;
 const OFFICIAL_LOGO_PLACEHOLDER = "telegram-logo://official";
-const MAX_OFFICIAL_LOGO_BYTES = 2_500_000;
+const OFFICIAL_LOGO_RENDER_URL = "https://telegram-logo.invalid/official";
+const MAX_OFFICIAL_LOGO_BYTES = 4_000_000;
 const ALLOWED_FORMATS = new Set(["pdf", "png"]);
 // Render at 384 DPI first, then fall back only when PNG would approach
 // Vercel's 4.5 MB response cap. 4,000,000 bytes leaves protocol headroom.
 export const MAX_TELEGRAM_PNG_BYTES = 4_000_000;
 export const PNG_RENDER_SCALE_FACTORS = [4, 3, 2] as const;
+type OfficialLogoBinary = {
+  body: Buffer;
+  mimeType: string;
+};
+
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 function crc32(bytes: Buffer): number {
@@ -88,14 +94,7 @@ export function withPngDpiMetadata(png: Buffer, dpi = 384): Buffer {
  * never allowed to reach Chromium: that isolated browser cannot access the
  * user's Blob URL or the authenticated storage route.
  */
-export function replaceOfficialLogoPlaceholder(
-  html: string,
-  logoDataUrl: string
-): string {
-  if (!/^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/]+=*$/i.test(logoDataUrl)) {
-    throw new Error("The official organization logo is not a validated image");
-  }
-
+export function replaceOfficialLogoPlaceholder(html: string): string {
   const markerAttribute = /src=(["'])telegram-logo:\/\/official\1/i;
   if (!markerAttribute.test(html)) {
     throw new Error("The official organization logo placeholder is missing");
@@ -103,7 +102,7 @@ export function replaceOfficialLogoPlaceholder(
 
   return html.replace(
     /src=(["'])telegram-logo:\/\/official\1/gi,
-    'src="' + logoDataUrl + '"'
+    'src="' + OFFICIAL_LOGO_RENDER_URL + '"'
   );
 }
 
@@ -150,13 +149,13 @@ export function resolveDepartmentLogoStorageKey(logoSource: string): string {
   }
 }
 
-async function loadOrganizationLogoDataUrl(
+async function loadOrganizationLogoBinary(
   user: NonNullable<
     Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
   >,
   organizationId: string,
   logoSource: string
-): Promise<string> {
+): Promise<OfficialLogoBinary> {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       organizationId
@@ -238,7 +237,7 @@ async function loadOrganizationLogoDataUrl(
     );
   }
 
-  return "data:" + mimeType + ";base64," + asset.body.toString("base64");
+  return { body: asset.body, mimeType };
 }
 
 export function isSafeExportHtml(html: string): boolean {
@@ -361,7 +360,8 @@ async function launchBrowser() {
 
 export async function renderTelegramDocument(
   html: string,
-  format: "pdf" | "png"
+  format: "pdf" | "png",
+  officialLogo?: OfficialLogoBinary
 ) {
   const browser = await launchBrowser();
   try {
@@ -379,7 +379,24 @@ export async function renderTelegramDocument(
         // Never allow untrusted export HTML to access localhost, cloud metadata,
         // the application API, or arbitrary external hosts while rendering.
         await page.route("**/*", async route => {
-          if (isAllowedExportResourceUrl(route.request().url())) {
+          const requestedUrl = route.request().url();
+          if (
+            officialLogo &&
+            requestedUrl === OFFICIAL_LOGO_RENDER_URL
+          ) {
+            await route.fulfill({
+              status: 200,
+              contentType: officialLogo.mimeType,
+              body: officialLogo.body,
+              headers: {
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+              },
+            });
+            return;
+          }
+
+          if (isAllowedExportResourceUrl(requestedUrl)) {
             await route.continue();
             return;
           }
@@ -510,6 +527,7 @@ export function registerTelegramExportRoutes(app: Express): void {
       logoSource?: unknown;
     };
     let html = typeof body.html === "string" ? body.html : "";
+    let officialLogo: OfficialLogoBinary | undefined;
     const format =
       body.format === "pdf" || body.format === "png" ? body.format : null;
 
@@ -531,19 +549,19 @@ export function registerTelegramExportRoutes(app: Express): void {
             .status(400)
             .json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
         }
-        const logoDataUrl = await loadOrganizationLogoDataUrl(
+        officialLogo = await loadOrganizationLogoBinary(
           user,
           body.organizationId,
           body.logoSource
         );
-        html = replaceOfficialLogoPlaceholder(html, logoDataUrl);
+        html = replaceOfficialLogoPlaceholder(html);
       }
 
       if (!isSafeExportHtml(html)) {
         return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
       }
 
-      const result = await renderTelegramDocument(html, format);
+      const result = await renderTelegramDocument(html, format, officialLogo);
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(
         "Content-Disposition",

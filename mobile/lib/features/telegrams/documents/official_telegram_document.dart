@@ -903,7 +903,9 @@ class _OfficialTelegramDocumentPageState
     }
     _updateProgress(72, 'اكتمل إنشاء الوثيقة متعددة الصفحات');
 
-    _beginIndeterminateProgress('جارٍ تحويل جميع صفحات الوثيقة إلى صور عالية الدقة');
+    _beginIndeterminateProgress(
+      'جارٍ تحويل جميع صفحات الوثيقة إلى صور عالية الدقة',
+    );
     final images = await _renderer.renderHighResolutionImages(pdfBytes);
     if (images.isEmpty || images.any((image) => !_hasPngSignature(image))) {
       throw Exception('تعذر تجهيز صور صفحات الوثيقة بدقة الطباعة.');

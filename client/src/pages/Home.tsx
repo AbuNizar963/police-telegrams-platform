@@ -3669,13 +3669,6 @@ function TelegramDetail({
           settingsOrganizationId: exportSettings.organizationId,
           settingsLogoUrl: exportSettings.logoUrl,
         });
-  const resolveTelegramPreviewLogoUrl = (exportSettings: {
-    organizationId?: string | null;
-    logoUrl?: string | null;
-  }): Promise<string | null> =>
-    loadOfficialDocumentLogoObjectUrl(
-      getTelegramPreviewLogoSource(exportSettings)
-    );
   const documentTelegram = selectedVersion
     ? ({ ...telegram, ...selectedVersion.snapshot } as typeof telegram)
     : telegram;
@@ -4303,66 +4296,25 @@ function TelegramDetail({
         );
         if (cancelled) return;
         const immediateLogoUrl = getTelegramPreviewLogoSource(exportSettings);
-        // Paint the document with the organization-scoped source immediately.
-        // The browser can display it while the stricter data-URL normalization
-        // continues in the background for printing and export.
-        renderPreview(documentSettings, immediateLogoUrl);
-        if (!cancelled) setDocumentPreparing(false);
 
-        void withPreparationTimeout(
-          resolveTelegramPreviewLogoUrl(exportSettings),
-          OFFICIAL_DOCUMENT_PREPARATION_TIMEOUT_MS,
-          "استغرق تحميل رابط شعار الجهة وقتًا أطول من المتوقع."
-        )
-          .then(async logoUrl => {
-            if (cancelled || !logoUrl || logoUrl === immediateLogoUrl) return;
-            renderPreview(documentSettings, logoUrl);
-            // renderPreview() builds the visible A4 pages by cloning the
-            // off-screen source paper. Waiting for that source paper alone is
-            // insufficient: cloned <img> elements have their own loading and
-            // decode lifecycle, especially on mobile browsers. Do not consider
-            // the enhanced preview ready until every image in the actual page
-            // stack has loaded and decoded successfully.
-            const visiblePreviewPages = host.querySelector<HTMLElement>(
-              ".telegram-preview-page-stack"
-            );
-            if (visiblePreviewPages) {
-              await withPreparationTimeout(
-                waitForOfficialDocumentImages(visiblePreviewPages),
-                OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-                "استغرق تحميل شعار الجهة في صفحات المعاينة وقتًا أطول من المتوقع."
-              );
-            }
-          })
-          .catch(error => {
-            // If the optimized data URL or one of its cloned page images fails
-            // to load, restore the already displayed organization-scoped URL.
-            // This keeps a failed optimization from replacing a valid logo
-            // with an empty image in the final preview.
-            if (!cancelled && immediateLogoUrl) {
-              renderPreview(documentSettings, immediateLogoUrl);
-              const fallbackPreviewPages = host.querySelector<HTMLElement>(
-                ".telegram-preview-page-stack"
-              );
-              if (fallbackPreviewPages) {
-                void withPreparationTimeout(
-                  waitForOfficialDocumentImages(fallbackPreviewPages),
-                  OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
-                  "تعذر تثبيت شعار الجهة في صفحات المعاينة."
-                ).catch(fallbackError => {
-                  console.warn("تعذر تحميل شعار المعاينة الاحتياطي", {
-                    error:
-                      fallbackError instanceof Error
-                        ? fallbackError.message
-                        : String(fallbackError),
-                  });
-                });
-              }
-            }
-            console.warn("تعذر تحسين شعار المعاينة في الخلفية", {
-              error: error instanceof Error ? error.message : String(error),
-            });
-          });
+        // Render once with the organization's authenticated image URL. The
+        // browser loads the image directly, avoiding a second binary fetch and
+        // an object-URL replacement that can be blocked by the document CSP.
+        // Keep the preparation state visible until the images in the actual
+        // visible A4 pages have loaded and decoded (not merely until the paper
+        // HTML has been mounted).
+        renderPreview(documentSettings, immediateLogoUrl);
+        const visiblePreviewPages = host.querySelector<HTMLElement>(
+          ".telegram-preview-page-stack"
+        );
+        if (visiblePreviewPages) {
+          await withPreparationTimeout(
+            waitForOfficialDocumentImages(visiblePreviewPages),
+            OFFICIAL_DOCUMENT_IMAGE_TIMEOUT_MS,
+            "استغرق تحميل شعار الجهة وصور الوثيقة في صفحات المعاينة وقتًا أطول من المتوقع."
+          );
+        }
+        if (!cancelled) setDocumentPreparing(false);
       } catch (error) {
         if (!cancelled) {
           console.error("تعذر تجهيز الوثيقة الرسمية بالكامل:", error);

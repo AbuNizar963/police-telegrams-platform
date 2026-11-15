@@ -83,6 +83,10 @@ String officialTelegramDocumentLogoFileExtension(Uint8List bytes) {
   throw FormatException('صيغة شعار الجهة غير مدعومة.');
 }
 
+// Font data URLs are cached independently from logo image files.
+Map<int, String>? _officialFontDataUrlsCache;
+Future<Map<int, String>>? _officialFontDataUrlsFuture;
+
 /// Rendering boundary for the official document.
 abstract interface class OfficialTelegramDocumentRenderer {
   Future<Uint8List> renderPdf(String html);
@@ -791,7 +795,7 @@ class _OfficialTelegramDocumentPageState
     if (url.isEmpty || organizationId.isEmpty) {
       return _loadLogoSource(fallbackUrl, organizationId);
     }
-    final cacheKey = '${organizationId}\n${url}';
+    final cacheKey = '$organizationId\n$url';
     final historicalSource = await _loadOfficialLogoFile(
       cacheKey,
       () => widget.api.fetchImageAsset(url),
@@ -807,7 +811,7 @@ class _OfficialTelegramDocumentPageState
   ) async {
     final url = _value(source, fallback: '');
     if (organizationId.isEmpty) return null;
-    final cacheKey = '${organizationId}\n${url.isEmpty ? 'api-export' : url}';
+    final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';
     return _loadOfficialLogoFile(
       cacheKey,
       () => widget.api.fetchOrganizationLogo(

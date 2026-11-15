@@ -2,16 +2,9 @@ import type { Express, Request, Response } from "express";
 import chromium from "@sparticuz/chromium";
 import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
-import { ENV } from "./_core/env";
-import {
-  getOrganizationSettings,
-  isDepartmentLogoExclusiveToOrganization,
-} from "./db";
+import { isDepartmentLogoExclusiveToOrganization } from "./db";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
-import {
-  storageDownload,
-  storageKeyFromStoredUrl,
-} from "./features/storage/storage";
+import { storageDownload } from "./features/storage/storage";
 import { isPlatformOwner } from "./ownerAccess";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 
@@ -124,11 +117,47 @@ class TelegramExportRequestError extends Error {
   }
 }
 
+export function resolveDepartmentLogoStorageKey(
+  logoSource: string
+): string {
+  const storagePrefix = "/api/storage/";
+  if (!logoSource.startsWith(storagePrefix)) {
+    throw new Error("مصدر شعار الجهة ليس مسار تخزين محميًا");
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(logoSource, "https://telegram-export.invalid");
+  } catch {
+    throw new Error("مسار شعار الجهة غير صالح");
+  }
+
+  if (
+    parsedUrl.origin !== "https://telegram-export.invalid" ||
+    parsedUrl.search ||
+    parsedUrl.hash ||
+    !parsedUrl.pathname.startsWith(storagePrefix)
+  ) {
+    throw new Error("مسار شعار الجهة غير صالح");
+  }
+
+  try {
+    return parsedUrl.pathname
+      .slice(storagePrefix.length)
+      .split("/")
+      .map(segment => decodeURIComponent(segment))
+      .join("/");
+  } catch {
+    throw new Error("ترميز مسار شعار الجهة غير صالح");
+  }
+}
+
 async function loadOrganizationLogoDataUrl(
   user: NonNullable<
     Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
   >,
-  organizationId: string
+  organizationId: string,
+  logoSource: string
 ): Promise<string> {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -155,21 +184,7 @@ async function loadOrganizationLogoDataUrl(
     }
   }
 
-  const settings = await getOrganizationSettings(organizationId);
-  const storedLogo = settings?.logoKey?.trim() || settings?.logoUrl?.trim();
-  const storageKey = storedLogo
-    ? storedLogo.startsWith("department/logos/")
-      ? storedLogo
-      : storageKeyFromStoredUrl(storedLogo, ENV.supabaseStorageBucket)
-    : null;
-
-  if (!storageKey) {
-    throw new TelegramExportRequestError(
-      "الشعار المحفوظ غير متاح كملف ثنائي للتصدير",
-      422
-    );
-  }
-
+  const storageKey = resolveDepartmentLogoStorageKey(logoSource);
   const departmentLogoKeyPattern =
     /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
   if (!departmentLogoKeyPattern.test(storageKey)) {
@@ -227,6 +242,7 @@ async function loadOrganizationLogoDataUrl(
 
   return "data:" + mimeType + ";base64," + asset.body.toString("base64");
 }
+
 
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
@@ -494,6 +510,7 @@ export function registerTelegramExportRoutes(app: Express): void {
       html?: unknown;
       format?: unknown;
       organizationId?: unknown;
+      logoSource?: unknown;
     };
     let html = typeof body.html === "string" ? body.html : "";
     const format =
@@ -509,14 +526,18 @@ export function registerTelegramExportRoutes(app: Express): void {
 
     try {
       if (html.includes(OFFICIAL_LOGO_PLACEHOLDER)) {
-        if (typeof body.organizationId !== "string") {
+        if (
+          typeof body.organizationId !== "string" ||
+          typeof body.logoSource !== "string"
+        ) {
           return res
             .status(400)
             .json({ error: "معرّف الجهة مطلوب لتصدير الشعار" });
         }
         const logoDataUrl = await loadOrganizationLogoDataUrl(
           user,
-          body.organizationId
+          body.organizationId,
+          body.logoSource
         );
         html = replaceOfficialLogoPlaceholder(html, logoDataUrl);
       }

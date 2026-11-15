@@ -135,6 +135,7 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
     }
 
     var resources: [String: TelegramPdfImageResource] = [:]
+    var totalResourceBytes = 0
     for item in rawResources {
       guard
         let id = item["id"] as? String,
@@ -149,6 +150,27 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
           FlutterError(
             code: "INVALID_PDF_RESOURCE",
             message: "بيانات صورة الوثيقة غير صالحة.",
+            details: nil
+          )
+        )
+        return
+      }
+      totalResourceBytes += typedData.data.count
+      guard totalResourceBytes <= 20 * 1024 * 1024 else {
+        result(
+          FlutterError(
+            code: "INVALID_PDF_RESOURCE",
+            message: "حجم صور الوثيقة الإجمالي يتجاوز الحد المسموح.",
+            details: nil
+          )
+        )
+        return
+      }
+      guard resources[id] == nil else {
+        result(
+          FlutterError(
+            code: "INVALID_PDF_RESOURCE",
+            message: "تكرار معرّف مورد صورة الوثيقة.",
             details: nil
           )
         )

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -30,6 +31,20 @@ const _documentPreviewDpi = 150.0;
 @visibleForTesting
 const officialTelegramDocumentImageExportDpi = 384.0;
 const _documentImageExportDpi = officialTelegramDocumentImageExportDpi;
+
+bool _hasPdfSignature(Uint8List bytes) =>
+    bytes.length >= 5 && String.fromCharCodes(bytes.take(5)) == '%PDF-';
+
+bool _hasPngSignature(Uint8List bytes) =>
+    bytes.length >= 8 &&
+    bytes[0] == 137 &&
+    bytes[1] == 80 &&
+    bytes[2] == 78 &&
+    bytes[3] == 71 &&
+    bytes[4] == 13 &&
+    bytes[5] == 10 &&
+    bytes[6] == 26 &&
+    bytes[7] == 10;
 const _documentPreviewPageGap = 18.0;
 // A4 watermark mosaic; calibrated against the web PDF for visible 3mm margins.
 const _ministryWatermarkColumns = 13;
@@ -60,6 +75,11 @@ abstract interface class OfficialTelegramDocumentRenderer {
     String? organizationId,
     String? logoSource,
   });
+  Future<Uint8List> renderPng(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  });
   Future<Uint8List> renderPreview(Uint8List pdfBytes);
   Future<List<Uint8List>> renderPreviewPages(
     Uint8List pdfBytes, {
@@ -82,6 +102,18 @@ class ServerOfficialTelegramDocumentRenderer
   }) => api.renderTelegramDocument(
     html: html,
     format: 'pdf',
+    organizationId: organizationId,
+    logoSource: logoSource,
+  );
+
+  @override
+  Future<Uint8List> renderPng(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) => api.renderTelegramDocument(
+    html: html,
+    format: 'png',
     organizationId: organizationId,
     logoSource: logoSource,
   );
@@ -843,10 +875,34 @@ class _OfficialTelegramDocumentPageState
   }
 
   Future<List<Uint8List>> _renderOutputImages() async {
-    final pdfBytes = await _renderOutputPdf('download', 'png');
+    final occurredAt = await _recordDocumentOutput('download', 'png');
+    final html = _htmlWithOutputTimestamp(occurredAt);
+    _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
+    _beginIndeterminateProgress('جارٍ تجهيز صورة البرقية من محرك Chromium');
+    final renderedBytes = await _renderer
+        .renderPng(
+          html,
+          organizationId: _documentLogoOrganizationId,
+          logoSource: _documentLogoSource,
+        )
+        .timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw Exception(
+            'انتهت مهلة تجهيز صورة الوثيقة. أعد المحاولة.',
+          ),
+        );
+
+    if (_hasPngSignature(renderedBytes)) {
+      _updateProgress(96, 'اكتملت صورة صفحة البرقية');
+      return [renderedBytes];
+    }
+    if (!_hasPdfSignature(renderedBytes)) {
+      throw Exception('أعاد محرك Chromium ملف صورة بصيغة غير صالحة.');
+    }
+
     _beginIndeterminateProgress('جارٍ تحويل صفحات الوثيقة إلى صور عالية الدقة');
-    final images = await _renderer.renderHighResolutionImages(pdfBytes);
-    if (images.isEmpty || images.any((image) => image.isEmpty)) {
+    final images = await _renderer.renderHighResolutionImages(renderedBytes);
+    if (images.isEmpty || images.any((image) => !_hasPngSignature(image))) {
       throw Exception('تعذر تجهيز صور صفحات الوثيقة بدقة الطباعة.');
     }
     _updateProgress(96, 'اكتمل تجهيز صور صفحات الوثيقة');

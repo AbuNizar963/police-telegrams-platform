@@ -184,8 +184,7 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
-      renderer != oldWidget.renderer ||
-      false;
+      renderer != oldWidget.renderer;
 }
 
 bool _hasValidPlatformDocumentSettingsContract(Map result) {
@@ -745,7 +744,7 @@ class _OfficialTelegramDocumentPageState
       'webp' => 'image/webp',
       _ => throw FormatException('صيغة شعار الجهة غير مدعومة.'),
     };
-    final resourceId = const Uuid().v4();
+    final resourceId = Uuid().v4();
     _officialLogoResources[resourceId] = TelegramPdfImageResource(
       bytes: Uint8List.fromList(bytes),
       mimeType: mimeType,

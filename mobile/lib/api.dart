@@ -207,12 +207,6 @@ class PoliceApi {
     if (html.trim().isEmpty || !{'pdf', 'png'}.contains(format)) {
       throw const FormatException('بيانات تصدير الوثيقة غير صالحة.');
     }
-    if (utf8.encode(html).length > 3900000) {
-      throw const FormatException(
-        'حجم قالب الوثيقة يتجاوز الحد الآمن للتصدير.',
-      );
-    }
-
     final requiresOfficialLogo = html.contains('telegram-logo://official');
     final normalizedOrganizationId = organizationId?.trim() ?? '';
     final normalizedLogoSource = logoSource?.trim() ?? '';
@@ -241,11 +235,17 @@ class PoliceApi {
         'logoSource': normalizedLogoSource,
       },
     };
+    final encodedBody = jsonEncode(body);
+    if (utf8.encode(encodedBody).length > 3900000) {
+      throw const FormatException(
+        'حجم قالب الوثيقة يتجاوز الحد الآمن للتصدير.',
+      );
+    }
 
     late final http.Response response;
     try {
       response = await _httpClient
-          .post(uri, headers: headers, body: jsonEncode(body))
+          .post(uri, headers: headers, body: encodedBody)
           .timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw const NetworkException('انتهت مهلة إنشاء الوثيقة. أعد المحاولة.');

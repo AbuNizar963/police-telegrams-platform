@@ -805,10 +805,7 @@ class _OfficialTelegramDocumentPageState
     return _loadLogoSource(fallbackUrl, organizationId);
   }
 
-  Future<String?> _loadLogoSource(
-    Object? source,
-    String organizationId,
-  ) async {
+  Future<String?> _loadLogoSource(Object? source, String organizationId) async {
     final url = _value(source, fallback: '');
     if (organizationId.isEmpty) return null;
     final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';

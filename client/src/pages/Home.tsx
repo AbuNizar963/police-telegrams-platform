@@ -4090,6 +4090,14 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
+
+    // Wait for version history before choosing the letterhead source. Until
+    // this query settles selectedVersion is temporarily null, which used to
+    // render the current logo first and then replace the whole paper with the
+    // historical version (causing the logo to disappear and load a second
+    // time). A failed history query still falls back to the current document.
+    if (versions.isLoading) return;
+
     if (versions.isError) {
       const historyErrorKey = `${telegram.id}:history-error`;
       if (preparedTelegramIdRef.current !== historyErrorKey) {

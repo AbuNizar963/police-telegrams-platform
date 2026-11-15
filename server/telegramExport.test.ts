@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedExportResourceUrl,
   isSafeExportHtml,
+  replaceOfficialLogoPlaceholder,
   withPngDpiMetadata,
 } from "./telegramExport";
 
@@ -90,6 +91,35 @@ describe("telegram export HTML validation", () => {
 
   it("rejects empty HTML", () => {
     expect(isSafeExportHtml("")).toBe(false);
+  });
+});
+
+describe("official organization logo binary handoff", () => {
+  it("replaces the server-only marker with a validated image data URL", () => {
+    const logo = "data:image/png;base64,iVBORw0KGgo=";
+    const html =
+      '<img src="telegram-logo://official" alt="شعار" />' +
+      '<img src="telegram-logo://official" alt="علامة مائية" />';
+
+    expect(replaceOfficialLogoPlaceholder(html, logo)).toBe(
+      '<img src="data:image/png;base64,iVBORw0KGgo=" alt="شعار" />' +
+        '<img src="data:image/png;base64,iVBORw0KGgo=" alt="علامة مائية" />'
+    );
+  });
+
+  it("rejects missing markers and unsupported image data", () => {
+    expect(() =>
+      replaceOfficialLogoPlaceholder(
+        "<img src='/logo.png' />",
+        "data:text/html;base64,AA=="
+      )
+    ).toThrow();
+    expect(() =>
+      replaceOfficialLogoPlaceholder(
+        "<img src='/logo.png' />",
+        "data:image/png;base64,AA=="
+      )
+    ).toThrow(/placeholder is missing/);
   });
 });
 

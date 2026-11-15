@@ -121,7 +121,7 @@ describe("official organization logo storage path", () => {
 });
 
 describe("official organization logo binary handoff", () => {
-  it("replaces the server-only marker with a validated image data URL", () => {
+  it("replaces the server-only marker with the internal binary image URL", () => {
     const html =
       '<img src="telegram-logo://official" alt="شعار" />' +
       '<img src="telegram-logo://official" alt="علامة مائية" />';

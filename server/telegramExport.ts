@@ -241,7 +241,6 @@ async function loadOrganizationLogoDataUrl(
   return "data:" + mimeType + ";base64," + asset.body.toString("base64");
 }
 
-
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
   // a legitimate telegram may contain words such as "javascript:" or "data:".

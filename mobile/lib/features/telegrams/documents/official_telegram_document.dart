@@ -167,14 +167,23 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
   return Uint8List.fromList(encodedArchive);
 }
 
+typedef OfficialTelegramLogoFileWriter = Future<String> Function(
+  Uint8List bytes,
+  String cacheKey,
+);
+
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   const OfficialTelegramDocumentRendererScope({
     super.key,
     required this.renderer,
+    this.logoFileWriter,
     required super.child,
   });
 
   final OfficialTelegramDocumentRenderer renderer;
+  @visibleForTesting
+  final OfficialTelegramLogoFileWriter? logoFileWriter;
+
   static OfficialTelegramDocumentRendererScope? maybeOf(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<
@@ -183,7 +192,8 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
-      renderer != oldWidget.renderer;
+      renderer != oldWidget.renderer ||
+      logoFileWriter != oldWidget.logoFileWriter;
 }
 
 bool _hasValidPlatformDocumentSettingsContract(Map result) {
@@ -248,6 +258,7 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
+  OfficialTelegramLogoFileWriter? _logoFileWriter;
   final TransformationController _previewTransform = TransformationController();
   final Map<String, String> _officialLogoResourceUris = <String, String>{};
   final Map<String, Future<String?>> _officialLogoResourceRequests =
@@ -264,6 +275,7 @@ class _OfficialTelegramDocumentPageState
     _renderer =
         rendererScope?.renderer ??
         const NativeOfficialTelegramDocumentRenderer();
+    _logoFileWriter = rendererScope?.logoFileWriter;
   }
 
   @override
@@ -753,6 +765,38 @@ class _OfficialTelegramDocumentPageState
     return source;
   }
 
+  Future<String> _registerOfficialLogoResourceWithTestWriter(
+    Uint8List bytes,
+    String cacheKey,
+    OfficialTelegramLogoFileWriter writer,
+  ) async {
+    final source = await writer(bytes, cacheKey);
+    final uri = Uri.tryParse(source);
+    if (uri == null ||
+        uri.scheme != 'telegram-resource' ||
+        uri.host != 'document' ||
+        uri.pathSegments.length != 1 ||
+        uri.pathSegments.single.isEmpty ||
+        uri.query.isNotEmpty ||
+        uri.fragment.isNotEmpty) {
+      throw FormatException('مصدر مورد اختبار شعار الوثيقة غير صالح.');
+    }
+    final extension = officialTelegramDocumentLogoFileExtension(bytes);
+    final mimeType = switch (extension) {
+      'jpg' => 'image/jpeg',
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      _ => throw FormatException('صيغة شعار الجهة غير مدعومة.'),
+    };
+    _officialLogoResources[uri.pathSegments.single] = TelegramPdfImageResource(
+      bytes: Uint8List.fromList(bytes),
+      mimeType: mimeType,
+    );
+    _officialLogoResourceUris[cacheKey] = source;
+    return source;
+  }
+
   Future<String?> _loadOfficialLogoResource(
     String cacheKey,
     Future<Uint8List?> Function() loadBytes,
@@ -776,7 +820,14 @@ class _OfficialTelegramDocumentPageState
         if (kDebugMode) {
           debugPrint('[telegram-preview] received logo bytes: ${bytes.length}');
         }
-        final source = _registerOfficialLogoResource(bytes, cacheKey);
+        final testWriter = _logoFileWriter;
+        final source = testWriter == null
+            ? _registerOfficialLogoResource(bytes, cacheKey)
+            : await _registerOfficialLogoResourceWithTestWriter(
+                bytes,
+                cacheKey,
+                testWriter,
+              );
         if (kDebugMode) {
           debugPrint('[telegram-preview] binary logo resource ready');
         }

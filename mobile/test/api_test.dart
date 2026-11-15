@@ -1086,6 +1086,29 @@ void main() {
     );
   });
 
+  test('accepts a direct Chromium PNG response for single-page export', () async {
+    const html = '<article class="telegram-export-page"></article>';
+    const pngBytes = <int>[137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3];
+    final client = MockClient((request) async {
+      expect(jsonDecode(request.body), {'format': 'png', 'html': html});
+      return http.Response.bytes(
+        pngBytes,
+        200,
+        headers: {'content-type': 'image/png'},
+      );
+    });
+    addTearDown(client.close);
+
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+    expect(
+      await api.renderTelegramDocument(html: html, format: 'png'),
+      orderedEquals(pngBytes),
+    );
+  });
+
   test('accepts the shared renderer PDF response for multi-page PNG export', () async {
     const html = '<article class="telegram-export-page telegram-multipage"></article>';
     final pdfBytes = Uint8List.fromList(utf8.encode('%PDF-1.7\\nMultipage source'));

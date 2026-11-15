@@ -38,11 +38,6 @@ jobs:
             exit 1
           fi
 
-      - name: Temporary formatting diagnostic
-        run: |
-          pnpm exec prettier --write client/src/pages/Home.tsx server/telegramExport.ts server/telegramExport.test.ts
-          git --no-pager diff --unified=2 -- client/src/pages/Home.tsx server/telegramExport.ts server/telegramExport.test.ts
-
       - name: Check formatting
         run: pnpm lint
 

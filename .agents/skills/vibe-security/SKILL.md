@@ -120,7 +120,8 @@ These rules also apply proactively. Before writing code that touches auth, payme
 - `references/authentication.md` — JWT verification, middleware, Server Actions, and session management.
 - `references/rate-limiting.md` — Rate limiting strategies and abuse prevention.
 - `references/payments.md` — Stripe security, webhook verification, and price validation.
-- `references/flutter.md` — Flutter/Dart security: secure storage, deep links, platform configuration, and privacy.\n- `references/mobile.md` — React Native and Expo security: secure storage, API proxy, deep links.
+- `references/flutter.md` — Flutter/Dart security: secure storage, deep links, platform configuration, and privacy.
+- `references/mobile.md` — React Native and Expo security: secure storage, API proxy, deep links.
 - `references/ai-integration.md` — LLM API key protection, usage caps, prompt injection, and output sanitization.
 - `references/deployment.md` — Production configuration, security headers, and environment separation.
 - `references/data-access.md` — SQL injection prevention, ORM safety, and input validation.

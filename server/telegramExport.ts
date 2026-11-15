@@ -256,6 +256,16 @@ export function hasMultiPageTelegramLayout(html: string): boolean {
   return MULTI_PAGE_TELEGRAM_LAYOUT_PATTERN.test(html);
 }
 
+const MULTI_PAGE_PAGE_HEIGHT_THRESHOLD = 1124;
+
+/**
+ * Mirrors the web preview's page-height decision without executing
+ * HTML scripts.
+ */
+export function isTelegramMultiPageHeight(height: number): boolean {
+  return Number.isFinite(height) && height > MULTI_PAGE_PAGE_HEIGHT_THRESHOLD;
+}
+
 /** Keep the A4 page box full-size; the document's sole 10mm inset is its padding. */
 export function getTelegramRenderLayoutCss(printLayout: boolean): string {
   return `
@@ -344,11 +354,7 @@ export async function renderTelegramDocument(
 ) {
   const browser = await launchBrowser();
   try {
-    const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
-    const createReadyPage = async (
-      deviceScaleFactor: number,
-      printLayout: boolean
-    ) => {
+    const createMeasuredPage = async (deviceScaleFactor: number) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },
         deviceScaleFactor,
@@ -378,14 +384,11 @@ export async function renderTelegramDocument(
           }
           await route.abort("blockedbyclient");
         });
-        await page.emulateMedia({ media: printLayout ? "print" : "screen" });
-        await page.setContent(
-          html.replace(
-            "</head>",
-            `<style>${getTelegramRenderLayoutCss(printLayout)}</style></head>`
-          ),
-          { waitUntil: "load" }
-        );
+        // Measure the document in its screen layout before applying print
+        // overrides. This mirrors the web preview's pagination decision while
+        // keeping untrusted export HTML script-free.
+        await page.emulateMedia({ media: "screen" });
+        await page.setContent(html, { waitUntil: "load" });
         await page.evaluate(async () => {
           await document.fonts.ready;
           const images = Array.from(document.images);
@@ -424,7 +427,19 @@ export async function renderTelegramDocument(
         await page
           .locator(".telegram-export-page")
           .waitFor({ state: "visible" });
-        return page;
+        const isMultiPage = await page.evaluate(heightThreshold => {
+          const paper = document.querySelector<HTMLElement>(
+            ".telegram-export-page"
+          );
+          if (!paper) {
+            throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
+          }
+          const pageHeight = paper.getBoundingClientRect().height;
+          const multiPage = pageHeight > heightThreshold;
+          paper.classList.toggle("telegram-multipage", multiPage);
+          return multiPage;
+        }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
+        return { page, isMultiPage };
       } catch (error) {
         await page.close();
         throw error;
@@ -434,9 +449,13 @@ export async function renderTelegramDocument(
     // Multi-page documents must retain Chromium's paginated print layout.
     // The client rasterizes this PDF into individual PNG pages at 384 DPI;
     // clipping the long flowing article as a single screenshot would crop text.
-    if (format === "pdf" || isMultiPagePng) {
-      const page = await createReadyPage(1, true);
+    if (format === "pdf") {
+      const { page } = await createMeasuredPage(1);
       try {
+        await page.addStyleTag({
+          content: getTelegramRenderLayoutCss(true),
+        });
+        await page.emulateMedia({ media: "print" });
         return {
           body: await page.pdf({
             printBackground: true,
@@ -444,8 +463,7 @@ export async function renderTelegramDocument(
             tagged: true,
           }),
           contentType: "application/pdf",
-          fileName:
-            format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
+          fileName: "telegram.pdf",
         };
       } finally {
         await page.close();
@@ -453,8 +471,28 @@ export async function renderTelegramDocument(
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
-      const page = await createReadyPage(deviceScaleFactor, false);
+      const { page, isMultiPage } = await createMeasuredPage(deviceScaleFactor);
       try {
+        if (isMultiPage) {
+          await page.addStyleTag({
+            content: getTelegramRenderLayoutCss(true),
+          });
+          await page.emulateMedia({ media: "print" });
+          return {
+            body: await page.pdf({
+              printBackground: true,
+              preferCSSPageSize: true,
+              tagged: true,
+            }),
+            contentType: "application/pdf",
+            fileName: "telegram-pages-source.pdf",
+          };
+        }
+
+        await page.addStyleTag({
+          content: getTelegramRenderLayoutCss(false),
+        });
+        await page.emulateMedia({ media: "screen" });
         const renderedPng = await page.screenshot({
           type: "png",
           animations: "disabled",

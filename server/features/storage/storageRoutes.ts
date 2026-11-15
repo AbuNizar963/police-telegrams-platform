@@ -7,17 +7,25 @@ import express, {
 import { ENV } from "../../_core/env";
 import { getAuthenticatedUserFromRequest } from "../../_core/auth";
 import {
+  createTelegramAttachment,
   getTelegramAttachmentByStorageKey,
   getTelegramById,
   getTelegramVersion,
+  writeAuditLog,
 } from "../../db";
+import { getRequestAuditContext } from "../../auditContext";
 import { canAccessTelegramScope } from "../../telegramAccess";
 import {
   getOrganizationSettings,
   isDepartmentLogoExclusiveToOrganization,
 } from "../../db";
 import { isPlatformOwner } from "../../ownerAccess";
-import { validateUploadedFile } from "../../fileSecurity";
+import {
+  ALLOWED_ATTACHMENT_TYPES,
+  sha256Hex,
+  validateUploadedFile,
+  type AllowedAttachmentType,
+} from "../../fileSecurity";
 import {
   getOrganizationByIdIncludingInactive,
   getUserOrganizationMembership,
@@ -30,7 +38,9 @@ import {
   storageDownload,
   storageGetSignedUrl,
   storageKeyFromStoredUrl,
+  storageDelete,
   storagePutDepartmentLogo,
+  storagePutOrganizationAttachment,
 } from "./storage";
 
 const ORGANIZATION_ID_PATTERN =
@@ -97,6 +107,173 @@ async function assertDepartmentLogoAccess(
 }
 
 const MAX_DEPARTMENT_LOGO_UPLOAD_BYTES = 2_621_440;
+const MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+type TelegramAttachmentUploadContext = {
+  user: NonNullable<
+    Awaited<ReturnType<typeof getAuthenticatedUserFromRequest>>
+  >;
+  telegram: NonNullable<Awaited<ReturnType<typeof getTelegramById>>>;
+  fileName: string;
+  contentType: AllowedAttachmentType;
+};
+
+async function authorizeTelegramAttachmentUpload(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const user = await getAuthenticatedUserFromRequest(req);
+    if (!user) {
+      res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
+      return;
+    }
+
+    const telegramId = Number(req.params.telegramId);
+    if (!Number.isSafeInteger(telegramId) || telegramId < 1) {
+      res.status(400).json({ error: "معرّف البرقية غير صالح" });
+      return;
+    }
+
+    const telegram = await getTelegramById(telegramId);
+    if (!telegram) {
+      res.status(404).json({ error: "البرقية غير موجودة" });
+      return;
+    }
+    if (!(await canAccessTelegramScope(user, telegram))) {
+      res.status(403).json({ error: "لا تملك صلاحية إرفاق ملف بهذه البرقية" });
+      return;
+    }
+
+    const contentType = req.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    if (
+      !contentType ||
+      !ALLOWED_ATTACHMENT_TYPES.includes(contentType as AllowedAttachmentType)
+    ) {
+      res.status(415).json({ error: "نوع المرفق غير مدعوم" });
+      return;
+    }
+
+    let fileName: string;
+    try {
+      fileName = decodeURIComponent(req.get("x-file-name") ?? "").trim();
+    } catch {
+      res.status(400).json({ error: "اسم ملف المرفق غير صالح" });
+      return;
+    }
+    if (!fileName || fileName.length > 180) {
+      res.status(400).json({ error: "اسم ملف المرفق غير صالح" });
+      return;
+    }
+
+    res.locals.telegramAttachmentUpload = {
+      user,
+      telegram,
+      fileName,
+      contentType: contentType as AllowedAttachmentType,
+    } satisfies TelegramAttachmentUploadContext;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function receiveTelegramAttachmentUpload(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const upload = res.locals.telegramAttachmentUpload as
+    | TelegramAttachmentUploadContext
+    | undefined;
+  if (!upload || !Buffer.isBuffer(req.body)) {
+    res.status(400).json({ error: "لم يتم استلام بيانات المرفق الثنائية" });
+    return;
+  }
+
+  const bytes = req.body;
+  try {
+    validateUploadedFile({
+      bytes,
+      declaredType: upload.contentType,
+      fileName: upload.fileName,
+      maxBytes: MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES,
+    });
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "بيانات المرفق غير صالحة",
+    });
+    return;
+  }
+
+  const sha256 = sha256Hex(bytes);
+  let uploaded: { key: string; url: string };
+  try {
+    uploaded = await storagePutOrganizationAttachment(
+      upload.telegram.organizationId,
+      upload.telegram.id,
+      upload.fileName,
+      bytes,
+      upload.contentType
+    );
+  } catch (error) {
+    console.error("[Storage] Telegram attachment upload failed", error);
+    res.status(502).json({ error: "تعذر رفع المرفق إلى مساحة التخزين" });
+    return;
+  }
+
+  try {
+    await createTelegramAttachment({
+      telegramId: upload.telegram.id,
+      storageOrganizationId: upload.telegram.organizationId,
+      storageKey: uploaded.key,
+      originalName: upload.fileName,
+      mimeType: upload.contentType,
+      sizeBytes: bytes.byteLength,
+      sha256,
+      uploadedByUserId: upload.user.id,
+    });
+  } catch (error) {
+    try {
+      await storageDelete(uploaded.key);
+    } catch (cleanupError) {
+      console.error("[Storage] Orphan attachment cleanup failed", cleanupError);
+    }
+    console.error("[Storage] Telegram attachment metadata write failed", error);
+    res.status(500).json({ error: "تعذر تسجيل بيانات المرفق" });
+    return;
+  }
+
+  try {
+    await writeAuditLog({
+      ...getRequestAuditContext(req),
+      actorUserId: upload.user.id,
+      actorName: upload.user.name ?? upload.user.email ?? "Officer",
+      action: "attachment.upload",
+      entityType: "telegram_attachment",
+      entityId: String(upload.telegram.id),
+      metadata: JSON.stringify({
+        fileName: upload.fileName,
+        contentType: upload.contentType,
+        size: bytes.byteLength,
+        sha256,
+      }),
+    });
+  } catch (error) {
+    console.error("[Audit] Telegram attachment upload audit failed", error);
+    res.status(500).json({ error: "تم رفع المرفق لكن تعذر تسجيل سجل التدقيق" });
+    return;
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.status(201).json({
+    ...uploaded,
+    fileName: upload.fileName,
+    contentType: upload.contentType,
+    size: bytes.byteLength,
+    sha256,
+  });
+}
 
 type DepartmentLogoUploadContext = {
   organizationId: string;
@@ -215,6 +392,16 @@ async function receiveDepartmentLogoUpload(
 }
 
 export function registerStorageRoutes(app: Express): void {
+  app.put(
+    "/api/telegrams/:telegramId/attachments",
+    authorizeTelegramAttachmentUpload,
+    express.raw({
+      type: [...ALLOWED_ATTACHMENT_TYPES],
+      limit: MAX_TELEGRAM_ATTACHMENT_UPLOAD_BYTES,
+    }),
+    receiveTelegramAttachmentUpload
+  );
+
   app.put(
     "/api/storage/department-logo",
     authorizeDepartmentLogoUpload,

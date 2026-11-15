@@ -2,8 +2,10 @@
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS "sessionVersion" uuid;
 
+-- Preserve existing sessions during rollout. Legacy JWTs carry authUserId;
+-- the verifier accepts that claim until a password reset rotates sessionVersion.
 UPDATE public.users
-SET "sessionVersion" = gen_random_uuid()
+SET "sessionVersion" = "authUserId"
 WHERE "sessionVersion" IS NULL;
 
 ALTER TABLE public.users

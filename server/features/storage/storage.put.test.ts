@@ -54,57 +54,56 @@ describe("stable storage URLs", () => {
   });
 
   it("rejects insecure or malformed provider URLs in production", () => {
-    expect(() =>
-      validateStorageProviderUrl("http://storage.example/upload", true)
-    ).toThrow("Storage URLs must use HTTPS in production");
-    expect(() =>
-      validateStorageProviderUrl("javascript:alert(1)", true)
-    ).toThrow("Storage provider returned an unsafe URL");
-    expect(() =>
+    expect(() => {
+      validateStorageProviderUrl("http://storage.example/upload", true);
+    }).toThrow("Storage URLs must use HTTPS in production");
+    expect(() => {
+      validateStorageProviderUrl("javascript:alert(1)", true);
+    }).toThrow("Storage provider returned an unsafe URL");
+    expect(() => {
       validateStorageProviderUrl(
         "https://user:password@storage.example/upload",
         true
-      )
-    ).toThrow("Storage provider returned an unsafe URL");
+      );
+    }).toThrow("Storage provider returned an unsafe URL");
   });
 
   it("allows local HTTP storage URLs only outside production", () => {
-    expect(
-      validateStorageProviderUrl(
-        "http://127.0.0.1:54321/storage/upload",
-        false
-      )
-    ).toBe("http://127.0.0.1:54321/storage/upload");
-    expect(
-      validateStorageProviderUrl("https://storage.example/upload", true)
-    ).toBe("https://storage.example/upload");
+    const localUrl = validateStorageProviderUrl(
+      "http://127.0.0.1:54321/storage/upload",
+      false
+    );
+    const productionUrl = validateStorageProviderUrl(
+      "https://storage.example/upload",
+      true
+    );
+
+    expect(localUrl).toBe("http://127.0.0.1:54321/storage/upload");
+    expect(productionUrl).toBe("https://storage.example/upload");
   });
 
-  it(
-    "creates a signed upload URL scoped to one organization and telegram",
-    async () => {
-      const organizationId = "550e8400-e29b-41d4-a716-446655440000";
-      const result = await storageCreateOrganizationAttachmentUploadUrl(
-        organizationId,
-        7,
-        "report.pdf"
-      );
+  it("creates a signed upload URL scoped to one organization and telegram", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const result = await storageCreateOrganizationAttachmentUploadUrl(
+      organizationId,
+      7,
+      "report.pdf"
+    );
 
-      expect(result.key).toMatch(
-        new RegExp(
-          "^organizations/" +
-            organizationId +
-            "/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$",
-          "i"
-        )
-      );
-      expect(result.uploadUrl).toBe(
-        "https://storage.example/signed-upload?token=opaque"
-      );
-      expect(createSignedUploadUrl).toHaveBeenCalledWith(result.key);
-      expect(upload).not.toHaveBeenCalled();
-    }
-  );
+    expect(result.key).toMatch(
+      new RegExp(
+        "^organizations/" +
+          organizationId +
+          "/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$",
+        "i"
+      )
+    );
+    expect(result.uploadUrl).toBe(
+      "https://storage.example/signed-upload?token=opaque"
+    );
+    expect(createSignedUploadUrl).toHaveBeenCalledWith(result.key);
+    expect(upload).not.toHaveBeenCalled();
+  });
 
   it("reads object metadata without downloading file bytes", async () => {
     await expect(
@@ -118,65 +117,55 @@ describe("stable storage URLs", () => {
     );
   });
 
-  it(
-    "stores new attachments below their immutable organization and telegram path",
-    async () => {
-      const organizationId = "550e8400-e29b-41d4-a716-446655440000";
-      const result = await storagePutOrganizationAttachment(
-        organizationId,
+  it("stores new attachments below their immutable organization and telegram path", async () => {
+    const organizationId = "550e8400-e29b-41d4-a716-446655440000";
+    const result = await storagePutOrganizationAttachment(
+      organizationId,
+      7,
+      "report.pdf",
+      Buffer.from("attachment"),
+      "application/pdf"
+    );
+
+    expect(result.key).toMatch(
+      new RegExp(
+        `^organizations/${organizationId}/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$`,
+        "i"
+      )
+    );
+    expect(parseOrganizationAttachmentKey(result.key)).toEqual({
+      organizationId,
+      telegramId: 7,
+    });
+    expect(result.url).toBe(`/api/storage/${result.key}`);
+    expect(upload).toHaveBeenCalledWith(result.key, Buffer.from("attachment"), {
+      contentType: "application/pdf",
+      cacheControl: "3600",
+    });
+  });
+
+  it("rejects invalid organization or telegram identifiers before upload", async () => {
+    await expect(
+      storagePutOrganizationAttachment(
+        "not-a-uuid",
         7,
         "report.pdf",
         Buffer.from("attachment"),
         "application/pdf"
-      );
-
-      expect(result.key).toMatch(
-        new RegExp(
-          `^organizations/${organizationId}/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$`,
-          "i"
-        )
-      );
-      expect(parseOrganizationAttachmentKey(result.key)).toEqual({
-        organizationId,
-        telegramId: 7,
-      });
-      expect(result.url).toBe(`/api/storage/${result.key}`);
-      expect(upload).toHaveBeenCalledWith(
-        result.key,
+      )
+    ).rejects.toThrow("Storage access denied");
+    await expect(
+      storagePutOrganizationAttachment(
+        "550e8400-e29b-41d4-a716-446655440000",
+        0,
+        "report.pdf",
         Buffer.from("attachment"),
-        {
-          contentType: "application/pdf",
-          cacheControl: "3600",
-        }
-      );
-    }
-  );
+        "application/pdf"
+      )
+    ).rejects.toThrow("Storage access denied");
 
-  it(
-    "rejects invalid organization or telegram identifiers before upload",
-    async () => {
-      await expect(
-        storagePutOrganizationAttachment(
-          "not-a-uuid",
-          7,
-          "report.pdf",
-          Buffer.from("attachment"),
-          "application/pdf"
-        )
-      ).rejects.toThrow("Storage access denied");
-      await expect(
-        storagePutOrganizationAttachment(
-          "550e8400-e29b-41d4-a716-446655440000",
-          0,
-          "report.pdf",
-          Buffer.from("attachment"),
-          "application/pdf"
-        )
-      ).rejects.toThrow("Storage access denied");
-
-      expect(upload).not.toHaveBeenCalled();
-    }
-  );
+    expect(upload).not.toHaveBeenCalled();
+  });
 
   it("returns a stable logo URL", async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";

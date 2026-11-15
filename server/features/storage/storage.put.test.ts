@@ -80,7 +80,9 @@ describe("stable storage URLs", () => {
     ).toBe("https://storage.example/upload");
   });
 
-  it("creates a signed upload URL scoped to one organization and telegram", async () => {
+  it(
+    "creates a signed upload URL scoped to one organization and telegram",
+    async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     const result = await storageCreateOrganizationAttachmentUploadUrl(
       organizationId,
@@ -115,7 +117,9 @@ describe("stable storage URLs", () => {
     );
   });
 
-  it("stores new attachments below their immutable organization and telegram path", async () => {
+  it(
+    "stores new attachments below their immutable organization and telegram path",
+    async () => {
     const organizationId = "550e8400-e29b-41d4-a716-446655440000";
     const result = await storagePutOrganizationAttachment(
       organizationId,
@@ -142,7 +146,9 @@ describe("stable storage URLs", () => {
     });
   });
 
-  it("rejects invalid organization or telegram identifiers before upload", async () => {
+  it(
+    "rejects invalid organization or telegram identifiers before upload",
+    async () => {
     await expect(
       storagePutOrganizationAttachment(
         "not-a-uuid",

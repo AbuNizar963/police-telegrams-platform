@@ -13,7 +13,11 @@ import WebKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "TelegramPdfResourceRendererPlugin")
+    guard let registrar = engineBridge.pluginRegistry.registrar(
+      forPlugin: "TelegramPdfResourceRendererPlugin"
+    ) else {
+      return
+    }
     TelegramPdfResourceRendererPlugin.register(with: registrar)
   }
 }

@@ -1975,16 +1975,30 @@ export async function updateUserProfile(
 export async function updateUserPassword(
   id: number,
   passwordHash: string
-): Promise<void> {
+): Promise<string> {
+  const sessionVersion = randomUUID();
   const { error } = await getSupabaseAdmin()
     .from("users")
     .update({
       password_hash: passwordHash,
+      sessionVersion,
       mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id);
   throwIfError(error, "Failed to update user password");
+  return sessionVersion;
+}
+
+export async function revokeUserSessions(id: number): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("users")
+    .update({
+      sessionVersion: randomUUID(),
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id);
+  throwIfError(error, "Failed to revoke user sessions");
 }
 
 export async function dismissTemporaryPasswordChange(

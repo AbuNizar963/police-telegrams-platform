@@ -33,6 +33,7 @@ vi.mock("../../_core/storageProvider", () => ({
 import {
   parseOrganizationAttachmentKey,
   storageCreateOrganizationAttachmentUploadUrl,
+  validateStorageProviderUrl,
   storageGetObjectInfo,
   storagePutDepartmentLogo,
   storagePutOrganizationAttachment,
@@ -50,6 +51,35 @@ describe("stable storage URLs", () => {
       size: 12,
       contentType: "application/pdf",
     });
+  });
+
+  it("rejects insecure or malformed provider URLs in production", () => {
+    expect(() => {
+      validateStorageProviderUrl("http://storage.example/upload", true);
+    }).toThrow("Storage URLs must use HTTPS in production");
+    expect(() => {
+      validateStorageProviderUrl("javascript:alert(1)", true);
+    }).toThrow("Storage provider returned an unsafe URL");
+    expect(() => {
+      validateStorageProviderUrl(
+        "https://user:password@storage.example/upload",
+        true
+      );
+    }).toThrow("Storage provider returned an unsafe URL");
+  });
+
+  it("allows local HTTP storage URLs only outside production", () => {
+    const localUrl = validateStorageProviderUrl(
+      "http://127.0.0.1:54321/storage/upload",
+      false
+    );
+    const productionUrl = validateStorageProviderUrl(
+      "https://storage.example/upload",
+      true
+    );
+
+    expect(localUrl).toBe("http://127.0.0.1:54321/storage/upload");
+    expect(productionUrl).toBe("https://storage.example/upload");
   });
 
   it("creates a signed upload URL scoped to one organization and telegram", async () => {

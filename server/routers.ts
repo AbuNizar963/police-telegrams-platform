@@ -781,6 +781,8 @@ export const appRouter = router({
       }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
+      // Logout is scoped to this browser/device. Password changes and explicit
+      // administrative resets rotate sessionVersion to revoke every device.
       clearAuthenticatedSession(ctx.res);
       return { success: true } as const;
     }),

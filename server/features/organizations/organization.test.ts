@@ -7,15 +7,20 @@ const mocks = vi.hoisted(() => {
   const order = vi.fn();
   const limit = vi.fn();
   const maybeSingle = vi.fn();
+  const ilike = vi.fn();
+  const neq = vi.fn();
   const insert = vi.fn();
   const upsert = vi.fn();
   const update = vi.fn();
   const single = vi.fn();
   const rpc = vi.fn();
+  const hashPassword = vi.fn();
 
   from.mockReturnValue({ select, insert, upsert, update });
-  select.mockReturnValue({ eq, single, order });
+  select.mockReturnValue({ eq, single, order, ilike });
   eq.mockReturnValue({ eq, order, limit, maybeSingle, select });
+  ilike.mockReturnValue({ neq, maybeSingle });
+  neq.mockReturnValue({ maybeSingle });
   order.mockReturnValue({ order, limit, maybeSingle });
   limit.mockReturnValue({ maybeSingle });
   insert.mockReturnValue({ select });
@@ -29,13 +34,20 @@ const mocks = vi.hoisted(() => {
     order,
     limit,
     maybeSingle,
+    ilike,
+    neq,
     insert,
     upsert,
     update,
     single,
     rpc,
+    hashPassword,
   };
 });
+
+vi.mock("../../_core/auth", () => ({
+  hashPassword: mocks.hashPassword,
+}));
 
 vi.mock("../../_core/supabase", () => ({
   getSupabaseAdmin: vi.fn(() => ({
@@ -51,6 +63,7 @@ import {
   routeTelegram,
   selectPlatformOwnerWorkplace,
   updateOrganization,
+  updateOrganizationAccount,
 } from "./organization";
 import {
   canOrganizationHaveParent,
@@ -61,6 +74,7 @@ import { ENV } from "../../_core/env";
 describe("organization repository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.hashPassword.mockResolvedValue("hashed-organization-password");
     mocks.maybeSingle.mockResolvedValue({
       data: {
         id: 1,
@@ -159,6 +173,33 @@ describe("organization repository", () => {
       },
       { onConflict: "organizationId,userId" }
     );
+  });
+
+  it("rotates the application session version when resetting the organization account password", async () => {
+    mocks.maybeSingle
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { id: 17 }, error: null });
+
+    await expect(
+      updateOrganizationAccount({
+        organizationId: "00000000-0000-0000-0000-000000000001",
+        username: "organization-account",
+        password: "A-secure-password-123",
+      })
+    ).resolves.toEqual({
+      username: "organization-account",
+      passwordChanged: true,
+    });
+
+    const updatedValues = mocks.update.mock.calls[0]?.[0];
+    expect(updatedValues).toEqual(
+      expect.objectContaining({
+        password_hash: "hashed-organization-password",
+        mustChangePassword: true,
+        sessionVersion: expect.any(String),
+      })
+    );
+    expect(updatedValues).not.toHaveProperty("authUserId");
   });
 
   it("routes through the atomic database function using the member organization as source", async () => {

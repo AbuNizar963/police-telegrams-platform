@@ -731,7 +731,7 @@ export async function updateOrganizationAccount(input: {
   if (input.password?.trim()) {
     values.password_hash = await hashPassword(input.password);
     values.mustChangePassword = true;
-    values.authUserId = randomUUID();
+    values.sessionVersion = randomUUID();
   }
   const { error } = await client
     .from("users")

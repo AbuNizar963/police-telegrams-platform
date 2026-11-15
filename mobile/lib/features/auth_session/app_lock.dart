@@ -12,6 +12,12 @@ class AppLockService {
   static const String _enabledKey = 'mobile_app_lock_enabled';
   static const String _pinKey = 'mobile_app_lock_pin';
   static const String _biometricKey = 'mobile_app_lock_biometric';
+  static const String _pinFailedAttemptsKey =
+      'mobile_app_lock_pin_failed_attempts';
+  static const String _pinLockedUntilKey = 'mobile_app_lock_pin_locked_until';
+  static const int _pinLockoutThreshold = 5;
+  static const int _initialPinLockoutSeconds = 30;
+  static const int _maximumPinLockoutSeconds = 15 * 60;
   static final LocalAuthentication _authentication = LocalAuthentication();
 
   static Future<bool> isEnabled() async {
@@ -41,6 +47,8 @@ class AppLockService {
     try {
       await _storage.write(key: _pinKey, value: pin);
       await _storage.write(key: _enabledKey, value: 'true');
+      await _storage.write(key: _pinFailedAttemptsKey, value: '0');
+      await _storage.write(key: _pinLockedUntilKey, value: '0');
     } finally {
       // Refresh the overlay even if the second write fails. Since a stored PIN
       // itself enforces the lock, a partial settings write must fail closed.
@@ -48,8 +56,62 @@ class AppLockService {
     }
   }
 
-  static Future<bool> verifyPin(String pin) async =>
-      pin == await _storage.read(key: _pinKey);
+  /// Returns the remaining local PIN lockout, if a previous attempt triggered it.
+  static Future<Duration> pinLockRemaining() async {
+    final lockedUntil = int.tryParse(
+      await _storage.read(key: _pinLockedUntilKey) ?? '',
+    );
+    if (lockedUntil == null) return Duration.zero;
+
+    final remainingMilliseconds =
+        lockedUntil - DateTime.now().millisecondsSinceEpoch;
+    if (remainingMilliseconds <= 0) return Duration.zero;
+
+    return Duration(milliseconds: remainingMilliseconds);
+  }
+
+  /// Verifies a PIN and persists escalating delays after repeated failures.
+  ///
+  /// The lockout survives app restarts because both the failed-attempt count
+  /// and expiry timestamp are stored in the device's secure storage.
+  static Future<bool> verifyPin(String pin) async {
+    if (await pinLockRemaining() > Duration.zero) return false;
+
+    final storedPin = await _storage.read(key: _pinKey);
+    if (storedPin != null && pin == storedPin) {
+      await _storage.write(key: _pinFailedAttemptsKey, value: '0');
+      await _storage.write(key: _pinLockedUntilKey, value: '0');
+      return true;
+    }
+
+    final previousAttempts =
+        int.tryParse(await _storage.read(key: _pinFailedAttemptsKey) ?? '') ??
+        0;
+    final failedAttempts = (previousAttempts + 1).clamp(0, 1000000).toInt();
+    await _storage.write(
+      key: _pinFailedAttemptsKey,
+      value: failedAttempts.toString(),
+    );
+
+    if (failedAttempts >= _pinLockoutThreshold) {
+      final exponent = (failedAttempts - _pinLockoutThreshold)
+          .clamp(0, 5)
+          .toInt();
+      final multiplier = 1 << exponent;
+      final lockoutSeconds = (_initialPinLockoutSeconds * multiplier)
+          .clamp(_initialPinLockoutSeconds, _maximumPinLockoutSeconds)
+          .toInt();
+      final lockedUntil = DateTime.now()
+          .add(Duration(seconds: lockoutSeconds))
+          .millisecondsSinceEpoch;
+      await _storage.write(
+        key: _pinLockedUntilKey,
+        value: lockedUntil.toString(),
+      );
+    }
+
+    return false;
+  }
 
   static Future<void> setEnabled(bool enabled) async {
     if (!enabled) {
@@ -420,6 +482,12 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     }
   }
 
+  String _pinLockoutMessage(Duration remaining) {
+    final seconds =
+        remaining.inSeconds + (remaining.inMilliseconds % 1000 == 0 ? 0 : 1);
+    return 'تم إيقاف محاولات PIN مؤقتًا. حاول مجددًا بعد $seconds ثانية.';
+  }
+
   Future<void> _submitPin() async {
     if (_settingsLoadFailed) {
       setState(() {
@@ -462,10 +530,14 @@ class _AppLockOverlayState extends State<AppLockOverlay>
           });
         }
       } else if (mounted) {
+        final lockRemaining = await AppLockService.pinLockRemaining();
+        if (!mounted) return;
         setState(() {
           _pin = '';
           _pinController.clear();
-          _error = 'رمز PIN غير صحيح. حاول مرة أخرى.';
+          _error = lockRemaining > Duration.zero
+              ? _pinLockoutMessage(lockRemaining)
+              : 'رمز PIN غير صحيح. حاول مرة أخرى.';
         });
       }
     } catch (_) {

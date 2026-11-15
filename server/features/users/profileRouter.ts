@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { hashPassword, publicUser, verifyPassword } from "../../_core/auth";
+import { hashPassword, publicUser, setAuthenticatedSession, verifyPassword } from "../../_core/auth";
 import {
   authenticatedProcedure,
   protectedProcedure,
@@ -82,6 +82,17 @@ export const profileRouter = router({
         ctx.user.id,
         await hashPassword(input.newPassword)
       );
+
+      // Password changes rotate authUserId in the database, revoking every
+      // previously issued JWT. Re-issue a session only for this verified device.
+      const refreshedUser = await getUserById(ctx.user.id);
+      if (!refreshedUser) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "تم تغيير كلمة المرور، لكن تعذر تجديد جلسة الدخول. سجّل الدخول مجددًا.",
+        });
+      }
+      await setAuthenticatedSession(ctx.res, refreshedUser);
       return { success: true };
     }),
 

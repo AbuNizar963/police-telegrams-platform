@@ -25,7 +25,7 @@ const safeDocument = `<!doctype html>
   <body>
     <article class="telegram-export-page">
       <p>يُرجى إرسال البيانات عبر data: والقناة javascript: عند الحاجة.</p>
-      <img src="data:image/png;base64,AAAA" alt="شعار" />
+      <img src="https://telegram-logo.invalid/official" alt="شعار" />
     </article>
   </body>
 </html>`;
@@ -116,6 +116,23 @@ describe("telegram export HTML validation", () => {
     ).toBe(false);
   });
 
+  it("rejects Base64 image URLs while continuing to allow embedded fonts", () => {
+    expect(
+      isSafeExportHtml(
+        safeDocument.replace(
+          "https://telegram-logo.invalid/official",
+          "data:image/png;base64,AAAA"
+        )
+      )
+    ).toBe(false);
+    expect(isAllowedExportResourceUrl("data:image/png;base64,AAAA")).toBe(
+      false
+    );
+    expect(isAllowedExportResourceUrl("data:font/ttf;base64,AAECAw==")).toBe(
+      true
+    );
+  });
+
   it("rejects unsafe URLs with mixed whitespace and quoted attributes", () => {
     for (const attribute of [
       'src = " javascript:alert(1)"',
@@ -141,6 +158,17 @@ describe("telegram export HTML validation", () => {
 });
 
 describe("official organization logo storage path", () => {
+  it("resolves legacy Supabase object URLs to binary storage keys", () => {
+    expect(
+      resolveDepartmentLogoStorageKey(
+        "https://project.supabase.co/storage/v1/object/public/telegram-files/department/logos/00000000-0000-4000-8000-000000000101/logo%20mark.png",
+        "telegram-files"
+      )
+    ).toBe(
+      "department/logos/00000000-0000-4000-8000-000000000101/logo mark.png"
+    );
+  });
+
   it("decodes only the same-origin protected storage path", () => {
     expect(
       resolveDepartmentLogoStorageKey(

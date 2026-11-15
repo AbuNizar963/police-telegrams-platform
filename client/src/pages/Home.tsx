@@ -3373,13 +3373,6 @@ function TelegramDetail({
       onError: error =>
         toast.error(error.message || "تعذر تسجيل قرار الاستلام"),
     });
-  const uploadAttachment = trpc.telegrams.uploadAttachment.useMutation({
-    onSuccess: async () => {
-      toast.success("تم رفع المرفق وتسجيل بصمته في الخادم");
-      await utils.telegrams.attachments.invalidate({ telegramId: telegram.id });
-    },
-    onError: error => toast.error(error.message || "تعذر رفع المرفق"),
-  });
   const attachments = trpc.telegrams.attachments.useQuery({
     telegramId: telegram.id,
   });
@@ -3442,8 +3435,8 @@ function TelegramDetail({
       );
     }
   };
-  const handleAttachment = (file?: File) => {
-    if (!file) return;
+  const handleAttachment = async (file?: File) => {
+    if (!file || uploadingAttachment) return;
     const allowed = [
       "image/jpeg",
       "image/png",
@@ -3457,24 +3450,44 @@ function TelegramDetail({
       toast.error("نوع المرفق غير مسموح أو يتجاوز 10 ميغابايت");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      uploadAttachment.mutate({
-        telegramId: telegram.id,
-        fileName: file.name,
-        contentType: file.type as
-          | "image/jpeg"
-          | "image/png"
-          | "image/webp"
-          | "application/pdf"
-          | "audio/mpeg"
-          | "audio/wav"
-          | "audio/webm",
-        base64: value.split(",")[1] ?? value,
-      });
-    };
-    reader.readAsDataURL(file);
+
+    setUploadingAttachment(true);
+    try {
+      const response = await fetch(
+        `/api/telegrams/${telegram.id}/attachments`,
+        {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": file.type,
+            "X-File-Name": encodeURIComponent(file.name),
+          },
+          body: file,
+        }
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: unknown }
+        | null;
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "تعذر رفع المرفق"
+        );
+      }
+
+      toast.success("تم رفع المرفق وتسجيل بصمته في الخادم");
+      await Promise.all([
+        utils.telegrams.attachments.invalidate({ telegramId: telegram.id }),
+        utils.telegrams.actions.invalidate({ telegramId: telegram.id }),
+      ]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر رفع المرفق"
+      );
+    } finally {
+      setUploadingAttachment(false);
+    }
   };
   const requestTransition = (toStatus: Status) => {
     const needsReason = toStatus === "returned" || toStatus === "rejected";
@@ -3515,6 +3528,7 @@ function TelegramDetail({
     setExportProgress(Math.min(100, Math.max(0, value)));
     setExportProgressMessage(message);
   };
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<{
     name: string;
     mimeType: string;
@@ -5285,7 +5299,7 @@ function TelegramDetail({
               type="file"
               className="hidden"
               accept="image/jpeg,image/png,image/webp,application/pdf,audio/mpeg,audio/wav,audio/webm"
-              disabled={uploadAttachment.isPending}
+              disabled={uploadingAttachment}
               onChange={event => {
                 handleAttachment(event.target.files?.[0]);
                 event.currentTarget.value = "";

@@ -4,7 +4,11 @@ import { chromium as playwrightChromium } from "playwright-core";
 import { getAuthenticatedUserFromRequest } from "./_core/auth";
 import { isDepartmentLogoExclusiveToOrganization } from "./db";
 import { getUserOrganizationMembership } from "./features/organizations/organization";
-import { storageDownload } from "./features/storage/storage";
+import {
+  storageDownload,
+  storageKeyFromStoredUrl,
+} from "./features/storage/storage";
+import { ENV } from "./_core/env";
 import { isPlatformOwner } from "./ownerAccess";
 import { detectOfficialDocumentLogoMimeType } from "../shared/officialDocumentLogo";
 
@@ -116,55 +120,15 @@ class TelegramExportRequestError extends Error {
   }
 }
 
-export function resolveDepartmentLogoStorageKey(logoSource: string): string {
-  const storagePrefix = "/api/storage/";
-  if (!logoSource.startsWith(storagePrefix)) {
-    throw new Error("مصدر شعار الجهة ليس مسار تخزين محميًا");
+export function resolveDepartmentLogoStorageKey(
+  logoSource: string,
+  bucket = ENV.supabaseStorageBucket
+): string {
+  const storageKey = storageKeyFromStoredUrl(logoSource, bucket);
+  if (!storageKey) {
+    throw new Error("مصدر شعار الجهة ليس مسار تخزين صالحًا");
   }
-
-  const rawSegments = logoSource.slice(storagePrefix.length).split("/");
-  try {
-    for (const segment of rawSegments) {
-      const decodedSegment = decodeURIComponent(segment);
-      if (
-        !decodedSegment ||
-        decodedSegment === "." ||
-        decodedSegment === ".." ||
-        decodedSegment.includes("/") ||
-        decodedSegment.includes("\\")
-      ) {
-        throw new Error("Unsafe storage path segment");
-      }
-    }
-  } catch {
-    throw new Error("مسار شعار الجهة يحتوي على مقطع غير صالح");
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(logoSource, "https://telegram-export.invalid");
-  } catch {
-    throw new Error("مسار شعار الجهة غير صالح");
-  }
-
-  if (
-    parsedUrl.origin !== "https://telegram-export.invalid" ||
-    parsedUrl.search ||
-    parsedUrl.hash ||
-    !parsedUrl.pathname.startsWith(storagePrefix)
-  ) {
-    throw new Error("مسار شعار الجهة غير صالح");
-  }
-
-  try {
-    return parsedUrl.pathname
-      .slice(storagePrefix.length)
-      .split("/")
-      .map(segment => decodeURIComponent(segment))
-      .join("/");
-  } catch {
-    throw new Error("ترميز مسار شعار الجهة غير صالح");
-  }
+  return storageKey;
 }
 
 async function loadOrganizationLogoBinary(
@@ -261,12 +225,13 @@ async function loadOrganizationLogoBinary(
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
   // a legitimate telegram may contain words such as "javascript:" or "data:".
-  // Cairo fonts and legacy external logos may be embedded as safe data URLs.
-  // Protected organization logos are fulfilled from validated storage bytes.
+  // Only Cairo font data URLs are permitted. Official logos must be supplied
+  // separately as authenticated binary storage objects.
   const unsafeUrl =
     /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*(?:javascript|vbscript):|'[ \t\r\n]*(?:javascript|vbscript):|(?:javascript|vbscript):)/i;
+  // prettier-ignore
   const unsafeDataUrl =
-    /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)|'[ \t\r\n]*data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,)|data:(?!image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]|font\/ttf;base64,))/i;
+    /\b(?:src|href|action|formaction|poster|xlink:href)[ \t\r\n]*=[ \t\r\n]*(?:"[ \t\r\n]*data:(?!font\/ttf;base64,)|'[ \t\r\n]*data:(?!font\/ttf;base64,)|data:(?!font\/ttf;base64,))/i;
   const eventHandler = /\bon[a-z][\w:-]*\s*=\s*(?:["']|[^\s>]+)/i;
   return (
     html.length > 0 &&
@@ -283,7 +248,6 @@ export function isSafeExportHtml(html: string): boolean {
 export function isAllowedExportResourceUrl(url: string): boolean {
   return (
     url === "about:blank" ||
-    /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml)[;,]/i.test(url) ||
     /^data:font\/ttf;base64,/i.test(url)
   );
 }

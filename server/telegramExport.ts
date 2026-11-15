@@ -117,9 +117,7 @@ class TelegramExportRequestError extends Error {
   }
 }
 
-export function resolveDepartmentLogoStorageKey(
-  logoSource: string
-): string {
+export function resolveDepartmentLogoStorageKey(logoSource: string): string {
   const storagePrefix = "/api/storage/";
   if (!logoSource.startsWith(storagePrefix)) {
     throw new Error("مصدر شعار الجهة ليس مسار تخزين محميًا");

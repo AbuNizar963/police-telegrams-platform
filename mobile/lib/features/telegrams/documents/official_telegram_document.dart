@@ -2005,7 +2005,8 @@ String buildOfficialTelegramHtml({
   String? logoSource,
   String? outputTimestamp,
 }) {
-  if (logoSource != null && Uri.tryParse(logoSource)?.isScheme('file') != true) {
+  if (logoSource != null &&
+      Uri.tryParse(logoSource)?.isScheme('file') != true) {
     throw ArgumentError.value(
       logoSource,
       'logoSource',

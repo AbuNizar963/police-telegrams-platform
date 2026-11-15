@@ -174,6 +174,126 @@ class PoliceApi {
     return value;
   }
 
+  Future<Map<String, dynamic>> uploadTelegramAttachment({
+    required int telegramId,
+    required String fileName,
+    required String contentType,
+    required Uint8List bytes,
+  }) async {
+    if (telegramId < 1 || bytes.isEmpty || bytes.length > 10 * 1024 * 1024) {
+      throw const FormatException('بيانات المرفق أو حجمه غير صالح');
+    }
+
+    final cookie = await _storage.read(key: 'session_cookie');
+    final requestHeaders = <String, String>{
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    };
+    if (cookie != null) requestHeaders['cookie'] = cookie;
+
+    Future<http.Response> send(
+      Future<http.Response> Function() request, {
+      Duration timeout = const Duration(seconds: 20),
+    }) async {
+      try {
+        return await request().timeout(timeout);
+      } on TimeoutException {
+        throw const NetworkException();
+      } on IOException {
+        throw const NetworkException();
+      } on http.ClientException {
+        throw const NetworkException();
+      }
+    }
+
+    final prepareUri = Uri.parse(
+      '$baseUrl/api/telegrams/$telegramId/attachments/upload-url',
+    );
+    final prepareResponse = await send(
+      () => _httpClient.post(
+        prepareUri,
+        headers: requestHeaders,
+        body: jsonEncode({
+          'fileName': fileName,
+          'contentType': contentType,
+          'sizeBytes': bytes.length,
+        }),
+      ),
+    );
+    if (prepareResponse.statusCode < 200 || prepareResponse.statusCode >= 300) {
+      throw ApiException(
+        prepareResponse.statusCode,
+        _message(prepareResponse.body),
+      );
+    }
+
+    final preparedValue = jsonDecode(prepareResponse.body);
+    if (preparedValue is! Map ||
+        preparedValue['key'] is! String ||
+        preparedValue['uploadUrl'] is! String) {
+      throw const FormatException('لم يُرجع الخادم رابط رفع صالحًا');
+    }
+    final key = preparedValue['key'] as String;
+    final uploadUri = Uri.tryParse(preparedValue['uploadUrl'] as String);
+    if (uploadUri == null ||
+        !{'https', 'http'}.contains(uploadUri.scheme) ||
+        uploadUri.host.isEmpty) {
+      throw const FormatException('رابط التخزين المؤقت غير صالح');
+    }
+
+    final storageResponse = await send(
+      () => _httpClient.put(
+        uploadUri,
+        headers: {'content-type': contentType},
+        body: bytes,
+      ),
+      timeout: const Duration(seconds: 60),
+    );
+    if (storageResponse.statusCode < 200 || storageResponse.statusCode >= 300) {
+      throw ApiException(
+        storageResponse.statusCode,
+        _message(storageResponse.body),
+      );
+    }
+
+    final finalizeUri = Uri.parse(
+      '$baseUrl/api/telegrams/$telegramId/attachments/finalize',
+    );
+    final finalizeResponse = await send(
+      () => _httpClient.post(
+        finalizeUri,
+        headers: requestHeaders,
+        body: jsonEncode({
+          'key': key,
+          'fileName': fileName,
+          'contentType': contentType,
+          'sizeBytes': bytes.length,
+        }),
+      ),
+    );
+    if (finalizeResponse.statusCode < 200 ||
+        finalizeResponse.statusCode >= 300) {
+      throw ApiException(
+        finalizeResponse.statusCode,
+        _message(finalizeResponse.body),
+      );
+    }
+
+    final finalizedValue = jsonDecode(finalizeResponse.body);
+    if (finalizedValue is! Map) {
+      throw const FormatException('استجابة اعتماد المرفق غير صالحة');
+    }
+    final result = Map<String, dynamic>.from(finalizedValue);
+    _mutationEvents.add(
+      ApiMutationEvent(
+        procedure: 'telegrams.uploadAttachment',
+        input: {'telegramId': telegramId},
+        result: result,
+      ),
+    );
+    return result;
+  }
+
   Future<void> _syncOfflineCacheAfterMutation(
     String procedure,
     Map<String, dynamic>? input,

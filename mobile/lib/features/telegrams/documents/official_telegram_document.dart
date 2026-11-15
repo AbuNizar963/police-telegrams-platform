@@ -1315,15 +1315,11 @@ class _OfficialTelegramDocumentPageState
     }
     final contentType = _attachmentContentType(file.extension);
     if (contentType == null) throw Exception('نوع الملف غير مدعوم.');
-    await widget.api.call(
-      'telegrams.uploadAttachment',
-      mutation: true,
-      input: {
-        'telegramId': widget.telegramId,
-        'fileName': file.name,
-        'contentType': contentType,
-        'base64': base64Encode(file.bytes!),
-      },
+    await widget.api.uploadTelegramAttachment(
+      telegramId: widget.telegramId,
+      fileName: file.name,
+      contentType: contentType,
+      bytes: file.bytes!,
     );
     if (mounted) {
       Toast.success(context, 'تم إرفاق الملف بالبرقية.');
@@ -2005,6 +2001,14 @@ String buildOfficialTelegramHtml({
   String? logoSource,
   String? outputTimestamp,
 }) {
+  if (logoSource != null &&
+      Uri.tryParse(logoSource)?.isScheme('file') != true) {
+    throw ArgumentError.value(
+      logoSource,
+      'logoSource',
+      'شعار الوثيقة يجب أن يكون ملفًا محليًا وليس Data URL أو عنوان شبكة.',
+    );
+  }
   final numberSystem = settings['numberSystem'];
   final showVerificationQr =
       platformDocumentSettings['showVerificationQr'] != false;

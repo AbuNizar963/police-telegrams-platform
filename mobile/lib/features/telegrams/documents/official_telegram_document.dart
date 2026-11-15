@@ -797,8 +797,8 @@ class _OfficialTelegramDocumentPageState
     if (!mounted) return;
     setState(() {
       // Keep the last completed milestone visible while Chromium is working.
-      // The bar becomes indeterminate, but the displayed percentage never
-      // disappears or pretends to measure work inside the server process.
+      // The displayed percentage represents completed stages, not fabricated
+      // live progress inside the server process.
       _progressMessage = message;
     });
   }

@@ -101,6 +101,7 @@ function createRouteHarness() {
     get: vi.fn((path: string, routeHandler: StorageRouteHandler) => {
       handlers.set(path, routeHandler);
     }),
+    post: vi.fn(),
     put: vi.fn(),
   };
   registerStorageRoutes(app as any);
@@ -128,6 +129,7 @@ function createDepartmentLogoUploadHarness() {
   const routes: Array<(...args: any[]) => any> = [];
   const app = {
     get: vi.fn(),
+    post: vi.fn(),
     put: vi.fn((path: string, ...handlers: Array<(...args: any[]) => any>) => {
       if (path === "/api/storage/department-logo") routes.push(...handlers);
     }),

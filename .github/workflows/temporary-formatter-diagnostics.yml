@@ -1,0 +1,21 @@
+name: Temporary formatter diagnostics
+
+on:
+  push:
+    branches:
+      - fix/binary-logo-preview-print-rendering
+
+jobs:
+  formatter-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Show exact Prettier formatting changes
+        run: |
+          pnpm exec prettier --write client/src/features/telegrams/documents/officialDocumentLogoCache.ts
+          git diff --no-ext-diff -- client/src/features/telegrams/documents/officialDocumentLogoCache.ts

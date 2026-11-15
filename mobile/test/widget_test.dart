@@ -347,7 +347,8 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           pathProviderChannel,
-          (call) async => call.method == 'getTemporaryDirectory'
+          (call) async => (call.method == 'getTemporaryPath' ||
+                  call.method == 'getTemporaryDirectory')
               ? Directory.systemTemp.path
               : null,
         );
@@ -500,10 +501,7 @@ void main() {
 
     final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(
-      renderedHtml,
-      contains('class="official-logo" src="file://'),
-    );
+    expect(renderedHtml, contains('class="official-logo" src="file://'));
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));

@@ -796,8 +796,10 @@ class _OfficialTelegramDocumentPageState
   void _beginIndeterminateProgress(String message) {
     if (!mounted) return;
     setState(() {
+      // Keep the last completed milestone visible while Chromium is working.
+      // The bar becomes indeterminate, but the displayed percentage never
+      // disappears or pretends to measure work inside the server process.
       _progressMessage = message;
-      _hasMeasuredProgress = false;
     });
   }
 
@@ -878,9 +880,14 @@ class _OfficialTelegramDocumentPageState
     final occurredAt = await _recordDocumentOutput('download', 'png');
     final html = _htmlWithOutputTimestamp(occurredAt);
     _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
-    _beginIndeterminateProgress('جارٍ تجهيز صورة البرقية من محرك Chromium');
-    final renderedBytes = await _renderer
-        .renderPng(
+
+    // Always request the complete PDF from Chromium for image export.
+    // The server's PNG response is intentionally a single-page image for
+    // single-page exports; using it here silently dropped every later page
+    // from long telegrams.
+    _beginIndeterminateProgress('جارٍ تجهيز صفحات البرقية من محرك Chromium');
+    final pdfBytes = await _renderer
+        .renderPdf(
           html,
           organizationId: _documentLogoOrganizationId,
           logoSource: _documentLogoSource,
@@ -888,23 +895,20 @@ class _OfficialTelegramDocumentPageState
         .timeout(
           const Duration(seconds: 60),
           onTimeout: () =>
-              throw Exception('انتهت مهلة تجهيز صورة الوثيقة. أعد المحاولة.'),
+              throw Exception('انتهت مهلة تجهيز الوثيقة. أعد المحاولة.'),
         );
 
-    if (_hasPngSignature(renderedBytes)) {
-      _updateProgress(96, 'اكتملت صورة صفحة البرقية');
-      return [renderedBytes];
+    if (!_hasPdfSignature(pdfBytes)) {
+      throw Exception('أعاد محرك Chromium ملف PDF غير صالح لتصدير الصور.');
     }
-    if (!_hasPdfSignature(renderedBytes)) {
-      throw Exception('أعاد محرك Chromium ملف صورة بصيغة غير صالحة.');
-    }
+    _updateProgress(72, 'اكتمل إنشاء الوثيقة متعددة الصفحات');
 
-    _beginIndeterminateProgress('جارٍ تحويل صفحات الوثيقة إلى صور عالية الدقة');
-    final images = await _renderer.renderHighResolutionImages(renderedBytes);
+    _beginIndeterminateProgress('جارٍ تحويل جميع صفحات الوثيقة إلى صور عالية الدقة');
+    final images = await _renderer.renderHighResolutionImages(pdfBytes);
     if (images.isEmpty || images.any((image) => !_hasPngSignature(image))) {
       throw Exception('تعذر تجهيز صور صفحات الوثيقة بدقة الطباعة.');
     }
-    _updateProgress(96, 'اكتمل تجهيز صور صفحات الوثيقة');
+    _updateProgress(96, 'اكتمل تجهيز ${images.length} صفحة كصور');
     return images;
   }
 
@@ -1058,15 +1062,50 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
+  Future<String?> _showOutputFormatSheet({
+    required bool share,
+  }) => showModalBottomSheet<String>(
+    context: context,
+    useSafeArea: true,
+    showDragHandle: true,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    builder: (sheetContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+              child: Text(
+                share ? 'اختر صيغة المشاركة' : 'اختر صيغة التنزيل',
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: Text(share ? 'مشاركة ملف PDF' : 'تنزيل ملف PDF'),
+              onTap: () => Navigator.of(sheetContext).pop('pdf'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.image_outlined),
+              title: Text(share ? 'مشاركة صور الصفحات' : 'تنزيل صور الصفحات'),
+              onTap: () => Navigator.of(sheetContext).pop('image'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
   Future<void> _showDownloadOptions() async {
-    final format = await showMenu<String>(
-      context: context,
-      position: const RelativeRect.fromLTRB(24, 0, 24, 0),
-      items: const [
-        PopupMenuItem(value: 'pdf', child: Text('تنزيل PDF')),
-        PopupMenuItem(value: 'image', child: Text('تنزيل صورة')),
-      ],
-    );
+    final format = await _showOutputFormatSheet(share: false);
     if (!mounted || format == null) return;
     if (format == 'pdf') {
       await _savePdf();
@@ -1076,14 +1115,7 @@ class _OfficialTelegramDocumentPageState
   }
 
   Future<void> _showShareOptions() async {
-    final format = await showMenu<String>(
-      context: context,
-      position: const RelativeRect.fromLTRB(24, 0, 24, 0),
-      items: const [
-        PopupMenuItem(value: 'pdf', child: Text('مشاركة PDF')),
-        PopupMenuItem(value: 'image', child: Text('مشاركة صورة')),
-      ],
-    );
+    final format = await _showOutputFormatSheet(share: true);
     if (!mounted || format == null) return;
     if (format == 'pdf') {
       await _sharePdf();

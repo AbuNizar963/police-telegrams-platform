@@ -498,6 +498,17 @@ void main() {
       ),
       throwsArgumentError,
     );
+    expect(
+      () => buildOfficialTelegramHtml(
+        telegram: telegram(),
+        settings: const {},
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/token',
+        fontDataUrls: fonts,
+        logoSource: 'file:///tmp/official-logo.png',
+      ),
+      throwsArgumentError,
+    );
   });
 
   test(

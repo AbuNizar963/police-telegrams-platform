@@ -141,7 +141,10 @@ describe("telegram export HTML validation", () => {
     ]) {
       expect(
         isSafeExportHtml(
-          safeDocument.replace('src="https://telegram-logo.invalid/official"', attribute)
+          safeDocument.replace(
+            'src="https://telegram-logo.invalid/official"',
+            attribute
+          )
         )
       ).toBe(false);
     }

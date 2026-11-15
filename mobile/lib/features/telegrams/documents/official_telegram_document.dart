@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
-
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';

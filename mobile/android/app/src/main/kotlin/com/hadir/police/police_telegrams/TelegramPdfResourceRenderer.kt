@@ -73,6 +73,7 @@ internal class TelegramPdfResourceRenderer(
             return
         }
         val resources = HashMap<String, Pair<String, ByteArray>>()
+        var totalResourceBytes = 0L
         try {
             rawResources.forEach { item ->
                 val id = item["id"] as? String ?: throw IllegalArgumentException("Missing resource id")
@@ -84,7 +85,13 @@ internal class TelegramPdfResourceRenderer(
                 ) {
                     throw IllegalArgumentException("Unsupported image resource")
                 }
-                resources[id] = mimeType to bytes
+                totalResourceBytes += bytes.size
+                if (totalResourceBytes > MAX_TOTAL_RESOURCE_BYTES) {
+                    throw IllegalArgumentException("Document image resources exceed the total size limit")
+                }
+                if (resources.put(id, mimeType to bytes) != null) {
+                    throw IllegalArgumentException("Duplicate image resource id")
+                }
             }
         } catch (error: Exception) {
             result.error("INVALID_PDF_RESOURCE", error.message ?: "بيانات صورة غير صالحة.", null)
@@ -145,9 +152,6 @@ internal class TelegramPdfResourceRenderer(
                             "X-Content-Type-Options" to "nosniff",
                         )
                     }
-                }
-                if (uri.scheme == "https" && uri.host == "telegram-document.invalid") {
-                    return null
                 }
                 return blockedResponse()
             }
@@ -354,5 +358,6 @@ internal class TelegramPdfResourceRenderer(
         private const val RESOURCE_WAIT_ATTEMPTS = 150
         private const val MAX_RESOURCE_COUNT = 8
         private const val MAX_RESOURCE_BYTES = 10 * 1024 * 1024
+        private const val MAX_TOTAL_RESOURCE_BYTES = 20 * 1024 * 1024
     }
 }

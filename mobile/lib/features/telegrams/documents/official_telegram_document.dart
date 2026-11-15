@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' as ui;
+import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -51,56 +51,40 @@ const _documentFooterCalendarIcon = '''<svg class="footer-icon" data-icon="calen
   <path d="M16 3v4M8 3v4M3.5 10h17" />
 </svg>''';
 
-// The API also keeps a persistent, revalidated file cache. This small
-// process cache avoids decoding the same organization logo again when an
-// officer opens several telegrams during one session.
-final Map<String, String> _officialLogoDataUrlCache = <String, String>{};
-final Map<String, Future<String?>> _officialLogoRequests =
-    <String, Future<String?>>{};
+/// Resolve a supported logo's file extension from its signature without
+/// decoding or converting its image bytes.
+@visibleForTesting
+String officialTelegramDocumentLogoFileExtension(Uint8List bytes) {
+  bool startsWith(List<int> signature) {
+    if (bytes.length < signature.length) return false;
+    for (var index = 0; index < signature.length; index += 1) {
+      if (bytes[index] != signature[index]) return false;
+    }
+    return true;
+  }
+
+  if (startsWith(const [137, 80, 78, 71, 13, 10, 26, 10])) return 'png';
+  if (startsWith(const [255, 216, 255])) return 'jpg';
+  if (startsWith(const [71, 73, 70, 56]) &&
+      bytes.length >= 6 &&
+      (bytes[4] == 55 || bytes[4] == 57) &&
+      bytes[5] == 97) {
+    return 'gif';
+  }
+  if (bytes.length >= 12 &&
+      startsWith(const [82, 73, 70, 70]) &&
+      bytes[8] == 87 &&
+      bytes[9] == 69 &&
+      bytes[10] == 66 &&
+      bytes[11] == 80) {
+    return 'webp';
+  }
+  throw FormatException('صيغة شعار الجهة غير مدعومة.');
+}
+
+// Font data URLs are cached independently from logo image files.
 Map<int, String>? _officialFontDataUrlsCache;
 Future<Map<int, String>>? _officialFontDataUrlsFuture;
-
-Future<String> _officialDocumentLogoDataUrl(Uint8List bytes) async {
-  const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
-  const jpegSignature = <int>[255, 216, 255];
-  final isPng =
-      bytes.length >= pngSignature.length &&
-      pngSignature.asMap().entries.every(
-        (entry) => bytes[entry.key] == entry.value,
-      );
-  if (isPng) {
-    return 'data:image/png;base64,${base64Encode(bytes)}';
-  }
-  final isJpeg =
-      bytes.length >= jpegSignature.length &&
-      jpegSignature.asMap().entries.every(
-        (entry) => bytes[entry.key] == entry.value,
-      );
-  if (isJpeg) {
-    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
-  }
-  final normalized = await normalizeOfficialDocumentLogo(bytes);
-  return 'data:image/png;base64,${base64Encode(normalized)}';
-}
-
-@visibleForTesting
-Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
-  // Decode at the source resolution. The previous forced 600x600 decode
-  // distorted non-square logos and discarded detail from larger originals.
-  final codec = await ui.instantiateImageCodec(bytes);
-  try {
-    final frame = await codec.getNextFrame();
-    try {
-      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('تعذر تجهيز شعار الوثيقة.');
-      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    } finally {
-      frame.image.dispose();
-    }
-  } finally {
-    codec.dispose();
-  }
-}
 
 /// Rendering boundary for the official document.
 abstract interface class OfficialTelegramDocumentRenderer {
@@ -179,25 +163,33 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
   return Uint8List.fromList(encodedArchive);
 }
 
+typedef OfficialTelegramLogoFileWriter = Future<String> Function(
+  Uint8List bytes,
+  String cacheKey,
+);
+
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   const OfficialTelegramDocumentRendererScope({
     super.key,
     required this.renderer,
+    this.logoFileWriter,
     required super.child,
   });
 
   final OfficialTelegramDocumentRenderer renderer;
+  @visibleForTesting
+  final OfficialTelegramLogoFileWriter? logoFileWriter;
 
-  static OfficialTelegramDocumentRenderer? maybeOf(BuildContext context) =>
+  static OfficialTelegramDocumentRendererScope? maybeOf(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<
             OfficialTelegramDocumentRendererScope
-          >()
-          ?.renderer;
+          >();
 
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
-      renderer != oldWidget.renderer;
+      renderer != oldWidget.renderer ||
+      logoFileWriter != oldWidget.logoFileWriter;
 }
 
 bool _hasValidPlatformDocumentSettingsContract(Map result) {
@@ -262,14 +254,24 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
+  OfficialTelegramLogoFileWriter? _logoFileWriter;
   final TransformationController _previewTransform = TransformationController();
+  final Map<String, String> _officialLogoFileUris = <String, String>{};
+  final Map<String, Future<String?>> _officialLogoFileRequests =
+      <String, Future<String?>>{};
+  Directory? _officialLogoDirectory;
+  int _officialLogoFileSequence = 0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final rendererScope = OfficialTelegramDocumentRendererScope.maybeOf(
+      context,
+    );
     _renderer =
-        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+        rendererScope?.renderer ??
         const NativeOfficialTelegramDocumentRenderer();
+    _logoFileWriter = rendererScope?.logoFileWriter;
   }
 
   @override
@@ -540,33 +542,33 @@ class _OfficialTelegramDocumentPageState
 
       // Fonts and the optional organization logo are independent resources.
       // Load them together so preview generation does not wait for them in series.
-      final logoDataUrlFuture =
+      final logoSourceFuture =
           (hasSelectedVersion
-                  ? _loadHistoricalLogoDataUrl(
+                  ? _loadHistoricalLogoSource(
                       activeVersion,
                       logoOrganizationId,
                       fallbackUrl: _value(settingsData['logoUrl']),
                     )
-                  : _loadLogoDataUrl(
+                  : _loadLogoSource(
                       settingsData['logoUrl'],
                       logoOrganizationId,
                     ))
-              .then((logoDataUrl) {
+              .then((logoSource) {
                 logPreparationStage(
-                  logoDataUrl == null
+                  logoSource == null
                       ? 'organization logo unavailable'
                       : 'organization logo ready',
                 );
-                return logoDataUrl;
+                return logoSource;
               });
       final resources = await Future.wait<Object?>([
         fontDataUrlsFuture,
-        logoDataUrlFuture,
+        logoSourceFuture,
       ]);
       final fontDataUrls = resources[0] as Map<int, String>;
-      var logoDataUrl = resources[1] as String?;
+      var logoSource = resources[1] as String?;
 
-      if (logoDataUrl == null && logoOrganizationId.isNotEmpty) {
+      if (logoSource == null && logoOrganizationId.isNotEmpty) {
         final organizationSettings = await organizationLogoSettingsFuture
             .timeout(const Duration(seconds: 3), onTimeout: () => null);
         if (organizationSettings is Map &&
@@ -579,7 +581,7 @@ class _OfficialTelegramDocumentPageState
               .trim();
           if (currentLogo != null && currentLogo.isNotEmpty) {
             settingsData['logoUrl'] = currentLogo;
-            logoDataUrl = await _loadLogoDataUrl(
+            logoSource = await _loadLogoSource(
               currentLogo,
               logoOrganizationId,
             ).timeout(const Duration(seconds: 3), onTimeout: () => null);
@@ -600,7 +602,7 @@ class _OfficialTelegramDocumentPageState
         verificationUrl: verificationUrl,
         referenceLinks: referenceLinks,
         fontDataUrls: fontDataUrls,
-        logoDataUrl: logoDataUrl,
+        logoSource: logoSource,
       );
       // The same locally generated PDF powers preview, print, save, and
       // sharing. Tests can replace the native renderer through the scope.
@@ -720,69 +722,155 @@ class _OfficialTelegramDocumentPageState
     return fontDataUrls;
   }
 
-  Future<String?> _loadHistoricalLogoDataUrl(
+  Future<Directory> _getOfficialLogoDirectory() async {
+    final existing = _officialLogoDirectory;
+    if (existing != null) return existing;
+    // Directory.systemTemp resolves to the app's sandboxed temporary area
+    // on Android and iOS. Avoid a plugin-channel dependency during preview
+    // preparation and keep the temporary logo file available to the renderer.
+    final cacheRoot = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'official-telegram-logos',
+    );
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] creating temporary logo directory');
+    }
+    await cacheRoot.create(recursive: true);
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo root ready');
+    }
+    final directory = await cacheRoot.createTemp('document-');
+    _officialLogoDirectory = directory;
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo directory ready');
+    }
+    return directory;
+  }
+
+  Future<String?> _cachedOfficialLogoFileUri(String cacheKey) async {
+    final cached = _officialLogoFileUris[cacheKey];
+    if (cached == null) return null;
+    try {
+      final uri = Uri.parse(cached);
+      if (uri.isScheme('file') && await File.fromUri(uri).exists()) {
+        return cached;
+      }
+    } catch (_) {
+      // Recreate a missing temporary file from the authenticated binary cache.
+    }
+    _officialLogoFileUris.remove(cacheKey);
+    return null;
+  }
+
+  Future<String> _writeOfficialLogoFile(
+    Uint8List bytes,
+    String cacheKey,
+  ) async {
+    final testWriter = _logoFileWriter;
+    if (testWriter != null) {
+      final source = await testWriter(bytes, cacheKey);
+      _officialLogoFileUris[cacheKey] = source;
+      return source;
+    }
+    final cached = await _cachedOfficialLogoFileUri(cacheKey);
+    if (cached != null) return cached;
+    final extension = officialTelegramDocumentLogoFileExtension(bytes);
+    final directory = await _getOfficialLogoDirectory();
+    final sequence = ++_officialLogoFileSequence;
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}'
+      'official-logo-$sequence.$extension',
+    );
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] writing temporary logo file');
+    }
+    await file.writeAsBytes(bytes, flush: true);
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo file written');
+    }
+    if (!await file.exists() || await file.length() != bytes.length) {
+      throw StateError('تعذر حفظ شعار الوثيقة محليًا.');
+    }
+    final source = Uri.file(file.path).toString();
+    _officialLogoFileUris[cacheKey] = source;
+    return source;
+  }
+
+  Future<String?> _loadOfficialLogoFile(
+    String cacheKey,
+    Future<Uint8List?> Function() loadBytes,
+  ) async {
+    final cached = await _cachedOfficialLogoFileUri(cacheKey);
+    if (cached != null) return cached;
+    final pending = _officialLogoFileRequests[cacheKey];
+    if (pending != null) return pending;
+    final request = () async {
+      try {
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] requesting logo image bytes');
+        }
+        final bytes = await loadBytes();
+        if (bytes == null || bytes.isEmpty) {
+          if (kDebugMode) {
+            debugPrint('[telegram-preview] logo image bytes unavailable');
+          }
+          return null;
+        }
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] received logo bytes: ${bytes.length}');
+        }
+        final source = await _writeOfficialLogoFile(bytes, cacheKey);
+        if (kDebugMode) {
+          debugPrint('[telegram-preview] official logo file ready');
+        }
+        return source;
+      } catch (exception) {
+        if (kDebugMode) {
+          debugPrint(
+            '[telegram-preview] logo file preparation failed: $exception',
+          );
+        }
+        return null;
+      }
+    }();
+    _officialLogoFileRequests[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      _officialLogoFileRequests.remove(cacheKey);
+    }
+  }
+
+  Future<String?> _loadHistoricalLogoSource(
     Map<String, dynamic> version,
     String organizationId, {
     String? fallbackUrl,
   }) async {
     final url = _value(version['logoUrl'], fallback: '');
     if (url.isEmpty || organizationId.isEmpty) {
-      return _loadLogoDataUrl(fallbackUrl, organizationId);
+      return _loadLogoSource(fallbackUrl, organizationId);
     }
     final cacheKey = '$organizationId\n$url';
-    final cached = _officialLogoDataUrlCache[cacheKey];
-    if (cached != null) return cached;
-
-    try {
-      final bytes = await widget.api.fetchImageAsset(url);
-      if (bytes == null || bytes.isEmpty) throw StateError('empty logo');
-      final dataUrl = await _officialDocumentLogoDataUrl(bytes);
-      _officialLogoDataUrlCache[cacheKey] = dataUrl;
-      return dataUrl;
-    } catch (_) {
-      // A legacy historical asset can be missing or expired. Use the current
-      // verified organization logo instead of blocking document export.
-      return _loadLogoDataUrl(fallbackUrl, organizationId);
-    }
+    final historicalSource = await _loadOfficialLogoFile(
+      cacheKey,
+      () => widget.api.fetchImageAsset(url),
+    );
+    if (historicalSource != null) return historicalSource;
+    // A missing historical asset falls back only to the verified same unit.
+    return _loadLogoSource(fallbackUrl, organizationId);
   }
 
-  Future<String?> _loadLogoDataUrl(
-    Object? source,
-    String organizationId,
-  ) async {
+  Future<String?> _loadLogoSource(Object? source, String organizationId) async {
     final url = _value(source, fallback: '');
     if (organizationId.isEmpty) return null;
-    // The API fallback can return the authenticated organization's logo bytes
-    // even when settings.get has no public/storage URL.
     final cacheKey = '$organizationId\n${url.isEmpty ? 'api-export' : url}';
-    final cached = _officialLogoDataUrlCache[cacheKey];
-    if (cached != null) return cached;
-    // Coalesce requests only within the same API session. Reusing an
-    // in-flight Future from a previous authenticated session can leave a
-    // newly opened document waiting on an obsolete request.
-    final requestKey = '${identityHashCode(widget.api)}\n$cacheKey';
-    final pending = _officialLogoRequests[requestKey];
-    if (pending != null) return pending;
-    final request = () async {
-      try {
-        final bytes = await widget.api.fetchOrganizationLogo(
-          organizationId: organizationId,
-          source: url,
-        );
-        if (bytes == null || bytes.isEmpty) return null;
-        final dataUrl = await _officialDocumentLogoDataUrl(bytes);
-        _officialLogoDataUrlCache[cacheKey] = dataUrl;
-        return dataUrl;
-      } catch (_) {
-        // A missing or unreadable organization logo must remain absent; never
-        // substitute a default seal or watermark.
-        return null;
-      } finally {
-        _officialLogoRequests.remove(requestKey);
-      }
-    }();
-    _officialLogoRequests[requestKey] = request;
-    return request;
+    return _loadOfficialLogoFile(
+      cacheKey,
+      () => widget.api.fetchOrganizationLogo(
+        organizationId: organizationId,
+        source: url,
+      ),
+    );
   }
 
   String get _fileBaseName {
@@ -968,6 +1056,18 @@ class _OfficialTelegramDocumentPageState
     _loadingWatchdog?.cancel();
     _loadingWatchdog = null;
     _previewTransform.dispose();
+    final logoDirectory = _officialLogoDirectory;
+    if (logoDirectory != null) {
+      unawaited(() async {
+        try {
+          if (await logoDirectory.exists()) {
+            await logoDirectory.delete(recursive: true);
+          }
+        } catch (_) {
+          // Temporary-file cleanup must never interrupt document navigation.
+        }
+      }());
+    }
     super.dispose();
   }
 
@@ -1902,7 +2002,7 @@ String buildOfficialTelegramHtml({
   required String verificationUrl,
   List<Map<String, dynamic>> referenceLinks = const [],
   required Map<int, String> fontDataUrls,
-  String? logoDataUrl,
+  String? logoSource,
   String? outputTimestamp,
 }) {
   final numberSystem = settings['numberSystem'];
@@ -2085,12 +2185,12 @@ String buildOfficialTelegramHtml({
   final priority = _label(telegramPriorityLabels, telegram['priority']);
   final category = _label(telegramCategoryLabels, telegram['category']);
   final status = _label(telegramStatusLabels, telegram['status']);
-  final logo = logoDataUrl == null
+  final logo = logoSource == null
       ? ''
-      : '<img class="official-logo" src="${_escapeHtml(logoDataUrl)}" alt="الشعار الرسمي" />';
-  final watermarkLogo = logoDataUrl == null
+      : '<img class="official-logo" src="${_escapeHtml(logoSource)}" alt="الشعار الرسمي" />';
+  final watermarkLogo = logoSource == null
       ? ''
-      : '<img class="watermark-logo" src="${_escapeHtml(logoDataUrl)}" alt="" />';
+      : '<img class="watermark-logo" src="${_escapeHtml(logoSource)}" alt="" />';
   final watermarkItems = showMinistryWatermarkText
       ? List<String>.generate(_ministryWatermarkRows, (row) {
           final labels = List<String>.filled(

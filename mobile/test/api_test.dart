@@ -698,7 +698,7 @@ void main() {
     expect(logoApiRequestCount, 1);
   });
 
-  test('organization logo keeps legacy Base64 responses as a compatibility fallback', () async {
+  test('organization logo ignores legacy Base64 responses', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
       'police-telegrams-legacy-logo-test-',
     );
@@ -739,7 +739,7 @@ void main() {
       organizationId: organizationId,
       source: '',
     );
-    expect(bytes, imageBytes);
+    expect(bytes, isNull);
   });
 
   test('organization logos upload as authenticated binary bytes', () async {

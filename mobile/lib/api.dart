@@ -579,6 +579,9 @@ class PoliceApi {
     return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port$path';
   }
 
+  String _organizationLogoFileStem(String organizationId) =>
+      organizationId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+
   Future<Directory> _organizationLogoCacheDirectory() =>
       _logoCacheDirectoryFuture ??= _resolveOrganizationLogoCacheDirectory();
 
@@ -660,9 +663,7 @@ class PoliceApi {
     required String identity,
     required int generation,
   }) async {
-    final fileStem = base64Url
-        .encode(utf8.encode(organizationId))
-        .replaceAll('=', '');
+    final fileStem = _organizationLogoFileStem(organizationId);
     final cacheDirectory = await _organizationLogoCacheDirectory();
     final imageFile = File(
       '${cacheDirectory.path}${Platform.pathSeparator}$fileStem.bin',
@@ -725,9 +726,7 @@ class PoliceApi {
     if (_organizationLogoRefreshes.containsKey(requestKey)) return;
     final refresh = () async {
       final cacheDirectory = await _organizationLogoCacheDirectory();
-      final fileStem = base64Url
-          .encode(utf8.encode(organizationId))
-          .replaceAll('=', '');
+      final fileStem = _organizationLogoFileStem(organizationId);
       await _refreshOrganizationLogo(
         requestKey: requestKey,
         organizationId: organizationId,
@@ -833,25 +832,10 @@ class PoliceApi {
         }
       }
 
-      // Older deployments may still return a data URL. Keep this strictly as
-      // a compatibility fallback; current servers no longer populate it.
-      final legacyDataUrl = result['logoDataUrl']?.toString().trim() ?? '';
-      final match = RegExp(
-        r'^data:(image/(?:png|jpeg|webp));base64,',
-        caseSensitive: false,
-      ).firstMatch(legacyDataUrl);
-      final contentType = match?.group(1);
-      if (match == null || contentType == null) return null;
-
-      final legacyBytes = Uint8List.fromList(
-        base64Decode(legacyDataUrl.substring(match.end)),
-      );
-      if (legacyBytes.isEmpty ||
-          legacyBytes.length > _maximumCachedOrganizationLogoBytes ||
-          !_isSupportedImagePayload(contentType, legacyBytes)) {
-        return null;
-      }
-      return legacyBytes;
+      // Current servers expose the authenticated binary image endpoint.
+      // Reject legacy JSON data URLs instead of reintroducing Base64 image
+      // transport into the mobile logo pipeline.
+      return null;
     } catch (_) {
       // The same-origin byte route remains the primary path; this fallback is
       // best-effort and must not prevent settings or telegram screens opening.

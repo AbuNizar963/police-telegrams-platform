@@ -472,6 +472,8 @@ void main() {
     await tester.pumpWidget(
       OfficialTelegramDocumentRendererScope(
         renderer: renderer,
+        logoFileWriter: (bytes, cacheKey) async =>
+            'file:///tmp/official-logo.png',
         child: MaterialApp(
           home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
         ),
@@ -485,7 +487,8 @@ void main() {
 
     final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderedHtml, contains('class="official-logo"'));
+    expect(renderedHtml, contains('class="official-logo" src="file://'));
+    expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));
     expect(renderedHtml, contains('class="watermark-text-pattern"'));
@@ -516,6 +519,8 @@ void main() {
       await tester.pumpWidget(
         OfficialTelegramDocumentRendererScope(
           renderer: renderer,
+          logoFileWriter: (bytes, cacheKey) async =>
+              'file:///tmp/official-logo.png',
           child: MaterialApp(
             home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
           ),
@@ -528,7 +533,11 @@ void main() {
       await tester.pump();
 
       expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-      expect(renderer.renderedHtml, contains('class="official-logo"'));
+      expect(
+        renderer.renderedHtml,
+        contains('class="official-logo" src="file://'),
+      );
+      expect(renderer.renderedHtml, isNot(contains('data:image/png;base64')));
     },
   );
 

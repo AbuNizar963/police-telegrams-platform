@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -179,6 +178,42 @@ void main() {
       expect(html, contains('اسم المسؤول'));
       expect(html, contains('<h2 class="body-heading">نص البرقية</h2>'));
       expect(html, isNot(contains('نص الوثيقة')));
+    },
+  );
+
+  test(
+    'detects original logo formats without converting the bytes to Base64',
+    () {
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
+        ),
+        'png',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([255, 216, 255, 0]),
+        ),
+        'jpg',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([71, 73, 70, 56, 57, 97]),
+        ),
+        'gif',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]),
+        ),
+        'webp',
+      );
+      expect(
+        () => officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([0, 1, 2, 3]),
+        ),
+        throwsFormatException,
+      );
     },
   );
 
@@ -387,20 +422,23 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoDataUrl: 'data:image/png;base64,AA==',
+        logoSource: 'file:///tmp/official-logo.png',
       );
 
       expect(
         html,
-        contains('<img class="official-logo" src="data:image/png;base64,AA=="'),
+        contains(
+          '<img class="official-logo" src="file:///tmp/official-logo.png"',
+        ),
       );
       expect(
         html,
         contains(
-          '<img class="watermark-logo" src="data:image/png;base64,AA=="',
+          '<img class="watermark-logo" src="file:///tmp/official-logo.png"',
         ),
       );
       expect(html, contains('class="watermark-text-pattern"'));
+      expect(html, isNot(contains('data:image/')));
       expect(
         html.indexOf('class="watermark-text-pattern"'),
         lessThan(html.indexOf('class="watermark-logo"')),
@@ -451,7 +489,7 @@ void main() {
         routingDirectory: const [],
         verificationUrl: 'https://example.test/verify/token',
         fontDataUrls: fonts,
-        logoDataUrl: 'data:image/png;base64,AA==',
+        logoSource: 'file:///tmp/official-logo.png',
       );
 
       expect(html, isNot(contains('class="watermark-text-pattern"')));
@@ -469,41 +507,6 @@ void main() {
       );
     },
   );
-
-  test('preserves source logo resolution and aspect ratio', () async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    canvas.drawRect(
-      const ui.Rect.fromLTWH(0, 0, 120, 60),
-      ui.Paint()..color = const ui.Color(0xFFD8C38E),
-    );
-    final picture = recorder.endRecording();
-    final sourceImage = await picture.toImage(120, 60);
-    picture.dispose();
-    final sourceData = await sourceImage.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
-    sourceImage.dispose();
-    final sourceBytes = sourceData!.buffer.asUint8List(
-      sourceData.offsetInBytes,
-      sourceData.lengthInBytes,
-    );
-
-    final normalized = await normalizeOfficialDocumentLogo(sourceBytes);
-    final codec = await ui.instantiateImageCodec(normalized);
-    try {
-      final frame = await codec.getNextFrame();
-      try {
-        expect(frame.image.width, 120);
-        expect(frame.image.height, 60);
-      } finally {
-        frame.image.dispose();
-      }
-    } finally {
-      codec.dispose();
-    }
-  });
 
   test('escapes telegram text before embedding it in the renderer HTML', () {
     final html = buildOfficialTelegramHtml(

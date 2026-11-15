@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -341,21 +340,6 @@ void main() {
   setUp(() {
     _secureStorageForTest.clear();
     AppLockRuntime.setSessionActive(false);
-    const pathProviderChannel = MethodChannel(
-      'plugins.flutter.io/path_provider',
-    );
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          pathProviderChannel,
-          (call) async => (call.method == 'getTemporaryPath' ||
-                  call.method == 'getTemporaryDirectory')
-              ? Directory.systemTemp.path
-              : null,
-        );
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(pathProviderChannel, null),
-    );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),

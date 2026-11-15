@@ -53,7 +53,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          "data:image/png;base64,AAAA",
+          "https://telegram-logo.invalid/official",
           "javascript:alert(1)"
         )
       )
@@ -61,7 +61,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          "data:image/png;base64,AAAA",
+          "https://telegram-logo.invalid/official",
           "data:text/html;base64,AAAA"
         )
       )
@@ -69,7 +69,7 @@ describe("telegram export HTML validation", () => {
     expect(
       isSafeExportHtml(
         safeDocument.replace(
-          'src="data:image/png;base64,AAAA"',
+          'src="https://telegram-logo.invalid/official"',
           "src=data:text/html;base64,AAAA"
         )
       )
@@ -101,7 +101,7 @@ describe("telegram export HTML validation", () => {
     ]) {
       expect(
         isSafeExportHtml(
-          safeDocument.replace('src="data:image/png;base64,AAAA"', attribute)
+          safeDocument.replace('src="https://telegram-logo.invalid/official"', attribute)
         )
       ).toBe(false);
     }

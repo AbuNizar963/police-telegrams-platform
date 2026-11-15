@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasMultiPageTelegramLayout,
+  getTelegramRenderLayoutCss,
   isAllowedExportResourceUrl,
   isSafeExportHtml,
   replaceOfficialLogoPlaceholder,
   resolveDepartmentLogoStorageKey,
   withPngDpiMetadata,
+  MAX_TELEGRAM_PNG_BYTES,
+  PNG_RENDER_SCALE_FACTORS,
 } from "./telegramExport";
 
 const safeDocument = `<!doctype html>
@@ -25,6 +29,42 @@ const safeDocument = `<!doctype html>
     </article>
   </body>
 </html>`;
+
+describe("telegram export page geometry", () => {
+  it("uses full A4 with a single 10mm inset for PDF output", () => {
+    const css = getTelegramRenderLayoutCss(true);
+
+    expect(css).toMatch(
+      /@page\s*\{\s*size:\s*A4 portrait;\s*margin:\s*0;\s*\}/
+    );
+    expect(css).toMatch(
+      /\.telegram-export-page\s*\{[^}]*width:\s*210mm !important;[^}]*padding:\s*10mm !important;/s
+    );
+    expect(css).toContain("min-height: 297mm !important;");
+    expect(css).toContain("min-height: 287mm !important;");
+    expect(css).toContain("padding: 10mm 10mm 0 !important;");
+    expect(css).toContain(".telegram-export-page .page-watermark");
+    expect(css).toContain("inset: 0 auto auto 0 !important;");
+    expect(css).toContain("width: 210mm !important;");
+    expect(css).toContain("height: 297mm !important;");
+    expect(css).not.toContain(
+      ".telegram-export-page.telegram-multipage .page-watermark"
+    );
+    expect(css).not.toMatch(/width:\s*190mm/);
+    expect(css).not.toMatch(/margin:\s*10mm/);
+  });
+
+  it("keeps single-page PNG capture on the full A4 canvas", () => {
+    const css = getTelegramRenderLayoutCss(false);
+
+    expect(css).toContain("width: 210mm !important;");
+    expect(css).toContain("height: 297mm !important;");
+    expect(css).toContain("padding: 10mm !important;");
+    expect(css).toMatch(
+      /@page\s*\{\s*size:\s*A4 portrait;\s*margin:\s*0;\s*\}/
+    );
+  });
+});
 
 describe("telegram export HTML validation", () => {
   it("allows safe document text, the server logo marker, and Cairo fonts", () => {
@@ -101,7 +141,10 @@ describe("telegram export HTML validation", () => {
     ]) {
       expect(
         isSafeExportHtml(
-          safeDocument.replace('src="https://telegram-logo.invalid/official"', attribute)
+          safeDocument.replace(
+            'src="https://telegram-logo.invalid/official"',
+            attribute
+          )
         )
       ).toBe(false);
     }
@@ -109,6 +152,11 @@ describe("telegram export HTML validation", () => {
 
   it("rejects empty HTML", () => {
     expect(isSafeExportHtml("")).toBe(false);
+  });
+
+  it("rejects an export document above the serverless request budget", () => {
+    const oversizedDocument = `${safeDocument}${"x".repeat(3_900_001)}`;
+    expect(isSafeExportHtml(oversizedDocument)).toBe(false);
   });
 });
 
@@ -197,7 +245,30 @@ describe("telegram export resource isolation", () => {
   });
 });
 
+describe("telegram multi-page image export", () => {
+  it("recognizes a telegram marked for multi-page output", () => {
+    expect(
+      hasMultiPageTelegramLayout(
+        '<article class="telegram-export-page telegram-multipage"></article>'
+      )
+    ).toBe(true);
+  });
+
+  it("keeps a one-page telegram as a single PNG", () => {
+    expect(
+      hasMultiPageTelegramLayout(
+        '<article class="telegram-export-page"></article>'
+      )
+    ).toBe(false);
+  });
+});
+
 describe("official PNG resolution metadata", () => {
+  it("starts at 384 DPI and leaves headroom below Vercel's hard response cap", () => {
+    expect(PNG_RENDER_SCALE_FACTORS).toEqual([4, 3, 2]);
+    expect(MAX_TELEGRAM_PNG_BYTES).toBe(4_000_000);
+  });
+
   it("writes high-quality physical resolution without changing image dimensions", () => {
     const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
     const ihdrLength = Buffer.alloc(4);

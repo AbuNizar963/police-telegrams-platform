@@ -131,7 +131,8 @@ void main() {
       expect(html, contains('size: A4 portrait;'));
       expect(html, contains('@page telegram-multipage'));
       expect(html, contains('counter(page) " من " counter(pages)'));
-      expect(html, contains('classList.toggle(\'telegram-multipage\''));
+      expect(html, isNot(contains('<script')));
+      expect(html, isNot(contains('classList.toggle')));
       expect(html, contains('font-family:"Cairo"'));
       expect(
         html,

@@ -177,9 +177,13 @@ export async function getAuthenticatedUserFromRequest(
     if (!user || user.isActive === false || user.loginMethod === "disabled")
       return null;
     const currentSessionVersion = user.sessionVersion ?? user.authUserId;
+    // Accept pre-migration JWTs during rollout. The migration seeds existing
+    // sessionVersion values from authUserId, so password changes still revoke
+    // these legacy tokens as soon as the version is rotated.
+    const tokenSessionVersion = payload.sessionVersion ?? payload.authUserId;
     if (
-      typeof payload.sessionVersion !== "string" ||
-      payload.sessionVersion !== currentSessionVersion
+      typeof tokenSessionVersion !== "string" ||
+      tokenSessionVersion !== currentSessionVersion
     )
       return null;
     return publicUser(user);

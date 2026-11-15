@@ -327,6 +327,13 @@ class _TestOfficialTelegramDocumentRenderer
   }
 
   @override
+  Future<Uint8List> renderPng(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) async => _testPng;
+
+  @override
   Future<Uint8List> renderPreview(Uint8List pdfBytes) async => _testPng;
 
   @override

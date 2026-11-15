@@ -1,7 +1,6 @@
 export type OrganizationLogoView = {
   organizationId: string;
   logoUrl: string | null;
-  logoDataUrl?: string | null;
 };
 
 /** Prefer the authenticated account's organization over a telegram's route target. */

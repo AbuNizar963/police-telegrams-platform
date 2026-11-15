@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_html_to_pdf/flutter_native_html_to_pdf.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
@@ -713,9 +712,11 @@ class _OfficialTelegramDocumentPageState
   Future<Directory> _getOfficialLogoDirectory() async {
     final existing = _officialLogoDirectory;
     if (existing != null) return existing;
-    final temporaryDirectory = await getTemporaryDirectory();
+    // Directory.systemTemp resolves to the app's sandboxed temporary area
+    // on Android and iOS. Avoid a plugin-channel dependency during preview
+    // preparation and keep the temporary logo file available to the renderer.
     final cacheRoot = Directory(
-      '${temporaryDirectory.path}${Platform.pathSeparator}'
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
       'official-telegram-logos',
     );
     await cacheRoot.create(recursive: true);

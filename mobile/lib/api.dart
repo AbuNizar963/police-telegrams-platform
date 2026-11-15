@@ -693,9 +693,7 @@ class PoliceApi {
       // Wi-Fi networks can briefly lose the route to the API while mobile
       // data remains available. Retry transient transport failures without
       // changing hosts or bypassing the authenticated same-origin endpoint.
-      await Future<void>.delayed(
-        Duration(milliseconds: 300 * (attempt + 1)),
-      );
+      await Future<void>.delayed(Duration(milliseconds: 300 * (attempt + 1)));
     }
     return null;
   }

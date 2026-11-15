@@ -174,6 +174,57 @@ class PoliceApi {
     return value;
   }
 
+  Future<Map<String, dynamic>> uploadTelegramAttachment({
+    required int telegramId,
+    required String fileName,
+    required String contentType,
+    required Uint8List bytes,
+  }) async {
+    if (telegramId < 1 || bytes.isEmpty || bytes.length > 10 * 1024 * 1024) {
+      throw const FormatException('بيانات المرفق أو حجمه غير صالح');
+    }
+
+    final cookie = await _storage.read(key: 'session_cookie');
+    final uri = Uri.parse('$baseUrl/api/telegrams/$telegramId/attachments');
+    final headers = <String, String>{
+      'content-type': contentType,
+      'accept': 'application/json',
+      'x-file-name': Uri.encodeComponent(fileName),
+    };
+    if (cookie != null) headers['cookie'] = cookie;
+
+    late final http.Response response;
+    try {
+      response = await _httpClient
+          .put(uri, headers: headers, body: bytes)
+          .timeout(const Duration(seconds: 45));
+    } on TimeoutException {
+      throw const NetworkException();
+    } on IOException {
+      throw const NetworkException();
+    } on http.ClientException {
+      throw const NetworkException();
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(response.statusCode, _message(response.body));
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw const FormatException('استجابة رفع المرفق غير صالحة');
+    }
+    final result = Map<String, dynamic>.from(decoded);
+    _mutationEvents.add(
+      ApiMutationEvent(
+        procedure: 'telegrams.uploadAttachment',
+        input: {'telegramId': telegramId},
+        result: result,
+      ),
+    );
+    return result;
+  }
+
   Future<void> _syncOfflineCacheAfterMutation(
     String procedure,
     Map<String, dynamic>? input,

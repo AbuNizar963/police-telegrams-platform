@@ -89,7 +89,7 @@ describe("stable storage URLs", () => {
         7,
         "report.pdf"
       );
-  
+
       expect(result.key).toMatch(
         new RegExp(
           "^organizations/" +
@@ -129,7 +129,7 @@ describe("stable storage URLs", () => {
         Buffer.from("attachment"),
         "application/pdf"
       );
-  
+
       expect(result.key).toMatch(
         new RegExp(
           `^organizations/${organizationId}/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$`,
@@ -141,10 +141,14 @@ describe("stable storage URLs", () => {
         telegramId: 7,
       });
       expect(result.url).toBe(`/api/storage/${result.key}`);
-      expect(upload).toHaveBeenCalledWith(result.key, Buffer.from("attachment"), {
-        contentType: "application/pdf",
-        cacheControl: "3600",
-      });
+      expect(upload).toHaveBeenCalledWith(
+        result.key,
+        Buffer.from("attachment"),
+        {
+          contentType: "application/pdf",
+          cacheControl: "3600",
+        }
+      );
     }
   );
 
@@ -169,7 +173,7 @@ describe("stable storage URLs", () => {
           "application/pdf"
         )
       ).rejects.toThrow("Storage access denied");
-  
+
       expect(upload).not.toHaveBeenCalled();
     }
   );

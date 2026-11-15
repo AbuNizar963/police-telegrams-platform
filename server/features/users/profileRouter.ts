@@ -83,7 +83,7 @@ export const profileRouter = router({
           message: "اختر كلمة مرور مختلفة عن الحالية",
         });
       }
-      const authUserId = await updateUserPassword(
+      const sessionVersion = await updateUserPassword(
         ctx.user.id,
         await hashPassword(input.newPassword)
       );
@@ -93,7 +93,8 @@ export const profileRouter = router({
       await setAuthenticatedSession(ctx.res, {
         id: user.id,
         role: user.role,
-        authUserId,
+        authUserId: user.authUserId,
+        sessionVersion,
       });
       return { success: true };
     }),

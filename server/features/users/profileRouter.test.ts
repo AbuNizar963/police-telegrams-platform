@@ -125,12 +125,12 @@ describe("profile router", () => {
       ...contextFor().user!,
       passwordHash: "old-hash",
     } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
-    const rotatedAuthUserId = "00000000-0000-4000-8000-000000000099";
+    const rotatedSessionVersion = "00000000-0000-4000-8000-000000000099";
 
     vi.mocked(db.getUserById).mockResolvedValue(user);
     vi.mocked(auth.verifyPassword).mockResolvedValue(true);
     vi.mocked(auth.hashPassword).mockResolvedValue("new-hash");
-    vi.mocked(db.updateUserPassword).mockResolvedValue(rotatedAuthUserId);
+    vi.mocked(db.updateUserPassword).mockResolvedValue(rotatedSessionVersion);
     vi.mocked(auth.setAuthenticatedSession).mockResolvedValue(undefined);
 
     try {
@@ -147,7 +147,8 @@ describe("profile router", () => {
         {
           id: user.id,
           role: user.role,
-          authUserId: rotatedAuthUserId,
+          authUserId: user.authUserId,
+          sessionVersion: rotatedSessionVersion,
         }
       );
     } finally {

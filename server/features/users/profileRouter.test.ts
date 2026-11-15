@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as auth from "../../_core/auth";
+import * as db from "../../db";
 import { appRouter } from "../../routers";
 import type { TrpcContext } from "../../_core/context";
 
@@ -97,5 +99,39 @@ describe("profile router", () => {
         newPassword: "short",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("revokes previous sessions and refreshes the current session after password change", async () => {
+    const originalUser = {
+      ...contextFor().user!,
+      passwordHash: "current-hash",
+    } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
+    const refreshedUser = {
+      ...originalUser,
+      authUserId: "00000000-0000-4000-8000-000000000099",
+    };
+
+    const getUser = vi.spyOn(db, "getUserById")
+      .mockResolvedValueOnce(originalUser)
+      .mockResolvedValueOnce(refreshedUser);
+    const verify = vi.spyOn(auth, "verifyPassword").mockResolvedValue(true);
+    const hash = vi.spyOn(auth, "hashPassword").mockResolvedValue("new-password-hash");
+    const update = vi.spyOn(db, "updateUserPassword").mockResolvedValue();
+    const refreshSession = vi.spyOn(auth, "setAuthenticatedSession").mockResolvedValue();
+
+    try {
+      await appRouter.createCaller(contextFor()).profile.changePassword({
+        currentPassword: "current-password",
+        newPassword: "new-password-123",
+      });
+
+      expect(verify).toHaveBeenCalledWith("current-password", "current-hash");
+      expect(hash).toHaveBeenCalledWith("new-password-123");
+      expect(update).toHaveBeenCalledWith(9, "new-password-hash");
+      expect(getUser).toHaveBeenCalledTimes(2);
+      expect(refreshSession).toHaveBeenCalledWith(expect.anything(), refreshedUser);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });

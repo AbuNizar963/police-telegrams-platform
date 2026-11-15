@@ -51,50 +51,9 @@ describe("stable storage URLs", () => {
 
     expect(result.key).toMatch(
       new RegExp(
-        `^organizations/${organizationId}/telegrams/7/attachments/[0-9a-f-]{36}-report\\\\.pdfimport { beforeEach, describe, expect, it, vi } from "vitest";
-
-const {
-  upload,
-  createSignedUrl,
-  createSignedUploadUrl,
-  getObjectInfo,
-  provider,
-} = vi.hoisted(() => {
-  const upload = vi.fn();
-  const createSignedUrl = vi.fn();
-  const createSignedUploadUrl = vi.fn();
-  const getObjectInfo = vi.fn();
-  const provider = { upload, createSignedUrl, createSignedUploadUrl, getObjectInfo };
-  return { upload, createSignedUrl, createSignedUploadUrl, getObjectInfo, provider };
-});
-
-vi.mock("../../_core/storageProvider", () => ({
-  getStorageProvider: () => provider,
-}));
-
-import {
-  parseOrganizationAttachmentKey,
-  storageCreateOrganizationAttachmentUploadUrl,
-  storageGetObjectInfo,
-  storagePutDepartmentLogo,
-  storagePutOrganizationAttachment,
-} from "./storage";
-
-describe("stable storage URLs", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    upload.mockResolvedValue(undefined);
-    createSignedUrl.mockResolvedValue("https://storage.example/signed");
-    createSignedUploadUrl.mockResolvedValue(
-      "https://storage.example/signed-upload?token=opaque"
-    );
-    getObjectInfo.mockResolvedValue({
-      size: 12,
-      contentType: "application/pdf",
-    });
-  });
-
-,
+        "^organizations/" +
+          organizationId +
+          "/telegrams/7/attachments/[0-9a-f-]{36}-report\\.pdf$",
         "i"
       )
     );
@@ -105,10 +64,13 @@ describe("stable storage URLs", () => {
     expect(upload).not.toHaveBeenCalled();
   });
 
-  it("reads object metadata without downloading the file", async () => {
+  it("reads object metadata without downloading file bytes", async () => {
     await expect(
       storageGetObjectInfo("organizations/org/telegrams/7/attachments/file.pdf")
-    ).resolves.toEqual({ size: 12, contentType: "application/pdf" });
+    ).resolves.toEqual({
+      size: 12,
+      contentType: "application/pdf",
+    });
     expect(getObjectInfo).toHaveBeenCalledWith(
       "organizations/org/telegrams/7/attachments/file.pdf"
     );

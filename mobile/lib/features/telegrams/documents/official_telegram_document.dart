@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -83,25 +82,6 @@ String officialTelegramDocumentLogoFileExtension(Uint8List bytes) {
     return 'webp';
   }
   throw FormatException('صيغة شعار الجهة غير مدعومة.');
-}
-
-@visibleForTesting
-Future<Uint8List> normalizeOfficialDocumentLogo(Uint8List bytes) async {
-  // Decode at the source resolution. The previous forced 600x600 decode
-  // distorted non-square logos and discarded detail from larger originals.
-  final codec = await ui.instantiateImageCodec(bytes);
-  try {
-    final frame = await codec.getNextFrame();
-    try {
-      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('تعذر تجهيز شعار الوثيقة.');
-      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    } finally {
-      frame.image.dispose();
-    }
-  } finally {
-    codec.dispose();
-  }
 }
 
 /// Rendering boundary for the official document.

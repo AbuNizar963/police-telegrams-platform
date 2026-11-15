@@ -163,25 +163,32 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
   return Uint8List.fromList(encodedArchive);
 }
 
+typedef OfficialTelegramLogoFileWriter =
+    Future<String> Function(Uint8List bytes, String cacheKey);
+
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   const OfficialTelegramDocumentRendererScope({
     super.key,
     required this.renderer,
+    this.logoFileWriter,
     required super.child,
   });
 
   final OfficialTelegramDocumentRenderer renderer;
+  @visibleForTesting
+  final OfficialTelegramLogoFileWriter? logoFileWriter;
 
-  static OfficialTelegramDocumentRenderer? maybeOf(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<
-            OfficialTelegramDocumentRendererScope
-          >()
-          ?.renderer;
+  static OfficialTelegramDocumentRendererScope? maybeOf(
+    BuildContext context,
+  ) => context
+      .dependOnInheritedWidgetOfExactType<
+        OfficialTelegramDocumentRendererScope
+      >();
 
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
-      renderer != oldWidget.renderer;
+      renderer != oldWidget.renderer ||
+      logoFileWriter != oldWidget.logoFileWriter;
 }
 
 bool _hasValidPlatformDocumentSettingsContract(Map result) {
@@ -246,6 +253,7 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
+  OfficialTelegramLogoFileWriter? _logoFileWriter;
   final TransformationController _previewTransform = TransformationController();
   final Map<String, String> _officialLogoFileUris = <String, String>{};
   final Map<String, Future<String?>> _officialLogoFileRequests =
@@ -256,9 +264,13 @@ class _OfficialTelegramDocumentPageState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final rendererScope = OfficialTelegramDocumentRendererScope.maybeOf(
+      context,
+    );
     _renderer =
-        OfficialTelegramDocumentRendererScope.maybeOf(context) ??
+        rendererScope?.renderer ??
         const NativeOfficialTelegramDocumentRenderer();
+    _logoFileWriter = rendererScope?.logoFileWriter;
   }
 
   @override
@@ -753,6 +765,12 @@ class _OfficialTelegramDocumentPageState
     Uint8List bytes,
     String cacheKey,
   ) async {
+    final testWriter = _logoFileWriter;
+    if (testWriter != null) {
+      final source = await testWriter(bytes, cacheKey);
+      _officialLogoFileUris[cacheKey] = source;
+      return source;
+    }
     final cached = await _cachedOfficialLogoFileUri(cacheKey);
     if (cached != null) return cached;
     final extension = officialTelegramDocumentLogoFileExtension(bytes);

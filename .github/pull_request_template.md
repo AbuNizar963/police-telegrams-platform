@@ -10,6 +10,15 @@
 - [ ] Security
 - [ ] Documentation / tooling
 
+## Security review (required when security-sensitive)
+
+- [ ] Threat boundary and authorization path reviewed
+- [ ] OWASP checklist reviewed where applicable
+- [ ] Positive and negative regression tests added/updated
+- [ ] Tenant isolation / IDOR checked where applicable
+- [ ] Secrets, logs, uploads, exports, and storage reviewed where applicable
+- [ ] No client-side-only security enforcement or debug bypasses
+
 ## Verification
 
 - [ ] Relevant tests added or updated

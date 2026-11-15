@@ -110,7 +110,9 @@ function parseTelegramAttachmentMetadata(body: unknown): {
   if (
     !fileName ||
     fileName.length > 180 ||
-    !/^[^\x00-\x1f\\/]+$/.test(fileName) ||
+    /[\u0000-\u001f]/.test(fileName) ||
+    fileName.includes("/") ||
+    fileName.includes("\\") ||
     !ALLOWED_ATTACHMENT_TYPES.includes(contentType as AllowedAttachmentType) ||
     !Number.isSafeInteger(sizeBytes) ||
     sizeBytes < 1 ||

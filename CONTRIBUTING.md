@@ -5,10 +5,12 @@ Thank you for helping improve Police Telegrams Platform. Changes should be small
 ## Before changing code
 
 1. Read the relevant module and its tests before editing.
-2. Preserve existing behavior unless the change explicitly requires changing it.
-3. Never commit credentials, access tokens, signing keys, private URLs, production data, or local environment files.
-4. For database changes, add a forward migration and appropriate database tests. Do not edit an already-applied migration to change production schema history.
-5. For imports, exports, and destructive operations, validate input, scope the operation, and test error and partial-failure cases.
+2. Read [the Secure Engineering Standard](docs/security/SECURE_ENGINEERING_STANDARD.md) before security-sensitive work.
+3. Preserve existing behavior unless the change explicitly requires changing it.
+4. Never commit credentials, access tokens, signing keys, private URLs, production data, or local environment files.
+5. For database changes, add a forward migration and appropriate database tests. Do not edit an already-applied migration to change production schema history.
+6. For imports, exports, and destructive operations, validate input, scope the operation, and test error and partial-failure cases.
+7. For AI-assisted changes, identify trust boundaries and abuse cases, verify generated code against repository conventions, and review the complete diff. AI output is not trusted by default.
 
 ## Web and server checks
 
@@ -26,22 +28,21 @@ For database changes, also run the local Supabase migration and database test wo
 
 ## Flutter mobile development
 
-The Flutter client is maintained on `flutter-mobile-app`, not in `main`. The pinned Flutter SDK is declared in `mobile/.fvmrc`; CI reads the same file so local and CI SDK versions stay aligned. Install FVM using the [official installation guide](https://fvm.app/documentation/getting-started/installation), then run from the repository root:
+The Flutter client is maintained on `flutter-mobile-app`, not in `main`. Fetch the branch first, then run the checks from `mobile/`:
 
 ```bash
 git fetch origin
 git switch --track origin/flutter-mobile-app
 cd mobile
-fvm install
-fvm flutter pub get
-fvm dart format lib test
-fvm dart format --output=none --set-exit-if-changed lib test
-fvm flutter analyze
-fvm flutter test
-fvm flutter build apk --debug
+flutter pub get
+dart format lib test
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
 ```
 
-Do not commit `mobile/.fvm/`; it contains the local SDK link and is ignored. Commit changes to `mobile/.fvmrc` only through an intentional Flutter SDK upgrade. Use the formatter bundled with the pinned Flutter/Dart SDK. Do not use a different formatter or manually adjust whitespace to work around a formatting failure.
+Use the formatter bundled with the Flutter/Dart SDK configured by the project. Do not use a different formatter or manually adjust whitespace to work around a formatting failure.
 
 ## Pull requests and Actions
 
@@ -51,6 +52,8 @@ Do not commit `mobile/.fvm/`; it contains the local SDK link and is ignored. Com
 - Wait for required GitHub Actions checks to pass before merging.
 - Do not claim a build or device behavior is verified unless the corresponding check or manual test actually ran.
 - Never weaken, skip, or bypass a failing check just to obtain a green status.
+- Report cancelled, skipped, pending, or inconclusive checks as incomplete rather than successful.
+- Apply shared functional/security changes to both maintained branches using each branch's native technology, then verify and push each branch independently.
 
 ## Security and privacy
 
@@ -58,3 +61,4 @@ Do not commit `mobile/.fvm/`; it contains the local SDK link and is ignored. Com
 - Avoid logging credentials, tokens, personal information, or full imported records.
 - Validate uploads and imports on the server, enforce size/type limits, and use organization-scoped access checks.
 - For changes to authentication, organization membership, storage URLs, or deletion flows, add regression tests covering unauthorized and cross-organization access.
+- Follow [the Secure Engineering Standard](docs/security/SECURE_ENGINEERING_STANDARD.md), including its OWASP control areas and AI-assisted change protocol.

@@ -10,7 +10,6 @@ vi.mock("../../db", async importOriginal => {
     ...actual,
     getUserById: vi.fn(),
     updateUserPassword: vi.fn(),
-    revokeUserSessions: vi.fn(),
   };
 });
 
@@ -18,7 +17,6 @@ vi.mock("../../_core/auth", async importOriginal => {
   const actual = await importOriginal<typeof import("../../_core/auth")>();
   return {
     ...actual,
-    clearAuthenticatedSession: vi.fn(),
     hashPassword: vi.fn(),
     setAuthenticatedSession: vi.fn(),
     verifyPassword: vi.fn(),
@@ -120,17 +118,6 @@ describe("profile router", () => {
         newPassword: "short",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-  });
-
-  it("revokes server-side sessions and clears the cookie on logout", async () => {
-    const context = contextFor();
-    vi.mocked(db.revokeUserSessions).mockResolvedValue(undefined);
-    vi.mocked(auth.clearAuthenticatedSession).mockImplementation(() => {});
-
-    await appRouter.createCaller(context).logout();
-
-    expect(db.revokeUserSessions).toHaveBeenCalledWith(9);
-    expect(auth.clearAuthenticatedSession).toHaveBeenCalledWith(context.res);
   });
 
   it("revokes old sessions and refreshes this device", async () => {

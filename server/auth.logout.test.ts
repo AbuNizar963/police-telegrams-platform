@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import * as db from "./db";
 import { appRouter } from "./routers";
+
+vi.mock("./db", async importOriginal => {
+  const actual = await importOriginal<typeof import("./db")>();
+  return { ...actual, revokeUserSessions: vi.fn() };
+});
 import type { TrpcContext } from "./_core/context";
 
 function createAuthContext(): TrpcContext {
@@ -22,10 +28,12 @@ function createAuthContext(): TrpcContext {
 }
 
 describe("auth.logout", () => {
-  it("reports success while the browser Supabase client owns session teardown", async () => {
+  it("revokes server sessions and clears the browser cookie", async () => {
     const context = createAuthContext();
+    vi.mocked(db.revokeUserSessions).mockResolvedValue(undefined);
     const caller = appRouter.createCaller(context);
     await expect(caller.auth.logout()).resolves.toEqual({ success: true });
+    expect(db.revokeUserSessions).toHaveBeenCalledWith(1);
     expect(context.res.setHeader).toHaveBeenCalledWith(
       "Set-Cookie",
       expect.stringContaining("Max-Age=0")

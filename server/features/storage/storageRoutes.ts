@@ -107,7 +107,8 @@ function parseTelegramAttachmentMetadata(body: unknown): {
     typeof value.contentType === "string"
       ? value.contentType.trim().toLowerCase()
       : "";
-  const sizeBytes = Number(value.sizeBytes);
+  const sizeBytes =
+    typeof value.sizeBytes === "number" ? value.sizeBytes : Number.NaN;
 
   if (
     !fileName ||
@@ -183,7 +184,7 @@ async function finalizeTelegramAttachmentUpload(
       ? ((req.body as Record<string, unknown>).key as string).trim()
       : "";
 
-  if (!context || !metadata || !key) {
+  if (!context || !metadata || !key || key.length > 512) {
     res.status(400).json({ error: "بيانات اعتماد المرفق غير صالحة" });
     return;
   }
@@ -211,7 +212,10 @@ async function finalizeTelegramAttachmentUpload(
     if (existing) {
       if (
         existing.telegramId !== context.telegram.id ||
-        existing.storageOrganizationId !== context.telegram.organizationId
+        existing.storageOrganizationId !== context.telegram.organizationId ||
+        existing.originalName !== metadata.fileName ||
+        existing.mimeType !== metadata.contentType ||
+        existing.sizeBytes !== metadata.sizeBytes
       ) {
         res.status(403).json({ error: "المرفق مسجل ضمن جهة أخرى" });
         return;
@@ -223,7 +227,7 @@ async function finalizeTelegramAttachmentUpload(
         key,
         fileName: metadata.fileName,
         contentType: metadata.contentType,
-        size: metadata.sizeBytes,
+        size: existing.sizeBytes,
       });
       return;
     }

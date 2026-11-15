@@ -168,23 +168,14 @@ Uint8List createTelegramPageImageArchive(List<Uint8List> pageImages) {
   return Uint8List.fromList(encodedArchive);
 }
 
-typedef OfficialTelegramLogoFileWriter = Future<String> Function(
-  Uint8List bytes,
-  String cacheKey,
-);
-
 class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   const OfficialTelegramDocumentRendererScope({
     super.key,
     required this.renderer,
-    this.logoFileWriter,
     required super.child,
   });
 
   final OfficialTelegramDocumentRenderer renderer;
-  @visibleForTesting
-  final OfficialTelegramLogoFileWriter? logoFileWriter;
-
   static OfficialTelegramDocumentRendererScope? maybeOf(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<
@@ -194,7 +185,7 @@ class OfficialTelegramDocumentRendererScope extends InheritedWidget {
   @override
   bool updateShouldNotify(OfficialTelegramDocumentRendererScope oldWidget) =>
       renderer != oldWidget.renderer ||
-      logoFileWriter != oldWidget.logoFileWriter;
+      false;
 }
 
 bool _hasValidPlatformDocumentSettingsContract(Map result) {
@@ -259,7 +250,6 @@ class _OfficialTelegramDocumentPageState
   int _loadGeneration = 0;
   OfficialTelegramDocumentRenderer _renderer =
       const NativeOfficialTelegramDocumentRenderer();
-  OfficialTelegramLogoFileWriter? _logoFileWriter;
   final TransformationController _previewTransform = TransformationController();
   final Map<String, String> _officialLogoResourceUris = <String, String>{};
   final Map<String, Future<String?>> _officialLogoResourceRequests =
@@ -276,7 +266,6 @@ class _OfficialTelegramDocumentPageState
     _renderer =
         rendererScope?.renderer ??
         const NativeOfficialTelegramDocumentRenderer();
-    _logoFileWriter = rendererScope?.logoFileWriter;
   }
 
   @override
@@ -287,6 +276,8 @@ class _OfficialTelegramDocumentPageState
 
   Future<void> load({int? versionNumber}) async {
     final generation = ++_loadGeneration;
+    _officialLogoResources.clear();
+    _officialLogoResourceUris.clear();
     final preparationClock = Stopwatch()..start();
     void logPreparationStage(String stage) {
       if (kDebugMode) {
@@ -738,8 +729,11 @@ class _OfficialTelegramDocumentPageState
   ) {
     final cached = _officialLogoResourceUris[cacheKey];
     if (cached != null) {
-      final id = Uri.parse(cached).pathSegments.lastOrNull;
-      if (id != null && _officialLogoResources.containsKey(id)) return cached;
+      final cachedUri = Uri.tryParse(cached);
+      if (cachedUri != null && cachedUri.pathSegments.isNotEmpty) {
+        final id = cachedUri.pathSegments.last;
+        if (_officialLogoResources.containsKey(id)) return cached;
+      }
       _officialLogoResourceUris.remove(cacheKey);
     }
 
@@ -1965,10 +1959,11 @@ String buildOfficialTelegramHtml({
   if (logoSource != null) {
     final uri = Uri.tryParse(logoSource);
     final isDocumentResource =
-        uri?.scheme == 'telegram-resource' &&
-        uri?.host == 'document' &&
-        uri?.pathSegments.length == 1 &&
-        uri!.pathSegments.single.isNotEmpty &&
+        uri != null &&
+        uri.scheme == 'telegram-resource' &&
+        uri.host == 'document' &&
+        uri.pathSegments.length == 1 &&
+        uri.pathSegments.single.isNotEmpty &&
         uri.query.isEmpty &&
         uri.fragment.isEmpty;
     if (!isDocumentResource) {

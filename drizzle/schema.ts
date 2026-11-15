@@ -638,7 +638,9 @@ export type TelegramRoute = typeof telegramRoutes.$inferSelect;
 export type InsertTelegramRoute = typeof telegramRoutes.$inferInsert;
 export type OrganizationType = (typeof organizationType.enumValues)[number];
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
-export type User = typeof users.$inferSelect;
+export type User = Omit<typeof users.$inferSelect, "sessionVersion"> & {
+  sessionVersion?: string;
+};
 export type InsertUser = typeof users.$inferInsert;
 export type Telegram = typeof telegrams.$inferSelect;
 export type InsertTelegram = typeof telegrams.$inferInsert;

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -203,7 +202,7 @@ class OfficialTelegramDocumentPage extends StatefulWidget {
 
 class _OfficialTelegramDocumentPageState
     extends State<OfficialTelegramDocumentPage> {
-  static const _preparationTimeout = Duration(seconds: 45);
+  static const _preparationTimeout = Duration(seconds: 120);
   bool loading = true;
   bool busy = false;
   double _progress = 0;
@@ -387,15 +386,22 @@ class _OfficialTelegramDocumentPageState
         );
       }
 
-      final logoOrganizationId =
-          resolveOrganizationLogoId(
-            accountOrganizationId:
-                accountOrganizationContext['organizationId'] ??
-                settingsData['organizationId'],
-            currentOrganizationId: telegramData['currentOrganizationId'],
-            ownerOrganizationId: telegramData['organizationId'],
-          ) ??
-          '';
+      final historicalLogoUrl = hasSelectedVersion
+          ? _value(activeVersion['logoUrl'], fallback: '').trim()
+          : '';
+      final hasHistoricalLogo =
+          hasSelectedVersion &&
+          isOfficialOrganizationLogoStorageSource(historicalLogoUrl);
+      final logoOrganizationId = hasHistoricalLogo
+          ? _value(telegramData['organizationId'], fallback: '').trim().toLowerCase()
+          : resolveOrganizationLogoId(
+                  accountOrganizationId:
+                      accountOrganizationContext['organizationId'] ??
+                      settingsData['organizationId'],
+                  currentOrganizationId: telegramData['currentOrganizationId'],
+                  ownerOrganizationId: telegramData['organizationId'],
+                ) ??
+                '';
       if (!hasSelectedVersion) {
         // Legacy telegrams without a saved version keep the verified current
         // organization logo fallback. A version with no historical logo must
@@ -416,21 +422,6 @@ class _OfficialTelegramDocumentPageState
             : null;
       }
 
-      // Resolve the authenticated organization logo URL in parallel with the
-      // direct logo-byte request. The byte endpoint already supports an
-      // authenticated fallback when settings do not expose a public URL.
-      // Only wait for the URL lookup if that direct request has no logo.
-      final organizationLogoSettingsFuture = () async {
-        if (logoOrganizationId.isEmpty) return null;
-        try {
-          return await widget.api.call(
-            'organizations.logo',
-            input: {'organizationId': logoOrganizationId},
-          );
-        } catch (_) {
-          return null;
-        }
-      }();
       final routingDirectory = results[2] is List
           ? (results[2] as List)
                 .whereType<Map>()
@@ -530,25 +521,11 @@ class _OfficialTelegramDocumentPageState
       final fontDataUrls = resources[0] as Map<int, String>;
       var logoSource = resources[1] as String?;
 
-      if (logoSource == null && logoOrganizationId.isNotEmpty) {
-        final organizationSettings = await organizationLogoSettingsFuture
-            .timeout(const Duration(seconds: 3), onTimeout: () => null);
-        if (organizationSettings is Map &&
-            resolveOrganizationLogoId(
-                  accountOrganizationId: organizationSettings['organizationId'],
-                ) ==
-                logoOrganizationId) {
-          final currentLogo = organizationSettings['logoUrl']
-              ?.toString()
-              .trim();
-          if (currentLogo != null && currentLogo.isNotEmpty) {
-            settingsData['logoUrl'] = currentLogo;
-            logoSource = await _loadLogoSource(
-              currentLogo,
-              logoOrganizationId,
-            ).timeout(const Duration(seconds: 3), onTimeout: () => null);
-          }
-        }
+      if (logoSource == null ||
+          !isOfficialOrganizationLogoStorageSource(logoSource)) {
+        throw Exception(
+          'تعذر تحديد ملف شعار الجهة من التخزين. أعد رفع الشعار من إعدادات الجهة ثم أعد المحاولة.',
+        );
       }
       logPreparationStage('fonts and organization logo');
       final token = _value(telegramData['verificationToken']);
@@ -575,7 +552,7 @@ class _OfficialTelegramDocumentPageState
             logoSource: logoSource,
           )
           .timeout(
-            const Duration(seconds: 20),
+            const Duration(seconds: 60),
             onTimeout: () => throw Exception(
               'تعذر تحويل الوثيقة إلى PDF في الوقت المحدد. أعد المحاولة.',
             ),
@@ -696,7 +673,8 @@ class _OfficialTelegramDocumentPageState
     String? fallbackUrl,
   }) async {
     final historicalUrl = _value(version['logoUrl'], fallback: '').trim();
-    if (historicalUrl.isNotEmpty && organizationId.isNotEmpty) {
+    if (organizationId.isNotEmpty &&
+        isOfficialOrganizationLogoStorageSource(historicalUrl)) {
       return historicalUrl;
     }
     return _loadLogoSource(fallbackUrl, organizationId);
@@ -705,7 +683,9 @@ class _OfficialTelegramDocumentPageState
   Future<String?> _loadLogoSource(Object? source, String organizationId) async {
     if (organizationId.isEmpty) return null;
     final configuredSource = _value(source, fallback: '').trim();
-    if (configuredSource.isNotEmpty) return configuredSource;
+    if (isOfficialOrganizationLogoStorageSource(configuredSource)) {
+      return configuredSource;
+    }
 
     final result = await widget.api.call(
       'organizations.logoForExport',
@@ -717,7 +697,9 @@ class _OfficialTelegramDocumentPageState
       return null;
     }
     final resolvedSource = result['logoUrl']?.toString().trim() ?? '';
-    return resolvedSource.isEmpty ? null : resolvedSource;
+    return isOfficialOrganizationLogoStorageSource(resolvedSource)
+        ? resolvedSource
+        : null;
   }
 
   String get _fileBaseName {
@@ -830,11 +812,18 @@ class _OfficialTelegramDocumentPageState
     final html = _htmlWithOutputTimestamp(occurredAt);
     _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
     _beginIndeterminateProgress('جارٍ تجهيز ملف PDF');
-    final bytes = await _renderer.renderPdf(
-      html,
-      organizationId: _documentLogoOrganizationId,
-      logoSource: _documentLogoSource,
-    );
+    final bytes = await _renderer
+        .renderPdf(
+          html,
+          organizationId: _documentLogoOrganizationId,
+          logoSource: _documentLogoSource,
+        )
+        .timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw Exception(
+            'انتهت مهلة تجهيز ملف الوثيقة. أعد المحاولة.',
+          ),
+        );
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
     }

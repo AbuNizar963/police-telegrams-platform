@@ -74,7 +74,6 @@ import {
   createLocalOwnerUser,
   getUserById,
   getUserByUsername,
-  revokeUserSessions,
   deletePushSubscription,
   deleteMobilePushToken,
   listUserNotifications,
@@ -780,13 +779,10 @@ export const appRouter = router({
         return user;
       }),
 
-    logout: publicProcedure.mutation(async ({ ctx }) => {
-      try {
-        if (ctx.user) await revokeUserSessions(ctx.user.id);
-      } finally {
-        // Always clear the browser cookie, even if server-side revocation fails.
-        clearAuthenticatedSession(ctx.res);
-      }
+    logout: publicProcedure.mutation(({ ctx }) => {
+      // Logout is scoped to this browser/device. Password changes and explicit
+      // administrative resets rotate sessionVersion to revoke every device.
+      clearAuthenticatedSession(ctx.res);
       return { success: true } as const;
     }),
   }),

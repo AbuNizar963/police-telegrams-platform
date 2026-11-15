@@ -5,24 +5,27 @@ import 'dart:convert';
 import 'package:police_telegrams/telegram_outbox.dart';
 
 void main() {
-  test('rejects an attachment larger than 2MB before writing offline data', () {
-    final oversizedBase64 = base64Encode(
-      List<int>.filled(TelegramOutbox.maxOfflineAttachmentBytes + 1, 0),
-    );
+  test(
+    'rejects an attachment larger than 10MB before writing offline data',
+    () {
+      final oversizedBase64 = base64Encode(
+        List<int>.filled(TelegramOutbox.maxOfflineAttachmentBytes + 1, 0),
+      );
 
-    expect(
-      () => TelegramOutbox.validateOfflineAttachmentBase64(oversizedBase64),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('أصغر من 2 ميغابايت'),
+      expect(
+        () => TelegramOutbox.validateOfflineAttachmentBase64(oversizedBase64),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('أصغر من 10 ميغابايت'),
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
-  test('accepts an attachment exactly at the 2MB offline limit', () {
+  test('accepts an attachment exactly at the 10MB offline limit', () {
     final base64 = base64Encode(
       List<int>.filled(TelegramOutbox.maxOfflineAttachmentBytes, 0),
     );

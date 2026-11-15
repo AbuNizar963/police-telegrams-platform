@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -413,25 +415,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     }
 
     await _run(() async {
-      final result = await widget.api.call(
-        'telegrams.downloadAttachment',
-        mutation: true,
-        input: {'attachmentId': id},
-      );
-      final url = result is Map ? result['url'] : null;
-      if (url == null || '$url'.trim().isEmpty) {
-        throw Exception('لم يُرجع الخادم رابط المرفق.');
-      }
-      final uri = Uri.tryParse('$url');
-      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-        throw Exception('رابط المرفق غير صالح أو غير آمن.');
-      }
-
-      final response = await http.get(uri).timeout(const Duration(seconds: 30));
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception('تعذر تحميل المرفق للمعاينة.');
-      }
-      final bytes = response.bodyBytes;
+      final bytes = await _attachmentBytes(id);
       if (isPdf && !_hasPdfSignature(bytes)) {
         throw Exception('محتوى الملف المستلم ليس ملف PDF صالحًا.');
       }
@@ -496,29 +480,13 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     final id = int.tryParse('${attachment['id']}');
     if (id == null) return;
     await _run(() async {
-      final result = await widget.api.call(
-        'telegrams.downloadAttachment',
-        mutation: true,
-        input: {'attachmentId': id},
-      );
-      final url = result is Map ? result['url'] : null;
-      if (url == null || '$url'.trim().isEmpty) {
-        throw Exception('لم يُرجع الخادم رابط تنزيل المرفق.');
-      }
-      final uri = Uri.tryParse('$url');
-      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-        throw Exception('رابط تنزيل المرفق غير صالح أو غير آمن.');
-      }
-      final response = await http.get(uri);
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw Exception('تعذر تنزيل ملف المرفق من مساحة التخزين.');
-      }
+      final bytes = await _attachmentBytes(id);
       final fileName =
           '${attachment['originalName'] ?? attachment['fileName'] ?? 'telegram-attachment'}';
       final savedPath = await FilePicker.saveFile(
         dialogTitle: 'حفظ مرفق البرقية',
         fileName: fileName,
-        bytes: response.bodyBytes,
+        bytes: bytes,
       );
       if (mounted) {
         _show(
@@ -527,6 +495,45 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
         );
       }
     });
+  }
+
+  /// Downloads attachment bytes and keeps an AES-encrypted copy so the same
+  /// attachment can be previewed or saved later without a connection.
+  Future<Uint8List> _attachmentBytes(int id) async {
+    try {
+      final result = await widget.api.call(
+        'telegrams.downloadAttachment',
+        mutation: true,
+        input: {'attachmentId': id},
+      );
+      final url = result is Map ? result['url'] : null;
+      if (url == null || '$url'.trim().isEmpty) {
+        throw Exception('لم يُرجع الخادم رابط المرفق.');
+      }
+      final uri = Uri.tryParse('$url');
+      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+        throw Exception('رابط المرفق غير صالح أو غير آمن.');
+      }
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw Exception('تعذر تحميل ملف المرفق من مساحة التخزين.');
+      }
+      unawaited(widget.api.cacheAttachmentBytes(id, response.bodyBytes));
+      return response.bodyBytes;
+    } catch (exception) {
+      final isOffline =
+          exception is NetworkException ||
+          exception is TimeoutException ||
+          exception is http.ClientException ||
+          exception is IOException ||
+          (exception is ApiException && exception.statusCode >= 500);
+      if (!isOffline) rethrow;
+      final cached = await widget.api.readCachedAttachmentBytes(id);
+      if (cached != null && cached.isNotEmpty) return cached;
+      throw const NetworkException(
+        'لا يوجد اتصال، ولم يُفتح هذا المرفق سابقًا على الجهاز ليتوفر دون اتصال.',
+      );
+    }
   }
 
   Future<void> _run(Future<void> Function() action) async {

@@ -177,13 +177,17 @@ class _TelegramOutboxPageState extends State<TelegramOutboxPage> {
           Row(
             children: [
               Icon(
-                Icons.pending_actions_outlined,
+                entry.isUpdate
+                    ? Icons.edit_note_outlined
+                    : Icons.pending_actions_outlined,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${entry.payload['subject'] ?? 'برقية محفوظة محليًا'}',
+                  entry.isUpdate
+                      ? 'تعديل: ${entry.payload['subject'] ?? 'برقية'}'
+                      : '${entry.payload['subject'] ?? 'برقية محفوظة محليًا'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w900),

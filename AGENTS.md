@@ -7,14 +7,14 @@ These instructions apply to every contributor and automated coding agent working
 1. Read `SECURITY.md`, this file, and `docs/OWASP_SECURITY_CHECKLIST_AR.md` before changing authentication, authorization, tenant data, uploads, exports, storage, database policies, secrets, or CI workflows.
 2. For security audits and security-sensitive code changes, load `.agents/skills/vibe-security/SKILL.md` and only the technology references that match this codebase. Treat examples as audit patterns, not copy-paste fixes; verify against current official documentation and this repository's architecture.
 3. Define the trust boundary and threat before coding: actor, resource, organization/tenant, operation, entry point, privileged dependencies, and expected denial behavior.
-3. Trace authorization from the public route to the final database/storage operation. A hidden UI control is never authorization.
-4. Prefer the smallest complete patch to existing code. Preserve existing behavior and features unless the change explicitly requires removal. Remove obsolete code cleanly after replacement; never leave dead or commented-out security bypasses.
-5. Validate all untrusted input on the server. Treat client-supplied user IDs, organization IDs, roles, file names, MIME types, URLs, and object keys as untrusted.
-6. Keep privileged credentials server-only. Never log tokens, cookies, passwords, signed URLs, secret values, or sensitive personal/telegram content.
-7. Add regression tests for both the allowed path and the denied/abuse path. Include cross-tenant access tests for tenant-owned records and files.
-8. Review the complete diff for accidental deletions, truncated files, one-line/minified replacements, disabled features, debug bypasses, and unrelated changes.
-9. Run the relevant formatter, lint, type checks, unit/integration tests, database tests, and production build. Inspect every GitHub Actions workflow on the exact commit in each affected branch.
-10. Do not claim a check passed unless its run completed successfully. Do not merge while required checks are pending, cancelled, skipped unexpectedly, or failing.
+4. Trace authorization from the public route to the final database/storage operation. A hidden UI control is never authorization.
+5. Prefer the smallest complete patch to existing code. Preserve existing behavior and features unless the change explicitly requires removal. Remove obsolete code cleanly after replacement; never leave dead or commented-out security bypasses.
+6. Validate all untrusted input on the server. Treat client-supplied user IDs, organization IDs, roles, file names, MIME types, URLs, and object keys as untrusted.
+7. Keep privileged credentials server-only. Never log tokens, cookies, passwords, signed URLs, secret values, or sensitive personal/telegram content.
+8. Add regression tests for both the allowed path and the denied/abuse path. Include cross-tenant access tests for tenant-owned records and files.
+9. Review the complete diff for accidental deletions, truncated files, one-line/minified replacements, disabled features, debug bypasses, and unrelated changes.
+10. Run the relevant formatter, lint, type checks, unit/integration tests, database tests, and production build. Inspect every GitHub Actions workflow on the exact commit in each affected branch.
+11. Do not claim a check passed unless its run completed successfully. Do not merge while required checks are pending, cancelled, skipped unexpectedly, or failing.
 
 ## Authorization and tenant isolation
 

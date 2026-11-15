@@ -826,6 +826,30 @@ void main() {
     expect(events.single.telegramId, 7);
   });
 
+  test('rejects an oversized telegram attachment before requesting storage', () async {
+    var requestStarted = false;
+    final client = MockClient((request) async {
+      requestStarted = true;
+      return http.Response('unexpected request', 500);
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+    );
+
+    await expectLater(
+      api.uploadTelegramAttachment(
+        telegramId: 7,
+        fileName: 'large.pdf',
+        contentType: 'application/pdf',
+        bytes: Uint8List(10 * 1024 * 1024 + 1),
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    expect(requestStarted, isFalse);
+  });
+
   test('organization logos upload as authenticated binary bytes', () async {
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
     const sessionCookie = 'sid=authenticated-session';

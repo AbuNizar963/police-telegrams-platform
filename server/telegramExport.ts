@@ -122,6 +122,24 @@ export function resolveDepartmentLogoStorageKey(logoSource: string): string {
     throw new Error("مصدر شعار الجهة ليس مسار تخزين محميًا");
   }
 
+  const rawSegments = logoSource.slice(storagePrefix.length).split("/");
+  try {
+    for (const segment of rawSegments) {
+      const decodedSegment = decodeURIComponent(segment);
+      if (
+        !decodedSegment ||
+        decodedSegment === "." ||
+        decodedSegment === ".." ||
+        decodedSegment.includes("/") ||
+        decodedSegment.includes("\\")
+      ) {
+        throw new Error("Unsafe storage path segment");
+      }
+    }
+  } catch {
+    throw new Error("مسار شعار الجهة يحتوي على مقطع غير صالح");
+  }
+
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(logoSource, "https://telegram-export.invalid");

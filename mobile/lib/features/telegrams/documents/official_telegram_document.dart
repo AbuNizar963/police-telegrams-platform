@@ -436,10 +436,9 @@ class _OfficialTelegramDocumentPageState
                   ownerOrganizationId: telegramData['organizationId'],
                 ) ??
                 '';
-      if (!hasSelectedVersion) {
-        // Legacy telegrams without a saved version keep the verified current
-        // organization logo fallback. A version with no historical logo must
-        // remain logo-less rather than borrowing today's logo.
+      if (!hasHistoricalLogo) {
+        // Match the web exporter: when no valid historical logo is stored,
+        // use the active account's logo only if settings belong to that org.
         final settingsOrganizationId =
             resolveOrganizationLogoId(
               accountOrganizationId:

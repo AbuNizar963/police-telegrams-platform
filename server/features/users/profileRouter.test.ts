@@ -101,7 +101,9 @@ describe("profile router", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("revokes previous sessions and refreshes the current session after password change", async () => {
+  it(
+    "revokes previous sessions and refreshes the current session after password change",
+    async () => {
     const user = {
       ...contextFor().user!,
       passwordHash: "current-hash",
@@ -133,8 +135,9 @@ describe("profile router", () => {
         role: user.role,
         authUserId: rotatedAuthUserId,
       });
-    } finally {
-      vi.restoreAllMocks();
+      } finally {
+        vi.restoreAllMocks();
+      }
     }
-  });
+  );
 });

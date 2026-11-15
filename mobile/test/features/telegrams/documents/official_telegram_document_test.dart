@@ -474,6 +474,31 @@ void main() {
     },
   );
 
+  test('rejects Base64 and network URLs as official logo sources', () {
+    expect(
+      () => buildOfficialTelegramHtml(
+        telegram: telegram(),
+        settings: const {},
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/token',
+        fontDataUrls: fonts,
+        logoSource: 'data:image/png;base64,AA==',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => buildOfficialTelegramHtml(
+        telegram: telegram(),
+        settings: const {},
+        routingDirectory: const [],
+        verificationUrl: 'https://example.test/verify/token',
+        fontDataUrls: fonts,
+        logoSource: 'https://example.test/logo.png',
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test(
     'applies owner branding settings and can hide only the repeated phrase',
     () {

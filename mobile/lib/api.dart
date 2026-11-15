@@ -265,10 +265,12 @@ class PoliceApi {
         .trim()
         .toLowerCase();
     final bytes = response.bodyBytes;
-    final isPdf = contentType == 'application/pdf' &&
+    final isPdf =
+        contentType == 'application/pdf' &&
         bytes.length >= 5 &&
         String.fromCharCodes(bytes.take(5)) == '%PDF-';
-    final isPng = contentType == 'image/png' &&
+    final isPng =
+        contentType == 'image/png' &&
         bytes.length >= 8 &&
         bytes[0] == 137 &&
         bytes[1] == 80 &&
@@ -278,14 +280,9 @@ class PoliceApi {
         bytes[5] == 10 &&
         bytes[6] == 26 &&
         bytes[7] == 10;
-    final validContent = format == 'pdf'
-        ? isPdf
-        : isPdf || isPng;
+    final validContent = format == 'pdf' ? isPdf : isPdf || isPng;
     if (!validContent) {
-      throw const ApiException(
-        502,
-        'أعاد الخادم ملف وثيقة بصيغة غير متوقعة.',
-      );
+      throw const ApiException(502, 'أعاد الخادم ملف وثيقة بصيغة غير متوقعة.');
     }
     return Uint8List.fromList(bytes);
   }

@@ -798,11 +798,6 @@ class PoliceApi {
   /// This makes the confirmed logo available after the settings screen closes,
   /// even when the current network cannot immediately reload the protected
   /// storage URL. The cache is scoped to both organization and storage path.
-  /// Persists bytes that were just uploaded and accepted by settings.update.
-  ///
-  /// This makes the confirmed logo available after the settings screen closes,
-  /// even when the current network cannot immediately reload the protected
-  /// storage URL. The cache is scoped to both organization and storage path.
   Future<void> cacheOrganizationLogo({
     required String organizationId,
     required String source,

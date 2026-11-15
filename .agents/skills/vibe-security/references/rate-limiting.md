@@ -32,6 +32,10 @@ If rate limit counters live in a Supabase public table, users can reset their ow
 - Use per-user usage quotas with hard limits, not just soft warnings
 - Monitor for anomalous usage patterns (sudden spikes, requests at odd hours)
 
+
+
+> **Trusted proxy warning:** Do not copy the example's raw `X-Forwarded-For` lookup into production without configuring and trusting the exact reverse-proxy chain. Clients can forge forwarding headers when the edge does not overwrite them. Derive the client address only from platform metadata or a correctly configured trusted proxy, and always combine IP limits with authenticated per-account limits where appropriate.
+
 ## Implementation Pattern
 
 ```typescript

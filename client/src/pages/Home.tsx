@@ -4333,8 +4333,7 @@ function TelegramDetail({
   }, [
     telegram.id,
     versions.isLoading,
-    versions.isError,
-    versions.data,
+    selectedVersion?.versionNumber,
     selectedVersionNumber,
   ]);
 

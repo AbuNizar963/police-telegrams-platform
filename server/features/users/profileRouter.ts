@@ -1,6 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { hashPassword, publicUser, setAuthenticatedSession, verifyPassword } from "../../_core/auth";
+import {
+  hashPassword,
+  publicUser,
+  setAuthenticatedSession,
+  verifyPassword,
+} from "../../_core/auth";
 import {
   authenticatedProcedure,
   protectedProcedure,

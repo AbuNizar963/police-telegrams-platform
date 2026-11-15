@@ -160,6 +160,19 @@ export async function verifyPassword(
   }
 }
 
+export function isSessionVersionValid(
+  tokenSessionVersion: unknown,
+  currentSessionVersion: string,
+  authUserId: string
+): boolean {
+  if (typeof tokenSessionVersion === "string") {
+    return tokenSessionVersion === currentSessionVersion;
+  }
+  // JWTs issued before sessionVersion was introduced have no version claim.
+  // They remain valid only until the account's session version is rotated.
+  return currentSessionVersion === authUserId;
+}
+
 export async function getAuthenticatedUserFromRequest(
   req: Request
 ): Promise<PublicUser | null> {
@@ -177,12 +190,13 @@ export async function getAuthenticatedUserFromRequest(
     if (!user || user.isActive === false || user.loginMethod === "disabled")
       return null;
     const currentSessionVersion = user.sessionVersion ?? user.authUserId;
-    if (typeof payload.sessionVersion === "string") {
-      if (payload.sessionVersion !== currentSessionVersion) return null;
-    } else if (currentSessionVersion !== user.authUserId) {
-      // Legacy JWTs issued before sessionVersion existed contain no version
-      // claim. Accept them only while the account still has its initial
-      // authUserId-based version; rotating the version revokes them.
+    if (
+      !isSessionVersionValid(
+        payload.sessionVersion,
+        currentSessionVersion,
+        user.authUserId
+      )
+    ) {
       return null;
     }
     return publicUser(user);

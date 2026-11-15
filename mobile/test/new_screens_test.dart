@@ -323,11 +323,11 @@ void main() {
     // Validation errors render at the top of the profile form. Scroll to the
     // error before asserting because ListView may dispose off-screen children.
     await tester.scrollUntilVisible(
-      find.text('تأكيد كلمة المرور غير مطابق.'),
+      find.text('تأكيد كلمة المرور غير مطابق'),
       -240,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('تأكيد كلمة المرور غير مطابق.'), findsOneWidget);
+    expect(find.text('تأكيد كلمة المرور غير مطابق'), findsOneWidget);
     expect(api.calls, isNot(contains('profile.changePassword')));
 
     await enterField('تأكيد كلمة المرور', 'new-password-long');

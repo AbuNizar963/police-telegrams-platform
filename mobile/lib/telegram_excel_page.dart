@@ -132,7 +132,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
       }
       if (rows.length > 1000) {
         throw Exception(
-          'يحتوي السجل على ${rows.length} صفًا؛ حد ملف القالب الواحد 1000. استخدم مرشحات التاريخ لتقسيم التصدير.',
+          'يحتوي السجل على ${rows.length} صفًا؛ حد ملف القالب الواحد 1000. استخدم فلاتر التاريخ لتقسيم التصدير.',
         );
       }
       final options = await _confirmExport(rows);
@@ -186,7 +186,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
         builder: (context, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('معاينة تصدير البرقيات'),
+            title: const Text('معاينة تصدير سجل البرقيات'),
             content: SizedBox(
               width: 520,
               child: SingleChildScrollView(
@@ -630,7 +630,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                   const Icon(Icons.file_copy_outlined, color: _gold, size: 34),
                   const SizedBox(height: 10),
                   Text(
-                    'أدوات سجل البرقيات بصيغة Excel',
+                    'أدوات السجل بصيغة Excel',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
@@ -749,7 +749,7 @@ class _TelegramExcelPageState extends State<TelegramExcelPage> {
                         ),
                         TextButton(
                           onPressed: () => setState(selectedRows.clear),
-                          child: const Text('إلغاء التحديد'),
+                          child: const Text('إلغاء الاختيار'),
                         ),
                       ],
                     ),

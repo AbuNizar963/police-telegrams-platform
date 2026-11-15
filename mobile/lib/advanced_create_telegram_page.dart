@@ -168,7 +168,7 @@ class _AdvancedCreateTelegramSheetState
     if (result == null || result.files.isEmpty || !mounted) return;
     final file = result.files.single;
     if (_contentType(file.extension) == null) {
-      setState(() => _error = 'نوع المرفق غير مدعوم.');
+      setState(() => _error = 'نوع الملف غير مسموح');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -262,9 +262,7 @@ class _AdvancedCreateTelegramSheetState
                   const SizedBox(height: 8),
                   Expanded(
                     child: filtered.isEmpty
-                        ? const Center(
-                            child: Text('لا توجد جهات مطابقة للبحث.'),
-                          )
+                        ? const Center(child: Text('لا توجد جهة مطابقة للبحث.'))
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             itemCount: filtered.length,

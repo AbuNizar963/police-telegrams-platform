@@ -336,7 +336,7 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
                   style: const TextStyle(fontSize: 10),
                 ),
                 trailing: IconButton(
-                  tooltip: 'تحديد كمقروء',
+                  tooltip: 'تحديد التنبيه كمقروء',
                   onPressed: () => _markNotificationRead(item),
                   icon: Icon(Icons.done, color: context.appSuccess, size: 18),
                 ),
@@ -439,18 +439,18 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
     final topOrganization = organizations.isEmpty ? null : organizations.first;
     final rows = [
       {
-        'label': 'متوسط العمليات اليومي',
+        'label': 'معدل العمليات اليومي',
         'value': average,
         'ratio': _ratio(average, total),
       },
       {
-        'label': 'نسبة العمليات الحساسة',
+        'label': 'مؤشر العمليات الحساسة',
         'value': sensitiveRate,
         'ratio': sensitiveRate / 100,
         'suffix': '%',
       },
       {
-        'label': 'عمليات الجهة الأعلى نشاطًا',
+        'label': 'الجهة الأعلى نشاطًا',
         'value': int.tryParse('${topOrganization?['count'] ?? 0}') ?? 0,
         'ratio': _ratio(
           int.tryParse('${topOrganization?['count'] ?? 0}') ?? 0,
@@ -696,12 +696,12 @@ class _NativeOwnerDashboardPageState extends State<NativeOwnerDashboardPage> {
             const _CardHeader(
               icon: Icons.apartment_outlined,
               title: 'الجهات الأعلى نشاطًا',
-              subtitle: 'بحسب عدد الإجراءات خلال الفترة المحددة',
+              subtitle: 'بحسب عدد العمليات في الفترة المحددة',
             ),
             const SizedBox(height: 10),
             if (organizations.isEmpty)
               const _EmptyState(
-                text: 'لا توجد عمليات مرتبطة بالجهات في هذه الفترة.',
+                text: 'لا توجد عمليات مرتبطة بجهة خلال هذه الفترة.',
               )
             else
               ...organizations

@@ -173,7 +173,7 @@ class _PlatformDocumentSettingsPageState
             .toLowerCase();
         _colorController.text = _headerDividerColor;
       });
-      Toast.success(context, 'تم حفظ إعدادات وثائق النظام.');
+      Toast.success(context, 'تم حفظ إعدادات وثائق النظام');
     } catch (exception) {
       if (mounted) setState(() => _error = _settingsErrorMessage(exception));
     } finally {
@@ -244,7 +244,7 @@ class _PlatformDocumentSettingsPageState
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           title: const Text(
-                            'إظهار عبارة وزارة الداخلية كعلامة مائية',
+                            'إظهار عبارة «وزارة الداخلية» كعلامة مائية',
                             style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                           subtitle: const Text(
@@ -298,7 +298,7 @@ class _PlatformDocumentSettingsPageState
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'لون الخط الفاصل في الترويسة',
+                          'لون الخط الفاصل في ترويسة البرقية',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 10),

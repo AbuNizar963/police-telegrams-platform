@@ -12,10 +12,10 @@ const _minimumLogoDimension = 256;
 /// normalized to PNG as well, so the upload MIME type always matches bytes.
 Future<Uint8List> prepareOrganizationLogoBytes(Uint8List source) async {
   if (source.isEmpty) {
-    throw ArgumentError('ملف الشعار فارغ.');
+    throw ArgumentError('ملف الشعار فارغ');
   }
   if (source.length > _maxSourceLogoBytes) {
-    throw ArgumentError('حجم ملف الشعار الأصلي يجب ألا يتجاوز 5 ميغابايت.');
+    throw ArgumentError('حجم ملف الشعار الأصلي يجب ألا يتجاوز 5 ميغابايت');
   }
 
   final sourceCodec = await ui.instantiateImageCodec(source);
@@ -35,7 +35,7 @@ Future<Uint8List> prepareOrganizationLogoBytes(Uint8List source) async {
       sourceWidth > 12000 ||
       sourceHeight > 12000 ||
       sourceWidth * sourceHeight > 40000000) {
-    throw ArgumentError('أبعاد صورة الشعار كبيرة جدًا؛ اختر صورة أصغر.');
+    throw ArgumentError('أبعاد صورة الشعار كبيرة جدًا؛ استخدم صورة أصغر');
   }
 
   var maxDimension = _initialMaxLogoDimension;
@@ -80,7 +80,7 @@ Future<Uint8List> prepareOrganizationLogoBytes(Uint8List source) async {
     }
 
     if (maxDimension <= _minimumLogoDimension) {
-      throw StateError('تعذر ضغط الشعار إلى الحد المسموح؛ اختر صورة أصغر.');
+      throw StateError('تعذر ضغط الشعار إلى الحد المسموح؛ اختر صورة أصغر');
     }
     maxDimension = (maxDimension * 0.75).floor();
     if (maxDimension < _minimumLogoDimension) {

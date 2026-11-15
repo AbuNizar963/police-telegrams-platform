@@ -174,7 +174,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
   Future<void> _createUser() async {
     if (_organizations.isEmpty) {
       if (mounted) {
-        Toast.warning(context, 'لا توجد جهات متاحة لإنشاء حساب.');
+        Toast.warning(context, 'لا توجد جهات مفعلة متاحة لإنشاء حسابات.');
       }
       return;
     }
@@ -223,7 +223,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
           'confirmPassword': ?confirmPassword,
         },
       );
-      _showMessage('تم تحديث بيانات الحساب.');
+      _showMessage('تم تحديث بيانات الحساب');
     });
   }
 
@@ -243,7 +243,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
         mutation: true,
         input: {'id': user['id'], 'confirmPassword': password},
       );
-      _showMessage('تم تعطيل الحساب مع الحفاظ على سجلاته.');
+      _showMessage('تم تعطيل الحساب مع الحفاظ على سجلاته وبرقياته');
     });
   }
 
@@ -263,7 +263,7 @@ class _NativeUserManagementPageState extends State<NativeUserManagementPage> {
           'confirmPassword': form['confirmPassword'],
         },
       );
-      _showMessage('تمت إعادة تفعيل الحساب.');
+      _showMessage('تمت إعادة تفعيل الحساب');
     });
   }
 
@@ -746,7 +746,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: AlertDialog(
-      title: Text(_editing ? 'تعديل بيانات الحساب' : 'إنشاء حساب جهة'),
+      title: Text(_editing ? 'تعديل الحساب' : 'إنشاء حساب ضمن جهة محددة'),
       content: SizedBox(
         width: MediaQuery.sizeOf(context).width * 0.82,
         child: SingleChildScrollView(
@@ -905,7 +905,7 @@ class _EnableUserDialogState extends State<_EnableUserDialog> {
             obscureText: true,
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
-              labelText: 'كلمة المرور الجديدة (12+)',
+              labelText: 'كلمة مرور جديدة (12+)',
             ),
           ),
           TextField(

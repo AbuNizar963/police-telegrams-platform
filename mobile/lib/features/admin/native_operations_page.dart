@@ -447,7 +447,7 @@ class _NativeOperationsPageState extends State<NativeOperationsPage>
         Row(
           children: [
             _metric(
-              'برقيات مفتوحة',
+              'البرقيات المفتوحة',
               openRows.length,
               Icons.pending_actions_outlined,
             ),

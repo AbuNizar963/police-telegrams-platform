@@ -169,7 +169,7 @@ private final class TelegramPdfResourceRendererPlugin: NSObject, FlutterPlugin, 
     configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
 
     let webView = WKWebView(
-      frame: CGRect(x: 0, y: 0, width: 794, height: 1123),
+      frame: CGRect(x: 0, y: 0, width: 595.28, height: 841.89),
       configuration: configuration
     )
     webView.navigationDelegate = self

@@ -341,11 +341,13 @@ void main() {
   setUp(() {
     _secureStorageForTest.clear();
     AppLockRuntime.setSessionActive(false);
-    const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+    const pathProviderChannel = MethodChannel(
+      'plugins.flutter.io/path_provider',
+    );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           pathProviderChannel,
-          (call) async => call.method == 'getTemporaryPath'
+          (call) async => call.method == 'getTemporaryDirectory'
               ? Directory.systemTemp.path
               : null,
         );
@@ -498,7 +500,10 @@ void main() {
 
     final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderedHtml, contains('class="official-logo" src="file://'));
+    expect(
+      renderedHtml,
+      contains('class="official-logo" src="file://'),
+    );
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));
@@ -542,7 +547,10 @@ void main() {
       await tester.pump();
 
       expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-      expect(renderer.renderedHtml, contains('class="official-logo" src="file://'));
+      expect(
+        renderer.renderedHtml,
+        contains('class="official-logo" src="file://'),
+      );
       expect(renderer.renderedHtml, isNot(contains('data:image/png;base64')));
     },
   );

@@ -83,9 +83,7 @@ import {
   type OrganizationLogoView,
 } from "@/lib/resolveTelegramExportLogo";
 import { detectOfficialDocumentLogoMimeType } from "@/features/telegrams/documents/officialDocumentLogo";
-import {
-  getCachedOfficialDocumentLogoObjectUrl,
-} from "@/features/telegrams/documents/officialDocumentLogoCache";
+import { getCachedOfficialDocumentLogoObjectUrl } from "@/features/telegrams/documents/officialDocumentLogoCache";
 import {
   DOCUMENT_SETTINGS_LOAD_ERROR,
   loadDocumentSettingsForExport,

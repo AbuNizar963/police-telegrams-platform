@@ -1,6 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { appRouter } from "../../routers";
+import { describe, expect, it, vi } from "vitest";
+import * as auth from "../../_core/auth";
+import * as db from "../../db";
 import type { TrpcContext } from "../../_core/context";
+import { appRouter } from "../../routers";
+
+vi.mock("../../db", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../db")>();
+  return {
+    ...actual,
+    getUserById: vi.fn(),
+    updateUserPassword: vi.fn(),
+  };
+});
+
+vi.mock("../../_core/auth", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../_core/auth")>();
+  return {
+    ...actual,
+    hashPassword: vi.fn(),
+    setAuthenticatedSession: vi.fn(),
+    verifyPassword: vi.fn(),
+  };
+});
 
 function contextFor(
   overrides: Partial<NonNullable<TrpcContext["user"]>> = {}
@@ -97,5 +118,41 @@ describe("profile router", () => {
         newPassword: "short",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("revokes old sessions and refreshes this device", async () => {
+    const user = {
+      ...contextFor().user!,
+      passwordHash: "old-hash",
+    } as NonNullable<Awaited<ReturnType<typeof db.getUserById>>>;
+    const rotatedSessionVersion = "00000000-0000-4000-8000-000000000099";
+
+    vi.mocked(db.getUserById).mockResolvedValue(user);
+    vi.mocked(auth.verifyPassword).mockResolvedValue(true);
+    vi.mocked(auth.hashPassword).mockResolvedValue("new-hash");
+    vi.mocked(db.updateUserPassword).mockResolvedValue(rotatedSessionVersion);
+    vi.mocked(auth.setAuthenticatedSession).mockResolvedValue(undefined);
+
+    try {
+      await appRouter.createCaller(contextFor()).profile.changePassword({
+        currentPassword: "old-pass",
+        newPassword: "new-password-123",
+      });
+
+      expect(auth.verifyPassword).toHaveBeenCalledWith("old-pass", "old-hash");
+      expect(auth.hashPassword).toHaveBeenCalledWith("new-password-123");
+      expect(db.updateUserPassword).toHaveBeenCalledWith(9, "new-hash");
+      expect(auth.setAuthenticatedSession).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          id: user.id,
+          role: user.role,
+          authUserId: user.authUserId,
+          sessionVersion: rotatedSessionVersion,
+        }
+      );
+    } finally {
+      vi.clearAllMocks();
+    }
   });
 });

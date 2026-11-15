@@ -5,10 +5,12 @@ Thank you for helping improve Police Telegrams Platform. Changes should be small
 ## Before changing code
 
 1. Read the relevant module and its tests before editing.
-2. Preserve existing behavior unless the change explicitly requires changing it.
-3. Never commit credentials, access tokens, signing keys, private URLs, production data, or local environment files.
-4. For database changes, add a forward migration and appropriate database tests. Do not edit an already-applied migration to change production schema history.
-5. For imports, exports, and destructive operations, validate input, scope the operation, and test error and partial-failure cases.
+2. Read [the Secure Engineering Standard](docs/security/SECURE_ENGINEERING_STANDARD.md) before security-sensitive work.
+3. Preserve existing behavior unless the change explicitly requires changing it.
+4. Never commit credentials, access tokens, signing keys, private URLs, production data, or local environment files.
+5. For database changes, add a forward migration and appropriate database tests. Do not edit an already-applied migration to change production schema history.
+6. For imports, exports, and destructive operations, validate input, scope the operation, and test error and partial-failure cases.
+7. For AI-assisted changes, identify trust boundaries and abuse cases, verify generated code against repository conventions, and review the complete diff. AI output is not trusted by default.
 
 ## Web and server checks
 
@@ -50,6 +52,8 @@ Use the formatter bundled with the Flutter/Dart SDK configured by the project. D
 - Wait for required GitHub Actions checks to pass before merging.
 - Do not claim a build or device behavior is verified unless the corresponding check or manual test actually ran.
 - Never weaken, skip, or bypass a failing check just to obtain a green status.
+- Report cancelled, skipped, pending, or inconclusive checks as incomplete rather than successful.
+- Apply shared functional/security changes to both maintained branches using each branch's native technology, then verify and push each branch independently.
 
 ## Security and privacy
 
@@ -57,3 +61,4 @@ Use the formatter bundled with the Flutter/Dart SDK configured by the project. D
 - Avoid logging credentials, tokens, personal information, or full imported records.
 - Validate uploads and imports on the server, enforce size/type limits, and use organization-scoped access checks.
 - For changes to authentication, organization membership, storage URLs, or deletion flows, add regression tests covering unauthorized and cross-organization access.
+- Follow [the Secure Engineering Standard](docs/security/SECURE_ENGINEERING_STANDARD.md), including its OWASP control areas and AI-assisted change protocol.

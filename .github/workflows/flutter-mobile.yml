@@ -77,8 +77,17 @@ jobs:
       - name: Build Android debug APK without signing secrets
         run: flutter build apk --debug
 
+      - name: Upload Android preview APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: police-telegrams-android-preview
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Enforce clean formatting and whitespace
-        if: always()
+        # Do not convert an upstream cancellation or skipped Flutter setup into a false formatting failure.
+        if: always() && steps.dart_format_check.outcome != 'skipped' && steps.dart_format_check.outcome != 'cancelled'
         shell: bash
         run: |
           set -euo pipefail
@@ -100,7 +109,9 @@ jobs:
     # build scripts. Never run it for pull requests, including same-repository
     # branches, because their code can otherwise expose release credentials.
     # Pull requests still run the secret-free analysis, tests, and iOS build.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/flutter-mobile-app'
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/flutter-mobile-app'
     defaults:
       run:
         working-directory: mobile
@@ -309,9 +320,8 @@ jobs:
       - build-android-apk
       - build-ios
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/flutter-mobile-app' &&
-      needs.build-android-apk.outputs.notification_client_state == 'configured'
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/flutter-mobile-app'
     permissions:
       contents: write
     steps:

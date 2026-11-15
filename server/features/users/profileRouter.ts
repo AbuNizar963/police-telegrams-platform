@@ -1,6 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { hashPassword, publicUser, verifyPassword } from "../../_core/auth";
+import {
+  hashPassword,
+  publicUser,
+  setAuthenticatedSession,
+  verifyPassword,
+} from "../../_core/auth";
 import {
   authenticatedProcedure,
   protectedProcedure,
@@ -78,10 +83,19 @@ export const profileRouter = router({
           message: "اختر كلمة مرور مختلفة عن الحالية",
         });
       }
-      await updateUserPassword(
+      const sessionVersion = await updateUserPassword(
         ctx.user.id,
         await hashPassword(input.newPassword)
       );
+
+      // The database rotation invalidates every old JWT. Re-issue a session
+      // only for the device that completed this password change.
+      await setAuthenticatedSession(ctx.res, {
+        id: user.id,
+        role: user.role,
+        authUserId: user.authUserId,
+        sessionVersion,
+      });
       return { success: true };
     }),
 

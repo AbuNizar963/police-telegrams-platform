@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { appRouter } from "./routers";
 
 function createAuthContext(): TrpcContext {
   return {
@@ -22,10 +22,12 @@ function createAuthContext(): TrpcContext {
 }
 
 describe("auth.logout", () => {
-  it("reports success while the browser Supabase client owns session teardown", async () => {
+  it("clears only the current browser session", async () => {
     const context = createAuthContext();
     const caller = appRouter.createCaller(context);
+
     await expect(caller.auth.logout()).resolves.toEqual({ success: true });
+
     expect(context.res.setHeader).toHaveBeenCalledWith(
       "Set-Cookie",
       expect.stringContaining("Max-Age=0")

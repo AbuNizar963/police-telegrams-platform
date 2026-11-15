@@ -66,11 +66,11 @@ export function publicUser(user: User): PublicUser {
 
 export async function setAuthenticatedSession(
   res: Response,
-  user: Pick<User, "id" | "role" | "authUserId">
+  user: Pick<User, "id" | "role" | "authUserId" | "sessionVersion">
 ): Promise<void> {
   const token = await new SignJWT({
     role: user.role,
-    authUserId: user.authUserId,
+    sessionVersion: user.sessionVersion ?? user.authUserId,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
@@ -160,6 +160,19 @@ export async function verifyPassword(
   }
 }
 
+export function isSessionVersionValid(
+  tokenSessionVersion: unknown,
+  currentSessionVersion: string,
+  authUserId: string
+): boolean {
+  if (typeof tokenSessionVersion === "string") {
+    return tokenSessionVersion === currentSessionVersion;
+  }
+  // JWTs issued before sessionVersion was introduced have no version claim.
+  // They remain valid only until the account's session version is rotated.
+  return currentSessionVersion === authUserId;
+}
+
 export async function getAuthenticatedUserFromRequest(
   req: Request
 ): Promise<PublicUser | null> {
@@ -176,11 +189,16 @@ export async function getAuthenticatedUserFromRequest(
     const user = await db.getUserById(userId);
     if (!user || user.isActive === false || user.loginMethod === "disabled")
       return null;
+    const currentSessionVersion = user.sessionVersion ?? user.authUserId;
     if (
-      typeof payload.authUserId !== "string" ||
-      payload.authUserId !== user.authUserId
-    )
+      !isSessionVersionValid(
+        payload.sessionVersion,
+        currentSessionVersion,
+        user.authUserId
+      )
+    ) {
       return null;
+    }
     return publicUser(user);
   } catch {
     return null;

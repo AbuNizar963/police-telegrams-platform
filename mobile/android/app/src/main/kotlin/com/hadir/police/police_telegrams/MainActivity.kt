@@ -35,10 +35,15 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
     private var telegramNotificationMethodChannel: MethodChannel? = null
     private var telegramNotificationHandlerReady = false
+    private var telegramPdfResourceRenderer: TelegramPdfResourceRenderer? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         updateInstaller = UpdateInstaller(applicationContext)
+        telegramPdfResourceRenderer = TelegramPdfResourceRenderer(
+            this,
+            flutterEngine.dartExecutor.binaryMessenger
+        )
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "com.police_telegrams/apk_installer/events"

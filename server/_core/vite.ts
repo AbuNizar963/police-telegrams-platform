@@ -37,9 +37,13 @@ export async function setupVite(app: Express, server: Server) {
   >();
 
   const readClientTemplate = async () => {
-    const stat = await fs.promises.stat(clientTemplatePath);
-    if (!templateCache || templateCache.mtimeMs !== stat.mtimeMs) {
-      let source = await fs.promises.readFile(clientTemplatePath, "utf-8");
+    // Use one file descriptor for both metadata and content to avoid a
+    // time-of-check/time-of-use race if the path is replaced between calls.
+    const fileHandle = await fs.promises.open(clientTemplatePath, "r");
+    try {
+      const stat = await fileHandle.stat();
+      if (!templateCache || templateCache.mtimeMs !== stat.mtimeMs) {
+        let source = await fileHandle.readFile({ encoding: "utf-8" });
       // Vite HMR handles source changes. A stable mtime-based query preserves
       // browser caching between requests while still invalidating the entry
       // when the HTML shell itself changes.
@@ -48,9 +52,12 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${Math.trunc(stat.mtimeMs)}"`
       );
       templateCache = { mtimeMs: stat.mtimeMs, source };
-      transformedIndexCache.clear();
+        transformedIndexCache.clear();
+      }
+      return templateCache;
+    } finally {
+      await fileHandle.close();
     }
-    return templateCache;
   };
 
   // Vite fingerprints optimized dependency URLs, so they can safely be

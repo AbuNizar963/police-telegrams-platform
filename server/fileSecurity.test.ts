@@ -50,6 +50,43 @@ describe("uploaded file security", () => {
     ).not.toThrow();
   });
 
+  it("rejects values whose runtime types do not match the upload contract", () => {
+    expect(detectFileType({ length: 12 } as unknown as Buffer)).toBeNull();
+    expect(() => validateUploadedFile(null)).toThrow("بيانات الملف غير صالحة");
+    expect(() =>
+      validateUploadedFile({
+        bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        declaredType: "image/png",
+        fileName: "logo.png",
+        maxBytes: 10_000,
+      })
+    ).toThrow("بيانات الملف غير صالحة");
+    expect(() =>
+      validateUploadedFile({
+        bytes: Buffer.from("%PDF-1.7\\n"),
+        declaredType: ["application/pdf"],
+        fileName: "report.pdf",
+        maxBytes: 10_000,
+      })
+    ).toThrow("بيانات الملف غير صالحة");
+    expect(() =>
+      validateUploadedFile({
+        bytes: Buffer.from("%PDF-1.7\\n"),
+        declaredType: "application/pdf",
+        fileName: ["report.pdf"],
+        maxBytes: 10_000,
+      })
+    ).toThrow("بيانات الملف غير صالحة");
+    expect(() =>
+      validateUploadedFile({
+        bytes: Buffer.from("%PDF-1.7\\n"),
+        declaredType: "application/pdf",
+        fileName: "report.pdf",
+        maxBytes: "10000",
+      })
+    ).toThrow("بيانات الملف غير صالحة");
+  });
+
   it("rejects empty and over-limit byte sequences", () => {
     const pdf = Buffer.from("%PDF-1.7\n");
 

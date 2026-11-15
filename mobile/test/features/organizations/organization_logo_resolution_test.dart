@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:police_telegrams/features/organizations/organization_logo_resolution.dart';
 
 void main() {
-  test('uses the authenticated organization endpoint when the logo URL is empty', () {
+  test(
+    'uses the authenticated organization endpoint when the logo URL is empty',
+    () {
     expect(
       resolveOrganizationLogoSourceIdentity('', (_) => 'unused'),
       'api-export',
@@ -11,7 +13,8 @@ void main() {
       resolveOrganizationLogoSourceIdentity('  ', (_) => 'unused'),
       'api-export',
     );
-  });
+    },
+  );
 
   test('uses a normalized URL identity when the logo URL exists', () {
     expect(
@@ -22,7 +25,10 @@ void main() {
       'normalized:https://example.test/logo.png',
     );
     expect(
-      resolveOrganizationLogoSourceIdentity('https://example.test/logo.png', (_) => ''),
+      resolveOrganizationLogoSourceIdentity(
+        'https://example.test/logo.png',
+        (_) => '',
+      ),
       isNull,
     );
   });

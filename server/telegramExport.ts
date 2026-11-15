@@ -534,9 +534,7 @@ export function registerTelegramExportRoutes(app: Express): void {
       return res.status(200).send(result.body);
     } catch (error) {
       if (error instanceof TelegramExportRequestError) {
-        return res
-          .status(error.statusCode)
-          .json({ error: error.message });
+        return res.status(error.statusCode).json({ error: error.message });
       }
 
       console.error("Telegram Chromium export failed:", error);

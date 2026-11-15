@@ -17,8 +17,9 @@ const {
   canAccessTelegramScope,
   createTelegramAttachment,
   writeAuditLog,
+  storageCreateOrganizationAttachmentUploadUrl,
+  storageGetObjectInfo,
   storageDelete,
-  storagePutOrganizationAttachment,
 } = vi.hoisted(() => ({
   getAuthenticatedUserFromRequest: vi.fn(),
   getOrganizationByIdIncludingInactive: vi.fn(),
@@ -36,8 +37,9 @@ const {
   canAccessTelegramScope: vi.fn(),
   createTelegramAttachment: vi.fn(),
   writeAuditLog: vi.fn(),
+  storageCreateOrganizationAttachmentUploadUrl: vi.fn(),
+  storageGetObjectInfo: vi.fn(),
   storageDelete: vi.fn(),
-  storagePutOrganizationAttachment: vi.fn(),
 }));
 
 vi.mock("../../_core/auth", () => ({ getAuthenticatedUserFromRequest }));
@@ -59,8 +61,9 @@ vi.mock("./storage", async () => {
     storageGetSignedUrl,
     storageCreateSignedUrl,
     storagePutDepartmentLogo,
+    storageCreateOrganizationAttachmentUploadUrl,
+    storageGetObjectInfo,
     storageDelete,
-    storagePutOrganizationAttachment,
   };
 });
 vi.mock("../../db", async importOriginal => {
@@ -144,19 +147,27 @@ function createDepartmentLogoUploadHarness() {
   return { authorize: routes[0], upload: routes[2], res };
 }
 
-function createTelegramAttachmentUploadHarness() {
-  const routes: Array<(...args: any[]) => any> = [];
+function createSignedTelegramAttachmentHarness() {
+  const routes = new Map<string, Array<(...args: any[]) => any>>();
   const app = {
     get: vi.fn(),
-    put: vi.fn((path: string, ...handlers: Array<(...args: any[]) => any>) => {
-      if (path === "/api/telegrams/:telegramId/attachments") {
-        routes.push(...handlers);
-      }
+    put: vi.fn(),
+    post: vi.fn((path: string, ...handlers: Array<(...args: any[]) => any>) => {
+      routes.set(path, handlers);
     }),
   };
   registerStorageRoutes(app as any);
-  if (routes.length !== 3) {
-    throw new Error("Telegram attachment upload route was not registered");
+  const authorize = routes.get(
+    "/api/telegrams/:telegramId/attachments/upload-url"
+  )?.[0];
+  const createUrl = routes.get(
+    "/api/telegrams/:telegramId/attachments/upload-url"
+  )?.[1];
+  const finalize = routes.get(
+    "/api/telegrams/:telegramId/attachments/finalize"
+  )?.[1];
+  if (!authorize || !createUrl || !finalize) {
+    throw new Error("Signed telegram attachment routes were not registered");
   }
   const res: FakeResponse = {
     status: vi.fn().mockReturnThis(),
@@ -166,7 +177,7 @@ function createTelegramAttachmentUploadHarness() {
     redirect: vi.fn().mockReturnThis(),
     locals: {},
   };
-  return { authorize: routes[0], receive: routes[2], res };
+  return { authorize, createUrl, finalize, res };
 }
 
 const testOrganizationId = "550e8400-e29b-41d4-a716-446655440000";
@@ -174,68 +185,102 @@ const validPngBytes = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 ]);
 
-describe("binary telegram attachment upload", () => {
+describe("signed telegram attachment uploads", () => {
   const telegram = {
     id: 7,
     organizationId: testOrganizationId,
     currentOrganizationId: testOrganizationId,
   };
-  const pdfBytes = Buffer.from("%PDF-1.7\\nfixture");
-  const uploaded = {
-    key: `organizations/${testOrganizationId}/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf`,
-    url: "/api/storage/attachment",
+  const user = {
+    id: 7,
+    role: "user",
+    authUserId: "user-7",
+    name: "Officer",
   };
+  const pdfBytes = Buffer.from("%PDF-1.7\\nfixture");
+  const key = `organizations/${testOrganizationId}/telegrams/7/attachments/550e8400-e29b-41d4-a716-446655440001-report.pdf`;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getAuthenticatedUserFromRequest.mockResolvedValue({
-      id: 7,
-      role: "user",
-      authUserId: "user-7",
-      name: "Officer",
-    });
+    getAuthenticatedUserFromRequest.mockResolvedValue(user);
     getTelegramById.mockResolvedValue(telegram);
     canAccessTelegramScope.mockResolvedValue(true);
-    storagePutOrganizationAttachment.mockResolvedValue(uploaded);
+    storageCreateOrganizationAttachmentUploadUrl.mockResolvedValue({
+      key,
+      uploadUrl: "https://storage.example/upload?token=opaque",
+    });
+    getTelegramAttachmentByStorageKey.mockResolvedValue(null);
+    storageGetObjectInfo.mockResolvedValue({
+      size: pdfBytes.byteLength,
+      contentType: "application/pdf",
+    });
+    storageDownload.mockResolvedValue({
+      body: pdfBytes,
+      contentType: "application/pdf",
+    });
     createTelegramAttachment.mockResolvedValue(undefined);
     writeAuditLog.mockResolvedValue(undefined);
   });
 
-  function request(body: Buffer = pdfBytes) {
-    const headers: Record<string, string> = {
-      "content-type": "application/pdf",
-      "x-file-name": encodeURIComponent("report.pdf"),
-    };
+  function request(body: Record<string, unknown>) {
     return {
       params: { telegramId: "7" },
+      body,
       headers: {},
       ip: "127.0.0.1",
-      get: (name: string) => headers[name.toLowerCase()] ?? undefined,
-      body,
     };
   }
 
-  it("stores validated raw bytes and records metadata and audit history", async () => {
-    const { authorize, receive, res } = createTelegramAttachmentUploadHarness();
+  it("creates a one-object signed upload URL after checking telegram scope", async () => {
+    const { authorize, createUrl, res } =
+      createSignedTelegramAttachmentHarness();
     const next = vi.fn();
-    const req = request();
+    const req = request({
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: pdfBytes.byteLength,
+    });
 
     await authorize(req, res, next);
     expect(next).toHaveBeenCalledOnce();
-    await receive(req, res);
+    await createUrl(req, res);
 
-    expect(storagePutOrganizationAttachment).toHaveBeenCalledWith(
+    expect(storageCreateOrganizationAttachmentUploadUrl).toHaveBeenCalledWith(
       testOrganizationId,
       7,
-      "report.pdf",
-      pdfBytes,
-      "application/pdf"
+      "report.pdf"
     );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key,
+        uploadUrl: "https://storage.example/upload?token=opaque",
+        sizeBytes: pdfBytes.byteLength,
+      })
+    );
+  });
+
+  it("validates stored object size and file signature before recording metadata", async () => {
+    const { authorize, finalize, res } =
+      createSignedTelegramAttachmentHarness();
+    const next = vi.fn();
+    const req = request({
+      key,
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: pdfBytes.byteLength,
+    });
+
+    await authorize(req, res, next);
+    await finalize(req, res);
+
+    expect(storageGetObjectInfo).toHaveBeenCalledWith(key);
+    expect(storageDownload).toHaveBeenCalledWith(key);
     expect(createTelegramAttachment).toHaveBeenCalledWith(
       expect.objectContaining({
         telegramId: 7,
         storageOrganizationId: testOrganizationId,
-        storageKey: uploaded.key,
+        storageKey: key,
         originalName: "report.pdf",
         mimeType: "application/pdf",
         sizeBytes: pdfBytes.byteLength,
@@ -252,66 +297,100 @@ describe("binary telegram attachment upload", () => {
       })
     );
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ...uploaded,
+  });
+
+  it("rejects a signed upload request outside the user's telegram scope", async () => {
+    canAccessTelegramScope.mockResolvedValueOnce(false);
+    const { authorize, res } = createSignedTelegramAttachmentHarness();
+    const next = vi.fn();
+
+    await authorize(
+      request({
         fileName: "report.pdf",
         contentType: "application/pdf",
-        size: pdfBytes.byteLength,
-        sha256: expect.any(String),
-      })
+        sizeBytes: pdfBytes.byteLength,
+      }),
+      res,
+      next
     );
-  });
-
-  it("rejects unauthenticated uploads before reading the file", async () => {
-    getAuthenticatedUserFromRequest.mockResolvedValueOnce(null);
-    const { authorize, res } = createTelegramAttachmentUploadHarness();
-    const next = vi.fn();
-
-    await authorize(request(), res, next);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
-    expect(getTelegramById).not.toHaveBeenCalled();
-    expect(storagePutOrganizationAttachment).not.toHaveBeenCalled();
-  });
-
-  it("rejects uploads outside the user's telegram scope", async () => {
-    canAccessTelegramScope.mockResolvedValueOnce(false);
-    const { authorize, res } = createTelegramAttachmentUploadHarness();
-    const next = vi.fn();
-
-    await authorize(request(), res, next);
 
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
-    expect(storagePutOrganizationAttachment).not.toHaveBeenCalled();
+    expect(storageCreateOrganizationAttachmentUploadUrl).not.toHaveBeenCalled();
   });
 
-  it("removes an orphaned object when metadata persistence fails", async () => {
-    createTelegramAttachment.mockRejectedValueOnce(new Error("database error"));
-    const { authorize, receive, res } = createTelegramAttachmentUploadHarness();
+  it("rejects an object whose stored size differs and removes it", async () => {
+    storageGetObjectInfo.mockResolvedValueOnce({
+      size: pdfBytes.byteLength + 1,
+      contentType: "application/pdf",
+    });
+    const { authorize, finalize, res } =
+      createSignedTelegramAttachmentHarness();
     const next = vi.fn();
-    const req = request();
+    const req = request({
+      key,
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: pdfBytes.byteLength,
+    });
 
     await authorize(req, res, next);
-    await receive(req, res);
+    await finalize(req, res);
 
-    expect(storageDelete).toHaveBeenCalledWith(uploaded.key);
-    expect(res.status).toHaveBeenCalledWith(500);
-  });
-
-  it("rejects invalid file signatures before storage", async () => {
-    const { authorize, receive, res } = createTelegramAttachmentUploadHarness();
-    const next = vi.fn();
-    const req = request(Buffer.from("not a PDF"));
-
-    await authorize(req, res, next);
-    await receive(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(storagePutOrganizationAttachment).not.toHaveBeenCalled();
+    expect(storageDelete).toHaveBeenCalledWith(key);
     expect(createTelegramAttachment).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("removes invalid file content and does not create attachment metadata", async () => {
+    storageDownload.mockResolvedValueOnce({
+      body: Buffer.from("not a PDF"),
+      contentType: "application/pdf",
+    });
+    storageGetObjectInfo.mockResolvedValueOnce({
+      size: Buffer.from("not a PDF").byteLength,
+      contentType: "application/pdf",
+    });
+    const { authorize, finalize, res } =
+      createSignedTelegramAttachmentHarness();
+    const next = vi.fn();
+    const req = request({
+      key,
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: Buffer.from("not a PDF").byteLength,
+    });
+
+    await authorize(req, res, next);
+    await finalize(req, res);
+
+    expect(storageDelete).toHaveBeenCalledWith(key);
+    expect(createTelegramAttachment).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("does not create another metadata row when finalization is retried", async () => {
+    getTelegramAttachmentByStorageKey.mockResolvedValueOnce({
+      id: 99,
+      telegramId: 7,
+      storageOrganizationId: testOrganizationId,
+      storageKey: key,
+    });
+    const { authorize, finalize, res } =
+      createSignedTelegramAttachmentHarness();
+    const next = vi.fn();
+    const req = request({
+      key,
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: pdfBytes.byteLength,
+    });
+
+    await authorize(req, res, next);
+    await finalize(req, res);
+
+    expect(createTelegramAttachment).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });
 

@@ -4,7 +4,7 @@ applyTo: "**/*"
 
 # Security instructions for AI-assisted and human code changes
 
-These rules are mandatory for all code-generation, review, and refactoring work in this repository. Follow `docs/security/SECURE_ENGINEERING_STANDARD.md` as the full control baseline.
+These rules are mandatory for all code-generation, review, and refactoring work in this repository. Follow `docs/security/SECURE_ENGINEERING_STANDARD.md`, `.agents/skills/vibe-security/SKILL.md`, and `.agents/skills/owasp-security/SKILL.md` as the security control baseline.
 
 ## Vibe Security workflow
 

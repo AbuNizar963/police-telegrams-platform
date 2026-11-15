@@ -5,14 +5,14 @@ void main() {
   test(
     'uses the authenticated organization endpoint when the logo URL is empty',
     () {
-    expect(
-      resolveOrganizationLogoSourceIdentity('', (_) => 'unused'),
-      'api-export',
-    );
-    expect(
-      resolveOrganizationLogoSourceIdentity('  ', (_) => 'unused'),
-      'api-export',
-    );
+      expect(
+        resolveOrganizationLogoSourceIdentity('', (_) => 'unused'),
+        'api-export',
+      );
+      expect(
+        resolveOrganizationLogoSourceIdentity('  ', (_) => 'unused'),
+        'api-export',
+      );
     },
   );
 

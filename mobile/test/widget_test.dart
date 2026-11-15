@@ -506,7 +506,10 @@ void main() {
     await tester.pump();
 
     final renderedHtml = renderer.renderedHtml!;
-    expect(renderedHtml, contains('class="official-logo" src="telegram-logo://official"'));
+    expect(
+      renderedHtml,
+      contains('class="official-logo" src="telegram-logo://official"'),
+    );
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));

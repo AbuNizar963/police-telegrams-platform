@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:police_telegrams/features/auth_session/app_lock.dart';
 import 'package:police_telegrams/api.dart';
 import 'package:police_telegrams/features/telegrams/documents/official_telegram_document.dart';
+import 'package:police_telegrams/features/telegrams/documents/telegram_pdf_resource_renderer.dart';
 import 'package:police_telegrams/main.dart';
 import 'package:police_telegrams/mobile_pages.dart' show DepartmentSettingsPage;
 import 'package:police_telegrams/features/platform_settings/platform_document_settings_page.dart';

@@ -125,7 +125,8 @@ internal class TelegramPdfResourceRenderer(
                     if (uri.host != "document" || uri.pathSegments.size != 1) {
                         return blockedResponse()
                     }
-                    val resource = resources[uri.lastPathSegment] ?: return blockedResponse()
+                    val resourceId = uri.lastPathSegment ?: return blockedResponse()
+                    val resource = resources[resourceId] ?: return blockedResponse()
                     return WebResourceResponse(
                         resource.first,
                         null,
@@ -235,11 +236,11 @@ internal class TelegramPdfResourceRenderer(
             CancellationSignal(),
             object : PrintDocumentAdapter.LayoutResultCallback() {
                 override fun onLayoutFinished(info: PrintDocumentInfo?, changed: Boolean) {
-                    if (info == null || info.pageCount <= 0) {
+                    if (info == null || info.pageCount == 0) {
                         finishWithError("PDF_LAYOUT_EMPTY", "لم ينتج محرك الطباعة صفحات للوثيقة.")
                         return
                     }
-                    writePdf(adapter, info.pageCount)
+                    writePdf(adapter)
                 }
 
                 override fun onLayoutFailed(error: CharSequence?) {
@@ -254,7 +255,7 @@ internal class TelegramPdfResourceRenderer(
         )
     }
 
-    private fun writePdf(adapter: PrintDocumentAdapter, pageCount: Int) {
+    private fun writePdf(adapter: PrintDocumentAdapter) {
         val output = File.createTempFile("official-telegram-", ".pdf", activity.cacheDir)
         val descriptor = try {
             android.os.ParcelFileDescriptor.open(
@@ -270,7 +271,7 @@ internal class TelegramPdfResourceRenderer(
         }
 
         adapter.onWrite(
-            arrayOf(PageRange(0, pageCount - 1)),
+            arrayOf(PageRange.ALL_PAGES),
             descriptor,
             CancellationSignal(),
             object : PrintDocumentAdapter.WriteResultCallback() {

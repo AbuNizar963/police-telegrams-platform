@@ -634,9 +634,9 @@ void main() {
     },
   );
 
-  test('organization logo prefers the authenticated tRPC payload', () async {
+  test('organization logo prefers the authenticated binary URL from tRPC', () async {
     final cacheDirectory = await Directory.systemTemp.createTemp(
-      'police-telegrams-inline-logo-test-',
+      'police-telegrams-binary-logo-test-',
     );
     addTearDown(() => cacheDirectory.delete(recursive: true));
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
@@ -651,12 +651,66 @@ void main() {
     var logoApiRequestCount = 0;
     final client = MockClient((request) async {
       expect(request.headers['cookie'], sessionCookie);
-      if (request.url.path.startsWith('/api/storage/')) {
-        imageRequestCount++;
-        return http.Response('image route unavailable', 503);
-      }
       if (request.url.path.endsWith('/organizations.logoForExport')) {
         logoApiRequestCount++;
+        return http.Response(
+          jsonEncode({
+            'result': {
+              'data': {
+                'json': {
+                  'organizationId': organizationId,
+                  'logoUrl':
+                      '/api/storage/department/logos/$organizationId/logo.png',
+                },
+              },
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (request.url.path.startsWith('/api/storage/')) {
+        imageRequestCount++;
+        expect(
+          request.url.path,
+          '/api/storage/department/logos/$organizationId/logo.png',
+        );
+        return http.Response.bytes(
+          imageBytes,
+          200,
+          headers: {'content-type': 'image/png'},
+        );
+      }
+      return http.Response('unexpected request', 404);
+    });
+    addTearDown(client.close);
+    final api = PoliceApi(
+      baseUrl: 'https://police.example.test',
+      httpClient: client,
+      imageCacheDirectory: cacheDirectory,
+    );
+    final bytes = await api.fetchOrganizationLogo(
+      organizationId: organizationId,
+      source: '',
+    );
+    expect(bytes, imageBytes);
+    expect(imageRequestCount, 1);
+    expect(logoApiRequestCount, 1);
+  });
+
+  test('organization logo keeps legacy Base64 responses as a compatibility fallback', () async {
+    final cacheDirectory = await Directory.systemTemp.createTemp(
+      'police-telegrams-legacy-logo-test-',
+    );
+    addTearDown(() => cacheDirectory.delete(recursive: true));
+    const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+    final imageBytes = Uint8List.fromList(
+      base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=',
+      ),
+    );
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/organizations.logoForExport')) {
         return http.Response(
           jsonEncode({
             'result': {
@@ -683,12 +737,11 @@ void main() {
     );
     final bytes = await api.fetchOrganizationLogo(
       organizationId: organizationId,
-      source: '/api/storage/department/logos/$organizationId/logo.png',
+      source: '',
     );
     expect(bytes, imageBytes);
-    expect(imageRequestCount, 0);
-    expect(logoApiRequestCount, 1);
   });
+
   test('organization logos upload as authenticated binary bytes', () async {
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
     const sessionCookie = 'sid=authenticated-session';

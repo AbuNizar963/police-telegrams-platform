@@ -145,8 +145,8 @@ describe("profile router", () => {
       expect(auth.setAuthenticatedSession).toHaveBeenCalledWith(
         expect.anything(),
         {
-        id: user.id,
-        role: user.role,
+          id: user.id,
+          role: user.role,
           authUserId: rotatedAuthUserId,
         }
       );

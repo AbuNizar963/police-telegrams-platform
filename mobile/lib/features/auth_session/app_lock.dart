@@ -482,6 +482,12 @@ class _AppLockOverlayState extends State<AppLockOverlay>
     }
   }
 
+  String _pinLockoutMessage(Duration remaining) {
+    final seconds = remaining.inSeconds +
+        (remaining.inMilliseconds % 1000 == 0 ? 0 : 1);
+    return 'تم إيقاف محاولات PIN مؤقتًا. حاول مجددًا بعد $seconds ثانية.';
+  }
+
   Future<void> _submitPin() async {
     if (_settingsLoadFailed) {
       setState(() {
@@ -524,10 +530,14 @@ class _AppLockOverlayState extends State<AppLockOverlay>
           });
         }
       } else if (mounted) {
+        final lockRemaining = await AppLockService.pinLockRemaining();
+        if (!mounted) return;
         setState(() {
           _pin = '';
           _pinController.clear();
-          _error = 'رمز PIN غير صحيح. حاول مرة أخرى.';
+          _error = lockRemaining > Duration.zero
+              ? _pinLockoutMessage(lockRemaining)
+              : 'رمز PIN غير صحيح. حاول مرة أخرى.';
         });
       }
     } catch (_) {

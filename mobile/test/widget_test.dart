@@ -189,6 +189,13 @@ class _TestPoliceApi extends PoliceApi {
         'organizationId': input?['organizationId'],
         'logoUrl': resolvedOrganizationLogoUrl ?? organizationLogoUrl,
       },
+      'organizations.logoForExport' => {
+        'organizationId': input?['organizationId'],
+        'logoUrl':
+            resolvedOrganizationLogoUrl ??
+            organizationLogoUrl ??
+            '/api/storage/department/logos/org-1/logo.png',
+      },
       'telegrams.list' => {
         'items': [_sampleTelegram()],
       },
@@ -308,7 +315,11 @@ class _TestOfficialTelegramDocumentRenderer
   String? renderedHtml;
 
   @override
-  Future<Uint8List> renderPdf(String html) async {
+  Future<Uint8List> renderPdf(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) async {
     renderedHtml = html;
     expect(html, contains(_telegramSubject));
     expect(html, contains('routing-qr'));
@@ -333,7 +344,11 @@ class _TestOfficialTelegramDocumentRenderer
 class _StalledPdfDocumentRenderer
     extends _TestOfficialTelegramDocumentRenderer {
   @override
-  Future<Uint8List> renderPdf(String html) => Completer<Uint8List>().future;
+  Future<Uint8List> renderPdf(
+    String html, {
+    String? organizationId,
+    String? logoSource,
+  }) => Completer<Uint8List>().future;
 }
 
 void main() {
@@ -406,7 +421,7 @@ void main() {
     _setMobileViewport(tester);
     final api = _TestPoliceApi(
       signedIn: true,
-      organizationLogoUrl: 'https://images.example.test/department-logo.png',
+      organizationLogoUrl: '/api/storage/department/logos/org-1/logo.png',
     );
 
     await tester.pumpWidget(
@@ -484,8 +499,7 @@ void main() {
     await tester.pump();
 
     final renderedHtml = renderer.renderedHtml!;
-    expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
-    expect(renderedHtml, contains('class="official-logo" src="file://'));
+    expect(renderedHtml, contains('class="official-logo" src="telegram-logo://official"'));
     expect(renderedHtml, isNot(contains('data:image/png;base64')));
     expect(renderedHtml, contains('class="page-watermark"'));
     expect(renderedHtml, contains('class="watermark-logo"'));
@@ -528,10 +542,13 @@ void main() {
       );
       await tester.pump();
 
-      expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
+      expect(
+        api.calls['organizations.logoForExport']?['organizationId'],
+        'org-1',
+      );
       expect(
         renderer.renderedHtml,
-        contains('class="official-logo" src="file://'),
+        contains('class="official-logo" src="telegram-logo://official"'),
       );
       expect(renderer.renderedHtml, isNot(contains('data:image/png;base64')));
     },
@@ -585,7 +602,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 25));
+      await tester.pump(const Duration(seconds: 61));
       await tester.pump();
 
       expect(

@@ -3042,31 +3042,10 @@ async function loadOfficialDocumentLogoObjectUrl(
       );
       if (!mimeType) throw new Error("تعذر تحديد نوع صورة الشعار");
 
-      const normalizedBlob = new Blob([bytes], { type: mimeType });
-      const objectUrl = URL.createObjectURL(normalizedBlob);
-      let bitmap: ImageBitmap | null = null;
-      try {
-        if (typeof createImageBitmap === "function") {
-          bitmap = await createImageBitmap(normalizedBlob);
-          if (bitmap.width <= 0 || bitmap.height <= 0) {
-            throw new Error("صورة الشعار غير صالحة");
-          }
-        } else {
-          const image = new Image();
-          image.decoding = "async";
-          image.src = objectUrl;
-          await image.decode();
-          if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-            throw new Error("صورة الشعار غير صالحة");
-          }
-        }
-        return objectUrl;
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        throw error;
-      } finally {
-        bitmap?.close();
-      }
+      // The final document images are awaited by
+      // waitForOfficialDocumentImages before print/export. Decoding a second
+      // detached bitmap here duplicated work and delayed logo readiness.
+      return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
     });
   } catch (error) {
     console.warn("تعذر تحميل شعار الجهة كبيانات ثنائية للمعاينة والطباعة:", {
@@ -4111,6 +4090,14 @@ function TelegramDetail({
   useEffect(() => {
     const host = paperRef.current;
     if (!host) return;
+
+    // Wait for version history before choosing the letterhead source. Until
+    // this query settles selectedVersion is temporarily null, which used to
+    // render the current logo first and then replace the whole paper with the
+    // historical version (causing the logo to disappear and load a second
+    // time). A failed history query still falls back to the current document.
+    if (versions.isLoading) return;
+
     if (versions.isError) {
       const historyErrorKey = `${telegram.id}:history-error`;
       if (preparedTelegramIdRef.current !== historyErrorKey) {
@@ -4346,8 +4333,7 @@ function TelegramDetail({
   }, [
     telegram.id,
     versions.isLoading,
-    versions.isError,
-    versions.data,
+    selectedVersion?.versionNumber,
     selectedVersionNumber,
   ]);
 

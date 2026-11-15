@@ -124,6 +124,7 @@ export const users = pgTable(
   {
     id: serial("id").primaryKey(),
     authUserId: uuid("authUserId").notNull().unique(),
+    sessionVersion: uuid("sessionVersion").defaultRandom().notNull(),
     organizationId: uuid("organizationId")
       .notNull()
       .references(() => organizations.id, { onDelete: "restrict" }),

@@ -1953,17 +1953,32 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         final savedLogo = _text(saved['logoUrl']);
         final savedOrganizationId = _text(saved['organizationId']);
         final previousLogo = _text(_settings['logoUrl']);
-        if (_pendingLogoPreviewBytes != null ||
+        final uploadedLogoBytes = _pendingLogoPreviewBytes;
+        if (uploadedLogoBytes != null ||
             widget.api.organizationLogoCacheIdentity(previousLogo) !=
                 widget.api.organizationLogoCacheIdentity(savedLogo)) {
           await widget.api.clearOrganizationLogoCache();
         }
-        final savedLogoBytes = savedLogo.isEmpty || savedOrganizationId.isEmpty
-            ? null
-            : await widget.api.fetchOrganizationLogo(
-                organizationId: savedOrganizationId,
-                source: savedLogo,
-              );
+
+        Uint8List? savedLogoBytes;
+        if (uploadedLogoBytes != null &&
+            savedLogo.isNotEmpty &&
+            savedOrganizationId.isNotEmpty) {
+          // The settings mutation has succeeded. Persist the exact uploaded
+          // bytes under the server-confirmed organization/path identity so
+          // reopening settings does not depend on an immediate network fetch.
+          await widget.api.cacheOrganizationLogo(
+            organizationId: savedOrganizationId,
+            source: savedLogo,
+            bytes: uploadedLogoBytes,
+          );
+          savedLogoBytes = Uint8List.fromList(uploadedLogoBytes);
+        } else if (savedLogo.isNotEmpty && savedOrganizationId.isNotEmpty) {
+          savedLogoBytes = await widget.api.fetchOrganizationLogo(
+            organizationId: savedOrganizationId,
+            source: savedLogo,
+          );
+        }
         if (!mounted) return;
         setState(() {
           _settings = saved;

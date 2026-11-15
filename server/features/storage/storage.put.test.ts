@@ -11,8 +11,19 @@ const {
   const createSignedUrl = vi.fn();
   const createSignedUploadUrl = vi.fn();
   const getObjectInfo = vi.fn();
-  const provider = { upload, createSignedUrl, createSignedUploadUrl, getObjectInfo };
-  return { upload, createSignedUrl, createSignedUploadUrl, getObjectInfo, provider };
+  const provider = {
+    upload,
+    createSignedUrl,
+    createSignedUploadUrl,
+    getObjectInfo,
+  };
+  return {
+    upload,
+    createSignedUrl,
+    createSignedUploadUrl,
+    getObjectInfo,
+    provider,
+  };
 });
 
 vi.mock("../../_core/storageProvider", () => ({

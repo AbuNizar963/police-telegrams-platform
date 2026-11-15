@@ -1064,9 +1064,8 @@ class _OfficialTelegramDocumentPageState
     }
   }
 
-  Future<String?> _showOutputFormatSheet({
-    required bool share,
-  }) => showModalBottomSheet<String>(
+  Future<String?> _showOutputFormatSheet({required bool share}) =>
+      showModalBottomSheet<String>(
     context: context,
     useSafeArea: true,
     showDragHandle: true,

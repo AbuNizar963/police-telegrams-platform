@@ -66,11 +66,11 @@ export function publicUser(user: User): PublicUser {
 
 export async function setAuthenticatedSession(
   res: Response,
-  user: Pick<User, "id" | "role" | "authUserId">
+  user: Pick<User, "id" | "role" | "authUserId" | "sessionVersion">
 ): Promise<void> {
   const token = await new SignJWT({
     role: user.role,
-    authUserId: user.authUserId,
+    sessionVersion: user.sessionVersion ?? user.authUserId,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(user.id))
@@ -176,9 +176,10 @@ export async function getAuthenticatedUserFromRequest(
     const user = await db.getUserById(userId);
     if (!user || user.isActive === false || user.loginMethod === "disabled")
       return null;
+    const currentSessionVersion = user.sessionVersion ?? user.authUserId;
     if (
-      typeof payload.authUserId !== "string" ||
-      payload.authUserId !== user.authUserId
+      typeof payload.sessionVersion !== "string" ||
+      payload.sessionVersion !== currentSessionVersion
     )
       return null;
     return publicUser(user);

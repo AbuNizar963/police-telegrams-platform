@@ -208,7 +208,11 @@ export async function storageGetObjectInfo(
   const key = normalizeKey(relKey);
   if (
     !key ||
-    key.split("/").some(segment => !segment || segment === "." || segment === "..")
+    key
+      .split("/")
+      .some(
+        segment => !segment || segment === "." || segment === ".."
+      )
   ) {
     throw new StorageAccessDeniedError();
   }

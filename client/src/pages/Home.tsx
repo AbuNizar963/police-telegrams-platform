@@ -4323,8 +4323,9 @@ function TelegramDetail({
             // decode lifecycle, especially on mobile browsers. Do not consider
             // the enhanced preview ready until every image in the actual page
             // stack has loaded and decoded successfully.
-            const visiblePreviewPages =
-              host.querySelector<HTMLElement>(".telegram-preview-page-stack");
+            const visiblePreviewPages = host.querySelector<HTMLElement>(
+              ".telegram-preview-page-stack"
+            );
             if (visiblePreviewPages) {
               await withPreparationTimeout(
                 waitForOfficialDocumentImages(visiblePreviewPages),
@@ -4340,8 +4341,9 @@ function TelegramDetail({
             // with an empty image in the final preview.
             if (!cancelled && immediateLogoUrl) {
               renderPreview(documentSettings, immediateLogoUrl);
-              const fallbackPreviewPages =
-                host.querySelector<HTMLElement>(".telegram-preview-page-stack");
+              const fallbackPreviewPages = host.querySelector<HTMLElement>(
+                ".telegram-preview-page-stack"
+              );
               if (fallbackPreviewPages) {
                 void withPreparationTimeout(
                   waitForOfficialDocumentImages(fallbackPreviewPages),

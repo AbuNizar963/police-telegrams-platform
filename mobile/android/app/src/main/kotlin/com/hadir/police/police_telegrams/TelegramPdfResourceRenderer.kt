@@ -42,6 +42,7 @@ internal class TelegramPdfResourceRenderer(
     private var activeResult: MethodChannel.Result? = null
     private var activeOutput: File? = null
     private var activeDescriptor: android.os.ParcelFileDescriptor? = null
+    private var activePrintAdapter: PrintDocumentAdapter? = null
     private var timeoutRunnable: Runnable? = null
 
     init {
@@ -241,6 +242,7 @@ internal class TelegramPdfResourceRenderer(
 
     private fun printToPdf(webView: WebView) {
         val adapter = webView.createPrintDocumentAdapter("official-telegram")
+        activePrintAdapter = adapter
         val attributes = PrintAttributes.Builder()
             .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
             .setResolution(PrintAttributes.Resolution("telegram-pdf", "PDF", 300, 300))
@@ -376,6 +378,8 @@ internal class TelegramPdfResourceRenderer(
             }
         }
         activeDescriptor = null
+        activePrintAdapter?.onFinish()
+        activePrintAdapter = null
         activeOutput?.delete()
         activeOutput = null
         activeWebView?.apply {

@@ -18,6 +18,7 @@ import 'mobile_pages.dart';
 import './features/admin/native_operations_page.dart';
 import './features/admin/native_owner_dashboard_page.dart';
 import './features/organizations/native_organization_management_page.dart';
+import './features/organizations/organization_logo_resolution.dart';
 import './features/users/native_user_management_page.dart';
 import './features/platform_settings/platform_document_settings_page.dart';
 
@@ -817,9 +818,9 @@ class _DashboardPageState extends State<DashboardPage>
     String? source,
   ) async {
     final organizationId = organizationIdValue?.trim() ?? '';
-    final value = source?.trim();
+    final value = source?.trim() ?? '';
 
-    if (organizationId.isEmpty || value == null || value.isEmpty) {
+    if (organizationId.isEmpty) {
       _loadedOrganizationLogoIdentity = null;
       _lastLogoLoadAttemptAt = null;
       _organizationLogoBytesLoadedAt = null;
@@ -829,8 +830,14 @@ class _DashboardPageState extends State<DashboardPage>
       return;
     }
 
-    final sourceIdentity = widget.api.organizationLogoCacheIdentity(value);
-    if (sourceIdentity.isEmpty) {
+    // A missing settings URL must not suppress the authenticated,
+    // organization-scoped binary endpoint. The API client intentionally
+    // supports an empty source and resolves the logo by organization ID.
+    final sourceIdentity = resolveOrganizationLogoSourceIdentity(
+      value,
+      widget.api.organizationLogoCacheIdentity,
+    );
+    if (sourceIdentity == null) {
       _loadedOrganizationLogoIdentity = null;
       _lastLogoLoadAttemptAt = null;
       _organizationLogoBytesLoadedAt = null;

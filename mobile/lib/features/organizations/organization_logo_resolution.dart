@@ -17,3 +17,17 @@ String? resolveOrganizationLogoId({
   }
   return null;
 }
+
+/// Produces a cache identity even when settings omit a direct logo URL.
+///
+/// In that case the authenticated binary endpoint can still resolve the
+/// active organization's logo using its ID.
+String? resolveOrganizationLogoSourceIdentity(
+  String? source,
+  String Function(String) cacheIdentity,
+) {
+  final value = source?.trim() ?? '';
+  if (value.isEmpty) return 'api-export';
+  final identity = cacheIdentity(value);
+  return identity.isEmpty ? null : identity;
+}

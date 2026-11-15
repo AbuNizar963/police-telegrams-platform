@@ -752,6 +752,10 @@ class _OfficialTelegramDocumentPageState
     if (cached == null) return null;
     try {
       final uri = Uri.parse(cached);
+      if (uri.isScheme('data') &&
+          uri.data?.mimeType.startsWith('image/') == true) {
+        return cached;
+      }
       if (uri.isScheme('file') && await File.fromUri(uri).exists()) {
         return cached;
       }
@@ -791,7 +795,13 @@ class _OfficialTelegramDocumentPageState
     if (!await file.exists() || await file.length() != bytes.length) {
       throw StateError('تعذر حفظ شعار الوثيقة محليًا.');
     }
-    final source = Uri.file(file.path).toString();
+    // Android's native HTML-to-PDF WebView does not reliably grant
+    // file:// access to app-private temporary files. Embed the already
+    // authenticated and signature-validated bytes so the renderer receives
+    // the image exactly as the web renderer receives its Blob URL.
+    final mimeType = extension == 'jpg' ? 'jpeg' : extension;
+    final source =
+        'data:image/$mimeType;base64,${base64Encode(bytes)}';
     _officialLogoFileUris[cacheKey] = source;
     return source;
   }
@@ -2001,13 +2011,21 @@ String buildOfficialTelegramHtml({
   String? logoSource,
   String? outputTimestamp,
 }) {
-  if (logoSource != null &&
-      Uri.tryParse(logoSource)?.isScheme('file') != true) {
-    throw ArgumentError.value(
-      logoSource,
-      'logoSource',
-      'شعار الوثيقة يجب أن يكون ملفًا محليًا وليس Data URL أو عنوان شبكة.',
-    );
+  if (logoSource != null) {
+    final uri = Uri.tryParse(logoSource);
+    final isLocalFile = uri?.isScheme('file') == true;
+    final isEmbeddedImage =
+        uri?.isScheme('data') == true &&
+        uri?.data?.mimeType.startsWith('image/') == true &&
+        uri?.data?.contentText != null &&
+        uri!.data!.contentText!.isNotEmpty;
+    if (!isLocalFile && !isEmbeddedImage) {
+      throw ArgumentError.value(
+        logoSource,
+        'logoSource',
+        'شعار الوثيقة يجب أن يكون ملفًا محليًا أو صورة مضمّنة موثوقة.',
+      );
+    }
   }
   final numberSystem = settings['numberSystem'];
   final showVerificationQr =

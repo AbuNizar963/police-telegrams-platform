@@ -12,7 +12,8 @@ class AppLockService {
   static const String _enabledKey = 'mobile_app_lock_enabled';
   static const String _pinKey = 'mobile_app_lock_pin';
   static const String _biometricKey = 'mobile_app_lock_biometric';
-  static const String _pinFailedAttemptsKey = 'mobile_app_lock_pin_failed_attempts';
+  static const String _pinFailedAttemptsKey =
+      'mobile_app_lock_pin_failed_attempts';
   static const String _pinLockedUntilKey = 'mobile_app_lock_pin_locked_until';
   static const int _pinLockoutThreshold = 5;
   static const int _initialPinLockoutSeconds = 30;
@@ -483,8 +484,8 @@ class _AppLockOverlayState extends State<AppLockOverlay>
   }
 
   String _pinLockoutMessage(Duration remaining) {
-    final seconds = remaining.inSeconds +
-        (remaining.inMilliseconds % 1000 == 0 ? 0 : 1);
+    final seconds =
+        remaining.inSeconds + (remaining.inMilliseconds % 1000 == 0 ? 0 : 1);
     return 'تم إيقاف محاولات PIN مؤقتًا. حاول مجددًا بعد $seconds ثانية.';
   }
 

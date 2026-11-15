@@ -90,6 +90,38 @@ describe("request body limits", () => {
     expect(getJsonBodyLimit("/api/telegram-render")).toBe("10mb");
   });
 
+  it("authenticates binary telegram attachment uploads before parsing their body", async () => {
+    const server = createApp().listen(0);
+    await new Promise<void>((resolve, reject) => {
+      server.once("listening", resolve);
+      server.once("error", reject);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+      throw new Error("Test server did not bind to a TCP port");
+    }
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:${address.port}/api/telegrams/7/attachments`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/pdf",
+            "X-File-Name": "report.pdf",
+          },
+          body: Buffer.from("%PDF-1.7\\nfixture"),
+        }
+      );
+      expect(response.status).toBe(401);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close(error => (error ? reject(error) : resolve()));
+      });
+    }
+  });
+
   it("rejects unauthenticated uploads before parsing JSON", async () => {
     await expect(
       postUnauthenticated("/api/trpc/telegrams.uploadAttachment")

@@ -118,9 +118,7 @@ class TelegramExportRequestError extends Error {
   }
 }
 
-export function resolveDepartmentLogoStorageKey(
-  logoSource: string
-): string {
+export function resolveDepartmentLogoStorageKey(logoSource: string): string {
   const storagePrefix = "/api/storage/";
   if (!logoSource.startsWith(storagePrefix)) {
     throw new Error("مصدر شعار الجهة ليس مسار تخزين محميًا");
@@ -237,7 +235,6 @@ async function loadOrganizationLogoDataUrl(
 
   return "data:" + mimeType + ";base64," + asset.body.toString("base64");
 }
-
 
 export function isSafeExportHtml(html: string): boolean {
   // Validate executable markup and URL-bearing attributes, not visible text:
@@ -475,9 +472,7 @@ export function registerTelegramExportRoutes(app: Express): void {
       return res.status(200).send(result.body);
     } catch (error) {
       if (error instanceof TelegramExportRequestError) {
-        return res
-          .status(error.statusCode)
-          .json({ error: error.message });
+        return res.status(error.statusCode).json({ error: error.message });
       }
 
       console.error("Telegram Chromium export failed:", error);

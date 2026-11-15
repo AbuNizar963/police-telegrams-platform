@@ -184,35 +184,35 @@ void main() {
   test(
     'detects original logo formats without converting the bytes to Base64',
     () {
-    expect(
-      officialTelegramDocumentLogoFileExtension(
-        Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
-      ),
-      'png',
-    );
-    expect(
-      officialTelegramDocumentLogoFileExtension(
-        Uint8List.fromList([255, 216, 255, 0]),
-      ),
-      'jpg',
-    );
-    expect(
-      officialTelegramDocumentLogoFileExtension(
-        Uint8List.fromList([71, 73, 70, 56, 57, 97]),
-      ),
-      'gif',
-    );
-    expect(
-      officialTelegramDocumentLogoFileExtension(
-        Uint8List.fromList([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]),
-      ),
-      'webp',
-    );
-    expect(
-      () => officialTelegramDocumentLogoFileExtension(
-        Uint8List.fromList([0, 1, 2, 3]),
-      ),
-      throwsFormatException,
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
+        ),
+        'png',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([255, 216, 255, 0]),
+        ),
+        'jpg',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([71, 73, 70, 56, 57, 97]),
+        ),
+        'gif',
+      );
+      expect(
+        officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]),
+        ),
+        'webp',
+      );
+      expect(
+        () => officialTelegramDocumentLogoFileExtension(
+          Uint8List.fromList([0, 1, 2, 3]),
+        ),
+        throwsFormatException,
       );
     },
   );

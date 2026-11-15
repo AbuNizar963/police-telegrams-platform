@@ -38,7 +38,9 @@ vi.mock("../../_core/supabase", () => ({
       }
       return {
         select: () => ({
-          ilike: () => ({ maybeSingle: mocks.userDuplicateLookup }),
+          ilike: () => ({
+            neq: () => ({ maybeSingle: mocks.userDuplicateLookup }),
+          }),
           eq: () => ({ maybeSingle: mocks.userLookup }),
         }),
         insert: mocks.usersInsert,
@@ -194,6 +196,44 @@ describe("user management organization assignment", () => {
     expect(mocks.addOrganizationMembership).not.toHaveBeenCalled();
   });
 
+  it("rotates application sessions when an administrator resets a password", async () => {
+    mocks.userLookup.mockResolvedValue({
+      data: {
+        id: 25,
+        role: "user",
+        username: "officer25",
+        organizationId,
+      },
+      error: null,
+    });
+    mocks.userDuplicateLookup.mockResolvedValue({ data: null, error: null });
+    const caller = userManagementRouter.createCaller(adminContext());
+
+    await expect(
+      caller.update({
+        id: 25,
+        name: "الشرطي التجريبي",
+        username: "officer25",
+        badgeNumber: null,
+        phone: null,
+        rank: null,
+        unit: null,
+        password: "A-new-secure-password-123",
+        confirmPassword: "owner-password",
+      })
+    ).resolves.toMatchObject({ id: 25 });
+
+    const updatedValues = mocks.usersUpdate.mock.calls[0]?.[0];
+    expect(updatedValues).toEqual(
+      expect.objectContaining({
+        password_hash: "hashed-password",
+        mustChangePassword: true,
+        sessionVersion: expect.any(String),
+      })
+    );
+    expect(updatedValues).not.toHaveProperty("authUserId");
+  });
+
   it("requires the current password before changing an account role", async () => {
     const caller = userManagementRouter.createCaller(adminContext());
 
@@ -245,6 +285,7 @@ describe("user activation lifecycle", () => {
         loginMethod: "disabled",
         isActive: false,
         password_hash: null,
+        sessionVersion: expect.any(String),
       })
     );
   });
@@ -275,6 +316,7 @@ describe("user activation lifecycle", () => {
         loginMethod: "password",
         isActive: true,
         mustChangePassword: true,
+        sessionVersion: expect.any(String),
       })
     );
   });

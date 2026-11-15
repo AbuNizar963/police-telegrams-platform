@@ -286,14 +286,19 @@ class _SessionGateState extends State<SessionGate> {
                   children: [
                     const Icon(Icons.wifi_off_outlined, size: 42, color: navy),
                     const SizedBox(height: 12),
-                    const Text(
-                      'تعذر التحقق من جلسة الدخول بسبب مشكلة في الاتصال. تحقق من الإنترنت ثم أعد المحاولة.',
+                    Text(
+                      snapshot.error is NetworkException &&
+                              (snapshot.error as NetworkException).message !=
+                                  const NetworkException().message
+                          ? (snapshot.error as NetworkException).message
+                          : 'تعذر التحقق من جلسة الدخول بسبب مشكلة في الاتصال. تحقق من الإنترنت ثم أعد المحاولة.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: () =>
-                          setState(() => _session = _api.restoreSession()),
+                      onPressed: () => setState(
+                        () => _session = _restoreSessionWithMandatoryPin(),
+                      ),
                       icon: const Icon(Icons.refresh),
                       label: const Text('إعادة المحاولة'),
                     ),
@@ -4360,7 +4365,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       return;
     }
 
-    final saved = await showDialog<bool>(
+    final saved = await showDialog<Object?>(
       context: context,
       barrierDismissible: false,
       builder: (_) => TelegramEditDialog(
@@ -4370,7 +4375,17 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
       ),
     );
 
-    if (saved != true || !mounted) return;
+    if (!mounted) return;
+    if (saved == TelegramEditDialog.queuedOfflineResult) {
+      await load();
+      if (!mounted) return;
+      Toast.info(
+        context,
+        'لا يوجد اتصال: حُفظ التعديل محليًا بشكل مشفّر وسيُرسل تلقائيًا عند عودة الاتصال.',
+      );
+      return;
+    }
+    if (saved != true) return;
     await load();
     if (!mounted) return;
     Toast.success(context, 'تم حفظ تعديلات البرقية');

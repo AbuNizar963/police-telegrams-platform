@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import 'offline_vault.dart';
+
 class NetworkException implements Exception {
   const NetworkException([this.message = 'تعذر الاتصال بالخادم']);
 
@@ -69,17 +71,33 @@ class PoliceApi {
   static const _telegramOutboxKey = 'telegram_outbox_v1';
   static const _telegramOutboxEpochKey = 'telegram_outbox_epoch_v1';
 
+  /// Last time the server confirmed this session (login or `auth.me`).
+  static const _sessionVerifiedAtKey = 'session_verified_at_v1';
+
+  /// How long a saved session may be opened without reaching the server.
+  /// The PIN/biometric app lock still guards every offline launch; after this
+  /// window the device must reconnect once so revoked accounts lose access.
+  static const offlineSessionMaxAge = Duration(days: 7);
+  static const _vaultResponseMarker = '{"__offline_vault__":1}';
+  static const _maxSecureStorageResponseBytes = 512 * 1024;
+  static const _maxVaultResponseBytes = 8 * 1024 * 1024;
+  static const maxCachedAttachmentBytes = 10 * 1024 * 1024;
+
   PoliceApi({
     String? baseUrl,
     http.Client? httpClient,
     this.imageCacheDirectory,
+    OfflineVault? vault,
   }) : baseUrl =
            baseUrl ??
            const String.fromEnvironment(
              'API_BASE_URL',
              defaultValue: 'https://police-telegrams-platform.vercel.app',
            ),
-       _httpClient = httpClient ?? _sharedHttpClient;
+       _httpClient = httpClient ?? _sharedHttpClient,
+       _vault = vault ?? OfflineVault();
+
+  final OfflineVault _vault;
 
   static final http.Client _sharedHttpClient = http.Client();
   static const _maximumCachedOrganizationLogoBytes = 5 * 1024 * 1024;
@@ -438,6 +456,7 @@ class PoliceApi {
     try {
       final raw = await _storage.read(key: key);
       if (raw == null || raw.isEmpty) return null;
+      if (raw == _vaultResponseMarker) return await _vault.readJson(key);
       return jsonDecode(raw);
     } catch (_) {
       // A corrupt or inaccessible cache must not prevent normal app startup.
@@ -462,10 +481,19 @@ class PoliceApi {
     if (key == null || value == null) return;
     try {
       final encoded = jsonEncode(value);
-      // Avoid filling secure storage with unusually large server responses.
-      if (utf8.encode(encoded).length > 512 * 1024) return;
+      final bytes = utf8.encode(encoded);
+      if (bytes.length > _maxVaultResponseBytes) return;
       await _registerOfflineCacheKey(key);
-      await _storage.write(key: key, value: encoded);
+      if (bytes.length > _maxSecureStorageResponseBytes) {
+        // Large lists/reports go to the AES-256-GCM vault instead of being
+        // dropped, so they stay readable offline without bloating the
+        // platform keystore.
+        await _vault.write(key, bytes);
+        await _storage.write(key: key, value: _vaultResponseMarker);
+      } else {
+        await _storage.write(key: key, value: encoded);
+        await _vault.delete(key);
+      }
     } catch (_) {
       // Caching is best-effort; a storage failure must not break online use.
     }
@@ -512,7 +540,123 @@ class PoliceApi {
     final data = decoded['result']['data'];
     final account = Map<String, dynamic>.from(data['json'] ?? data);
     await _storage.write(key: 'cached_account', value: jsonEncode(account));
+    await _markSessionVerified();
     return account;
+  }
+
+  Future<void> _markSessionVerified() => _storage.write(
+    key: _sessionVerifiedAtKey,
+    value: DateTime.now().toUtc().toIso8601String(),
+  );
+
+  /// Opens a saved session without the server. A recently verified session
+  /// may open offline; the mandatory app lock (PIN/biometrics) still guards
+  /// it. Older sessions must reconnect once so revoked accounts lose access.
+  Future<Map<String, dynamic>> _openOfflineSession(
+    Map<String, dynamic>? cached,
+  ) async {
+    if (cached == null) throw const NetworkException();
+    if (await _storage.read(key: _sessionVerifiedAtKey) == null) {
+      // Sessions created before this check existed get one grace window that
+      // starts now instead of being locked out on the first offline launch.
+      await _markSessionVerified();
+    }
+    if (await _offlineSessionStillValid()) return cached;
+    throw const NetworkException(
+      'انتهت مهلة العمل دون اتصال (7 أيام). اتصل بالإنترنت مرة واحدة للتحقق من الجلسة.',
+    );
+  }
+
+  /// Whether a saved session is still inside the offline grace window.
+  Future<bool> _offlineSessionStillValid() async {
+    final raw = await _storage.read(key: _sessionVerifiedAtKey);
+    final verifiedAt = raw == null ? null : DateTime.tryParse(raw);
+    if (verifiedAt == null) return false;
+    final age = DateTime.now().toUtc().difference(verifiedAt.toUtc());
+    // A clock moved backwards is not trusted either.
+    return !age.isNegative && age <= offlineSessionMaxAge;
+  }
+
+  /// Caches downloaded attachment bytes (encrypted) for offline preview.
+  Future<void> cacheAttachmentBytes(int attachmentId, List<int> bytes) async {
+    if (bytes.isEmpty || bytes.length > maxCachedAttachmentBytes) return;
+    try {
+      await _vault.write('attachment_$attachmentId', bytes);
+    } catch (_) {
+      // Offline caching is best-effort.
+    }
+  }
+
+  Future<Uint8List?> readCachedAttachmentBytes(int attachmentId) =>
+      _vault.read('attachment_$attachmentId');
+
+  /// Applies a queued offline edit to the cached telegram detail, lists and
+  /// dashboard so the change is visible immediately while offline.
+  Future<void> applyLocalTelegramEdit(
+    int telegramId,
+    Map<String, dynamic> changes,
+  ) async {
+    final patch = Map<String, dynamic>.from(changes)..remove('id');
+    Map<String, dynamic> merge(Map row) => {
+      ...Map<String, dynamic>.from(row),
+      ...patch,
+      'pendingOfflineSync': true,
+    };
+    bool matches(dynamic row) =>
+        row is Map && int.tryParse('${row['id']}') == telegramId;
+    dynamic patchValue(dynamic value) {
+      if (value is List) {
+        return value
+            .map((row) => matches(row) ? merge(row as Map) : row)
+            .toList();
+      }
+      if (value is Map) {
+        if (matches(value)) return merge(value);
+        return value.map(
+          (key, inner) =>
+              MapEntry(key, inner is List ? patchValue(inner) : inner),
+        );
+      }
+      return value;
+    }
+
+    final detail = await _readOfflineResponse('telegrams.get', {
+      'id': telegramId,
+    });
+    if (detail is Map) {
+      await _writeOfflineResponse('telegrams.get', {
+        'id': telegramId,
+      }, merge(detail));
+    }
+    final keys = await _readKnownOfflineCacheKeys();
+    for (final key in keys.where(
+      (key) => key.startsWith('offline_telegrams_list_'),
+    )) {
+      try {
+        final raw = await _storage.read(key: key);
+        if (raw == null || raw.isEmpty) continue;
+        final isVault = raw == _vaultResponseMarker;
+        final value = isVault ? await _vault.readJson(key) : jsonDecode(raw);
+        if (value == null) continue;
+        final patched = patchValue(value);
+        if (isVault) {
+          await _vault.writeJson(key, patched);
+        } else {
+          await _storage.write(key: key, value: jsonEncode(patched));
+        }
+      } catch (_) {
+        // A stale list entry is acceptable; the detail view is authoritative.
+      }
+    }
+    final dashboard = await readCachedDashboard();
+    if (dashboard != null) {
+      await cacheDashboard(
+        stats: Map<String, dynamic>.from(
+          dashboard['stats'] as Map? ?? const {},
+        ),
+        telegrams: patchValue(dashboard['telegrams'] ?? const []) as List,
+      );
+    }
   }
 
   Future<Map<String, dynamic>?> restoreSession() async {
@@ -522,16 +666,17 @@ class PoliceApi {
     final cached = await _readCachedAccount();
 
     try {
-      final user = await call('auth.me');
-      if (user is Map) return Map<String, dynamic>.from(user);
+      final user = await call('auth.me', allowOfflineCache: false);
+      if (user is Map) {
+        await _markSessionVerified();
+        return Map<String, dynamic>.from(user);
+      }
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
       await clearOrganizationLogoCache();
       return null;
     } on NetworkException {
-      // A cached authenticated session is sufficient to open the app offline.
-      if (cached != null) return cached;
-      rethrow;
+      return _openOfflineSession(cached);
     } on ApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _storage.delete(key: 'session_cookie');
@@ -539,8 +684,13 @@ class PoliceApi {
         await clearOrganizationLogoCache();
         return null;
       }
-      // A server or network failure is not proof that the session expired.
-      // Keep the cookie so the next launch can retry without forcing login.
+      // A server outage is not proof that the session expired; treat it like
+      // being offline so the field user can keep working from the local copy.
+      if (error.statusCode == 408 ||
+          error.statusCode == 429 ||
+          error.statusCode >= 500) {
+        return _openOfflineSession(cached);
+      }
       rethrow;
     } catch (_) {
       // A network failure is not proof that the session expired.
@@ -555,6 +705,7 @@ class PoliceApi {
       await _clearOfflineCache();
       await _storage.delete(key: 'session_cookie');
       await _storage.delete(key: 'cached_account');
+      await _storage.delete(key: _sessionVerifiedAtKey);
       await clearOrganizationLogoCache();
     }
   }
@@ -567,6 +718,9 @@ class PoliceApi {
       value: DateTime.now().microsecondsSinceEpoch.toString(),
     );
     await _storage.delete(key: _telegramOutboxKey);
+    // Crypto-shred every encrypted offline blob (responses, attachments and
+    // queued uploads) by destroying the vault key and its files.
+    await _vault.wipe();
     List<String> keysToDelete;
     try {
       final storedValues = await _storage.readAll();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'telegram_outbox.dart';
 import './features/reports/telegram_report_labels.dart';
 import 'telegram_display.dart';
 
@@ -37,7 +38,13 @@ class TelegramEditDialog extends StatefulWidget {
     required this.api,
     required this.telegramId,
     required this.telegram,
+    this.outbox,
   });
+
+  /// Popped instead of `true` when the edit was saved locally offline.
+  static const queuedOfflineResult = 'queued-offline';
+
+  final TelegramOutbox? outbox;
 
   final PoliceApi api;
   final int telegramId;
@@ -136,21 +143,33 @@ class _TelegramEditDialogState extends State<TelegramEditDialog> {
 
     try {
       final status = _text(widget.telegram['status']);
-      await widget.api.call(
-        'telegrams.update',
-        mutation: true,
-        input: {
-          'id': widget.telegramId,
-          'originalSerial': serial,
-          'subject': subject,
-          'recipient': recipient,
-          'body': body,
-          'classification': _classification,
-          'priority': _priority,
-          'category': _category,
-          'status': status.isEmpty ? 'draft' : status,
-        },
-      );
+      final input = <String, dynamic>{
+        'id': widget.telegramId,
+        'originalSerial': serial,
+        'subject': subject,
+        'recipient': recipient,
+        'body': body,
+        'classification': _classification,
+        'priority': _priority,
+        'category': _category,
+        'status': status.isEmpty ? 'draft' : status,
+      };
+      try {
+        await widget.api.call('telegrams.update', mutation: true, input: input);
+      } catch (exception) {
+        final canQueue =
+            exception is NetworkException ||
+            (exception is ApiException && exception.statusCode >= 500);
+        if (!canQueue) rethrow;
+        // Offline: keep the edit in the encrypted outbox and show it locally
+        // until the automatic sync sends it to the server.
+        await (widget.outbox ?? TelegramOutbox()).enqueueUpdate(payload: input);
+        await widget.api.applyLocalTelegramEdit(widget.telegramId, input);
+        if (mounted) {
+          Navigator.of(context).pop(TelegramEditDialog.queuedOfflineResult);
+        }
+        return;
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (exception) {
       if (mounted) {

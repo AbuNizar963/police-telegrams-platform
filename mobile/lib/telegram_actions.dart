@@ -275,7 +275,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'اختيار الجهة المستلمة',
+                          'اختر الجهة المستلمة',
                           style: TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
@@ -301,7 +301,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
                 const SizedBox(height: 8),
                 Expanded(
                   child: options.isEmpty
-                      ? const Center(child: Text('لا توجد جهات مطابقة للبحث.'))
+                      ? const Center(child: Text('لا توجد جهة مطابقة للبحث.'))
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                           itemCount: options.length,
@@ -364,7 +364,7 @@ class _TelegramActionsPanelState extends State<TelegramActionsPanel> {
     }
     final contentType = _contentType(file.extension);
     if (contentType == null) {
-      _show('نوع الملف غير مدعوم', kind: ToastKind.warning);
+      _show('نوع الملف غير مسموح', kind: ToastKind.warning);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {

@@ -1434,7 +1434,7 @@ class _DashboardPageState extends State<DashboardPage>
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    'ستظهر هنا طلبات الإحالة وقرارات الجهات.',
+                                    'ستظهر هنا طلبات الإحالة وقرارات السلطة الأعلى.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Color(0xFF7A8493),
@@ -2028,7 +2028,7 @@ class _DashboardPageState extends State<DashboardPage>
             children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('الأسبقية ودرجة السرية'),
+                title: const Text('الأسبقية والسرية'),
                 value: priority,
                 onChanged: (value) => setDialogState(() => priority = value),
               ),
@@ -4373,7 +4373,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
     if (saved != true || !mounted) return;
     await load();
     if (!mounted) return;
-    Toast.success(context, 'تم حفظ تعديلات البرقية.');
+    Toast.success(context, 'تم حفظ تعديلات البرقية');
   }
 
   Future<void> _deleteTelegram() async {
@@ -4399,7 +4399,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
         builder: (dialogContext, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('حذف البرقية نهائياً'),
+            title: const Text('حذف البرقية نهائيًا'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4434,7 +4434,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
                   if (value.length < 3) {
                     setDialogState(
                       () => reasonError =
-                          'سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف.',
+                          'سبب الحذف مطلوب ويجب ألا يقل عن 3 أحرف',
                     );
                     return;
                   }
@@ -4520,7 +4520,7 @@ class _TelegramDetailsPageState extends State<TelegramDetailsPage> {
               icon: const Icon(Icons.edit_outlined),
             ),
             IconButton(
-              tooltip: 'حذف البرقية نهائياً',
+              tooltip: 'حذف البرقية نهائيًا',
               onPressed: loading || data == null ? null : _deleteTelegram,
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
             ),

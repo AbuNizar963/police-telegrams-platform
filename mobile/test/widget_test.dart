@@ -687,7 +687,7 @@ void main() {
       'headerDividerColor': '#b49a55',
       'showVerificationQr': true,
     });
-    expect(find.text('تم حفظ إعدادات وثائق النظام.'), findsOneWidget);
+    expect(find.text('تم حفظ إعدادات وثائق النظام'), findsOneWidget);
   });
 
   testWidgets('hides owner document settings from non-owner administrators', (

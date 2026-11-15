@@ -163,7 +163,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               : null,
                           trailing: !read && id != null && !requiresAction
                               ? IconButton(
-                                  tooltip: 'تحديد كمقروء',
+                                  tooltip: 'تحديد التنبيه كمقروء',
                                   onPressed: () => markRead(id),
                                   icon: const Icon(Icons.done),
                                 )
@@ -362,7 +362,7 @@ class _ReportsPageState extends State<ReportsPage> {
     try {
       final date = DateTime.now().toIso8601String().substring(0, 10);
       await FilePicker.saveFile(
-        dialogTitle: 'تصدير تقرير البرقيات',
+        dialogTitle: 'تصدير سجل البرقيات',
         fileName: 'telegram-report-$date.csv',
         type: FileType.custom,
         allowedExtensions: const ['csv'],
@@ -905,7 +905,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                               icon: const Icon(Icons.calendar_today_outlined),
                               label: Text(
                                 from == null
-                                    ? 'من التاريخ'
+                                    ? 'من تاريخ'
                                     : '${from!.year}/${from!.month}/${from!.day}',
                               ),
                             ),
@@ -914,7 +914,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                               icon: const Icon(Icons.event_outlined),
                               label: Text(
                                 to == null
-                                    ? 'إلى التاريخ'
+                                    ? 'إلى تاريخ'
                                     : '${to!.year}/${to!.month}/${to!.day}',
                               ),
                             ),
@@ -922,7 +922,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                               TextButton.icon(
                                 onPressed: _clearFilters,
                                 icon: const Icon(Icons.filter_alt_off_outlined),
-                                label: const Text('مسح المرشحات'),
+                                label: const Text('مسح الفلاتر'),
                               ),
                           ],
                         ),
@@ -933,7 +933,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   if (error == null && _rows.isEmpty)
                     _EmptyCard(
                       message: !_hasFilters
-                          ? 'لا توجد إجراءات مسجلة بعد.'
+                          ? 'لا توجد إجراءات مسجلة بعد'
                           : 'لا توجد نتائج مطابقة للبحث.',
                     ),
                   ..._rows.map((entry) {
@@ -1414,7 +1414,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       return;
     }
     if (newPassword.text != confirmPassword.text) {
-      setState(() => error = 'تأكيد كلمة المرور غير مطابق.');
+      setState(() => error = 'تأكيد كلمة المرور غير مطابق');
       return;
     }
     setState(() {
@@ -2024,7 +2024,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setState(() => _error = 'حجم الشعار يجب ألا يتجاوز 5 ميغابايت.');
+      setState(() => _error = 'حجم الشعار يجب ألا يتجاوز 5 ميغابايت');
       return;
     }
     final bytes = file.bytes;
@@ -2063,7 +2063,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
         // the server returns the authorized signed URL.
         _pendingLogoPreviewBytes = compressedBytes;
       });
-      Toast.success(context, 'تم رفع الشعار. اضغط حفظ لاعتماده.');
+      Toast.success(context, 'تم رفع الشعار، اضغط حفظ لاعتماده');
     } catch (exception) {
       if (mounted) {
         setState(
@@ -2251,23 +2251,23 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                   children: [
                     _input(
                       _serialPrefix,
-                      'بادئة البرقيات الصادرة',
+                      'بادئة البرقية الصادرة',
                       maxLength: 24,
                     ),
                     _input(
                       _incomingSerialPrefix,
-                      'بادئة البرقيات الواردة',
+                      'بادئة البرقية الواردة',
                       maxLength: 24,
                     ),
                     _input(
                       _serialStart,
-                      'بداية تسلسل الصادر',
+                      'رقم بداية تسلسل الصادر',
                       numeric: true,
                       maxLength: 9,
                     ),
                     _input(
                       _incomingSerialStart,
-                      'بداية تسلسل الوارد',
+                      'رقم بداية تسلسل الوارد',
                       numeric: true,
                       maxLength: 9,
                     ),
@@ -2280,7 +2280,7 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                       },
                     ),
                     _dropdown(
-                      'تنسيق التاريخ',
+                      'تنسيق التاريخ والوقت',
                       _dateFormat,
                       _withCurrent(_dateFormats, _dateFormat),
                       (value) {

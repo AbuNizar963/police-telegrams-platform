@@ -62,10 +62,10 @@ class Toast {
 enum ToastKind { success, error, warning, info, loading }
 
 String _toastTitle(ToastKind kind) => switch (kind) {
-  ToastKind.success => 'تم بنجاح!',
+  ToastKind.success => 'تم بنجاح',
   ToastKind.info => 'معلومة',
   ToastKind.warning => 'تحذير!',
-  ToastKind.error => 'حدث خطأ!',
+  ToastKind.error => 'حدث خطأ',
   ToastKind.loading => 'جارٍ التنفيذ',
 };
 

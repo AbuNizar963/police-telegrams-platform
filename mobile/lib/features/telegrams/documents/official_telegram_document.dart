@@ -982,7 +982,7 @@ class _OfficialTelegramDocumentPageState
     final occurredAt = await _recordDocumentOutput(operation, format);
     final html = _htmlWithOutputTimestamp(occurredAt);
     _updateProgress(35, 'اكتمل إعداد قالب الوثيقة');
-    _beginIndeterminateProgress('جارٍ إنشاء ملف PDF');
+    _beginIndeterminateProgress('جارٍ تجهيز ملف PDF');
     final bytes = await _renderer.renderPdf(html);
     if (bytes.isEmpty) {
       throw Exception('تعذر إنشاء ملف الوثيقة على الجهاز.');
@@ -1121,7 +1121,7 @@ class _OfficialTelegramDocumentPageState
                   if (value.length < 5) {
                     setDialogState(
                       () => reasonError =
-                          'سبب إعادة الإصدار مطلوب ويجب ألا يقل عن 5 أحرف.',
+                          'سبب إعادة الإصدار مطلوب ويجب ألا يقل عن 5 أحرف',
                     );
                     return;
                   }
@@ -1161,7 +1161,7 @@ class _OfficialTelegramDocumentPageState
               result['auditLogRecorded'] == false)) {
         Toast.warning(
           context,
-          'تم حفظ الإصدار، لكن تعذر تسجيل أحد سجلات التدقيق الثانوية.',
+          'تم حفظ الإصدار، لكن تعذر تسجيل أحد سجلات التدقيق الثانوية',
         );
       }
     } catch (exception) {
@@ -1314,7 +1314,7 @@ class _OfficialTelegramDocumentPageState
       throw Exception('حجم المرفق يتجاوز 10 ميغابايت.');
     }
     final contentType = _attachmentContentType(file.extension);
-    if (contentType == null) throw Exception('نوع الملف غير مدعوم.');
+    if (contentType == null) throw Exception('نوع الملف غير مسموح');
     await widget.api.uploadTelegramAttachment(
       telegramId: widget.telegramId,
       fileName: file.name,
@@ -1322,7 +1322,7 @@ class _OfficialTelegramDocumentPageState
       bytes: file.bytes!,
     );
     if (mounted) {
-      Toast.success(context, 'تم إرفاق الملف بالبرقية.');
+      Toast.success(context, 'تم إرفاق الملف بالبرقية');
     }
   });
 

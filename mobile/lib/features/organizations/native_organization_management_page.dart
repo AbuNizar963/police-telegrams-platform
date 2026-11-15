@@ -366,7 +366,7 @@ class _NativeOrganizationManagementPageState
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : filtered.isEmpty
-                  ? const Center(child: Text('لا توجد جهات مطابقة للبحث.'))
+                  ? const Center(child: Text('لا توجد جهة مطابقة للبحث.'))
                   : RefreshIndicator(
                       onRefresh: load,
                       child: ListView.separated(
@@ -693,7 +693,7 @@ class _OrganizationFormDialogState extends State<_OrganizationFormDialog> {
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('إنشاء حساب للجهة'),
+                      title: const Text('إنشاء حساب الجهة'),
                       subtitle: const Text(
                         'ستظهر بيانات الدخول مرة واحدة بعد الإنشاء.',
                       ),

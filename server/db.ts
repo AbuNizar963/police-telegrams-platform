@@ -1975,17 +1975,19 @@ export async function updateUserProfile(
 export async function updateUserPassword(
   id: number,
   passwordHash: string
-): Promise<void> {
+): Promise<string> {
+  const authUserId = randomUUID();
   const { error } = await getSupabaseAdmin()
     .from("users")
     .update({
       password_hash: passwordHash,
-      authUserId: randomUUID(),
+      authUserId,
       mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     })
     .eq("id", id);
   throwIfError(error, "Failed to update user password");
+  return authUserId;
 }
 
 export async function dismissTemporaryPasswordChange(

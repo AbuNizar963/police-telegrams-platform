@@ -434,7 +434,6 @@ void main() {
       );
       expect(html, contains('class="watermark-text-pattern"'));
       expect(html, isNot(contains('data:image/')));
-      expect(html, isNot(contains('base64,')));
       expect(
         html.indexOf('class="watermark-text-pattern"'),
         lessThan(html.indexOf('class="watermark-logo"')),

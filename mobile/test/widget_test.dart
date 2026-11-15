@@ -497,10 +497,7 @@ void main() {
     final renderedHtml = renderer.renderedHtml!;
     expect(api.calls['organizations.logo']?['organizationId'], 'org-1');
     expect(renderer.renderedResources, hasLength(1));
-    expect(
-      renderer.renderedResources.values.single.mimeType,
-      'image/png',
-    );
+    expect(renderer.renderedResources.values.single.mimeType, 'image/png');
     expect(
       renderedHtml,
       contains('class="official-logo" src="telegram-resource://document/'),
@@ -536,8 +533,7 @@ void main() {
       await tester.pumpWidget(
         OfficialTelegramDocumentRendererScope(
           renderer: renderer,
-          logoFileWriter: (bytes, cacheKey) async =>
-              'telegram-resource://document/123e4567-e89b-42d3-a456-426614174000',
+          logoFileWriter: (bytes, cacheKey) async => 'telegram-resource://document/123e4567-e89b-42d3-a456-426614174000',
           child: MaterialApp(
             home: OfficialTelegramDocumentPage(api: api, telegramId: 7),
           ),

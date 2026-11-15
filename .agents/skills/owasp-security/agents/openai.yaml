@@ -1,0 +1,8 @@
+interface:
+  display_name: "OWASP Security"
+  short_description: "Reviews the project against applicable OWASP security standards."
+  brand_color: "#1D4ED8"
+  default_prompt: "Use $owasp-security to audit this repository against OWASP Top 10, ASVS, API Security, and mobile security guidance."
+
+policy:
+  allow_implicit_invocation: true

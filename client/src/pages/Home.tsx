@@ -4556,7 +4556,11 @@ function TelegramDetail({
   </head>
   <body>${exportWrapper.innerHTML}</body>
 </html>`;
-    const organizationId = resolveTelegramExportOrganizationId(exportSettings);
+    const organizationId = resolveTelegramExportOrganizationId({
+      accountOrganizationId: exportSettings.organizationId,
+      currentOrganizationId: telegram.currentOrganizationId,
+      ownerOrganizationId: telegram.organizationId,
+    });
     const requestBody = JSON.stringify({
       format,
       html,

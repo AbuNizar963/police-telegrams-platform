@@ -1066,44 +1066,47 @@ class _OfficialTelegramDocumentPageState
 
   Future<String?> _showOutputFormatSheet({required bool share}) =>
       showModalBottomSheet<String>(
-    context: context,
-    useSafeArea: true,
-    showDragHandle: true,
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    builder: (sheetContext) => Directionality(
-      textDirection: TextDirection.rtl,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Text(
-                share ? 'اختر صيغة المشاركة' : 'اختر صيغة التنزيل',
-                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800,
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        builder: (sheetContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                  child: Text(
+                    share ? 'اختر صيغة المشاركة' : 'اختر صيغة التنزيل',
+                    style: Theme.of(sheetContext).textTheme.titleMedium
+                        ?.copyWith(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
                 ),
-              ),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: Text(share ? 'مشاركة ملف PDF' : 'تنزيل ملف PDF'),
+                  onTap: () => Navigator.of(sheetContext).pop('pdf'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.image_outlined),
+                  title: Text(
+                    share ? 'مشاركة صور الصفحات' : 'تنزيل صور الصفحات',
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop('image'),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: Text(share ? 'مشاركة ملف PDF' : 'تنزيل ملف PDF'),
-              onTap: () => Navigator.of(sheetContext).pop('pdf'),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.image_outlined),
-              title: Text(share ? 'مشاركة صور الصفحات' : 'تنزيل صور الصفحات'),
-              onTap: () => Navigator.of(sheetContext).pop('image'),
-            ),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Future<void> _showDownloadOptions() async {
     final format = await _showOutputFormatSheet(share: false);

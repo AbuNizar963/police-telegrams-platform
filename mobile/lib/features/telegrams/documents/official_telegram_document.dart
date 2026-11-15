@@ -719,9 +719,18 @@ class _OfficialTelegramDocumentPageState
       '${Directory.systemTemp.path}${Platform.pathSeparator}'
       'official-telegram-logos',
     );
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] creating temporary logo directory');
+    }
     await cacheRoot.create(recursive: true);
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo root ready');
+    }
     final directory = await cacheRoot.createTemp('document-');
     _officialLogoDirectory = directory;
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo directory ready');
+    }
     return directory;
   }
 
@@ -753,7 +762,13 @@ class _OfficialTelegramDocumentPageState
       '${directory.path}${Platform.pathSeparator}'
       'official-logo-$sequence.$extension',
     );
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] writing temporary logo file');
+    }
     await file.writeAsBytes(bytes, flush: true);
+    if (kDebugMode) {
+      debugPrint('[telegram-preview] temporary logo file written');
+    }
     if (!await file.exists() || await file.length() != bytes.length) {
       throw StateError('تعذر حفظ شعار الوثيقة محليًا.');
     }

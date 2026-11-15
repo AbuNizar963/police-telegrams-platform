@@ -1529,13 +1529,21 @@ class _OfficialTelegramDocumentPageState
                             ? Icons.sync_rounded
                             : Icons.error_outline_rounded,
                       ),
+                      // MaterialBanner requires at least one action even
+                      // while the preview is refreshing. Keep the action slot
+                      // present and disable it until retry is meaningful.
                       actions: [
-                        if (!loading)
-                          TextButton.icon(
-                            onPressed: load,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('إعادة المحاولة'),
+                        TextButton.icon(
+                          onPressed: loading ? null : load,
+                          icon: Icon(
+                            loading
+                                ? Icons.sync_rounded
+                                : Icons.refresh_rounded,
                           ),
+                          label: Text(
+                            loading ? 'جارٍ التحديث' : 'إعادة المحاولة',
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1620,21 +1628,31 @@ class _OfficialTelegramDocumentPageState
                                     ],
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Image.memory(
-                                    previewPages[index],
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.high,
-                                    width: double.infinity,
-                                    semanticLabel:
-                                        'معاينة الصفحة ${index + 1} من ${previewPages.length}',
-                                    errorBuilder:
-                                        (context, exception, stackTrace) =>
-                                            const Padding(
-                                              padding: EdgeInsets.all(24),
-                                              child: Text(
-                                                'تعذر عرض معاينة الوثيقة.',
+                                  child: AspectRatio(
+                                    // Server-rendered pages are A4. Give each
+                                    // image finite page geometry instead of
+                                    // letting its decoded pixel dimensions
+                                    // dictate an unbounded Flutter layout.
+                                    aspectRatio:
+                                        _documentPageWidth /
+                                        _documentPageHeight,
+                                    child: Image.memory(
+                                      previewPages[index],
+                                      fit: BoxFit.fill,
+                                      filterQuality: FilterQuality.high,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      semanticLabel:
+                                          'معاينة الصفحة ${index + 1} من ${previewPages.length}',
+                                      errorBuilder:
+                                          (context, exception, stackTrace) =>
+                                              const Padding(
+                                                padding: EdgeInsets.all(24),
+                                                child: Text(
+                                                  'تعذر عرض معاينة الوثيقة.',
+                                                ),
                                               ),
-                                            ),
+                                    ),
                                   ),
                                 ),
                               ],

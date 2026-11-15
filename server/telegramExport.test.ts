@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hasMultiPageTelegramLayout,
+  isTelegramMultiPageHeight,
   getTelegramRenderLayoutCss,
   isAllowedExportResourceUrl,
   isSafeExportHtml,
@@ -242,6 +243,16 @@ describe("telegram export resource isolation", () => {
     ]) {
       expect(isAllowedExportResourceUrl(url)).toBe(false);
     }
+  });
+});
+
+describe("telegram pagination measurement", () => {
+  it("matches the web preview's A4 height threshold without executing HTML", () => {
+    expect(isTelegramMultiPageHeight(1123)).toBe(false);
+    expect(isTelegramMultiPageHeight(1124)).toBe(false);
+    expect(isTelegramMultiPageHeight(1125)).toBe(true);
+    expect(isTelegramMultiPageHeight(Number.NaN)).toBe(false);
+    expect(isTelegramMultiPageHeight(Number.POSITIVE_INFINITY)).toBe(false);
   });
 });
 

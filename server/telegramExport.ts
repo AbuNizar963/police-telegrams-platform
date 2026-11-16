@@ -350,9 +350,15 @@ async function launchBrowser() {
 export async function renderTelegramDocument(
   html: string,
   format: "pdf" | "png",
-  officialLogo?: OfficialLogoBinary
+  officialLogo?: OfficialLogoBinary,
+  onStage?: (stage: string, durationMs: number) => void
 ) {
+  const renderStartedAt = Date.now();
+  const reportStage = (stage: string) => {
+    onStage?.(stage, Date.now() - renderStartedAt);
+  };
   const browser = await launchBrowser();
+  reportStage("chromium-launched");
   try {
     const createMeasuredPage = async (deviceScaleFactor: number) => {
       const page = await browser.newPage({
@@ -389,6 +395,7 @@ export async function renderTelegramDocument(
         // keeping untrusted export HTML script-free.
         await page.emulateMedia({ media: "screen" });
         await page.setContent(html, { waitUntil: "load" });
+        reportStage("html-loaded");
         await page.evaluate(async () => {
           await document.fonts.ready;
           const images = Array.from(document.images);
@@ -424,22 +431,31 @@ export async function renderTelegramDocument(
             })
           );
         });
-        await page
-          .locator(".telegram-export-page")
-          .waitFor({ state: "visible" });
-        const isMultiPage = await page.evaluate(heightThreshold => {
+        reportStage("fonts-and-images-ready");
+        reportStage("before-paper-measurement");
+        const measurement = await page.evaluate(heightThreshold => {
           const paper = document.querySelector<HTMLElement>(
             ".telegram-export-page"
           );
           if (!paper) {
             throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
           }
-          const pageHeight = paper.getBoundingClientRect().height;
-          const multiPage = pageHeight > heightThreshold;
+          const bounds = paper.getBoundingClientRect();
+          if (bounds.width <= 0 || bounds.height <= 0) {
+            throw new Error(
+              "قالب البرقية موجود لكنه غير ظاهر داخل محرك إنشاء الوثيقة"
+            );
+          }
+          const multiPage = bounds.height > heightThreshold;
           paper.classList.toggle("telegram-multipage", multiPage);
-          return multiPage;
+          return {
+            isMultiPage: multiPage,
+            width: bounds.width,
+            height: bounds.height,
+          };
         }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
-        return { page, isMultiPage };
+        reportStage("paper-measured");
+        return { page, isMultiPage: measurement.isMultiPage };
       } catch (error) {
         await page.close();
         throw error;
@@ -456,12 +472,14 @@ export async function renderTelegramDocument(
           content: getTelegramRenderLayoutCss(true),
         });
         await page.emulateMedia({ media: "print" });
+        const pdfBody = await page.pdf({
+          printBackground: true,
+          preferCSSPageSize: true,
+          tagged: true,
+        });
+        reportStage("pdf-created");
         return {
-          body: await page.pdf({
-            printBackground: true,
-            preferCSSPageSize: true,
-            tagged: true,
-          }),
+          body: pdfBody,
           contentType: "application/pdf",
           fileName: "telegram.pdf",
         };
@@ -503,6 +521,7 @@ export async function renderTelegramDocument(
             height: (297 / 25.4) * 96,
           },
         });
+        reportStage("png-created");
         const body = withPngDpiMetadata(renderedPng, deviceScaleFactor * 96);
         if (body.length <= MAX_TELEGRAM_PNG_BYTES) {
           return {
@@ -528,10 +547,24 @@ export async function renderTelegramDocument(
 
 export function registerTelegramExportRoutes(app: Express): void {
   app.post("/api/telegram-render", async (req: Request, res: Response) => {
+    const requestStartedAt = Date.now();
+    const requestId = req.headers["x-vercel-id"];
+    const logRequestStage = (stage: string) => {
+      console.info(
+        "[telegram-render]",
+        JSON.stringify({
+          requestId: typeof requestId === "string" ? requestId : undefined,
+          stage,
+          durationMs: Date.now() - requestStartedAt,
+        })
+      );
+    };
+    logRequestStage("request-started");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
 
     const user = await getAuthenticatedUserFromRequest(req);
+    logRequestStage("authentication-complete");
     if (!user) return res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
 
     const body = req.body as {
@@ -568,6 +601,7 @@ export function registerTelegramExportRoutes(app: Express): void {
           body.organizationId,
           body.logoSource
         );
+        logRequestStage("organization-logo-loaded");
         html = replaceOfficialLogoPlaceholder(html);
       }
 
@@ -575,7 +609,24 @@ export function registerTelegramExportRoutes(app: Express): void {
         return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
       }
 
-      const result = await renderTelegramDocument(html, format, officialLogo);
+      const logRenderStage = (stage: string, durationMs: number) => {
+        console.info(
+          "[telegram-render]",
+          JSON.stringify({
+            requestId: typeof requestId === "string" ? requestId : undefined,
+            stage,
+            durationMs,
+            format,
+          })
+        );
+      };
+      const result = await renderTelegramDocument(
+        html,
+        format,
+        officialLogo,
+        logRenderStage
+      );
+      logRequestStage("response-ready");
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(
         "Content-Disposition",

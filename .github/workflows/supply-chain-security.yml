@@ -2,7 +2,7 @@ name: Supply Chain Security
 
 on:
   push:
-    branches: ["main", "flutter-mobile-app", "security/**"]
+    branches: ["main", "flutter-mobile-app"]
   pull_request:
     branches: ["main", "flutter-mobile-app"]
   schedule:

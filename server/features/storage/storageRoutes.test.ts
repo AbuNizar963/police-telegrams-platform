@@ -792,10 +792,7 @@ describe("storage route", () => {
     await handler({ params: { key: key.split("/") } }, res);
 
     expect(res.status).toHaveBeenCalledWith(502);
-    expect(res.set).not.toHaveBeenCalledWith(
-      "Content-Type",
-      "image/svg+xml"
-    );
+    expect(res.set).not.toHaveBeenCalledWith("Content-Type", "image/svg+xml");
     expect(res.send).not.toHaveBeenCalledWith(unsafeBytes);
   });
 

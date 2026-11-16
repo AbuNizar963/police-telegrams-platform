@@ -1191,6 +1191,39 @@ void main() {
   );
 
   test(
+    'reports serverless PDF renderer timeouts as a recoverable network error',
+    () async {
+      final client = MockClient((request) async {
+        expect(request.url.path, '/api/telegram-render');
+        return http.Response(
+          'Vercel Runtime Timeout Error: Task timed out after 60 seconds',
+          504,
+          headers: {'content-type': 'text/plain'},
+        );
+      });
+      addTearDown(client.close);
+
+      final api = PoliceApi(
+        baseUrl: 'https://police.example.test',
+        httpClient: client,
+      );
+      await expectLater(
+        api.renderTelegramDocument(
+          html: '<article class="telegram-export-page"></article>',
+          format: 'pdf',
+        ),
+        throwsA(
+          isA<NetworkException>().having(
+            (error) => error.message,
+            'message',
+            'انتهت مهلة الخادم أثناء إنشاء الوثيقة. أعد المحاولة بعد قليل.',
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
     'surfaces server authorization failures for document rendering',
     () async {
       _secureStorageForTest['session_cookie'] = 'sid=expired-session';

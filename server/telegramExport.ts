@@ -394,10 +394,14 @@ export async function renderTelegramDocument(
         // overrides. This mirrors the web preview's pagination decision while
         // keeping untrusted export HTML script-free.
         await page.emulateMedia({ media: "screen" });
+        const renderStyles = `<style>${getTelegramRenderLayoutCss(true)}</style>`;
         const renderHtml = html.replace(
-          "</head>",
-          `<style>${getTelegramRenderLayoutCss(true)}</style></head>`
+          /<\/head>/i,
+          `${renderStyles}</head>`
         );
+        if (renderHtml === html) {
+          throw new Error("قالب البرقية لا يحتوي على وسم head لإعداد التصدير");
+        }
         await page.setContent(renderHtml, { waitUntil: "load" });
         reportStage("render-layout-styles-injected");
         reportStage("html-loaded");

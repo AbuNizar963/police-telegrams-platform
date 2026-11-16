@@ -350,9 +350,15 @@ async function launchBrowser() {
 export async function renderTelegramDocument(
   html: string,
   format: "pdf" | "png",
-  officialLogo?: OfficialLogoBinary
+  officialLogo?: OfficialLogoBinary,
+  onStage?: (stage: string, durationMs: number) => void
 ) {
+  const renderStartedAt = Date.now();
+  const reportStage = (stage: string) => {
+    onStage?.(stage, Date.now() - renderStartedAt);
+  };
   const browser = await launchBrowser();
+  reportStage("chromium-launched");
   try {
     const createMeasuredPage = async (deviceScaleFactor: number) => {
       const page = await browser.newPage({
@@ -389,6 +395,7 @@ export async function renderTelegramDocument(
         // keeping untrusted export HTML script-free.
         await page.emulateMedia({ media: "screen" });
         await page.setContent(html, { waitUntil: "load" });
+        reportStage("html-loaded");
         await page.evaluate(async () => {
           await document.fonts.ready;
           const images = Array.from(document.images);
@@ -424,6 +431,7 @@ export async function renderTelegramDocument(
             })
           );
         });
+        reportStage("fonts-and-images-ready");
         await page
           .locator(".telegram-export-page")
           .waitFor({ state: "visible" });
@@ -456,12 +464,14 @@ export async function renderTelegramDocument(
           content: getTelegramRenderLayoutCss(true),
         });
         await page.emulateMedia({ media: "print" });
+        const pdfBody = await page.pdf({
+          printBackground: true,
+          preferCSSPageSize: true,
+          tagged: true,
+        });
+        reportStage("pdf-created");
         return {
-          body: await page.pdf({
-            printBackground: true,
-            preferCSSPageSize: true,
-            tagged: true,
-          }),
+          body: pdfBody,
           contentType: "application/pdf",
           fileName: "telegram.pdf",
         };
@@ -503,6 +513,7 @@ export async function renderTelegramDocument(
             height: (297 / 25.4) * 96,
           },
         });
+        reportStage("png-created");
         const body = withPngDpiMetadata(renderedPng, deviceScaleFactor * 96);
         if (body.length <= MAX_TELEGRAM_PNG_BYTES) {
           return {
@@ -575,7 +586,27 @@ export function registerTelegramExportRoutes(app: Express): void {
         return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
       }
 
-      const result = await renderTelegramDocument(html, format, officialLogo);
+      const requestId = req.headers["x-vercel-id"];
+      const logStage = (stage: string, durationMs: number) => {
+        console.info(
+          "[telegram-render]",
+          JSON.stringify({
+            requestId:
+              typeof requestId === "string" ? requestId : undefined,
+            stage,
+            durationMs,
+            format,
+          })
+        );
+      };
+      logStage("logo-ready", 0);
+      const result = await renderTelegramDocument(
+        html,
+        format,
+        officialLogo,
+        logStage
+      );
+      logStage("response-ready", 0);
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(
         "Content-Disposition",

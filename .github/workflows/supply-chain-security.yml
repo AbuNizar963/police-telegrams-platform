@@ -101,7 +101,7 @@ jobs:
 
   scorecard:
     name: OpenSSF supply-chain security score
-    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/flutter-mobile-app'
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read

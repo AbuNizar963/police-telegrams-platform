@@ -360,7 +360,17 @@ export async function renderTelegramDocument(
   const browser = await launchBrowser();
   reportStage("chromium-launched");
   try {
-    const createMeasuredPage = async (deviceScaleFactor: number) => {
+    // The web preview already marks documents that require paginated output.
+    // Use that same trusted marker before loading Chromium, rather than
+    // measuring a page after applying print CSS and changing its layout.
+    const isMultiPagePng =
+      format === "png" && hasMultiPageTelegramLayout(html);
+    reportStage(isMultiPagePng ? "multipage-layout-detected" : "single-page-layout-selected");
+
+    const createReadyPage = async (
+      deviceScaleFactor: number,
+      printLayout: boolean
+    ) => {
       const page = await browser.newPage({
         viewport: { width: 794, height: 1123 },
         deviceScaleFactor,
@@ -390,21 +400,20 @@ export async function renderTelegramDocument(
           }
           await route.abort("blockedbyclient");
         });
-        // Measure the document in its screen layout before applying print
-        // overrides. This mirrors the web preview's pagination decision while
-        // keeping untrusted export HTML script-free.
-        await page.emulateMedia({ media: "screen" });
-        const renderStyles = `<style>${getTelegramRenderLayoutCss(true)}</style>`;
-        const renderHtml = html.replace(
-          /<\/head>/i,
-          `${renderStyles}</head>`
-        );
+
+        const renderStyles = \`<style>\${getTelegramRenderLayoutCss(printLayout)}</style>\`;
+        const renderHtml = html.replace(/<\\/head>/i, \`\${renderStyles}</head>\`);
         if (renderHtml === html) {
           throw new Error("قالب البرقية لا يحتوي على وسم head لإعداد التصدير");
         }
+
+        await page.emulateMedia({
+          media: printLayout ? "print" : "screen",
+        });
         await page.setContent(renderHtml, { waitUntil: "load" });
         reportStage("render-layout-styles-injected");
         reportStage("html-loaded");
+
         await page.evaluate(async () => {
           await document.fonts.ready;
           const images = Array.from(document.images);
@@ -441,30 +450,11 @@ export async function renderTelegramDocument(
           );
         });
         reportStage("fonts-and-images-ready");
-        reportStage("before-paper-measurement");
-        const measurement = await page.evaluate(heightThreshold => {
-          const paper = document.querySelector<HTMLElement>(
-            ".telegram-export-page"
-          );
-          if (!paper) {
-            throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
-          }
-          const bounds = paper.getBoundingClientRect();
-          if (bounds.width <= 0 || bounds.height <= 0) {
-            throw new Error(
-              "قالب البرقية موجود لكنه غير ظاهر داخل محرك إنشاء الوثيقة"
-            );
-          }
-          const multiPage = bounds.height > heightThreshold;
-          paper.classList.toggle("telegram-multipage", multiPage);
-          return {
-            isMultiPage: multiPage,
-            width: bounds.width,
-            height: bounds.height,
-          };
-        }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
-        reportStage("paper-measured");
-        return { page, isMultiPage: measurement.isMultiPage };
+        await page
+          .locator(".telegram-export-page")
+          .waitFor({ state: "visible" });
+        reportStage("paper-ready");
+        return page;
       } catch (error) {
         await page.close();
         throw error;
@@ -474,11 +464,9 @@ export async function renderTelegramDocument(
     // Multi-page documents must retain Chromium's paginated print layout.
     // The client rasterizes this PDF into individual PNG pages at 384 DPI;
     // clipping the long flowing article as a single screenshot would crop text.
-    if (format === "pdf") {
-      const { page } = await createMeasuredPage(1);
+    if (format === "pdf" || isMultiPagePng) {
+      const page = await createReadyPage(1, true);
       try {
-        await page.emulateMedia({ media: "print" });
-        reportStage("pdf-print-media-applied");
         reportStage("pdf-generation-started");
         const pdfBody = await page.pdf({
           printBackground: true,
@@ -489,7 +477,8 @@ export async function renderTelegramDocument(
         return {
           body: pdfBody,
           contentType: "application/pdf",
-          fileName: "telegram.pdf",
+          fileName:
+            format === "pdf" ? "telegram.pdf" : "telegram-pages-source.pdf",
         };
       } finally {
         await page.close();
@@ -497,27 +486,9 @@ export async function renderTelegramDocument(
     }
 
     for (const deviceScaleFactor of PNG_RENDER_SCALE_FACTORS) {
-      const { page, isMultiPage } = await createMeasuredPage(deviceScaleFactor);
+      const page = await createReadyPage(deviceScaleFactor, false);
       try {
-        if (isMultiPage) {
-          await page.emulateMedia({ media: "print" });
-          reportStage("multipage-pdf-print-media-applied");
-          reportStage("multipage-pdf-generation-started");
-          const pdfBody = await page.pdf({
-            printBackground: true,
-            preferCSSPageSize: true,
-            tagged: true,
-          });
-          reportStage("multipage-pdf-created");
-          return {
-            body: pdfBody,
-            contentType: "application/pdf",
-            fileName: "telegram-pages-source.pdf",
-          };
-        }
-
-        await page.emulateMedia({ media: "screen" });
-        reportStage("png-screen-media-applied");
+        reportStage("png-generation-started");
         const renderedPng = await page.screenshot({
           type: "png",
           animations: "disabled",
@@ -551,7 +522,6 @@ export async function renderTelegramDocument(
     await browser.close();
   }
 }
-
 export function registerTelegramExportRoutes(app: Express): void {
   app.post("/api/telegram-render", async (req: Request, res: Response) => {
     const requestStartedAt = Date.now();

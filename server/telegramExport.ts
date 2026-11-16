@@ -394,7 +394,12 @@ export async function renderTelegramDocument(
         // overrides. This mirrors the web preview's pagination decision while
         // keeping untrusted export HTML script-free.
         await page.emulateMedia({ media: "screen" });
-        await page.setContent(html, { waitUntil: "load" });
+        const renderHtml = html.replace(
+          "</head>",
+          `<style>${getTelegramRenderLayoutCss(true)}</style></head>`
+        );
+        await page.setContent(renderHtml, { waitUntil: "load" });
+        reportStage("render-layout-styles-injected");
         reportStage("html-loaded");
         await page.evaluate(async () => {
           await document.fonts.ready;
@@ -468,10 +473,6 @@ export async function renderTelegramDocument(
     if (format === "pdf") {
       const { page } = await createMeasuredPage(1);
       try {
-        await page.addStyleTag({
-          content: getTelegramRenderLayoutCss(true),
-        });
-        reportStage("pdf-print-styles-applied");
         await page.emulateMedia({ media: "print" });
         reportStage("pdf-print-media-applied");
         reportStage("pdf-generation-started");
@@ -495,10 +496,6 @@ export async function renderTelegramDocument(
       const { page, isMultiPage } = await createMeasuredPage(deviceScaleFactor);
       try {
         if (isMultiPage) {
-          await page.addStyleTag({
-            content: getTelegramRenderLayoutCss(true),
-          });
-          reportStage("multipage-pdf-print-styles-applied");
           await page.emulateMedia({ media: "print" });
           reportStage("multipage-pdf-print-media-applied");
           reportStage("multipage-pdf-generation-started");
@@ -515,10 +512,8 @@ export async function renderTelegramDocument(
           };
         }
 
-        await page.addStyleTag({
-          content: getTelegramRenderLayoutCss(false),
-        });
         await page.emulateMedia({ media: "screen" });
+        reportStage("png-screen-media-applied");
         const renderedPng = await page.screenshot({
           type: "png",
           animations: "disabled",

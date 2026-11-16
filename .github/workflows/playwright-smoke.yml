@@ -38,9 +38,6 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Print canonical Prettier output for the smoke test
-        run: pnpm exec prettier scripts/playwright-smoke.mjs
-
       - name: Build web application
         run: pnpm build
 

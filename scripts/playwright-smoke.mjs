@@ -11,10 +11,7 @@ try {
   // Application scripts cannot send requests to external hosts during this test.
   await page.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
-    if (
-      requestUrl.hostname === "127.0.0.1" &&
-      requestUrl.port === "4173"
-    ) {
+    if (requestUrl.hostname === "127.0.0.1" && requestUrl.port === "4173") {
       await route.continue();
       return;
     }
@@ -27,7 +24,11 @@ try {
   });
 
   assert.ok(response, "The browser did not receive a document response.");
-  assert.equal(response.status(), 200, "The web application did not return HTTP 200.");
+  assert.equal(
+    response.status(),
+    200,
+    "The web application did not return HTTP 200.",
+  );
 
   await page.waitForSelector("#root > *", { timeout: 20_000 });
 
@@ -38,8 +39,14 @@ try {
   }));
 
   assert.ok(pageState.title.length > 0, "The document title is empty.");
-  assert.ok(pageState.rootChildren > 0, "The React application did not render.");
-  assert.ok(pageState.bodyText.length > 0, "The rendered application has no visible text.");
+  assert.ok(
+    pageState.rootChildren > 0,
+    "The React application did not render.",
+  );
+  assert.ok(
+    pageState.bodyText.length > 0,
+    "The rendered application has no visible text.",
+  );
 
   console.log("Playwright browser smoke test passed.");
   console.log(JSON.stringify(pageState, null, 2));

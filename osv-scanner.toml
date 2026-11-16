@@ -1,0 +1,17 @@
+# Narrow, time-limited exception for the official SheetJS CDN release.
+#
+# The repository pins xlsx 0.20.2 from cdn.sheetjs.com (see package.json and
+# pnpm-lock.yaml). GitHub-reviewed advisories describe GHSA-4r6h-8v6p-xvw6
+# as affecting versions before 0.19.3 and GHSA-5pgg-2g8v-p4x9 as affecting
+# versions before 0.20.2. OSV currently matches the npm advisory records to
+# this CDN tarball without honoring those fixed-version boundaries.
+#
+# This exception applies only to xlsx 0.20.2 in the npm ecosystem. Revalidate
+# before the expiry date and remove this entry once OSV metadata is corrected.
+[[PackageOverrides]]
+name = "xlsx"
+version = "0.20.2"
+ecosystem = "npm"
+vulnerability.ignore = true
+effectiveUntil = 2026-12-16
+reason = "Official SheetJS CDN xlsx 0.20.2 includes the fixes described by GHSA-4r6h-8v6p-xvw6 (0.19.3+) and GHSA-5pgg-2g8v-p4x9 (0.20.2+); OSV currently mis-matches the CDN-pinned release against npm advisory ranges. Exact-version, time-limited exception; revalidate before expiry."

@@ -1,0 +1,88 @@
+name: Security and Workflow Quality
+
+on:
+  push:
+    branches: ["main", "flutter-mobile-app"]
+  pull_request:
+    branches: ["main", "flutter-mobile-app"]
+  schedule:
+    - cron: "31 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  static-analysis:
+    name: Semgrep static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Semgrep
+        run: python -m pip install --disable-pip-version-check semgrep==1.185.0
+
+      - name: Scan source code
+        env:
+          SEMGREP_SEND_METRICS: off
+        run: semgrep scan --metrics off --config p/default --sarif --output semgrep.sarif
+
+      - name: Summarize Semgrep findings in Actions logs
+        if: always() && hashFiles('semgrep.sarif') != ''
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("semgrep.sarif").read_text(encoding="utf-8"))
+          for run in report.get("runs", []):
+              for finding in run.get("results", []):
+                  locations = finding.get("locations") or [{}]
+                  physical = locations[0].get("physicalLocation", {})
+                  artifact = physical.get("artifactLocation", {}).get("uri", "<unknown>")
+                  line = physical.get("region", {}).get("startLine", "?")
+                  rule_id = finding.get("ruleId", "<unknown>")
+                  level = finding.get("level", "note").upper()
+                  message = finding.get("message", {}).get("text", "")
+                  message = message.replace("\r", " ").replace("\n", " ")
+                  print(f"{level}: {artifact}:{line} [{rule_id}] {message}")
+          PY
+
+      - name: Upload Semgrep findings
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  workflow-lint:
+    name: GitHub Actions workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.24.x"
+
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Add actionlint to PATH
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Lint workflow files
+        run: actionlint -color

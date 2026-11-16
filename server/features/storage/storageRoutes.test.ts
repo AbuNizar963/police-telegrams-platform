@@ -796,6 +796,40 @@ describe("storage route", () => {
     );
   });
 
+  it("rejects department logos with an unsupported stored content type", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/unsafe-badge.png";
+    const unsafeBytes = Buffer.from("<svg></svg>");
+    storageDownload.mockResolvedValueOnce({
+      body: unsafeBytes,
+      contentType: "image/svg+xml",
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(502);
+    expect(res.set).not.toHaveBeenCalledWith("Content-Type", "image/svg+xml");
+    expect(res.send).not.toHaveBeenCalledWith(unsafeBytes);
+  });
+
+  it("rejects oversized department logo responses before sending bytes", async () => {
+    const key =
+      "department/logos/550e8400-e29b-41d4-a716-446655440000/large-badge.png";
+    storageDownload.mockResolvedValueOnce({
+      body: Buffer.alloc(4_000_001),
+      contentType: "image/png",
+    });
+    const { handler, res } = createRouteHarness();
+
+    await handler({ params: { key: key.split("/") } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.send).toHaveBeenCalledWith(
+      "Logo exceeds the serverless image size limit"
+    );
+  });
+
   it("supports organization-scoped logo keys", async () => {
     const key =
       "department/logos/550e8400-e29b-41d4-a716-446655440000/550e8400-e29b-41d4-a716-446655440001-badge.png";

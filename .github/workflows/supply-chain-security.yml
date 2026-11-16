@@ -40,28 +40,31 @@ jobs:
         continue-on-error: true
         run: zizmor --format=github --min-severity=high .github/workflows
 
-  osv-pull-request:
-    name: Detect newly introduced dependency vulnerabilities
-    if: github.event_name == 'pull_request'
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+  osv-offline:
+    name: Scan dependencies against a local OSV database
+    runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: read
-      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-  osv-full-scan:
-    name: Scheduled full dependency vulnerability scan
-    if: github.event_name != 'pull_request'
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
-    with:
-      scan-args: |-
-        --recursive
-        ./
-      fail-on-vuln: false
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.24.x"
+
+      - name: Install pinned OSV-Scanner
+        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.1
+
+      - name: Download advisory database and scan offline
+        env:
+          OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: ${{ runner.temp }}/osv-database
+        run: |
+          set -euo pipefail
+          "$(go env GOPATH)/bin/osv-scanner" --offline --download-offline-databases ./
 
   trivy:
     name: Scan repository for vulnerabilities and misconfigurations
@@ -77,6 +80,10 @@ jobs:
 
       - name: Scan filesystem with Trivy
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        env:
+          TRIVY_DISABLE_TELEMETRY: "true"
+          TRIVY_SKIP_VERSION_CHECK: "true"
+          TRIVY_OFFLINE_SCAN: "true"
         with:
           scan-type: fs
           scan-ref: .
@@ -100,7 +107,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-      id-token: write
       issues: read
       pull-requests: read
       checks: read
@@ -115,8 +121,7 @@ jobs:
         with:
           results_file: scorecard.sarif
           results_format: sarif
-          publish_results: true
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_results: false
 
       - name: Upload Scorecard findings
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0

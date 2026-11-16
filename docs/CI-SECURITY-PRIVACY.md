@@ -23,3 +23,10 @@ These downloads are not the same as uploading the repository source to a scannin
 This configuration reduces outbound disclosure by the added scanners. It is not a mathematical guarantee against a compromised upstream release, compromised GitHub runner, malicious dependency install script, or a vulnerability in an action. Third-party Actions remain pinned to immutable commit SHAs wherever introduced by this tooling.
 
 For environments requiring zero outbound connections from the build runner, use a controlled self-hosted runner with preloaded and verified tool binaries, cached advisory databases, and internal package mirrors. GitHub-hosted runners cannot provide a zero-network guarantee.
+
+
+## OSV-Scanner exception: SheetJS CDN release
+
+The project pins `xlsx@0.20.2` from the official `cdn.sheetjs.com` tarball, with the package integrity recorded in `pnpm-lock.yaml`. The GitHub-reviewed advisories describe the prototype-pollution issue as affecting versions before 0.19.3 and the ReDoS issue as affecting versions before 0.20.2. OSV currently reports the CDN-pinned 0.20.2 package against npm advisory metadata without applying those fixed-version boundaries (see [OSV-Scanner issue #3073](https://github.com/google/osv-scanner/issues/3073)).
+
+The root `osv-scanner.toml` therefore contains a narrowly scoped `PackageOverrides` entry for **only** `xlsx@0.20.2` in the npm ecosystem. It expires on **2026-12-16** and must be reviewed before expiry. Do not widen the exception to other versions or packages. Remove it when OSV correctly recognizes the CDN release or if the pinned SheetJS artifact changes. This is a scanner false-positive exception, not a claim that all versions of SheetJS are safe.

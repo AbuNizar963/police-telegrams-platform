@@ -365,7 +365,11 @@ export async function renderTelegramDocument(
     // measuring a page after applying print CSS and changing its layout.
     const isMultiPagePng =
       format === "png" && hasMultiPageTelegramLayout(html);
-    reportStage(isMultiPagePng ? "multipage-layout-detected" : "single-page-layout-selected");
+    reportStage(
+      isMultiPagePng
+        ? "multipage-layout-detected"
+        : "single-page-layout-selected"
+    );
 
     const createReadyPage = async (
       deviceScaleFactor: number,
@@ -401,8 +405,11 @@ export async function renderTelegramDocument(
           await route.abort("blockedbyclient");
         });
 
-        const renderStyles = \`<style>\${getTelegramRenderLayoutCss(printLayout)}</style>\`;
-        const renderHtml = html.replace(/<\\/head>/i, \`\${renderStyles}</head>\`);
+        const renderStyles = `<style>${getTelegramRenderLayoutCss(printLayout)}</style>`;
+        const renderHtml = html.replace(
+          /<\/head>/i,
+          `${renderStyles}</head>`
+        );
         if (renderHtml === html) {
           throw new Error("قالب البرقية لا يحتوي على وسم head لإعداد التصدير");
         }

@@ -4649,7 +4649,8 @@ function TelegramDetail({
       const blob = await renderOfficialDocument(format, outputTimestamp);
       const isPngArchive =
         format === "png" && blob.type === "application/zip";
-      const extension = format === "pdf" ? "pdf" : isPngArchive ? "zip" : "png";
+      const extension =
+        format === "pdf" ? "pdf" : isPngArchive ? "zip" : "png";
       const mimeType =
         format === "pdf"
           ? "application/pdf"

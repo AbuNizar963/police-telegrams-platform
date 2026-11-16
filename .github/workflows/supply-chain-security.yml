@@ -1,0 +1,129 @@
+name: Supply Chain Security
+
+on:
+  push:
+    branches: ["main", "flutter-mobile-app"]
+  pull_request:
+    branches: ["main", "flutter-mobile-app"]
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  zizmor:
+    name: Audit GitHub Actions security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Install zizmor
+        run: python -m pip install --disable-pip-version-check zizmor==1.32.0
+
+      - name: Audit workflow files
+        run: zizmor --format=github --min-severity=high .github/workflows
+
+  osv-offline:
+    name: Scan dependencies against a local OSV database
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.27.3"
+
+      - name: Install pinned OSV-Scanner
+        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.1
+
+      - name: Download advisory database and scan offline
+        env:
+          OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: ${{ runner.temp }}/osv-database
+        run: |
+          set -euo pipefail
+          "$(go env GOPATH)/bin/osv-scanner" --offline --download-offline-databases ./
+
+  trivy:
+    name: Scan repository for vulnerabilities and misconfigurations
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan filesystem with Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        env:
+          TRIVY_DISABLE_TELEMETRY: "true"
+          TRIVY_SKIP_VERSION_CHECK: "true"
+          TRIVY_OFFLINE_SCAN: "true"
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload Trivy findings
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  scorecard:
+    name: OpenSSF supply-chain security score
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/flutter-mobile-app'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      issues: read
+      pull-requests: read
+      checks: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: false
+
+      - name: Upload Scorecard findings
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard

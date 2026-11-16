@@ -471,7 +471,10 @@ export async function renderTelegramDocument(
         await page.addStyleTag({
           content: getTelegramRenderLayoutCss(true),
         });
+        reportStage("pdf-print-styles-applied");
         await page.emulateMedia({ media: "print" });
+        reportStage("pdf-print-media-applied");
+        reportStage("pdf-generation-started");
         const pdfBody = await page.pdf({
           printBackground: true,
           preferCSSPageSize: true,
@@ -495,13 +498,18 @@ export async function renderTelegramDocument(
           await page.addStyleTag({
             content: getTelegramRenderLayoutCss(true),
           });
+          reportStage("multipage-pdf-print-styles-applied");
           await page.emulateMedia({ media: "print" });
-          return {
-            body: await page.pdf({
+          reportStage("multipage-pdf-print-media-applied");
+          reportStage("multipage-pdf-generation-started");
+          const pdfBody = await page.pdf({
               printBackground: true,
               preferCSSPageSize: true,
               tagged: true,
-            }),
+            });
+          reportStage("multipage-pdf-created");
+          return {
+            body: pdfBody,
             contentType: "application/pdf",
             fileName: "telegram-pages-source.pdf",
           };

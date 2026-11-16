@@ -30,9 +30,10 @@ try {
     "The web application did not return HTTP 200."
   );
 
-  await page.waitForSelector('#root > :not(section[aria-label="Notifications alt+T"])', {
-    timeout: 20_000,
-  });
+  await page.waitForFunction(
+    () => document.querySelector("#root")?.children.length > 1,
+    { timeout: 20_000 },
+  );
 
   const pageState = await page.evaluate(() => ({
     title: document.title.trim(),

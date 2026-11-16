@@ -448,7 +448,11 @@ export async function renderTelegramDocument(
           }
           const multiPage = bounds.height > heightThreshold;
           paper.classList.toggle("telegram-multipage", multiPage);
-          return { isMultiPage: multiPage, width: bounds.width, height: bounds.height };
+          return {
+            isMultiPage: multiPage,
+            width: bounds.width,
+            height: bounds.height,
+          };
         }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
         reportStage("paper-measured");
         return { page, isMultiPage: measurement.isMultiPage };

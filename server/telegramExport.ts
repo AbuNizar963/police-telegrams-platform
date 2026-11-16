@@ -363,8 +363,7 @@ export async function renderTelegramDocument(
     // The web preview already marks documents that require paginated output.
     // Use that same trusted marker before loading Chromium, rather than
     // measuring a page after applying print CSS and changing its layout.
-    const isMultiPagePng =
-      format === "png" && hasMultiPageTelegramLayout(html);
+    const isMultiPagePng = format === "png" && hasMultiPageTelegramLayout(html);
     reportStage(
       isMultiPagePng
         ? "multipage-layout-detected"
@@ -406,10 +405,7 @@ export async function renderTelegramDocument(
         });
 
         const renderStyles = `<style>${getTelegramRenderLayoutCss(printLayout)}</style>`;
-        const renderHtml = html.replace(
-          /<\/head>/i,
-          `${renderStyles}</head>`
-        );
+        const renderHtml = html.replace(/<\/head>/i, `${renderStyles}</head>`);
         if (renderHtml === html) {
           throw new Error("قالب البرقية لا يحتوي على وسم head لإعداد التصدير");
         }

@@ -32,7 +32,7 @@ try {
 
   await page.waitForFunction(
     () => document.querySelector("#root")?.children.length > 1,
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
 
   const pageState = await page.evaluate(() => ({

@@ -340,7 +340,7 @@ jobs:
           (cd release-assets && sha256sum --check SHA256SUMS.txt)
 
       - name: Create or update GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ needs.build-android-apk.outputs.release_tag }}
           target_commitish: ${{ github.sha }}

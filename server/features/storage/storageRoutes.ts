@@ -328,6 +328,33 @@ const DEPARTMENT_LOGO_KEY_PATTERN =
   /^department\/logos\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/)?[^/]+\.(?:png|jpe?g|webp)$/i;
 const MAX_DEPARTMENT_LOGO_RESPONSE_BYTES = 4_000_000;
 
+function getDepartmentLogoContentType(
+  key: string,
+  contentType: string | null | undefined
+): "image/png" | "image/jpeg" | "image/webp" {
+  const normalizedContentType = contentType
+    ?.split(";")[0]
+    ?.trim()
+    .toLowerCase();
+
+  if (normalizedContentType) {
+    if (
+      normalizedContentType === "image/png" ||
+      normalizedContentType === "image/jpeg" ||
+      normalizedContentType === "image/webp"
+    ) {
+      return normalizedContentType;
+    }
+    throw new Error("Department logo has an unsupported content type");
+  }
+
+  const extension = key.slice(key.lastIndexOf(".") + 1).toLowerCase();
+  if (extension === "png") return "image/png";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "webp") return "image/webp";
+  throw new Error("Department logo has an unsupported file extension");
+}
+
 function getStoredLogoKey(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const storedValue = value.trim();
@@ -655,10 +682,18 @@ export function registerStorageRoutes(app: Express): void {
           res.status(413).send("Logo exceeds the serverless image size limit");
           return;
         }
+        const contentType = getDepartmentLogoContentType(
+          key,
+          asset.contentType
+        );
+        if (asset.body.length > MAX_DEPARTMENT_LOGO_RESPONSE_BYTES) {
+          res.status(413).send("Logo exceeds the serverless image size limit");
+          return;
+        }
 
         res.set("Cache-Control", "private, no-store");
         res.set("Vary", "Cookie");
-        res.set("Content-Type", asset.contentType || "image/png");
+        res.set("Content-Type", contentType);
         res.set("X-Content-Type-Options", "nosniff");
         res.send(asset.body);
         return;

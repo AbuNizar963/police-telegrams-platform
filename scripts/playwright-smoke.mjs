@@ -11,7 +11,10 @@ try {
   // Application scripts cannot send requests to external hosts during this test.
   await page.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
-    if (requestUrl.hostname === "127.0.0.1" && requestUrl.port === "4173") {
+    if (
+      requestUrl.hostname === "127.0.0.1" &&
+      requestUrl.port === "4173"
+    ) {
       await route.continue();
       return;
     }

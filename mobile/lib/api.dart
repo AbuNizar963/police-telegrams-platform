@@ -9,6 +9,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'offline_vault.dart';
 
+/// Keep client-side waits below Vercel's 60-second function execution limit.
+const telegramDocumentRenderTimeout = Duration(seconds: 50);
+
 class NetworkException implements Exception {
   const NetworkException([this.message = 'تعذر الاتصال بالخادم']);
 
@@ -246,9 +249,11 @@ class PoliceApi {
     try {
       response = await _httpClient
           .post(uri, headers: headers, body: encodedBody)
-          .timeout(const Duration(seconds: 60));
+          .timeout(telegramDocumentRenderTimeout);
     } on TimeoutException {
-      throw const NetworkException('انتهت مهلة إنشاء الوثيقة. أعد المحاولة.');
+      throw const NetworkException(
+        'تجاوز إنشاء الوثيقة المهلة الآمنة للخادم. أعد المحاولة بعد قليل.',
+      );
     } on IOException {
       throw const NetworkException();
     } on http.ClientException {
@@ -256,6 +261,14 @@ class PoliceApi {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final isRenderTimeout =
+          response.statusCode == 504 ||
+          response.body.contains('Vercel Runtime Timeout Error');
+      if (isRenderTimeout) {
+        throw const NetworkException(
+          'انتهت مهلة الخادم أثناء إنشاء الوثيقة. أعد المحاولة بعد قليل.',
+        );
+      }
       throw ApiException(response.statusCode, _message(response.body));
     }
 

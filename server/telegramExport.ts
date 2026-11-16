@@ -432,22 +432,26 @@ export async function renderTelegramDocument(
           );
         });
         reportStage("fonts-and-images-ready");
-        await page
-          .locator(".telegram-export-page")
-          .waitFor({ state: "visible" });
-        const isMultiPage = await page.evaluate(heightThreshold => {
+        reportStage("before-paper-measurement");
+        const measurement = await page.evaluate(heightThreshold => {
           const paper = document.querySelector<HTMLElement>(
             ".telegram-export-page"
           );
           if (!paper) {
             throw new Error("قالب البرقية لا يحتوي على صفحة قابلة للتخطيط");
           }
-          const pageHeight = paper.getBoundingClientRect().height;
-          const multiPage = pageHeight > heightThreshold;
+          const bounds = paper.getBoundingClientRect();
+          if (bounds.width <= 0 || bounds.height <= 0) {
+            throw new Error(
+              "قالب البرقية موجود لكنه غير ظاهر داخل محرك إنشاء الوثيقة"
+            );
+          }
+          const multiPage = bounds.height > heightThreshold;
           paper.classList.toggle("telegram-multipage", multiPage);
-          return multiPage;
+          return { isMultiPage: multiPage, width: bounds.width, height: bounds.height };
         }, MULTI_PAGE_PAGE_HEIGHT_THRESHOLD);
-        return { page, isMultiPage };
+        reportStage("paper-measured");
+        return { page, isMultiPage: measurement.isMultiPage };
       } catch (error) {
         await page.close();
         throw error;

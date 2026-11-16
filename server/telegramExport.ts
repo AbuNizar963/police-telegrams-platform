@@ -539,10 +539,24 @@ export async function renderTelegramDocument(
 
 export function registerTelegramExportRoutes(app: Express): void {
   app.post("/api/telegram-render", async (req: Request, res: Response) => {
+    const requestStartedAt = Date.now();
+    const requestId = req.headers["x-vercel-id"];
+    const logRequestStage = (stage: string) => {
+      console.info(
+        "[telegram-render]",
+        JSON.stringify({
+          requestId: typeof requestId === "string" ? requestId : undefined,
+          stage,
+          durationMs: Date.now() - requestStartedAt,
+        })
+      );
+    };
+    logRequestStage("request-started");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
 
     const user = await getAuthenticatedUserFromRequest(req);
+    logRequestStage("authentication-complete");
     if (!user) return res.status(401).json({ error: "يجب تسجيل الدخول أولًا" });
 
     const body = req.body as {
@@ -579,6 +593,7 @@ export function registerTelegramExportRoutes(app: Express): void {
           body.organizationId,
           body.logoSource
         );
+        logRequestStage("organization-logo-loaded");
         html = replaceOfficialLogoPlaceholder(html);
       }
 
@@ -586,27 +601,24 @@ export function registerTelegramExportRoutes(app: Express): void {
         return res.status(400).json({ error: "بيانات التصدير غير صالحة" });
       }
 
-      const requestId = req.headers["x-vercel-id"];
-      const logStage = (stage: string, durationMs: number) => {
+      const logRenderStage = (stage: string, durationMs: number) => {
         console.info(
           "[telegram-render]",
           JSON.stringify({
-            requestId:
-              typeof requestId === "string" ? requestId : undefined,
+            requestId: typeof requestId === "string" ? requestId : undefined,
             stage,
             durationMs,
             format,
           })
         );
       };
-      logStage("logo-ready", 0);
       const result = await renderTelegramDocument(
         html,
         format,
         officialLogo,
-        logStage
+        logRenderStage
       );
-      logStage("response-ready", 0);
+      logRequestStage("response-ready");
       res.setHeader("Content-Type", result.contentType);
       res.setHeader(
         "Content-Disposition",

@@ -3343,7 +3343,9 @@ function TelegramDetail({
   >(null);
   const [preparedShares, setPreparedShares] = useState<{
     telegramId: number;
-    files: Record<"pdf" | "png", { file: File; title: string; text: string }>;
+    files: Partial<
+      Record<"pdf" | "png", { file: File; title: string; text: string }>
+    >;
   } | null>(null);
   const [preparingShareOptions, setPreparingShareOptions] = useState(false);
   const [documentPreparing, setDocumentPreparing] = useState(true);
@@ -4575,105 +4577,136 @@ function TelegramDetail({
     }
 
     setPreparingShareOptions(true);
-    setPreparedShares(null);
+    setPreparedShares(current =>
+      current?.telegramId === telegram.id ? current : null
+    );
     setExporting("share");
-    try {
-      // Prepare both formats while the share menu is open. The next tap is
-      // only the user's format choice, so navigator.share runs inside that
-      // fresh gesture instead of after an asynchronous render.
-      const pdfTimestamp = await auditDocumentOutput("share", "pdf");
-      const pdfBlob = await renderOfficialDocument("pdf", pdfTimestamp);
-      const pngTimestamp = await auditDocumentOutput("share", "png");
-      const pngBlob = await renderOfficialDocument("png", pngTimestamp);
 
-      const pdfFile = new File(
-        [pdfBlob],
-        `${getTelegramExportFileBaseName(telegram)}.pdf`,
-        { type: "application/pdf" }
-      );
-      const isPngArchive = pngBlob.type === "application/zip";
-      const pngFile = new File(
-        [pngBlob],
-        `${getTelegramExportFileBaseName(telegram)}.${
-          isPngArchive ? "zip" : "png"
-        }`,
-        { type: isPngArchive ? "application/zip" : "image/png" }
-      );
-      const shareNumber = getTelegramDisplaySerial(
-        documentTelegram,
-        settings?.numberSystem ?? "latin"
-      );
-      const shareDate = formatConfiguredHeaderDateTime(
-        documentTelegram.telegramDate ?? documentTelegram.createdAt,
-        settings
-      );
-      const shareLetterhead = (
-        documentTelegram as typeof telegram & {
-          letterhead?: {
-            organizationId?: string | null;
-            organizationName?: string | null;
-          };
-        }
-      ).letterhead;
-      const shareOrganizationById = new Map(
-        routingDirectory.map(organization => [organization.id, organization])
-      );
-      const shareSourceOrganizationId =
-        documentTelegram.organizationId?.trim() ||
-        documentTelegram.currentOrganizationId?.trim() ||
-        "";
-      const shareHierarchyNames: string[] = [];
-      let shareHierarchyId =
-        shareLetterhead?.organizationId?.trim() || shareSourceOrganizationId;
-      const shareVisitedOrganizations = new Set<string>();
-      while (
-        shareHierarchyId &&
-        !shareVisitedOrganizations.has(shareHierarchyId)
-      ) {
-        const organization = shareOrganizationById.get(shareHierarchyId);
-        if (!organization) break;
-        shareHierarchyNames.unshift(organization.name);
-        shareVisitedOrganizations.add(shareHierarchyId);
-        shareHierarchyId = organization.parentOrganizationId || "";
+    const shareNumber = getTelegramDisplaySerial(
+      documentTelegram,
+      settings?.numberSystem ?? "latin"
+    );
+    const shareDate = formatConfiguredHeaderDateTime(
+      documentTelegram.telegramDate ?? documentTelegram.createdAt,
+      settings
+    );
+    const shareLetterhead = (
+      documentTelegram as typeof telegram & {
+        letterhead?: {
+          organizationId?: string | null;
+          organizationName?: string | null;
+        };
       }
-      const historicalShareOrganizationName =
-        shareLetterhead?.organizationName?.trim();
-      if (historicalShareOrganizationName) {
-        if (shareHierarchyNames.length > 0) {
-          shareHierarchyNames[shareHierarchyNames.length - 1] =
-            historicalShareOrganizationName;
-        } else {
-          shareHierarchyNames.push(historicalShareOrganizationName);
-        }
+    ).letterhead;
+    const shareOrganizationById = new Map(
+      routingDirectory.map(organization => [organization.id, organization])
+    );
+    const shareSourceOrganizationId =
+      documentTelegram.organizationId?.trim() ||
+      documentTelegram.currentOrganizationId?.trim() ||
+      "";
+    const shareHierarchyNames: string[] = [];
+    let shareHierarchyId =
+      shareLetterhead?.organizationId?.trim() || shareSourceOrganizationId;
+    const shareVisitedOrganizations = new Set<string>();
+    while (
+      shareHierarchyId &&
+      !shareVisitedOrganizations.has(shareHierarchyId)
+    ) {
+      const organization = shareOrganizationById.get(shareHierarchyId);
+      if (!organization) break;
+      shareHierarchyNames.unshift(organization.name);
+      shareVisitedOrganizations.add(shareHierarchyId);
+      shareHierarchyId = organization.parentOrganizationId || "";
+    }
+    const historicalShareOrganizationName =
+      shareLetterhead?.organizationName?.trim();
+    if (historicalShareOrganizationName) {
+      if (shareHierarchyNames.length > 0) {
+        shareHierarchyNames[shareHierarchyNames.length - 1] =
+          historicalShareOrganizationName;
+      } else {
+        shareHierarchyNames.push(historicalShareOrganizationName);
       }
-      const shareOrganization =
-        documentTelegram.senderOrganizationName?.trim() ||
-        shareHierarchyNames[shareHierarchyNames.length - 1] ||
-        shareOrganizationById.get(shareSourceOrganizationId)?.name?.trim() ||
-        settings?.departmentName?.trim() ||
-        settings?.unitName?.trim() ||
-        "الجهة المرسلة";
-      const shareText = [
-        `برقية رقم : ${shareNumber}`,
-        `تاريخ : ${shareDate}`,
-        `موضوعها : ${documentTelegram.subject?.trim() || "—"}`,
-        `الجهة : ${shareOrganization}`,
-      ].join("\n");
-      const title = `برقية ${shareNumber}`;
+    }
+    const shareOrganization =
+      documentTelegram.senderOrganizationName?.trim() ||
+      shareHierarchyNames[shareHierarchyNames.length - 1] ||
+      shareOrganizationById.get(shareSourceOrganizationId)?.name?.trim() ||
+      settings?.departmentName?.trim() ||
+      settings?.unitName?.trim() ||
+      "الجهة المرسلة";
+    const shareText = [
+      `برقية رقم : ${shareNumber}`,
+      `تاريخ : ${shareDate}`,
+      `موضوعها : ${documentTelegram.subject?.trim() || "—"}`,
+      `الجهة : ${shareOrganization}`,
+    ].join("\n");
+    const title = `برقية ${shareNumber}`;
 
-      setPreparedShares({
+    const prepareShareFile = async (format: "pdf" | "png") => {
+      const outputTimestamp = await auditDocumentOutput("share", format);
+      const blob = await renderOfficialDocument(format, outputTimestamp);
+      const isPngArchive =
+        format === "png" && blob.type === "application/zip";
+      const extension = format === "pdf" ? "pdf" : isPngArchive ? "zip" : "png";
+      const mimeType =
+        format === "pdf"
+          ? "application/pdf"
+          : isPngArchive
+            ? "application/zip"
+            : "image/png";
+      return {
+        file: new File(
+          [blob],
+          `${getTelegramExportFileBaseName(telegram)}.${extension}`,
+          { type: mimeType }
+        ),
+        title,
+        text: shareText,
+      };
+    };
+
+    const savePreparedFile = (
+      format: "pdf" | "png",
+      prepared: { file: File; title: string; text: string }
+    ) => {
+      setPreparedShares(current => ({
         telegramId: telegram.id,
         files: {
-          pdf: { file: pdfFile, title, text: shareText },
-          png: { file: pngFile, title, text: shareText },
+          ...(current?.telegramId === telegram.id ? current.files : {}),
+          [format]: prepared,
         },
-      });
+      }));
+    };
+
+    let pngReady = false;
+    try {
+      // Prepare the image first and expose it immediately. A slow PDF renderer
+      // must never prevent the user from sharing an image that is already ready.
+      const pngFile = await prepareShareFile("png");
+      savePreparedFile("png", pngFile);
+      pngReady = true;
+      setExporting(null);
+      toast.success("الصورة جاهزة للمشاركة؛ يجري تجهيز ملف PDF بشكل مستقل.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تجهيز صورة المشاركة"
+      );
+      setExporting(null);
+    }
+
+    try {
+      const pdfFile = await prepareShareFile("pdf");
+      savePreparedFile("pdf", pdfFile);
       toast.success(
-        "اكتمل تجهيز الملفين؛ اختر PDF أو صورة لفتح واجهة المشاركة مباشرة."
+        pngReady
+          ? "اكتمل تجهيز ملف PDF أيضاً."
+          : "ملف PDF جاهز للمشاركة."
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "تعذر تجهيز ملفات المشاركة"
+        error instanceof Error ? error.message : "تعذر تجهيز ملف PDF للمشاركة"
       );
     } finally {
       setPreparingShareOptions(false);
@@ -5176,7 +5209,8 @@ function TelegramDetail({
                 disabled={
                   !!exporting ||
                   documentSettingsUnavailable ||
-                  preparedShares?.telegramId !== telegram.id
+                  preparedShares?.telegramId !== telegram.id ||
+                  !preparedShares.files.pdf
                 }
                 onClick={event => {
                   event.currentTarget
@@ -5194,7 +5228,8 @@ function TelegramDetail({
                 disabled={
                   !!exporting ||
                   documentSettingsUnavailable ||
-                  preparedShares?.telegramId !== telegram.id
+                  preparedShares?.telegramId !== telegram.id ||
+                  !preparedShares.files.png
                 }
                 onClick={event => {
                   event.currentTarget
@@ -5409,7 +5444,13 @@ function TelegramDetail({
         </div>
         {preparedShares?.telegramId === telegram.id && !exporting && (
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            ملفات المشاركة جاهزة؛ اختر الصيغة لفتح واجهة المشاركة مباشرة.
+            {preparedShares.files.png && preparedShares.files.pdf
+              ? "ملفا الصورة وPDF جاهزان؛ اختر الصيغة للمشاركة."
+              : preparedShares.files.png
+                ? "الصورة جاهزة للمشاركة؛ يجري تجهيز PDF بشكل مستقل."
+                : preparedShares.files.pdf
+                  ? "ملف PDF جاهز؛ تعذر أو ما زال تجهيز الصورة جارياً."
+                  : "يجري تجهيز ملفات المشاركة."}
           </p>
         )}
       </div>

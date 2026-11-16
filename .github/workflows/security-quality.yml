@@ -55,7 +55,7 @@ jobs:
                   rule_id = finding.get("ruleId", "<unknown>")
                   level = finding.get("level", "note").upper()
                   message = finding.get("message", {}).get("text", "")
-                  message = message.replace("\\r", " ").replace("\\n", " ")
+                  message = message.replace("\r", " ").replace("\n", " ")
                   print(f"{level}: {artifact}:{line} [{rule_id}] {message}")
           PY
 

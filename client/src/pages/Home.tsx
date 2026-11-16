@@ -5210,7 +5210,7 @@ function TelegramDetail({
                   !!exporting ||
                   documentSettingsUnavailable ||
                   preparedShares?.telegramId !== telegram.id ||
-                  !preparedShares.files.pdf
+                  !preparedShares?.files.pdf
                 }
                 onClick={event => {
                   event.currentTarget
@@ -5229,7 +5229,7 @@ function TelegramDetail({
                   !!exporting ||
                   documentSettingsUnavailable ||
                   preparedShares?.telegramId !== telegram.id ||
-                  !preparedShares.files.png
+                  !preparedShares?.files.png
                 }
                 onClick={event => {
                   event.currentTarget

@@ -6,6 +6,18 @@ const browser = await chromium.launch({ headless: true });
 
 try {
   const page = await browser.newPage();
+
+  // Keep the smoke-test browser inside the local preview origin only.
+  // Application scripts cannot send requests to external hosts during this test.
+  await page.route("**/*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.hostname === "127.0.0.1" && requestUrl.port === "4173") {
+      await route.continue();
+      return;
+    }
+    await route.abort();
+  });
+
   const response = await page.goto(baseUrl, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,

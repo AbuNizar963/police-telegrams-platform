@@ -4647,10 +4647,8 @@ function TelegramDetail({
     const prepareShareFile = async (format: "pdf" | "png") => {
       const outputTimestamp = await auditDocumentOutput("share", format);
       const blob = await renderOfficialDocument(format, outputTimestamp);
-      const isPngArchive =
-        format === "png" && blob.type === "application/zip";
-      const extension =
-        format === "pdf" ? "pdf" : isPngArchive ? "zip" : "png";
+      const isPngArchive = format === "png" && blob.type === "application/zip";
+      const extension = format === "pdf" ? "pdf" : isPngArchive ? "zip" : "png";
       const mimeType =
         format === "pdf"
           ? "application/pdf"
@@ -4701,9 +4699,7 @@ function TelegramDetail({
       const pdfFile = await prepareShareFile("pdf");
       savePreparedFile("pdf", pdfFile);
       toast.success(
-        pngReady
-          ? "اكتمل تجهيز ملف PDF أيضاً."
-          : "ملف PDF جاهز للمشاركة."
+        pngReady ? "اكتمل تجهيز ملف PDF أيضاً." : "ملف PDF جاهز للمشاركة."
       );
     } catch (error) {
       toast.error(

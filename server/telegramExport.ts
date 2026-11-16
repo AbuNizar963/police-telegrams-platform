@@ -503,10 +503,10 @@ export async function renderTelegramDocument(
           reportStage("multipage-pdf-print-media-applied");
           reportStage("multipage-pdf-generation-started");
           const pdfBody = await page.pdf({
-              printBackground: true,
-              preferCSSPageSize: true,
-              tagged: true,
-            });
+            printBackground: true,
+            preferCSSPageSize: true,
+            tagged: true,
+          });
           reportStage("multipage-pdf-created");
           return {
             body: pdfBody,

@@ -11,7 +11,7 @@ type AppwriteConfig = {
 function getConfig(): AppwriteConfig {
   const endpoint = (
     process.env.APPWRITE_ENDPOINT ?? "https://cloud.appwrite.io/v1"
-  ).replace(/\\/+$/, "");
+  ).replace(/\/+$/, "");
   const projectId = process.env.APPWRITE_PROJECT_ID?.trim() ?? "";
   const apiKey = process.env.APPWRITE_API_KEY?.trim() ?? "";
   const databaseId = process.env.APPWRITE_DATABASE_ID?.trim() ?? "";
@@ -195,7 +195,7 @@ export async function appwriteUploadFile(input: {
   const form = new FormData();
   const safeName = input.fileName
     .trim()
-    .replace(/[\\\\/]+/g, "_")
+    .replace(/[\\/]+/g, "_")
     .slice(0, 180);
 
   if (!safeName) throw new Error("A valid file name is required.");

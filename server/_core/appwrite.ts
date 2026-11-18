@@ -9,7 +9,9 @@ type AppwriteConfig = {
 };
 
 function getConfig(): AppwriteConfig {
-  const endpoint = (process.env.APPWRITE_ENDPOINT ?? "https://cloud.appwrite.io/v1").replace(/\/+$/, "");
+  const endpoint = (
+    process.env.APPWRITE_ENDPOINT ?? "https://cloud.appwrite.io/v1"
+  ).replace(/\\/+$/, "");
   const projectId = process.env.APPWRITE_PROJECT_ID?.trim() ?? "";
   const apiKey = process.env.APPWRITE_API_KEY?.trim() ?? "";
   const databaseId = process.env.APPWRITE_DATABASE_ID?.trim() ?? "";
@@ -27,7 +29,11 @@ function getConfig(): AppwriteConfig {
   } catch {
     throw new Error("APPWRITE_ENDPOINT must be a valid absolute URL.");
   }
-  if (parsedEndpoint.protocol !== "https:" && parsedEndpoint.hostname !== "localhost") {
+
+  if (
+    parsedEndpoint.protocol !== "https:" &&
+    parsedEndpoint.hostname !== "localhost"
+  ) {
     throw new Error("APPWRITE_ENDPOINT must use HTTPS outside localhost.");
   }
 
@@ -45,9 +51,12 @@ function appwriteHeaders(config: AppwriteConfig): Headers {
 async function readError(response: Response): Promise<string> {
   const text = await response.text();
   if (!text) return `HTTP ${response.status}`;
+
   try {
     const payload = JSON.parse(text) as { message?: unknown; type?: unknown };
-    return typeof payload.message === "string" ? payload.message : `HTTP ${response.status}`;
+    return typeof payload.message === "string"
+      ? payload.message
+      : `HTTP ${response.status}`;
   } catch {
     return `HTTP ${response.status}`;
   }
@@ -60,7 +69,12 @@ async function requestJson<T>(
   const config = getConfig();
   const headers = appwriteHeaders(config);
   new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-  if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
+
+  if (
+    init.body &&
+    !(init.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -68,15 +82,21 @@ async function requestJson<T>(
     ...init,
     headers,
   });
+
   if (!response.ok) {
-    throw new Error(`Appwrite request failed (${response.status}): ${await readError(response)}`);
+    throw new Error(
+      `Appwrite request failed (${response.status}): ${await readError(response)}`
+    );
   }
+
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 function encodePath(value: string): string {
-  if (!value.trim()) throw new Error("Appwrite resource identifier is required.");
+  if (!value.trim()) {
+    throw new Error("Appwrite resource identifier is required.");
+  }
   return encodeURIComponent(value);
 }
 
@@ -87,7 +107,9 @@ function queryPath(queries: string[] = []): string {
   return value ? `?${value}` : "";
 }
 
-export type AppwriteRow<T extends Record<string, unknown> = Record<string, unknown>> = {
+export type AppwriteRow<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = {
   $id: string;
   $createdAt: string;
   $updatedAt: string;
@@ -95,22 +117,23 @@ export type AppwriteRow<T extends Record<string, unknown> = Record<string, unkno
   [key: string]: unknown;
 } & T;
 
-export async function appwriteListRows<T extends Record<string, unknown> = Record<string, unknown>>(
+export async function appwriteListRows<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>(
   tableId: string,
   queries: string[] = []
 ): Promise<{ total: number; rows: AppwriteRow<T>[] }> {
   const config = getConfig();
-  return requestJson(
+  return requestJson<{ total: number; rows: AppwriteRow<T>[] }>(
     `/tablesdb/${encodePath(config.databaseId)}/tables/${encodePath(tableId)}/rows${queryPath(queries)}`
   );
 }
 
-export async function appwriteGetRow<T extends Record<string, unknown> = Record<string, unknown>>(
-  tableId: string,
-  rowId: string
-): Promise<AppwriteRow<T>> {
+export async function appwriteGetRow<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>(tableId: string, rowId: string): Promise<AppwriteRow<T>> {
   const config = getConfig();
-  return requestJson(
+  return requestJson<AppwriteRow<T>>(
     `/tablesdb/${encodePath(config.databaseId)}/tables/${encodePath(tableId)}/rows/${encodePath(rowId)}`
   );
 }
@@ -121,7 +144,7 @@ export async function appwriteCreateRow<T extends Record<string, unknown>>(
   options: { rowId?: string; permissions?: string[] } = {}
 ): Promise<AppwriteRow<T>> {
   const config = getConfig();
-  return requestJson(
+  return requestJson<AppwriteRow<T>>(
     `/tablesdb/${encodePath(config.databaseId)}/tables/${encodePath(tableId)}/rows`,
     {
       method: "POST",
@@ -140,7 +163,7 @@ export async function appwriteUpdateRow<T extends Record<string, unknown>>(
   data: Partial<T>
 ): Promise<AppwriteRow<T>> {
   const config = getConfig();
-  return requestJson(
+  return requestJson<AppwriteRow<T>>(
     `/tablesdb/${encodePath(config.databaseId)}/tables/${encodePath(tableId)}/rows/${encodePath(rowId)}`,
     { method: "PATCH", body: JSON.stringify({ data }) }
   );
@@ -162,21 +185,37 @@ export async function appwriteUploadFile(input: {
   fileName: string;
   contentType: string;
   fileId?: string;
-}): Promise<{ $id: string; name: string; mimeType: string; sizeOriginal: number }> {
+}): Promise<{
+  $id: string;
+  name: string;
+  mimeType: string;
+  sizeOriginal: number;
+}> {
   const config = getConfig();
   const form = new FormData();
-  const safeName = input.fileName.trim().replace(/[\\/]+/g, "_").slice(0, 180);
+  const safeName = input.fileName
+    .trim()
+    .replace(/[\\\\/]+/g, "_")
+    .slice(0, 180);
+
   if (!safeName) throw new Error("A valid file name is required.");
+
   form.append("fileId", input.fileId ?? randomUUID());
   form.append(
     "file",
     new Blob([Buffer.from(input.bytes)], { type: input.contentType }),
     safeName
   );
-  return requestJson(
-    `/storage/buckets/${encodePath(config.storageBucketId)}/files`,
-    { method: "POST", body: form }
-  );
+
+  return requestJson<{
+    $id: string;
+    name: string;
+    mimeType: string;
+    sizeOriginal: number;
+  }>(`/storage/buckets/${encodePath(config.storageBucketId)}/files`, {
+    method: "POST",
+    body: form,
+  });
 }
 
 export async function appwriteDownloadFile(fileId: string): Promise<{
@@ -188,12 +227,17 @@ export async function appwriteDownloadFile(fileId: string): Promise<{
     `${config.endpoint}/storage/buckets/${encodePath(config.storageBucketId)}/files/${encodePath(fileId)}/download`,
     { headers: appwriteHeaders(config) }
   );
+
   if (!response.ok) {
-    throw new Error(`Appwrite file download failed (${response.status}): ${await readError(response)}`);
+    throw new Error(
+      `Appwrite file download failed (${response.status}): ${await readError(response)}`
+    );
   }
+
   return {
     body: Buffer.from(await response.arrayBuffer()),
-    contentType: response.headers.get("content-type") ?? "application/octet-stream",
+    contentType:
+      response.headers.get("content-type") ?? "application/octet-stream",
   };
 }
 
